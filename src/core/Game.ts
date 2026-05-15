@@ -1122,10 +1122,10 @@ export class Game {
     }
 
     const modeOrToolToggle = this.input.consumePlacementToolToggle();
-    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && modeOrToolToggle) {
+    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && modeOrToolToggle) {
       if (this.officeChapterActive) {
         this.setOfficeModeMenuOpen(!this.officeModeMenuOpen);
-      } else {
+      } else if (!this.chapterMenuOpen) {
         this.setPlacementToolActive(!this.placementToolActive);
       }
     }

@@ -695,6 +695,7 @@ export function createHud(host: HTMLElement): HudController {
     intro,
     meterPanel,
     statusPanel,
+    officeModeMenu,
   );
   host.replaceChildren(root);
 
