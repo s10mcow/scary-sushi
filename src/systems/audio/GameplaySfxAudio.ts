@@ -326,6 +326,70 @@ export class GameplaySfxAudio {
     this.playMetalThud(now + 0.01, 0.05 + clampedIntensity * 0.12, 96 + clampedIntensity * 72);
   }
 
+  playFreddyPowerOutMelody(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.08;
+    const melody = [
+      { frequency: 196.0, offset: 0 },
+      { frequency: 185.0, offset: 0.54 },
+      { frequency: 164.81, offset: 1.08 },
+      { frequency: 146.83, offset: 1.74 },
+      { frequency: 123.47, offset: 2.55 },
+      { frequency: 98.0, offset: 3.24 },
+    ];
+
+    const reverbBus = this.context.createGain();
+    reverbBus.gain.value = 0.38;
+    reverbBus.connect(this.masterGain);
+
+    melody.forEach((note, index) => {
+      const start = now + note.offset;
+      const length = index === melody.length - 1 ? 1.22 : 0.86;
+      const noteGain = this.context!.createGain();
+      noteGain.gain.setValueAtTime(0.0001, start);
+      noteGain.gain.exponentialRampToValueAtTime(0.13, start + 0.012);
+      noteGain.gain.exponentialRampToValueAtTime(0.032, start + length * 0.58);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+      noteGain.connect(reverbBus);
+
+      const tone = this.context!.createOscillator();
+      tone.type = 'triangle';
+      tone.frequency.setValueAtTime(note.frequency, start);
+      tone.frequency.exponentialRampToValueAtTime(note.frequency * 0.992, start + length);
+      tone.connect(noteGain);
+      this.startSource(tone, start, start + length);
+
+      const overtoneGain = this.context!.createGain();
+      overtoneGain.gain.setValueAtTime(0.0001, start);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.036, start + 0.006);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, start + length * 0.42);
+      overtoneGain.connect(reverbBus);
+
+      const overtone = this.context!.createOscillator();
+      overtone.type = 'sine';
+      overtone.frequency.setValueAtTime(note.frequency * 2.01, start);
+      overtone.connect(overtoneGain);
+      this.startSource(overtone, start, start + length * 0.5);
+    });
+
+    const humGain = this.context.createGain();
+    humGain.gain.setValueAtTime(0.0001, now);
+    humGain.gain.exponentialRampToValueAtTime(0.038, now + 0.18);
+    humGain.gain.linearRampToValueAtTime(0.026, now + 3.1);
+    humGain.gain.exponentialRampToValueAtTime(0.0001, now + 4.25);
+    humGain.connect(this.masterGain);
+
+    const hum = this.context.createOscillator();
+    hum.type = 'sine';
+    hum.frequency.setValueAtTime(49, now);
+    hum.frequency.exponentialRampToValueAtTime(41, now + 4.25);
+    hum.connect(humGain);
+    this.startSource(hum, now, now + 4.25);
+  }
+
   playOfficeJumpscareCue(cue: OfficeJumpscareCue): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;

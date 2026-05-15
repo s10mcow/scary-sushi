@@ -1,3 +1,5 @@
+const MAX_FRAME_DELTA_SECONDS = 1 / 30;
+
 export class GameLoop {
   private frameId: number | null = null;
   private previousTime = 0;
@@ -23,7 +25,7 @@ export class GameLoop {
   }
 
   private readonly tick = (time: number): void => {
-    const deltaSeconds = Math.min((time - this.previousTime) / 1000, 0.05);
+    const deltaSeconds = Math.min((time - this.previousTime) / 1000, MAX_FRAME_DELTA_SECONDS);
     this.previousTime = time;
 
     this.update(deltaSeconds);

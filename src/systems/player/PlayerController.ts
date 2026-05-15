@@ -1,10 +1,16 @@
-import { Matrix4, PerspectiveCamera, Quaternion, Vector3 } from 'three';
+import { Euler, Matrix4, MathUtils, PerspectiveCamera, Quaternion, Vector3 } from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 
 import { GAME_CONFIG } from '../../config/gameConfig';
 import { isBlocked } from '../collision/isBlocked';
 import type { MovementState } from '../input/InputController';
 import type { CollisionBox } from '../../types/world';
+
+const LOOK_SENSITIVITY = 0.002;
+const LOOK_SMOOTHING = 42;
+const LOOK_BUFFER_LIMIT = 180;
+const LOOK_EPSILON = 0.001;
+const HALF_PI = Math.PI / 2;
 
 export class PlayerController {
   readonly controls: PointerLockControls;
@@ -15,17 +21,24 @@ export class PlayerController {
   private readonly lookDirection = new Vector3();
   private readonly lookQuaternion = new Quaternion();
   private readonly lookMatrix = new Matrix4();
+  private readonly lookEuler = new Euler(0, 0, 0, 'YXZ');
+  private pendingLookDeltaX = 0;
+  private pendingLookDeltaY = 0;
   private verticalVelocity = 0;
   private grounded = true;
   private supportedFloorY: number | null = null;
 
   constructor(
     private readonly camera: PerspectiveCamera,
-    domElement: HTMLElement,
+    private readonly domElement: HTMLElement,
     private readonly colliders: CollisionBox[],
     spawn: Vector3,
   ) {
     this.controls = new PointerLockControls(camera, domElement);
+    this.controls.disconnect();
+    this.domElement.ownerDocument.addEventListener('mousemove', this.handleMouseMove);
+    this.domElement.ownerDocument.addEventListener('pointerlockchange', this.handlePointerLockChange);
+    this.domElement.ownerDocument.addEventListener('pointerlockerror', this.handlePointerLockError);
     this.controls.object.position.copy(spawn);
   }
 
@@ -34,6 +47,7 @@ export class PlayerController {
     this.controls.object.position.y = GAME_CONFIG.player.height;
     this.verticalVelocity = 0;
     this.grounded = true;
+    this.clearLookBuffer();
   }
 
   lock(): void {
@@ -70,10 +84,12 @@ export class PlayerController {
     this.lookQuaternion.setFromRotationMatrix(this.lookMatrix);
 
     if (blend >= 1) {
+      this.clearLookBuffer();
       this.camera.quaternion.copy(this.lookQuaternion);
       return;
     }
 
+    this.clearLookBuffer();
     this.camera.quaternion.slerp(this.lookQuaternion, Math.max(0, Math.min(1, blend)));
   }
 
@@ -81,6 +97,7 @@ export class PlayerController {
     this.controls.object.position.copy(position);
     this.verticalVelocity = 0;
     this.grounded = true;
+    this.clearLookBuffer();
   }
 
   setSupportedFloor(height: number | null): void {
@@ -97,6 +114,8 @@ export class PlayerController {
     if (!this.controls.isLocked) {
       return;
     }
+
+    this.applySmoothedLook(deltaSeconds);
 
     this.camera.getWorldDirection(this.forward);
     this.forward.y = 0;
@@ -155,7 +174,74 @@ export class PlayerController {
   }
 
   destroy(): void {
+    this.domElement.ownerDocument.removeEventListener('mousemove', this.handleMouseMove);
+    this.domElement.ownerDocument.removeEventListener('pointerlockchange', this.handlePointerLockChange);
+    this.domElement.ownerDocument.removeEventListener('pointerlockerror', this.handlePointerLockError);
     this.controls.unlock();
     this.controls.dispose();
+  }
+
+  private readonly handleMouseMove = (event: MouseEvent): void => {
+    if (!this.controls.enabled || !this.controls.isLocked) {
+      return;
+    }
+
+    this.pendingLookDeltaX = MathUtils.clamp(
+      this.pendingLookDeltaX + event.movementX,
+      -LOOK_BUFFER_LIMIT,
+      LOOK_BUFFER_LIMIT,
+    );
+    this.pendingLookDeltaY = MathUtils.clamp(
+      this.pendingLookDeltaY + event.movementY,
+      -LOOK_BUFFER_LIMIT,
+      LOOK_BUFFER_LIMIT,
+    );
+  };
+
+  private readonly handlePointerLockChange = (): void => {
+    const locked = this.domElement.ownerDocument.pointerLockElement === this.domElement;
+    if (locked === this.controls.isLocked) {
+      return;
+    }
+
+    (this.controls as unknown as { isLocked: boolean }).isLocked = locked;
+    if (!locked) {
+      this.clearLookBuffer();
+    }
+
+    this.controls.dispatchEvent({ type: locked ? 'lock' : 'unlock' });
+  };
+
+  private readonly handlePointerLockError = (): void => {
+    console.error('Pointer lock failed.');
+  };
+
+  private applySmoothedLook(deltaSeconds: number): void {
+    if (Math.abs(this.pendingLookDeltaX) < LOOK_EPSILON && Math.abs(this.pendingLookDeltaY) < LOOK_EPSILON) {
+      this.clearLookBuffer();
+      return;
+    }
+
+    const smoothing = 1 - Math.exp(-LOOK_SMOOTHING * deltaSeconds);
+    const movementX = this.pendingLookDeltaX * smoothing;
+    const movementY = this.pendingLookDeltaY * smoothing;
+    this.pendingLookDeltaX -= movementX;
+    this.pendingLookDeltaY -= movementY;
+
+    this.lookEuler.setFromQuaternion(this.camera.quaternion);
+    this.lookEuler.y -= movementX * LOOK_SENSITIVITY * this.controls.pointerSpeed;
+    this.lookEuler.x -= movementY * LOOK_SENSITIVITY * this.controls.pointerSpeed;
+    this.lookEuler.x = MathUtils.clamp(
+      this.lookEuler.x,
+      HALF_PI - this.controls.maxPolarAngle,
+      HALF_PI - this.controls.minPolarAngle,
+    );
+    this.camera.quaternion.setFromEuler(this.lookEuler);
+    this.controls.dispatchEvent({ type: 'change' });
+  }
+
+  private clearLookBuffer(): void {
+    this.pendingLookDeltaX = 0;
+    this.pendingLookDeltaY = 0;
   }
 }

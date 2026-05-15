@@ -15,6 +15,7 @@ export class InputController {
   private jumpQueued = false;
   private chapterMenuToggleQueued = false;
   private officeJumpscareMenuToggleQueued = false;
+  private hudHelpToggleQueued = false;
   private placementToolToggleQueued = false;
   private placementMarkerDeleteQueued = false;
   private fireQueued = false;
@@ -77,6 +78,12 @@ export class InputController {
   consumeOfficeJumpscareMenuToggle(): boolean {
     const value = this.officeJumpscareMenuToggleQueued;
     this.officeJumpscareMenuToggleQueued = false;
+    return value;
+  }
+
+  consumeHudHelpToggle(): boolean {
+    const value = this.hudHelpToggleQueued;
+    this.hudHelpToggleQueued = false;
     return value;
   }
 
@@ -154,6 +161,10 @@ export class InputController {
 
     if (event.code === 'KeyJ' && !event.repeat) {
       this.officeJumpscareMenuToggleQueued = true;
+    }
+
+    if (event.code === 'KeyV' && !event.repeat) {
+      this.hudHelpToggleQueued = true;
     }
 
     if (event.code === 'KeyM' && !event.repeat) {

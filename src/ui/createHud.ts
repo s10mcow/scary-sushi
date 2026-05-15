@@ -49,6 +49,7 @@ export interface HudController {
     activeDifficulty: OfficeModeMenuDifficulty,
   ): void;
   setPlacementTool(active: boolean, body: string, copyText?: string): void;
+  toggleHelperPanels(): void;
   setStatus(text: string): void;
   setInventory(text: string): void;
   setOfficePower(active: boolean, powerRatio: number, powerOut: boolean, nightText?: string, timeText?: string): void;
@@ -257,20 +258,6 @@ export function createHud(host: HTMLElement): HudController {
 
   meterPanel.append(healthMeter.root, staminaMeter.root);
 
-  const objectivePanel = document.createElement('section');
-  objectivePanel.className = 'hud__panel hud__panel--left';
-
-  const objectiveLabel = document.createElement('p');
-  objectiveLabel.className = 'hud__label';
-  objectiveLabel.textContent = 'Challenge Board';
-
-  const objectiveText = document.createElement('p');
-  objectiveText.className = 'hud__value';
-  objectiveText.textContent =
-    'Submit both sushi rolls.\n\nSalmon Roll: 0/3 ready\nTuna Roll: 0/3 ready';
-
-  objectivePanel.append(objectiveLabel, objectiveText);
-
   const storyNotice = document.createElement('section');
   storyNotice.className = 'hud__story';
   storyNotice.dataset.active = 'false';
@@ -369,6 +356,24 @@ export function createHud(host: HTMLElement): HudController {
   const statusPanel = document.createElement('section');
   statusPanel.className = 'hud__panel hud__panel--right';
 
+  const statusBar = document.createElement('section');
+  statusBar.className = 'hud__info-bar hud__info-bar--status';
+  statusBar.dataset.expanded = 'false';
+
+  const statusLabel = document.createElement('button');
+  statusLabel.className = 'hud__label hud__info-bar-title hud__info-toggle';
+  statusLabel.type = 'button';
+  statusLabel.textContent = 'Status';
+  statusLabel.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const expanded = statusBar.dataset.expanded !== 'true';
+    statusBar.dataset.expanded = String(expanded);
+    statusLabel.setAttribute('aria-expanded', String(expanded));
+  });
+
+  const statusContent = document.createElement('div');
+  statusContent.className = 'hud__info-bar-body';
+
   const statusText = document.createElement('p');
   statusText.className = 'hud__value';
   statusText.textContent = 'Click the button to lock the pointer and begin.';
@@ -389,11 +394,38 @@ export function createHud(host: HTMLElement): HudController {
   flashlightText.className = 'hud__value';
   flashlightText.textContent = 'Flashlight: off / toggle with F';
 
-  const controlsText = document.createElement('p');
-  controlsText.className = 'hud__hint';
-  controlsText.textContent = 'WASD move, Space jump, Shift sprint, E interact, M opens the Chapter 3 mode menu or equips the Coordinate Tool elsewhere, left click fires in the FPS modes or places a marker with the tool, right click deletes the latest coordinate marker, 1/2 swap weapons there, C drinks coffee in chapter two, D drops a carried dish on the judges belt, P opens chapter menu, Esc releases pointer, click play space to re-enter.';
+  statusContent.append(statusText, inventoryText, chapterText, promptText, flashlightText);
+  statusBar.append(statusLabel, statusContent);
 
-  statusPanel.append(statusText, inventoryText, chapterText, promptText, flashlightText, controlsText);
+  const howToPlayBar = document.createElement('section');
+  howToPlayBar.className = 'hud__info-bar hud__info-bar--play';
+  howToPlayBar.dataset.expanded = 'false';
+
+  const howToPlayLabel = document.createElement('button');
+  howToPlayLabel.className = 'hud__label hud__info-bar-title hud__info-toggle';
+  howToPlayLabel.type = 'button';
+  howToPlayLabel.textContent = 'How to play';
+  howToPlayLabel.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const expanded = howToPlayBar.dataset.expanded !== 'true';
+    howToPlayBar.dataset.expanded = String(expanded);
+    howToPlayLabel.setAttribute('aria-expanded', String(expanded));
+  });
+
+  const controlsText = document.createElement('p');
+  controlsText.className = 'hud__hint hud__info-bar-body';
+  controlsText.textContent = 'WASD move / Space jump / E interact / 1 Tool / 2 Tablet / M Mode / J Jumpscares / F Light / V Hide panels / Esc Pointer';
+
+  howToPlayBar.append(howToPlayLabel, controlsText);
+
+  statusPanel.append(statusBar, howToPlayBar);
+
+  let helperPanelsHidden = false;
+  const setHelperPanelsHidden = (hidden: boolean): void => {
+    helperPanelsHidden = hidden;
+    howToPlayBar.dataset.hidden = String(hidden);
+    howToPlayBar.style.display = hidden ? 'none' : '';
+  };
 
   const hotbar = document.createElement('section');
   hotbar.className = 'hud__hotbar';
@@ -660,32 +692,9 @@ export function createHud(host: HTMLElement): HudController {
   );
 
   root.append(
-    backdrop,
-    grain,
-    tabletStatic,
-    officeHardVignette,
-    ballPitHide,
-    officeCutscene,
-    officeCameraPuppet,
-    officePower,
-    jumpscare,
     intro,
     meterPanel,
-    objectivePanel,
-    storyNotice,
-    actionPrompt,
-    placementTool,
-    tabletCameraPanel,
-    tabletCameraTitle,
-    nightModeAttack,
     statusPanel,
-    hotbar,
-    crosshair,
-    threatEye,
-    chapterCard,
-    chapterMenu,
-    officeJumpscareMenu,
-    officeModeMenu,
   );
   host.replaceChildren(root);
 
@@ -741,9 +750,7 @@ export function createHud(host: HTMLElement): HudController {
         statusText.textContent = 'Pointer unlocked. Click anywhere on the play space to jump back in.';
       }
     },
-    setObjective(text): void {
-      objectiveText.textContent = text;
-    },
+    setObjective(): void {},
     setStoryNotice(text, active, label = 'Chapter Shift'): void {
       storyNotice.dataset.active = String(active && text.length > 0);
       storyNoticeLabel.textContent = label;
@@ -815,6 +822,9 @@ export function createHud(host: HTMLElement): HudController {
       placementToolCopyText = copyText;
       placementCopyButton.disabled = copyText.length === 0;
       placementCopyButton.textContent = copyText.length > 0 ? 'Copy Coordinates' : 'No Marker To Copy';
+    },
+    toggleHelperPanels(): void {
+      setHelperPanelsHidden(!helperPanelsHidden);
     },
     setStatus(text): void {
       statusText.textContent = text;

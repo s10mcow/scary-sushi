@@ -89,6 +89,7 @@ import {
   type MonsterVariant,
 } from '../systems/monster/MonsterController';
 import { InputController, type WeaponSelectId } from '../systems/input/InputController';
+import { VoiceInputController } from '../systems/input/VoiceInputController';
 import { BearJumpScareAudio } from '../systems/audio/BearJumpScareAudio';
 import { CoffeeMachineAudio } from '../systems/audio/CoffeeMachineAudio';
 import { GameplaySfxAudio, type OfficeJumpscareCue } from '../systems/audio/GameplaySfxAudio';
@@ -452,6 +453,9 @@ const OFFICE_CAMERA_PUPPET_CHANCE = 0.05;
 const OFFICE_CAMERA_PUPPET_CAMERA_FAIL_SECONDS = 2.25;
 const OFFICE_CAMERA_PUPPET_REOPEN_SECONDS = 3;
 const OFFICE_CAMERA_PUPPET_JUMPSCARE_SECONDS = 1.35;
+const OFFICE_FREDDY_POWER_OUT_ATTACK_DELAY = 4.6;
+const OFFICE_NOISE_INVESTIGATE_THRESHOLD = 0.18;
+const OFFICE_NOISE_RUSH_THRESHOLD = 0.68;
 const OFFICE_GAME_MODE_OFFICE_CENTER = new Vector3(-240, GAME_CONFIG.player.height, 184);
 const OFFICE_GAME_MODE_OFFICE_SPAWN = new Vector3(-240, GAME_CONFIG.player.height, 186.2);
 const OFFICE_GAME_MODE_OFFICE_LOOK_TARGET = new Vector3(-240, GAME_CONFIG.player.height, 181.2);
@@ -540,6 +544,7 @@ export class Game {
   private readonly bearJumpScareAudio = new BearJumpScareAudio();
   private readonly coffeeMachineAudio = new CoffeeMachineAudio();
   private readonly gameplaySfxAudio = new GameplaySfxAudio();
+  private readonly voiceInput = new VoiceInputController();
   private readonly foxyPlayAudio = new FoxyPlayAudio();
   private readonly lobbyCrashAudio = new LobbyCrashAudio();
   private readonly partyShowAudio = new PartyShowAudio();
@@ -675,6 +680,7 @@ export class Game {
   private officeGameModeDifficulty: OfficeGameModeDifficulty = 'normal';
   private officeGameModePower = 100;
   private officeGameModePowerOut = false;
+  private officeFreddyPowerOutTimer = 0;
   private officeGameModeNightPhase = false;
   private officeGameModePhaseTime = 0;
   private officeGameModeNight = 1;
@@ -684,6 +690,9 @@ export class Game {
   private officeFoxyRushCooldown = 0;
   private officeFoxyClankCooldown = 0;
   private officeFoxyRushDoor: 'left' | 'right' | null = null;
+  private officePlayerNoiseLevel = 0;
+  private officePlayerVoiceLevel = 0;
+  private readonly officePlayerNoisePosition = new Vector3();
   private officeVentBoy: OfficeVentBoyState | null = null;
   private chapterTwoCardTime = 0;
   private chapterTwoCoffeeJob: ChapterTwoCoffeeJob | null = null;
@@ -878,6 +887,7 @@ export class Game {
     this.lobbyCrashAudio.destroy();
     this.partyShowAudio.destroy();
     this.powerEventAudio.destroy();
+    this.voiceInput.destroy();
     this.hud.destroy();
     this.renderer.dispose();
     this.shell.viewport.replaceChildren();
@@ -1107,6 +1117,10 @@ export class Game {
       this.setOfficeJumpscareMenuOpen(!this.officeJumpscareMenuOpen);
     }
 
+    if (this.input.consumeHudHelpToggle()) {
+      this.hud.toggleHelperPanels();
+    }
+
     const modeOrToolToggle = this.input.consumePlacementToolToggle();
     if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && modeOrToolToggle) {
       if (this.officeChapterActive) {
@@ -1260,6 +1274,13 @@ export class Game {
       playerPositionAfterMove.z - playerPositionBeforeMove.z,
     );
     const playerInOfficeBallPit = this.isPlayerInOfficeBallPit(playerPositionAfterMove);
+    this.updateOfficePlayerNoise(
+      deltaSeconds,
+      horizontalMoveDistance,
+      effectiveMovement.sprint,
+      playerInOfficeBallPit,
+      playerPositionAfterMove,
+    );
     if (this.officeBallPitHidden && !playerInOfficeBallPit) {
       this.officeBallPitHidden = false;
     }
@@ -2079,6 +2100,43 @@ export class Game {
     return !this.officeGameModeActive || (!this.officeGameModePowerOut && this.officeGameModePower > 0);
   }
 
+  private updateOfficePlayerNoise(
+    deltaSeconds: number,
+    horizontalMoveDistance: number,
+    sprinting: boolean,
+    playerInOfficeBallPit: boolean,
+    playerPosition: Vector3,
+  ): void {
+    if (!this.officeChapterActive || !this.officeGameModeActive) {
+      this.officePlayerNoiseLevel = Math.max(0, this.officePlayerNoiseLevel - deltaSeconds * 0.8);
+      this.officePlayerVoiceLevel = 0;
+      return;
+    }
+
+    const speed = deltaSeconds > 0 ? horizontalMoveDistance / deltaSeconds : 0;
+    const moving = this.player.isLocked()
+      && !this.chapterMenuOpen
+      && horizontalMoveDistance > 0.0015;
+    const movementNoise = moving
+      ? MathUtils.clamp(speed / GAME_CONFIG.player.sprintSpeed, 0, 1.15)
+        * (sprinting ? 0.68 : playerInOfficeBallPit ? 0.36 : this.officeVentActive ? 0.16 : 0.28)
+      : 0;
+    const voiceLevel = this.voiceInput.getLevel();
+    const voiceNoise = MathUtils.clamp(voiceLevel * 1.35, 0, 1);
+    const targetNoise = Math.max(movementNoise, voiceNoise);
+
+    this.officePlayerVoiceLevel = voiceLevel;
+    if (targetNoise > 0.02) {
+      this.officePlayerNoisePosition.copy(playerPosition);
+      this.officePlayerNoiseLevel = targetNoise > this.officePlayerNoiseLevel
+        ? MathUtils.lerp(this.officePlayerNoiseLevel, targetNoise, 0.62)
+        : Math.max(0, this.officePlayerNoiseLevel - deltaSeconds * 0.62);
+      return;
+    }
+
+    this.officePlayerNoiseLevel = Math.max(0, this.officePlayerNoiseLevel - deltaSeconds * 0.78);
+  }
+
   private getOfficeGameModeConfig(): OfficeGameModeConfig {
     return OFFICE_GAME_MODE_CONFIGS[this.officeGameModeDifficulty];
   }
@@ -2228,6 +2286,9 @@ export class Game {
   private resetOfficeGameModeNightState(): void {
     this.officeGameModePower = 100;
     this.officeGameModePowerOut = false;
+    this.officeFreddyPowerOutTimer = 0;
+    this.officePlayerNoiseLevel = 0;
+    this.officePlayerVoiceLevel = 0;
     this.resetOfficeFoxyCameraPressure();
     this.officeFoxyRushCooldown = 8;
     this.officeFoxyClankCooldown = 0;
@@ -2291,6 +2352,9 @@ export class Game {
     this.officeGameModeDifficulty = difficulty;
     this.officeGameModePower = 100;
     this.officeGameModePowerOut = false;
+    this.officeFreddyPowerOutTimer = 0;
+    this.officePlayerNoiseLevel = 0;
+    this.officePlayerVoiceLevel = 0;
     this.officeGameModeNightPhase = true;
     this.officeGameModePhaseTime = 0;
     this.officeGameModeNight = 1;
@@ -2322,6 +2386,7 @@ export class Game {
     this.player.teleport(OFFICE_GAME_MODE_OFFICE_SPAWN);
     this.player.lookToward(OFFICE_GAME_MODE_OFFICE_LOOK_TARGET, 1);
     this.flashlight.setEnabled(true);
+    void this.voiceInput.start();
     this.resetOfficeGameModeAnimatronics();
     if (difficulty === 'hard') {
       this.ensureOfficeVentBoy();
@@ -2340,7 +2405,10 @@ export class Game {
     this.officeModeMenuStep = 'mode';
     this.officeModeMenuPendingMode = null;
     this.officeGameModePowerOut = false;
+    this.officeFreddyPowerOutTimer = 0;
     this.officeGameModePower = 100;
+    this.officePlayerNoiseLevel = 0;
+    this.officePlayerVoiceLevel = 0;
     this.officeGameModeNightPhase = false;
     this.officeGameModePhaseTime = 0;
     this.officeGameModeNight = 1;
@@ -2349,6 +2417,7 @@ export class Game {
     this.officeFoxyClankCooldown = 0;
     this.officeFoxyRushDoor = null;
     this.clearOfficeCameraPuppetThreat();
+    this.voiceInput.stop();
     this.officeBallPitSlide = null;
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       animatronic.model.root.visible = false;
@@ -2543,22 +2612,27 @@ export class Game {
   }
 
   private getOfficeGameModeStageDwellSeconds(animatronic: OfficeJumpscareAnimatronic): number {
-    const nightBase = [95, 54, 39, 24, 10][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 39;
+    if (animatronic === 'bori') {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    const nightBase = [48, 38, 28, 17, 8][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 28;
     const animalShift = animatronic === 'foxy'
       ? 12
       : animatronic === 'quacky'
-        ? 5
-        : animatronic === 'bori'
-          ? 7
+        ? -11
+        : animatronic === 'fluffle'
+          ? -13
           : 0;
     const difficultyShift = this.officeGameModeDifficulty === 'hard'
       ? -5
       : this.officeGameModeDifficulty === 'easy'
         ? 10
         : 0;
-    const offset = animatronic === 'quacky' ? 0.8 : animatronic === 'fluffle' ? 2.1 : animatronic === 'bori' ? 3.4 : 4.8;
-    const randomHold = Math.abs(Math.sin(this.elapsed * 0.23 + offset)) * (this.officeGameModeNight >= 5 ? 8 : 18);
-    return Math.max(5, nightBase + animalShift + difficultyShift + randomHold);
+    const nightClockShift = -this.getOfficeGameModeNightPhaseProgress() * (this.officeGameModeNight === 1 ? 18 : 12);
+    const offset = animatronic === 'quacky' ? 0.8 : animatronic === 'fluffle' ? 2.1 : 4.8;
+    const randomHold = Math.abs(Math.sin(this.elapsed * 0.23 + offset)) * (this.officeGameModeNight >= 5 ? 7 : 13);
+    return Math.max(4, nightBase + animalShift + difficultyShift + nightClockShift + randomHold);
   }
 
   private getOfficeGameModeWaypointDwellSeconds(animatronic: OfficeJumpscareAnimatronic, routeIndex: number): number {
@@ -2606,7 +2680,7 @@ export class Game {
   private getOfficeGameModeMaxOffstage(): number {
     switch (this.officeGameModeNight) {
       case 1:
-        return 0;
+        return 1;
       case 2:
       case 3:
         return 1;
@@ -2619,7 +2693,12 @@ export class Game {
   }
 
   private shouldOfficeGameModeAnimatronicLeaveStage(animatronic: OfficeGameModeAnimatronicState, canSeePlayer: boolean): boolean {
-    const nightChance = [0, 0.2, 0.34, 0.62, 0.94][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 0.34;
+    if (animatronic.animatronic === 'bori') {
+      return false;
+    }
+
+    const nightChance = [0.12, 0.26, 0.42, 0.66, 0.94][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 0.42;
+    const nightClockBonus = this.getOfficeGameModeNightPhaseProgress() * 0.24;
     const difficultyChance = this.officeGameModeDifficulty === 'hard'
       ? 0.08
       : this.officeGameModeDifficulty === 'easy'
@@ -2628,11 +2707,21 @@ export class Game {
     const animalChance = animatronic.animatronic === 'foxy'
       ? -0.08
       : animatronic.animatronic === 'quacky'
-        ? -0.04
+        ? 0.18
+        : animatronic.animatronic === 'fluffle'
+          ? 0.22
         : 0;
     const playerSeenBonus = canSeePlayer && this.officeGameModeNight >= 3 ? 0.12 : 0;
-    const chance = MathUtils.clamp(difficultyChance + nightChance + animalChance + playerSeenBonus, 0, 0.98);
+    const chance = MathUtils.clamp(difficultyChance + nightChance + nightClockBonus + animalChance + playerSeenBonus, 0, 0.98);
     return Math.random() < chance;
+  }
+
+  private getOfficeGameModeNightPhaseProgress(): number {
+    if (!this.officeGameModeActive || !this.officeGameModeNightPhase) {
+      return 0;
+    }
+
+    return MathUtils.clamp(this.officeGameModePhaseTime / OFFICE_GAME_MODE_NIGHT_SECONDS, 0, 1);
   }
 
   private getOfficeGameModeNightPressure(): number {
@@ -2641,12 +2730,53 @@ export class Game {
 
   private getOfficeGameModeDetectionRange(config: OfficeGameModeConfig): number {
     const nightMultiplier = [0.48, 0.72, 1, 1.28, 1.62][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 1;
+    const nightClockMultiplier = 1 + this.getOfficeGameModeNightPhaseProgress() * 0.36;
     const powerOutMultiplier = this.officeGameModePowerOut ? 1.18 : 1;
-    return config.detectionRange * nightMultiplier * powerOutMultiplier;
+    return config.detectionRange * nightMultiplier * nightClockMultiplier * powerOutMultiplier;
+  }
+
+  private getOfficeGameModeNoiseRange(): number {
+    const nightPressure = this.getOfficeGameModeNightPressure();
+    const clockPressure = this.getOfficeGameModeNightPhaseProgress();
+    const difficultyBonus = this.officeGameModeDifficulty === 'hard'
+      ? 3.2
+      : this.officeGameModeDifficulty === 'easy'
+        ? -1.6
+        : 0;
+    return MathUtils.lerp(7.2, 18.5, nightPressure * 0.62 + clockPressure * 0.38) + difficultyBonus;
+  }
+
+  private getOfficeGameModeNoiseResponse(
+    animatronic: OfficeGameModeAnimatronicState,
+    animatronicPosition: Vector3,
+  ): 'none' | 'investigate' | 'rush' {
+    if (
+      animatronic.animatronic === 'bori'
+      || !this.officeGameModeActive
+      || this.officeGameModePowerOut
+      || this.officePlayerNoiseLevel < 0.03
+    ) {
+      return 'none';
+    }
+
+    const range = this.getOfficeGameModeNoiseRange();
+    const distance = animatronicPosition.distanceTo(this.officePlayerNoisePosition);
+    if (distance > range * (this.officePlayerVoiceLevel > 0.5 ? 1.22 : 1)) {
+      return 'none';
+    }
+
+    const distanceFalloff = MathUtils.clamp(1 - distance / Math.max(0.1, range), 0, 1);
+    const heardLevel = this.officePlayerNoiseLevel * (0.48 + distanceFalloff * 0.82);
+    const yelling = this.officePlayerVoiceLevel >= 0.52 && distance <= range * 1.22;
+    if (yelling || heardLevel >= OFFICE_NOISE_RUSH_THRESHOLD) {
+      return 'rush';
+    }
+
+    return heardLevel >= OFFICE_NOISE_INVESTIGATE_THRESHOLD ? 'investigate' : 'none';
   }
 
   private getOfficeGameModeSpeedMultiplier(): number {
-    return 1 + this.getOfficeGameModeNightPressure() * 0.18;
+    return 1 + this.getOfficeGameModeNightPressure() * 0.18 + this.getOfficeGameModeNightPhaseProgress() * 0.08;
   }
 
   private putOfficeGameModeAnimatronicOnStage(animatronic: OfficeGameModeAnimatronicState): void {
@@ -3296,6 +3426,7 @@ export class Game {
     }
 
     this.officeGameModePowerOut = true;
+    this.officeFreddyPowerOutTimer = OFFICE_FREDDY_POWER_OUT_ATTACK_DELAY;
     this.officeTabletCameraFeedActive = false;
     this.officeTabletHeld = false;
     this.officeTabletAnchor.visible = false;
@@ -3304,9 +3435,35 @@ export class Game {
       door.targetOpenAmount = 1;
       door.open = true;
     });
+    this.officeGameModeAnimatronics.forEach((animatronic) => {
+      this.putOfficeGameModeAnimatronicOnStage(animatronic);
+    });
     this.powerEventAudio.resume();
     this.powerEventAudio.playOutage();
-    this.pushStatus('Game Mode power is out. The cameras die and the office doors grind open.', 4.2);
+    this.gameplaySfxAudio.resume();
+    this.gameplaySfxAudio.playFreddyPowerOutMelody();
+    this.pushStatus(`${this.getOfficeModeLabel()} power is out. Freddy plays a creepy piano melody in the dark.`, 4.2);
+  }
+
+  private updateOfficeFreddyPowerOutAttack(deltaSeconds: number): void {
+    if (!this.officeGameModeActive || !this.officeGameModePowerOut || this.officeFreddyPowerOutTimer <= 0) {
+      return;
+    }
+
+    if (this.activeOfficeJumpscare) {
+      return;
+    }
+
+    this.officeFreddyPowerOutTimer = Math.max(0, this.officeFreddyPowerOutTimer - deltaSeconds);
+    if (this.officeFreddyPowerOutTimer > 0) {
+      return;
+    }
+
+    const definition = this.getRandomOfficeJumpscareDefinition('bori')
+      ?? OFFICE_JUMPSCARE_DEFINITIONS.find((entry) => entry.id === 'bori-3');
+    if (definition) {
+      this.startOfficeJumpscare(definition);
+    }
   }
 
   private updateOfficeModeCycle(deltaSeconds: number): void {
@@ -3454,10 +3611,19 @@ export class Game {
       && !this.officeBallPitHidden
       && inDetectionRange
       && this.hasOfficeGameModeLineOfSight(animatronicPosition, playerPosition);
+    const noiseResponse = this.getOfficeGameModeNoiseResponse(animatronic, animatronicPosition);
 
     if (animatronic.state === 'stage') {
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
       animatronic.model.root.visible = false;
+      if (noiseResponse !== 'none' && canLeaveStage) {
+        this.sendOfficeGameModeAnimatronicOffStage(animatronic);
+        animatronic.state = noiseResponse === 'rush' ? 'rush' : 'chase';
+        animatronic.lastKnownPlayerPosition.copy(this.officePlayerNoisePosition);
+        animatronic.waitTimer = 0;
+        return true;
+      }
+
       animatronic.waitTimer = Math.max(0, animatronic.waitTimer - deltaSeconds);
       if (animatronic.waitTimer <= 0 && canLeaveStage) {
         if (this.shouldOfficeGameModeAnimatronicLeaveStage(animatronic, canSeePlayer)) {
@@ -3476,6 +3642,18 @@ export class Game {
     if (canSeePlayer) {
       animatronic.lastKnownPlayerPosition.copy(playerPosition);
       animatronic.lostSightTimer = 0;
+    } else if (noiseResponse !== 'none' && animatronic.state !== 'door' && animatronic.state !== 'retreat') {
+      animatronic.lastKnownPlayerPosition.copy(this.officePlayerNoisePosition);
+      animatronic.lostSightTimer = 0;
+      animatronic.waitTimer = 0;
+      animatronic.progressStallTimer = 0;
+      animatronic.detourTarget = null;
+      animatronic.detourTimer = 0;
+      if (noiseResponse === 'rush') {
+        animatronic.state = 'rush';
+      } else if (animatronic.state === 'wander') {
+        animatronic.state = 'chase';
+      }
     }
 
     if (this.officeBallPitHidden && (animatronic.state === 'chase' || animatronic.state === 'rush')) {
@@ -3704,6 +3882,11 @@ export class Game {
     }
 
     this.updateOfficeGameModePower(deltaSeconds);
+    this.updateOfficeFreddyPowerOutAttack(deltaSeconds);
+    if (this.officeGameModePowerOut) {
+      return;
+    }
+
     this.updateOfficeFoxyCameraPressure(deltaSeconds);
     this.updateOfficeFoxyRushAudio(deltaSeconds);
     if (this.activeOfficeJumpscare || this.chapterMenuOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen) {
