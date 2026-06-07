@@ -1405,6 +1405,55 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_DEPTH / 2 + 2.2,
     -1,
   );
+  const porchWidth = 10.4;
+  const porchDepth = 7.4;
+  const porchGapWidth = 3.6;
+  const porchCenterZ = HOUSE_DEPTH / 2 + porchDepth / 2 + 0.18;
+  const porchFloor = new Mesh(new BoxGeometry(porchWidth, 0.18, porchDepth), furnitureWoodMaterial);
+  porchFloor.position.set(0, 0.13, porchCenterZ);
+  const porchPlanks = [-3.9, -2.6, -1.3, 0, 1.3, 2.6, 3.9].map((plankX) => {
+    const plankLine = new Mesh(new BoxGeometry(0.035, 0.02, porchDepth - 0.24), houseTrimMaterial);
+    plankLine.position.set(plankX, 0.24, porchCenterZ);
+    return plankLine;
+  });
+  const porchSideRailDepth = porchDepth - 0.35;
+  const porchRailHeight = 1.08;
+  const porchRailY = 0.84;
+  const leftPorchRail = new Mesh(new BoxGeometry(0.28, porchRailHeight, porchSideRailDepth), houseTrimMaterial);
+  leftPorchRail.position.set(-porchWidth / 2, porchRailY, porchCenterZ + 0.08);
+  const rightPorchRail = leftPorchRail.clone();
+  rightPorchRail.position.x = porchWidth / 2;
+  const porchFrontZ = HOUSE_DEPTH / 2 + porchDepth + 0.18;
+  const frontRailSegmentWidth = (porchWidth - porchGapWidth) / 2;
+  const frontLeftRail = new Mesh(new BoxGeometry(frontRailSegmentWidth, porchRailHeight, 0.28), houseTrimMaterial);
+  frontLeftRail.position.set(-(porchGapWidth / 2 + frontRailSegmentWidth / 2), porchRailY, porchFrontZ);
+  const frontRightRail = frontLeftRail.clone();
+  frontRightRail.position.x = porchGapWidth / 2 + frontRailSegmentWidth / 2;
+  const porchPosts = [
+    [-porchWidth / 2, HOUSE_DEPTH / 2 + 0.55],
+    [porchWidth / 2, HOUSE_DEPTH / 2 + 0.55],
+    [-porchWidth / 2, porchFrontZ],
+    [porchWidth / 2, porchFrontZ],
+    [-porchGapWidth / 2, porchFrontZ],
+    [porchGapWidth / 2, porchFrontZ],
+  ].map(([postX, postZ]) => {
+    const post = new Mesh(new BoxGeometry(0.38, 1.32, 0.38), houseTrimMaterial);
+    post.position.set(postX, 0.72, postZ);
+    return post;
+  });
+  house.add(
+    porchFloor,
+    ...porchPlanks,
+    leftPorchRail,
+    rightPorchRail,
+    frontLeftRail,
+    frontRightRail,
+    ...porchPosts,
+  );
+  addCollider(colliders, CENTER_X - porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
+  addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
+  addCollider(colliders, CENTER_X + frontLeftRail.position.x, HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
+  addCollider(colliders, CENTER_X + frontRightRail.position.x, HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
   const houseDoors = [houseDoor, ...roomDoors];
 
   root.add(house);
