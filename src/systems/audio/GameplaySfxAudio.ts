@@ -287,6 +287,36 @@ export class GameplaySfxAudio {
     this.playMetalThud(now + 0.32, 0.07, 118);
   }
 
+  playAnimatronicDoorLaugh(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.02;
+    [0, 0.24, 0.48].forEach((offset, index) => {
+      const start = now + offset;
+      const gain = this.context!.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.11 - index * 0.018, start + 0.04);
+      gain.gain.linearRampToValueAtTime(0.07 - index * 0.012, start + 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.38);
+      gain.connect(this.masterGain!);
+
+      const voice = this.context!.createOscillator();
+      voice.type = 'sawtooth';
+      voice.frequency.setValueAtTime(156 - index * 12, start);
+      voice.frequency.exponentialRampToValueAtTime(92 - index * 6, start + 0.34);
+
+      const throat = this.context!.createBiquadFilter();
+      throat.type = 'bandpass';
+      throat.frequency.setValueAtTime(520 + index * 80, start);
+      throat.Q.value = 3.6;
+      voice.connect(throat);
+      throat.connect(gain);
+      this.startSource(voice, start, start + 0.4);
+    });
+  }
+
   playClosetDoor(open: boolean): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;

@@ -447,10 +447,12 @@ interface OfficeGameModeAnimatronicState {
   model: OfficeJumpscareStageModel;
   route: Vector3[];
   routeIndex: number;
-  state: 'stage' | 'wander' | 'chase' | 'rush' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch';
+  state: 'stage' | 'wander' | 'chase' | 'rush' | 'creep' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch';
   waitTimer: number;
   doorBreachTimer: number;
   doorBreachDoorId: 'left' | 'right' | null;
+  doorLingerSoundPlayed: boolean;
+  doorLingerLaughPlayed: boolean;
   attackCooldown: number;
   lostSightTimer: number;
   stuckTimer: number;
@@ -473,6 +475,13 @@ interface OfficeGameModeAnimatronicState {
   cachedCanSeePlayer: boolean;
   cachedNoiseResponse: OfficeGameModeNoiseResponse;
   cachedBlockedDoorId: 'left' | 'right' | null;
+}
+
+interface ActiveOfficeDoorSpark {
+  mesh: Mesh;
+  velocity: Vector3;
+  elapsed: number;
+  duration: number;
 }
 
 type OfficeGameModeNoiseResponse = 'none' | 'investigate' | 'rush';
@@ -560,7 +569,7 @@ const OFFICE_STAGE_VOICE_RELEASE_COOLDOWN = 2.4;
 const OFFICE_STAGE_YELL_PRIMARY_RELEASE_MIN_CHANCE = 0.2;
 const OFFICE_STAGE_YELL_PRIMARY_RELEASE_MAX_CHANCE = 0.4;
 const OFFICE_STAGE_YELL_CHAIN_RELEASE_CHANCE = 0.1;
-const OFFICE_CHASE_GIVE_UP_SECONDS = 10;
+const OFFICE_CHASE_GIVE_UP_SECONDS = 14;
 const OFFICE_INSULT_STARE_SECONDS = 1.65;
 const OFFICE_INSULT_CHARGE_SECONDS = 10;
 const OFFICE_INSULT_COOLDOWN_SECONDS = 12;
@@ -578,8 +587,12 @@ const OFFICE_INSULT_PHRASES = [
   'you are dumb',
   'your dumb',
 ] as const;
-const OFFICE_DOOR_BREACH_CHANCE = 0.1;
-const OFFICE_DOOR_BREACH_SECONDS = 1.75;
+const OFFICE_DOOR_BREACH_CHANCE = 0.58;
+const OFFICE_DOOR_BREACH_SECONDS = 4.75;
+const OFFICE_DOOR_LINGER_SECONDS = 2.8;
+const OFFICE_DOOR_LINGER_LAUGH_DELAY = 0.95;
+const OFFICE_DOOR_LINGER_STEP_IN_CHANCE = 0.82;
+const OFFICE_ANIMATRONIC_DOOR_LAUGH_RECORDING_ID = '014';
 const OFFICE_DEATH_DIED_NOTICE_SECONDS = 1.45;
 const OFFICE_DEATH_FIRED_NOTICE_SECONDS = 4.8;
 const MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY = 'scary-sushi:microphone-sound-tool:recordings';
@@ -647,6 +660,7 @@ const OFFICE_GAME_MODE_ROUTES: Record<OfficeJumpscareAnimatronic, Vector3[]> = {
     new Vector3(-218.8, GAME_CONFIG.player.height, 146.2),
     new Vector3(-204.2, GAME_CONFIG.player.height, 159.2),
     OFFICE_GAME_MODE_LEFT_DOOR_WATCH.clone(),
+    OFFICE_GAME_MODE_RIGHT_DOOR_WATCH.clone(),
   ],
   fluffle: [
     new Vector3(-240, GAME_CONFIG.player.height, 160.4),
@@ -656,6 +670,8 @@ const OFFICE_GAME_MODE_ROUTES: Record<OfficeJumpscareAnimatronic, Vector3[]> = {
     new Vector3(-223.3, GAME_CONFIG.player.height, 145.2),
     new Vector3(-212.1, GAME_CONFIG.player.height, 149.2),
     new Vector3(-203.8, GAME_CONFIG.player.height, 159.2),
+    OFFICE_GAME_MODE_RIGHT_DOOR_WATCH.clone(),
+    OFFICE_GAME_MODE_LEFT_DOOR_WATCH.clone(),
     new Vector3(-237.8, GAME_CONFIG.player.height, 160.4),
   ],
   bori: [
@@ -663,6 +679,7 @@ const OFFICE_GAME_MODE_ROUTES: Record<OfficeJumpscareAnimatronic, Vector3[]> = {
     new Vector3(-239.5, GAME_CONFIG.player.height, 166.5),
     new Vector3(-231.7, GAME_CONFIG.player.height, 176.8),
     OFFICE_GAME_MODE_RIGHT_DOOR_WATCH.clone(),
+    OFFICE_GAME_MODE_LEFT_DOOR_WATCH.clone(),
     new Vector3(-247.8, GAME_CONFIG.player.height, 171.2),
     new Vector3(-254.9, GAME_CONFIG.player.height, 171),
     new Vector3(-235.2, GAME_CONFIG.player.height, 161),
@@ -999,6 +1016,7 @@ export class Game {
   private microphoneSoundPlayback: HTMLAudioElement | null = null;
   private officeDoorSoundPlayback: HTMLAudioElement | null = null;
   private officeDoorSoundTarget: { doorId: 'left' | 'right'; open: boolean } | null = null;
+  private readonly activeOfficeDoorSparks: ActiveOfficeDoorSpark[] = [];
   private microphoneSoundRecording = false;
   private microphoneSoundDiscardStop = false;
   private microphoneSoundSaved = false;
@@ -2353,6 +2371,7 @@ export class Game {
     } else if (this.officeChapterActive) {
       this.officeChapter.update(deltaSeconds, this.player.getPosition());
       this.updateOfficeDoorSoundPlayback();
+      this.updateOfficeDoorSparks(deltaSeconds);
       this.updateOfficePrizeWheelAudio();
       this.updateOfficeVentDrop();
       this.updateOfficeModeCycle(deltaSeconds);
@@ -4399,6 +4418,90 @@ export class Game {
     this.officeDoorSoundTarget = null;
   }
 
+  private playOfficeAnimatronicDoorLaugh(): void {
+    const recording = this.getMicrophoneSoundRecordingById(OFFICE_ANIMATRONIC_DOOR_LAUGH_RECORDING_ID);
+    if (!recording) {
+      this.gameplaySfxAudio.playAnimatronicDoorLaugh();
+      return;
+    }
+
+    this.microphoneSoundPlayback?.pause();
+    this.microphoneSoundPlayback = new Audio(recording.dataUrl);
+    this.microphoneSoundPlayback.volume = 1;
+    void this.microphoneSoundPlayback.play().catch(() => {
+      this.gameplaySfxAudio.playAnimatronicDoorLaugh();
+    });
+  }
+
+  private spawnOfficeDoorSparks(doorId: 'left' | 'right', liftAmount: number): void {
+    const side = doorId === 'left' ? -1 : 1;
+    const base = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const sparkCount = 3 + Math.floor(Math.random() * 3);
+    for (let index = 0; index < sparkCount; index += 1) {
+      const material = new MeshBasicMaterial({
+        color: Math.random() > 0.36 ? 0xffd86b : 0xff7a2d,
+        transparent: true,
+        opacity: 0.95,
+      });
+      const spark = new Mesh(new BoxGeometry(0.035, 0.018, 0.018), material);
+      spark.position.set(
+        base.x + side * (0.28 + Math.random() * 0.14),
+        0.72 + liftAmount * 1.15 + Math.random() * 0.28,
+        base.z - 0.28 + (Math.random() - 0.5) * 0.42,
+      );
+      spark.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this.officeChapter.root.add(spark);
+      this.activeOfficeDoorSparks.push({
+        mesh: spark,
+        velocity: new Vector3(
+          side * (0.45 + Math.random() * 0.7),
+          0.65 + Math.random() * 0.75,
+          (Math.random() - 0.5) * 0.8,
+        ),
+        elapsed: 0,
+        duration: 0.22 + Math.random() * 0.22,
+      });
+    }
+  }
+
+  private updateOfficeDoorSparks(deltaSeconds: number): void {
+    for (let index = this.activeOfficeDoorSparks.length - 1; index >= 0; index -= 1) {
+      const spark = this.activeOfficeDoorSparks[index];
+      spark.elapsed += deltaSeconds;
+      spark.velocity.y -= deltaSeconds * 2.3;
+      spark.mesh.position.x += spark.velocity.x * deltaSeconds;
+      spark.mesh.position.y += spark.velocity.y * deltaSeconds;
+      spark.mesh.position.z += spark.velocity.z * deltaSeconds;
+      spark.mesh.rotation.x += deltaSeconds * 18;
+      spark.mesh.rotation.z += deltaSeconds * 24;
+      const material = spark.mesh.material;
+      if (material instanceof MeshBasicMaterial) {
+        material.opacity = Math.max(0, 1 - spark.elapsed / spark.duration);
+      }
+      if (spark.elapsed < spark.duration) {
+        continue;
+      }
+
+      spark.mesh.parent?.remove(spark.mesh);
+      spark.mesh.geometry.dispose();
+      if (spark.mesh.material instanceof MeshBasicMaterial) {
+        spark.mesh.material.dispose();
+      }
+      this.activeOfficeDoorSparks.splice(index, 1);
+    }
+  }
+
+  private clearOfficeDoorSparks(): void {
+    while (this.activeOfficeDoorSparks.length > 0) {
+      const spark = this.activeOfficeDoorSparks.pop()!;
+      spark.mesh.parent?.remove(spark.mesh);
+      spark.mesh.geometry.dispose();
+      if (spark.mesh.material instanceof MeshBasicMaterial) {
+        spark.mesh.material.dispose();
+      }
+    }
+  }
+
   private releaseMicrophoneSoundStream(): void {
     this.microphoneSoundStream?.getTracks().forEach((track) => track.stop());
     this.microphoneSoundStream = null;
@@ -5259,6 +5362,8 @@ export class Game {
         waitTimer: 0,
         doorBreachTimer: 0,
         doorBreachDoorId: null,
+        doorLingerSoundPlayed: false,
+        doorLingerLaughPlayed: false,
         attackCooldown: 0,
         lostSightTimer: 0,
         stuckTimer: 0,
@@ -5349,6 +5454,8 @@ export class Game {
       animatronic.waitTimer = this.getOfficeGameModeStageDwellSeconds(animatronic.animatronic) + index * 5.8;
       animatronic.doorBreachTimer = 0;
       animatronic.doorBreachDoorId = null;
+      animatronic.doorLingerSoundPlayed = false;
+      animatronic.doorLingerLaughPlayed = false;
       animatronic.attackCooldown = 1.5;
       animatronic.lostSightTimer = 0;
       animatronic.stuckTimer = 0;
@@ -5370,6 +5477,8 @@ export class Game {
       animatronic.cachedBlockedDoorId = null;
       animatronic.model.leftArm.rotation.set(0, 0, 0);
       animatronic.model.rightArm.rotation.set(0, 0, 0);
+      animatronic.model.leftArmJoint.rotation.set(0, 0, 0);
+      animatronic.model.rightArmJoint.rotation.set(0, 0, 0);
       animatronic.model.leftLeg.rotation.set(0, 0, 0);
       animatronic.model.rightLeg.rotation.set(0, 0, 0);
       animatronic.model.leftLegJoint.rotation.set(0, 0, 0);
@@ -5647,6 +5756,7 @@ export class Game {
     this.officeMicrophoneAutoStatusShown = false;
     this.officeMicrophoneStartToken += 1;
     this.officeBallPitSlide = null;
+    this.clearOfficeDoorSparks();
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       animatronic.model.root.visible = false;
       animatronic.state = 'stage';
@@ -5705,6 +5815,8 @@ export class Game {
       animatronic.state = 'retreat';
       animatronic.doorBreachTimer = 0;
       animatronic.doorBreachDoorId = null;
+      animatronic.doorLingerSoundPlayed = false;
+      animatronic.doorLingerLaughPlayed = false;
       animatronic.routeIndex = 0;
       animatronic.waitTimer = 0.25;
       animatronic.lostSightTimer = 0;
@@ -5723,6 +5835,8 @@ export class Game {
     animatronic.state = 'door-breach';
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = doorId;
+    animatronic.doorLingerSoundPlayed = false;
+    animatronic.doorLingerLaughPlayed = false;
     animatronic.waitTimer = 0;
     animatronic.lostSightTimer = 0;
     animatronic.stuckTimer = 0;
@@ -5747,7 +5861,9 @@ export class Game {
     animatronic.state = 'door';
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = null;
-    animatronic.waitTimer = 0;
+    animatronic.doorLingerSoundPlayed = false;
+    animatronic.doorLingerLaughPlayed = false;
+    animatronic.waitTimer = OFFICE_DOOR_LINGER_SECONDS;
     animatronic.lostSightTimer = 0;
     animatronic.progressStallTimer = 0;
     animatronic.stuckTimer = 0;
@@ -5828,6 +5944,8 @@ export class Game {
       animatronic.state = 'rush';
       animatronic.doorBreachTimer = 0;
       animatronic.doorBreachDoorId = null;
+      animatronic.doorLingerSoundPlayed = false;
+      animatronic.doorLingerLaughPlayed = false;
       animatronic.lastKnownPlayerPosition.copy(playerPosition);
       animatronic.chaseGiveUpTimer = 0;
       return;
@@ -5841,53 +5959,87 @@ export class Game {
     const progress = MathUtils.clamp(animatronic.doorBreachTimer / OFFICE_DOOR_BREACH_SECONDS, 0, 1);
     const root = animatronic.model.root;
     const doorWatch = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const doorSide = doorId === 'left' ? -1 : 1;
     const floorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, doorWatch.x, doorWatch.z);
-    const crouch = progress < 0.48
-      ? MathUtils.smoothstep(progress, 0.04, 0.32)
-      : 1 - MathUtils.smoothstep(progress, 0.48, 0.74);
-    const reachUnder = MathUtils.smoothstep(progress, 0.16, 0.38) * (1 - MathUtils.smoothstep(progress, 0.56, 0.76));
-    const lift = MathUtils.smoothstep(progress, 0.44, 0.82);
-    const brace = MathUtils.smoothstep(progress, 0.58, 0.74) * (1 - MathUtils.smoothstep(progress, 0.84, 1));
-    const jump = Math.sin(MathUtils.smoothstep(progress, 0.72, 0.92) * Math.PI) * 0.24;
+    const crouchDown = MathUtils.smoothstep(progress, 0.05, 0.24);
+    const crouchUp = MathUtils.smoothstep(progress, 0.58, 0.9);
+    const crouch = crouchDown * (1 - crouchUp * 0.84);
+    const reachUnder = MathUtils.smoothstep(progress, 0.16, 0.34) * (1 - MathUtils.smoothstep(progress, 0.48, 0.7));
+    const grab = MathUtils.smoothstep(progress, 0.3, 0.48);
+    const lift = MathUtils.smoothstep(progress, 0.38, 0.96);
+    const oneArmShove = MathUtils.smoothstep(progress, 0.52, 0.92);
+    const brace = MathUtils.smoothstep(progress, 0.34, 0.52) * (1 - MathUtils.smoothstep(progress, 0.92, 1));
+    const jump = Math.sin(MathUtils.smoothstep(progress, 0.76, 0.98) * Math.PI) * 0.08;
     const shake = brace * Math.sin(this.elapsed * 52);
     const baseScale = OFFICE_GAME_MODE_ANIMATRONIC_SCALE[animatronic.animatronic];
 
     root.visible = true;
     root.position.x = MathUtils.lerp(root.position.x, doorWatch.x, 0.45);
     root.position.z = MathUtils.lerp(root.position.z, doorWatch.z, 0.45);
-    root.position.y = floorY - crouch * 0.18 + jump;
-    root.scale.set(baseScale, baseScale * (1 - crouch * 0.28 + lift * 0.04), baseScale);
+    root.position.y = floorY - crouch * 0.24 + jump;
+    root.scale.set(baseScale, baseScale * (1 - crouch * 0.24 + lift * 0.03), baseScale);
 
     const faceX = playerPosition.x - root.position.x;
     const faceZ = playerPosition.z - root.position.z;
     if (Math.hypot(faceX, faceZ) > 0.01) {
       root.rotation.y = Math.atan2(faceX, faceZ);
     }
-    root.rotation.x = MathUtils.lerp(root.rotation.x, crouch * 0.34 - lift * 0.08, 0.38);
-    root.rotation.z = shake * 0.05;
+    root.rotation.x = MathUtils.lerp(root.rotation.x, crouch * 0.46 - oneArmShove * 0.08, 0.38);
+    root.rotation.z = shake * 0.045 + doorSide * oneArmShove * 0.035;
 
-    animatronic.model.head.rotation.x = MathUtils.lerp(animatronic.model.head.rotation.x, crouch * 0.38 - lift * 0.18, 0.36);
+    animatronic.model.head.rotation.x = MathUtils.lerp(animatronic.model.head.rotation.x, crouch * 0.42 - oneArmShove * 0.16, 0.36);
     animatronic.model.head.rotation.y = shake * 0.08;
     animatronic.model.leftLeg.rotation.x = MathUtils.lerp(animatronic.model.leftLeg.rotation.x, -crouch * 0.72, 0.42);
     animatronic.model.rightLeg.rotation.x = MathUtils.lerp(animatronic.model.rightLeg.rotation.x, -crouch * 0.72, 0.42);
     animatronic.model.leftLegJoint.rotation.x = MathUtils.lerp(animatronic.model.leftLegJoint.rotation.x, crouch * 1.05, 0.42);
     animatronic.model.rightLegJoint.rotation.x = MathUtils.lerp(animatronic.model.rightLegJoint.rotation.x, crouch * 1.05, 0.42);
-    const armRaise = MathUtils.lerp(-1.65, -3.02, lift);
-    animatronic.model.leftArm.rotation.x = MathUtils.lerp(animatronic.model.leftArm.rotation.x, armRaise + reachUnder * 0.42 + shake * 0.08, 0.5);
-    animatronic.model.rightArm.rotation.x = MathUtils.lerp(animatronic.model.rightArm.rotation.x, armRaise + reachUnder * 0.42 - shake * 0.08, 0.5);
-    animatronic.model.leftArm.rotation.z = MathUtils.lerp(animatronic.model.leftArm.rotation.z, 0.34 + lift * 0.26, 0.44);
-    animatronic.model.rightArm.rotation.z = MathUtils.lerp(animatronic.model.rightArm.rotation.z, -0.34 - lift * 0.26, 0.44);
+    const leftShove = doorId === 'right' ? oneArmShove : oneArmShove * 0.35;
+    const rightShove = doorId === 'left' ? oneArmShove : oneArmShove * 0.35;
+    const armBase = MathUtils.lerp(-1.18, -2.38, grab);
+    animatronic.model.leftArm.rotation.x = MathUtils.lerp(
+      animatronic.model.leftArm.rotation.x,
+      armBase - leftShove * 0.72 + reachUnder * 0.5 + shake * 0.08,
+      0.48,
+    );
+    animatronic.model.rightArm.rotation.x = MathUtils.lerp(
+      animatronic.model.rightArm.rotation.x,
+      armBase - rightShove * 0.72 + reachUnder * 0.5 - shake * 0.08,
+      0.48,
+    );
+    animatronic.model.leftArm.rotation.z = MathUtils.lerp(
+      animatronic.model.leftArm.rotation.z,
+      -0.28 - lift * 0.38 - leftShove * 0.34,
+      0.44,
+    );
+    animatronic.model.rightArm.rotation.z = MathUtils.lerp(
+      animatronic.model.rightArm.rotation.z,
+      0.28 + lift * 0.38 + rightShove * 0.34,
+      0.44,
+    );
+    animatronic.model.leftArmJoint.rotation.x = MathUtils.lerp(animatronic.model.leftArmJoint.rotation.x, -0.22 - leftShove * 0.54, 0.42);
+    animatronic.model.rightArmJoint.rotation.x = MathUtils.lerp(animatronic.model.rightArmJoint.rotation.x, -0.22 - rightShove * 0.54, 0.42);
 
-    if (previousTimer < OFFICE_DOOR_BREACH_SECONDS * 0.44 && animatronic.doorBreachTimer >= OFFICE_DOOR_BREACH_SECONDS * 0.44) {
+    if (previousTimer < OFFICE_DOOR_BREACH_SECONDS * 0.18 && animatronic.doorBreachTimer >= OFFICE_DOOR_BREACH_SECONDS * 0.18) {
+      this.gameplaySfxAudio.playSecurityDoorCrash();
+    }
+
+    if (previousTimer < OFFICE_DOOR_BREACH_SECONDS * 0.38 && animatronic.doorBreachTimer >= OFFICE_DOOR_BREACH_SECONDS * 0.38) {
       this.playOfficeDoorToggleSound(doorId, true);
       this.gameplaySfxAudio.playSecurityDoorCrash();
     }
 
-    if (progress >= 0.44) {
+    if (progress >= 0.32) {
       door.targetOpenAmount = 1;
       door.open = true;
-      door.openAmount = Math.max(door.openAmount, lift * 0.94);
+      door.openAmount = Math.max(door.openAmount, lift);
       door.closeBounceTimer = 0;
+    }
+
+    if (progress >= 0.3 && progress < 0.96) {
+      const sparkBursts = Math.floor(animatronic.doorBreachTimer / 0.11) - Math.floor(previousTimer / 0.11);
+      for (let index = 0; index < sparkBursts; index += 1) {
+        this.spawnOfficeDoorSparks(doorId, MathUtils.lerp(0.36, 1.04, lift));
+      }
     }
 
     if (progress < 1) {
@@ -5900,6 +6052,8 @@ export class Game {
     animatronic.state = 'rush';
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = null;
+    animatronic.doorLingerSoundPlayed = false;
+    animatronic.doorLingerLaughPlayed = false;
     animatronic.lastKnownPlayerPosition.copy(playerPosition);
     animatronic.chaseGiveUpTimer = 0;
     animatronic.waitTimer = 0;
@@ -5914,6 +6068,88 @@ export class Game {
     animatronic.cachedNoiseResponse = 'rush';
     animatronic.cachedBlockedDoorId = null;
     this.pushStatus(`${animatronic.label} rips the ${doorId} door up and charges through.`, 2.6);
+  }
+
+  private updateOfficeGameModeDoorLinger(
+    animatronic: OfficeGameModeAnimatronicState,
+    deltaSeconds: number,
+    playerPosition: Vector3,
+  ): boolean {
+    if (animatronic.state !== 'door') {
+      return false;
+    }
+
+    const doorId = animatronic.cachedBlockedDoorId
+      ?? (animatronic.model.root.position.x < OFFICE_GAME_MODE_OFFICE_CENTER.x ? 'left' : 'right');
+    const door = this.getOfficeDoorById(doorId);
+    const doorWatch = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const root = animatronic.model.root;
+    const floorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, doorWatch.x, doorWatch.z);
+    const elapsed = OFFICE_DOOR_LINGER_SECONDS - animatronic.waitTimer;
+    const listenLean = Math.sin(this.elapsed * 2.2) * 0.035;
+    const handTap = Math.max(0, Math.sin(this.elapsed * 5.6));
+
+    root.visible = true;
+    root.position.x = MathUtils.lerp(root.position.x, doorWatch.x, 0.28);
+    root.position.z = MathUtils.lerp(root.position.z, doorWatch.z, 0.28);
+    root.position.y = floorY;
+    root.scale.setScalar(OFFICE_GAME_MODE_ANIMATRONIC_SCALE[animatronic.animatronic]);
+    const dx = playerPosition.x - root.position.x;
+    const dz = playerPosition.z - root.position.z;
+    if (Math.hypot(dx, dz) > 0.01) {
+      root.rotation.y = Math.atan2(dx, dz);
+    }
+    root.rotation.x = MathUtils.lerp(root.rotation.x, 0.05 + listenLean, 0.24);
+    root.rotation.z = listenLean;
+
+    animatronic.model.head.rotation.x = MathUtils.lerp(animatronic.model.head.rotation.x, 0.08, 0.2);
+    animatronic.model.head.rotation.y = Math.sin(this.elapsed * 3.4) * 0.08;
+    animatronic.model.leftArm.rotation.x = MathUtils.lerp(animatronic.model.leftArm.rotation.x, -0.72 - handTap * 0.12, 0.28);
+    animatronic.model.rightArm.rotation.x = MathUtils.lerp(animatronic.model.rightArm.rotation.x, -0.78 - (1 - handTap) * 0.12, 0.28);
+    animatronic.model.leftArm.rotation.z = MathUtils.lerp(animatronic.model.leftArm.rotation.z, -0.56, 0.28);
+    animatronic.model.rightArm.rotation.z = MathUtils.lerp(animatronic.model.rightArm.rotation.z, 0.56, 0.28);
+
+    if (!animatronic.doorLingerSoundPlayed) {
+      animatronic.doorLingerSoundPlayed = true;
+      this.gameplaySfxAudio.playSecurityDoorCrash();
+    }
+
+    if (!animatronic.doorLingerLaughPlayed && elapsed >= OFFICE_DOOR_LINGER_LAUGH_DELAY) {
+      animatronic.doorLingerLaughPlayed = true;
+      this.playOfficeAnimatronicDoorLaugh();
+    }
+
+    animatronic.waitTimer = Math.max(0, animatronic.waitTimer - deltaSeconds);
+    if (animatronic.waitTimer > 0) {
+      return true;
+    }
+
+    const doorClosed = Boolean(door && door.targetOpenAmount < 0.5);
+    if (doorClosed) {
+      if (Math.random() < OFFICE_DOOR_BREACH_CHANCE) {
+        this.startOfficeGameModeDoorBreach(animatronic, doorId);
+      } else {
+        animatronic.waitTimer = 0.8 + Math.random() * 0.9;
+        animatronic.doorLingerSoundPlayed = false;
+        animatronic.doorLingerLaughPlayed = true;
+      }
+      return true;
+    }
+
+    if (Math.random() < OFFICE_DOOR_LINGER_STEP_IN_CHANCE) {
+      animatronic.state = 'creep';
+      animatronic.lastKnownPlayerPosition.copy(playerPosition);
+      animatronic.waitTimer = 0;
+      animatronic.attackCooldown = Math.max(animatronic.attackCooldown, 0.45);
+      animatronic.cachedBlockedDoorId = null;
+      animatronic.doorLingerSoundPlayed = false;
+      animatronic.doorLingerLaughPlayed = false;
+      this.pushStatus(`${animatronic.label} laughs at the door and starts stepping into the office.`, 2.6);
+      return false;
+    }
+
+    this.makeOfficeGameModeAnimatronicGiveUp(animatronic);
+    return true;
   }
 
   private getOfficeGameModeFoxy(): OfficeGameModeAnimatronicState | null {
@@ -6056,64 +6292,92 @@ export class Game {
   }
 
   private getOfficeGameModeStageDwellSeconds(animatronic: OfficeJumpscareAnimatronic): number {
+    const activityPressure = this.getOfficeGameModeNightPressure() * 0.72 + this.getOfficeGameModeNightPhaseProgress() * 0.58;
     if (animatronic === 'bori') {
       const difficultyShift = this.officeGameModeDifficulty === 'hard'
-        ? -14
+        ? -20
         : this.officeGameModeDifficulty === 'easy'
-          ? 18
+          ? 6
           : 0;
       return Math.max(
-        38,
-        86
-          + Math.abs(Math.sin(this.elapsed * 0.17 + 4.4)) * 48
+        7,
+        34
+          + Math.abs(Math.sin(this.elapsed * 0.17 + 4.4)) * 16
           + difficultyShift
-          - this.getOfficeGameModeNightPhaseProgress() * 24,
+          - activityPressure * 26,
       );
     }
 
-    const nightBase = [48, 38, 28, 17, 8][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 28;
+    const nightBase = [14, 11, 8, 5, 3.2][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 8;
     const animalShift = animatronic === 'foxy'
-      ? 12
+      ? 5
       : animatronic === 'quacky'
-        ? -11
+        ? -2.5
         : animatronic === 'fluffle'
-          ? -13
+          ? -3
           : 0;
     const difficultyShift = this.officeGameModeDifficulty === 'hard'
-      ? -5
+      ? -3
       : this.officeGameModeDifficulty === 'easy'
-        ? 10
+        ? 2.5
         : 0;
-    const nightClockShift = -this.getOfficeGameModeNightPhaseProgress() * (this.officeGameModeNight === 1 ? 18 : 12);
     const offset = animatronic === 'quacky' ? 0.8 : animatronic === 'fluffle' ? 2.1 : 4.8;
-    const randomHold = Math.abs(Math.sin(this.elapsed * 0.23 + offset)) * (this.officeGameModeNight >= 5 ? 7 : 13);
-    return Math.max(4, nightBase + animalShift + difficultyShift + nightClockShift + randomHold);
+    const randomHold = Math.abs(Math.sin(this.elapsed * 0.23 + offset)) * (this.officeGameModeNight >= 5 ? 2.4 : 4.5);
+    return Math.max(2.4, nightBase + animalShift + difficultyShift - activityPressure * 7 + randomHold);
   }
 
   private getOfficeGameModeWaypointDwellSeconds(animatronic: OfficeJumpscareAnimatronic, routeIndex: number): number {
+    const doorRoute = this.isOfficeGameModeDoorRoutePoint(animatronic, routeIndex);
+    if (doorRoute) {
+      return 0.35 + Math.random() * 0.65;
+    }
+
     if (animatronic === 'quacky' && routeIndex >= 2 && routeIndex <= 4) {
-      return 8.5 + Math.abs(Math.sin(this.elapsed * 0.41 + routeIndex)) * 6;
+      return 2.2 + Math.abs(Math.sin(this.elapsed * 0.41 + routeIndex)) * 2.4;
     }
 
     if (animatronic === 'foxy' && routeIndex === 5) {
-      return 12 + Math.abs(Math.sin(this.elapsed * 0.37)) * 8;
+      return 3.2 + Math.abs(Math.sin(this.elapsed * 0.37)) * 3.2;
     }
 
     if (animatronic === 'fluffle' && (routeIndex === 2 || routeIndex === 3)) {
-      return 5.5 + Math.abs(Math.sin(this.elapsed * 0.5 + routeIndex)) * 4.5;
+      return 1.8 + Math.abs(Math.sin(this.elapsed * 0.5 + routeIndex)) * 2.1;
     }
 
     if (animatronic === 'bori' && routeIndex >= 4 && routeIndex <= 5) {
-      return 5 + Math.abs(Math.sin(this.elapsed * 0.44 + routeIndex)) * 4;
+      return 1.8 + Math.abs(Math.sin(this.elapsed * 0.44 + routeIndex)) * 2.2;
     }
 
-    return 1.8 + Math.abs(Math.sin(this.elapsed * 0.58 + routeIndex)) * 2.7;
+    return 0.7 + Math.abs(Math.sin(this.elapsed * 0.58 + routeIndex)) * 1.4;
+  }
+
+  private isOfficeGameModeDoorRoutePoint(animatronic: OfficeJumpscareAnimatronic, routeIndex: number): boolean {
+    const point = OFFICE_GAME_MODE_ROUTES[animatronic][routeIndex];
+    if (!point) {
+      return false;
+    }
+
+    return point.distanceTo(OFFICE_GAME_MODE_LEFT_DOOR_WATCH) < 0.2
+      || point.distanceTo(OFFICE_GAME_MODE_RIGHT_DOOR_WATCH) < 0.2;
   }
 
   private getNextOfficeGameModeRouteIndex(animatronic: OfficeGameModeAnimatronicState, reachedRouteIndex: number): number {
     const routeLength = animatronic.route.length;
     if (routeLength === 0) {
       return 0;
+    }
+
+    const officePressure = this.getOfficeGameModeNightPressure() * 0.54 + this.getOfficeGameModeNightPhaseProgress() * 0.46;
+    if (reachedRouteIndex !== 0 && Math.random() < MathUtils.lerp(0.32, 0.72, officePressure)) {
+      const doorIndexes = animatronic.route
+        .map((point, index) => ({ point, index }))
+        .filter((entry) => (
+          entry.point.distanceTo(OFFICE_GAME_MODE_LEFT_DOOR_WATCH) < 0.2
+          || entry.point.distanceTo(OFFICE_GAME_MODE_RIGHT_DOOR_WATCH) < 0.2
+        ));
+      if (doorIndexes.length > 0) {
+        return doorIndexes[Math.floor(Math.random() * doorIndexes.length)].index;
+      }
     }
 
     if (animatronic.animatronic === 'quacky' && reachedRouteIndex === 1) {
@@ -6134,56 +6398,44 @@ export class Game {
 
   private getOfficeGameModeMaxOffstage(): number {
     if (this.isOfficeVoiceYellNearStage()) {
-      return this.officeGameModeDifficulty === 'hard' || this.officeGameModeNight >= 4 ? 4 : 3;
+      return 4;
     }
 
-    switch (this.officeGameModeNight) {
-      case 1:
-        return 1;
-      case 2:
-      case 3:
-        return 1;
-      case 4:
-        return this.officeGameModeDifficulty === 'easy' ? 1 : 2;
-      case 5:
-      default:
-        return this.officeGameModeDifficulty === 'easy' ? 2 : 4;
-    }
+    const base = this.officeGameModeDifficulty === 'easy' ? 2 : 3;
+    const nightBonus = this.officeGameModeNight >= 3 ? 1 : 0;
+    const pressureBonus = this.getOfficeGameModeNightPhaseProgress() > 0.42 ? 1 : 0;
+    return MathUtils.clamp(base + nightBonus + pressureBonus, 2, 4);
   }
 
   private shouldOfficeGameModeAnimatronicLeaveStage(animatronic: OfficeGameModeAnimatronicState, canSeePlayer: boolean): boolean {
-    if (animatronic.animatronic === 'quacky' || animatronic.animatronic === 'fluffle') {
-      return false;
-    }
-
     if (animatronic.animatronic === 'bori') {
       const nightPressure = this.getOfficeGameModeNightPressure();
       const difficultyBonus = this.officeGameModeDifficulty === 'hard'
-        ? 0.05
+        ? 0.12
         : this.officeGameModeDifficulty === 'easy'
-          ? -0.04
+          ? -0.03
           : 0;
       const chance = MathUtils.clamp(
-        OFFICE_BORI_STAGE_WANDER_CHANCE + nightPressure * 0.08 + difficultyBonus,
-        0.025,
-        0.22,
+        0.34 + OFFICE_BORI_STAGE_WANDER_CHANCE + nightPressure * 0.26 + this.getOfficeGameModeNightPhaseProgress() * 0.2 + difficultyBonus,
+        0.18,
+        0.9,
       );
       return Math.random() < chance;
     }
 
-    const nightChance = [0.12, 0.26, 0.42, 0.66, 0.94][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 0.42;
-    const nightClockBonus = this.getOfficeGameModeNightPhaseProgress() * 0.24;
+    const nightChance = [0.58, 0.68, 0.78, 0.88, 0.96][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 0.78;
+    const nightClockBonus = this.getOfficeGameModeNightPhaseProgress() * 0.16;
     const difficultyChance = this.officeGameModeDifficulty === 'hard'
       ? 0.08
       : this.officeGameModeDifficulty === 'easy'
-        ? -0.08
+        ? -0.12
         : 0;
     const animalChance = animatronic.animatronic === 'foxy'
-      ? -0.08
+      ? -0.18
       : animatronic.animatronic === 'quacky'
-        ? 0.18
+        ? 0.08
         : animatronic.animatronic === 'fluffle'
-          ? 0.22
+          ? 0.1
         : 0;
     const playerSeenBonus = canSeePlayer && this.officeGameModeNight >= 3 ? 0.12 : 0;
     const chance = MathUtils.clamp(difficultyChance + nightChance + nightClockBonus + animalChance + playerSeenBonus, 0, 0.98);
@@ -6464,7 +6716,7 @@ export class Game {
     animatronic: OfficeGameModeAnimatronicState,
     desiredTarget: Vector3,
   ): Vector3 {
-    if (animatronic.state !== 'chase' && animatronic.state !== 'rush' && animatronic.state !== 'distracted') {
+    if (animatronic.state !== 'chase' && animatronic.state !== 'rush' && animatronic.state !== 'creep' && animatronic.state !== 'distracted') {
       return desiredTarget;
     }
 
@@ -6474,7 +6726,7 @@ export class Game {
     for (const other of this.officeGameModeAnimatronics) {
       if (
         other === animatronic
-        || (other.state !== 'chase' && other.state !== 'rush' && other.state !== 'distracted')
+        || (other.state !== 'chase' && other.state !== 'rush' && other.state !== 'creep' && other.state !== 'distracted')
         || !other.model.root.visible
       ) {
         continue;
@@ -6516,7 +6768,7 @@ export class Game {
     return this.officeGameModeAnimatronics.some((animatronic) => {
       if (
         !animatronic.model.root.visible
-        || (animatronic.state !== 'chase' && animatronic.state !== 'rush')
+        || (animatronic.state !== 'chase' && animatronic.state !== 'rush' && animatronic.state !== 'creep')
       ) {
         return false;
       }
@@ -6564,6 +6816,8 @@ export class Game {
     animatronic.waitTimer = this.getOfficeGameModeStageDwellSeconds(animatronic.animatronic);
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = null;
+    animatronic.doorLingerSoundPlayed = false;
+    animatronic.doorLingerLaughPlayed = false;
     animatronic.lostSightTimer = 0;
     animatronic.stuckTimer = 0;
     animatronic.progressStallTimer = 0;
@@ -6583,6 +6837,8 @@ export class Game {
     animatronic.model.head.rotation.set(0, 0, 0);
     animatronic.model.leftArm.rotation.set(0, 0, 0);
     animatronic.model.rightArm.rotation.set(0, 0, 0);
+    animatronic.model.leftArmJoint.rotation.set(0, 0, 0);
+    animatronic.model.rightArmJoint.rotation.set(0, 0, 0);
     animatronic.model.leftLeg.rotation.set(0, 0, 0);
     animatronic.model.rightLeg.rotation.set(0, 0, 0);
     animatronic.model.leftLegJoint.rotation.set(0, 0, 0);
@@ -6604,6 +6860,8 @@ export class Game {
     animatronic.waitTimer = 0.2;
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = null;
+    animatronic.doorLingerSoundPlayed = false;
+    animatronic.doorLingerLaughPlayed = false;
     animatronic.lostSightTimer = 0;
     animatronic.stuckTimer = 0;
     animatronic.progressStallTimer = 0;
@@ -6963,7 +7221,7 @@ export class Game {
     const detour = this.findOfficeGameModeDetour(animatronic, desiredTarget);
     if (detour) {
       animatronic.detourTarget = detour;
-      animatronic.detourTimer = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted'
+      animatronic.detourTimer = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep' || animatronic.state === 'distracted'
         ? 1.35
         : 2.25;
       animatronic.stuckTimer = 0;
@@ -7657,7 +7915,7 @@ export class Game {
       if (
         !animatronic.model.root.visible
         || animatronic.animatronic === 'bori'
-        || (animatronic.state !== 'chase' && animatronic.state !== 'rush')
+        || (animatronic.state !== 'chase' && animatronic.state !== 'rush' && animatronic.state !== 'creep')
       ) {
         return;
       }
@@ -7778,7 +8036,7 @@ export class Game {
       animatronic.cachedNoiseResponse = noiseResponse;
       animatronic.senseTimer = animatronic.state === 'stage'
         ? OFFICE_GAME_MODE_STAGE_SENSE_INTERVAL
-        : animatronic.state === 'chase' || animatronic.state === 'rush'
+        : animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep'
           ? OFFICE_GAME_MODE_CHASE_SENSE_INTERVAL
           : OFFICE_GAME_MODE_WANDER_SENSE_INTERVAL;
     }
@@ -7853,6 +8111,10 @@ export class Game {
       return false;
     }
 
+    if (this.updateOfficeGameModeDoorLinger(animatronic, deltaSeconds, playerPosition)) {
+      return false;
+    }
+
     if (animatronic.state === 'distracted-watch') {
       animatronic.waitTimer = Math.max(0, animatronic.waitTimer - deltaSeconds);
       const lookTarget = animatronic.distractionTarget ?? animatronic.model.root.position;
@@ -7900,7 +8162,7 @@ export class Game {
       }
     }
 
-    if (this.officeBallPitHidden && (animatronic.state === 'chase' || animatronic.state === 'rush')) {
+    if (this.officeBallPitHidden && (animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep')) {
       animatronic.state = 'wander';
       animatronic.lostSightTimer = 0;
       animatronic.waitTimer = 1.2;
@@ -7910,7 +8172,7 @@ export class Game {
       animatronic.chaseCommitTimer = 0;
       animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
       this.clearOfficeAnimatronicChaseTimers(animatronic);
-    } else if (doorBlocked && (animatronic.state === 'chase' || animatronic.state === 'rush') && blockedDoorId) {
+    } else if (doorBlocked && (animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep') && blockedDoorId) {
       if (Math.random() < OFFICE_DOOR_BREACH_CHANCE) {
         this.startOfficeGameModeDoorBreach(animatronic, blockedDoorId);
         this.updateOfficeGameModeDoorBreach(animatronic, deltaSeconds, playerPosition);
@@ -7918,7 +8180,7 @@ export class Game {
       }
 
       this.startOfficeGameModeDoorBlockedWait(animatronic, blockedDoorId);
-    } else if (canSeePlayer && animatronic.attackCooldown <= 0 && animatronic.state !== 'retreat' && animatronic.state !== 'rush') {
+    } else if (canSeePlayer && animatronic.attackCooldown <= 0 && animatronic.state !== 'retreat' && animatronic.state !== 'rush' && animatronic.state !== 'creep') {
       this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
     } else if ((animatronic.state === 'chase' || animatronic.state === 'rush') && !canSeePlayer) {
       animatronic.lostSightTimer += deltaSeconds;
@@ -7926,26 +8188,6 @@ export class Game {
         animatronic.state = 'wander';
         animatronic.waitTimer = 1.6;
         animatronic.lostSightTimer = 0;
-        animatronic.progressStallTimer = 0;
-        animatronic.detourTarget = null;
-        animatronic.detourTimer = 0;
-        animatronic.chaseCommitTimer = 0;
-        animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
-        this.clearOfficeAnimatronicChaseTimers(animatronic);
-      }
-    } else if (animatronic.state === 'door' && doorBlocked) {
-      animatronic.lostSightTimer += deltaSeconds;
-      if (animatronic.lostSightTimer >= config.lostSightSeconds) {
-        this.makeOfficeGameModeAnimatronicGiveUp(animatronic);
-        return false;
-      }
-    } else if (animatronic.state === 'door' && !doorBlocked) {
-      if (canSeePlayer) {
-        this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
-      } else {
-        animatronic.state = 'retreat';
-        animatronic.routeIndex = 0;
-        animatronic.waitTimer = 0.2;
         animatronic.progressStallTimer = 0;
         animatronic.detourTarget = null;
         animatronic.detourTimer = 0;
@@ -7976,11 +8218,7 @@ export class Game {
       );
       if (this.isPlayerInsideOfficeRoom(playerPosition) && distanceToRushDoor <= 1.1) {
         if (doorClosed) {
-          animatronic.state = 'door';
-          animatronic.waitTimer = 0.3;
-          animatronic.progressStallTimer = 0;
-          animatronic.detourTarget = null;
-          animatronic.detourTimer = 0;
+          this.startOfficeGameModeDoorBlockedWait(animatronic, this.officeFoxyRushDoor);
           return false;
         }
 
@@ -7996,7 +8234,7 @@ export class Game {
     const playerInAttackRange = animatronic.chaseCommitTimer > 0
       ? this.canOfficeGameModeChargeHitPlayer(animatronic, playerPosition, config.attackRange)
       : distanceToPlayer <= config.attackRange;
-    if ((canSeePlayer || animatronic.insultChargeTimer > 0) && playerInAttackRange && animatronic.attackCooldown <= 0) {
+    if ((canSeePlayer || animatronic.state === 'creep' || animatronic.insultChargeTimer > 0) && playerInAttackRange && animatronic.attackCooldown <= 0) {
       const definition = this.getRandomOfficeJumpscareDefinition(animatronic.animatronic);
       if (definition && !this.activeOfficeJumpscare) {
         animatronic.attackCooldown = 5.2;
@@ -8024,6 +8262,8 @@ export class Game {
       ? this.getOfficeFoxyRushDoorTarget()
       : animatronic.state === 'rush'
       ? this.player.getPosition()
+      : animatronic.state === 'creep'
+      ? playerPosition
       : animatronic.state === 'distracted' && animatronic.distractionTarget
       ? animatronic.distractionTarget
       : animatronic.state === 'chase' && animatronic.chaseCommitTimer > 0
@@ -8070,7 +8310,7 @@ export class Game {
       const detour = this.findOfficeGameModeDetour(animatronic, desiredTarget);
       if (detour) {
         animatronic.detourTarget = detour;
-        animatronic.detourTimer = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted'
+        animatronic.detourTimer = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep' || animatronic.state === 'distracted'
           ? 1.15
           : 1.85;
       }
@@ -8084,6 +8324,8 @@ export class Game {
     const nightSpeedMultiplier = this.getOfficeGameModeSpeedMultiplier();
     const baseSpeed = animatronic.state === 'rush'
       ? OFFICE_FOXY_RUSH_SPEED
+      : animatronic.state === 'creep'
+      ? config.walkSpeed * nightSpeedMultiplier * 0.62
       : animatronic.state === 'chase' || animatronic.state === 'distracted'
       ? OFFICE_GAME_MODE_CHASE_MATCH_SPEED
       : animatronic.state === 'retreat'
@@ -8160,7 +8402,7 @@ export class Game {
       if (!moved && !animatronic.detourTarget && animatronic.state === 'wander') {
         animatronic.routeIndex = this.getNextOfficeGameModeRouteIndex(animatronic, animatronic.routeIndex);
         animatronic.waitTimer = 0.65;
-      } else if (!moved && !animatronic.detourTarget && (animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted') && animatronic.stuckTimer > 1.15) {
+      } else if (!moved && !animatronic.detourTarget && (animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep' || animatronic.state === 'distracted') && animatronic.stuckTimer > 1.15) {
         if (animatronic.state === 'distracted') {
           animatronic.state = 'distracted-watch';
           animatronic.waitTimer = OFFICE_DISTRACTION_LOOK_SECONDS * 0.7;
@@ -8187,14 +8429,54 @@ export class Game {
     animatronic.model.rightLeg.rotation.x = rightStep * (running ? 0.58 : 0.42) * motionStrength;
     animatronic.model.leftLegJoint.rotation.x = Math.max(0, -leftStep) * (running ? 0.74 : 0.48) * motionStrength;
     animatronic.model.rightLegJoint.rotation.x = Math.max(0, -rightStep) * (running ? 0.74 : 0.48) * motionStrength;
-    const armSwing = running ? 0.2 : 0.18;
-    const armSide = running ? 0.62 : 0.44;
-    animatronic.model.leftArm.rotation.x = rightStep * armSwing * motionStrength - (running ? 0.08 : 0);
-    animatronic.model.rightArm.rotation.x = leftStep * armSwing * motionStrength - (running ? 0.08 : 0);
-    animatronic.model.leftArm.rotation.y = MathUtils.lerp(animatronic.model.leftArm.rotation.y, running ? 0.16 : 0, 0.24);
-    animatronic.model.rightArm.rotation.y = MathUtils.lerp(animatronic.model.rightArm.rotation.y, running ? -0.16 : 0, 0.24);
-    animatronic.model.leftArm.rotation.z = MathUtils.lerp(animatronic.model.leftArm.rotation.z, armSide, 0.32);
-    animatronic.model.rightArm.rotation.z = MathUtils.lerp(animatronic.model.rightArm.rotation.z, -armSide, 0.32);
+    const leftArmStride = rightStep;
+    const rightArmStride = leftStep;
+    const armSwing = running ? 0.32 : 0.24;
+    const armSide = running ? 0.78 : 0.58;
+    const armLean = running ? 0.1 : 0.02;
+    const elbowBend = running ? 0.38 : 0.24;
+    animatronic.model.leftArm.rotation.x = leftArmStride * armSwing * motionStrength - armLean;
+    animatronic.model.rightArm.rotation.x = rightArmStride * armSwing * motionStrength - armLean;
+    animatronic.model.leftArm.rotation.y = MathUtils.lerp(
+      animatronic.model.leftArm.rotation.y,
+      -0.18 - Math.max(0, leftArmStride) * 0.12,
+      0.32,
+    );
+    animatronic.model.rightArm.rotation.y = MathUtils.lerp(
+      animatronic.model.rightArm.rotation.y,
+      0.18 + Math.max(0, rightArmStride) * 0.12,
+      0.32,
+    );
+    animatronic.model.leftArm.rotation.z = MathUtils.lerp(
+      animatronic.model.leftArm.rotation.z,
+      -armSide - Math.max(0, -leftArmStride) * 0.12,
+      0.38,
+    );
+    animatronic.model.rightArm.rotation.z = MathUtils.lerp(
+      animatronic.model.rightArm.rotation.z,
+      armSide + Math.max(0, -rightArmStride) * 0.12,
+      0.38,
+    );
+    animatronic.model.leftArmJoint.rotation.x = MathUtils.lerp(
+      animatronic.model.leftArmJoint.rotation.x,
+      -elbowBend - Math.max(0, leftArmStride) * 0.22,
+      0.36,
+    );
+    animatronic.model.rightArmJoint.rotation.x = MathUtils.lerp(
+      animatronic.model.rightArmJoint.rotation.x,
+      -elbowBend - Math.max(0, rightArmStride) * 0.22,
+      0.36,
+    );
+    animatronic.model.leftArmJoint.rotation.z = MathUtils.lerp(
+      animatronic.model.leftArmJoint.rotation.z,
+      -0.12 - Math.max(0, -leftArmStride) * 0.1,
+      0.36,
+    );
+    animatronic.model.rightArmJoint.rotation.z = MathUtils.lerp(
+      animatronic.model.rightArmJoint.rotation.z,
+      0.12 + Math.max(0, -rightArmStride) * 0.1,
+      0.36,
+    );
     animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 9.4 : 5.6)) * 0.08 * (running ? 1.25 : 0.45);
     return false;
   }

@@ -436,6 +436,8 @@ export interface OfficeJumpscareStageModel {
   smile: Group;
   leftArm: Group;
   rightArm: Group;
+  leftArmJoint: Group;
+  rightArmJoint: Group;
   leftLeg: Group;
   rightLeg: Group;
   leftLegJoint: Group;
@@ -4125,6 +4127,8 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
   let jaw: Group;
   let leftArm: Group;
   let rightArm: Group;
+  let leftArmJoint: Group;
+  let rightArmJoint: Group;
   let leftLeg: Group;
   let rightLeg: Group;
   let leftLegJoint: Group;
@@ -4163,6 +4167,8 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
     jaw.add(foxyLowerJaw, foxyMouthDark);
     leftArm = parts.leftArm.root;
     rightArm = parts.rightArm.root;
+    leftArmJoint = parts.leftArm.joint;
+    rightArmJoint = parts.rightArm.joint;
     leftLeg = parts.leftLeg.root;
     rightLeg = parts.rightLeg.root;
     leftLegJoint = parts.leftLeg.joint;
@@ -4182,6 +4188,8 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
     }
     leftArm = stageModel.leftArm.root;
     rightArm = stageModel.rightArm.root;
+    const leftArmJoint = stageModel.leftArm.joint;
+    const rightArmJoint = stageModel.rightArm.joint;
     const leftLeg = stageModel.leftLeg.root;
     const rightLeg = stageModel.rightLeg.root;
     const leftLegJoint = stageModel.leftLeg.joint;
@@ -4266,7 +4274,20 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
       });
     });
 
-    return { root, head, jaw, smile, leftArm, rightArm, leftLeg, rightLeg, leftLegJoint, rightLegJoint };
+    return {
+      root,
+      head,
+      jaw,
+      smile,
+      leftArm,
+      rightArm,
+      leftArmJoint,
+      rightArmJoint,
+      leftLeg,
+      rightLeg,
+      leftLegJoint,
+      rightLegJoint,
+    };
   }
 
   const smile = new Group();
@@ -4285,7 +4306,20 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
     });
   });
 
-  return { root, head, jaw, smile, leftArm, rightArm, leftLeg, rightLeg, leftLegJoint, rightLegJoint };
+  return {
+    root,
+    head,
+    jaw,
+    smile,
+    leftArm,
+    rightArm,
+    leftArmJoint,
+    rightArmJoint,
+    leftLeg,
+    rightLeg,
+    leftLegJoint,
+    rightLegJoint,
+  };
 }
 
 export function createOfficeChapter(): OfficeChapterData {
