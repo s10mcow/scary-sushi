@@ -1257,12 +1257,16 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addBed(-23.55, 10.6, 1);
   addBed(-23.55, -10.6, -1);
+  const rockingChairX = 1200.10 - CENTER_X;
+  const rockingChairZ = 63.31 - HOUSE_CENTER_Z;
+  const rockingChairCornerX = HOUSE_LEFT_ROOM_WALL_X;
+  const rockingChairCornerZ = -HOUSE_DEPTH / 2;
   addRockingChair(
-    1200.10 - CENTER_X,
-    63.31 - HOUSE_CENTER_Z,
+    rockingChairX,
+    rockingChairZ,
     Math.atan2(
-      HOUSE_LEFT_ROOM_WALL_X + 2.25 - (1200.10 - CENTER_X),
-      HOUSE_BACK_ROOM_DOOR_Z - (63.31 - HOUSE_CENTER_Z),
+      -(rockingChairCornerX - rockingChairX),
+      -(rockingChairCornerZ - rockingChairZ),
     ),
   );
   addDiningTable(leftRoomCenterX, 0);
