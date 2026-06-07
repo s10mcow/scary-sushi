@@ -1242,7 +1242,7 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addBed(-23.55, 10.6, 1);
   addBed(-23.55, -10.6, -1);
-  addRockingChair(-14.15, -13.35, -0.28);
+  addRockingChair(-20.25, -10.6, -Math.PI / 2);
   addDiningTable(leftRoomCenterX, 0);
   addBookshelf(-25.05, -1.25, Math.PI / 2);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
