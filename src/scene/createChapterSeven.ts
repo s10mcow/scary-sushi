@@ -283,6 +283,20 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.86,
     metalness: 0.02,
   });
+  const plantPotMaterial = new MeshStandardMaterial({
+    color: 0x8b4a31,
+    emissive: 0x160705,
+    emissiveIntensity: 0.04,
+    roughness: 0.84,
+    metalness: 0.02,
+  });
+  const plantLeafMaterial = new MeshStandardMaterial({
+    color: 0x2f6f3c,
+    emissive: 0x071408,
+    emissiveIntensity: 0.08,
+    roughness: 0.78,
+    metalness: 0.01,
+  });
   const chairCushionMaterial = new MeshStandardMaterial({
     color: 0x8f6b4b,
     emissive: 0x160d08,
@@ -721,7 +735,25 @@ export function createChapterSeven(): ChapterSevenData {
       divider.position.set(0, dividerY, 0);
       return divider;
     });
-    drawer.add(back, leftSide, rightSide, top, bottom, ...dividers);
+    const plantPot = new Mesh(new CylinderGeometry(0.22, 0.28, 0.42, 14), plantPotMaterial);
+    plantPot.position.set(-0.86, 2.63, -0.08);
+    const potLip = new Mesh(new CylinderGeometry(0.31, 0.31, 0.08, 14), plantPotMaterial);
+    potLip.position.set(-0.86, 2.86, -0.08);
+    const plantStem = new Mesh(new CylinderGeometry(0.025, 0.03, 0.5, 8), plantLeafMaterial);
+    plantStem.position.set(-0.86, 3.12, -0.08);
+    const leaves = [
+      [-0.12, 0.08, -0.02, 0.45],
+      [0.12, 0.02, 0.04, -0.45],
+      [-0.02, 0.14, 0.12, 0.08],
+      [0.04, 0.22, -0.12, -0.12],
+    ].map(([leafX, leafY, leafZ, rotationZ]) => {
+      const leaf = new Mesh(new SphereGeometry(0.16, 10, 8), plantLeafMaterial);
+      leaf.position.set(-0.86 + leafX, 3.1 + leafY, -0.08 + leafZ);
+      leaf.scale.set(0.62, 0.34, 1);
+      leaf.rotation.z = rotationZ;
+      return leaf;
+    });
+    drawer.add(back, leftSide, rightSide, top, bottom, ...dividers, plantPot, potLip, plantStem, ...leaves);
 
     const frontDirection = new Vector3(Math.sin(rotationY), 0, Math.cos(rotationY));
     const worldX = CENTER_X + localX;
