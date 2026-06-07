@@ -11,7 +11,7 @@ export function createRenderer(host: HTMLElement): WebGLRenderer {
   renderer.shadowMap.enabled = false;
   renderer.shadowMap.type = PCFSoftShadowMap;
   renderer.toneMapping = ACESFilmicToneMapping;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.1));
   renderer.setSize(1, 1, false);
   host.appendChild(renderer.domElement);
 

@@ -12,6 +12,11 @@ const LOOK_BUFFER_LIMIT = 180;
 const LOOK_EPSILON = 0.001;
 const HALF_PI = Math.PI / 2;
 
+export interface PlayerMovementOptions {
+  sprintMultiplier?: number;
+  strafeMultiplier?: number;
+}
+
 export class PlayerController {
   readonly controls: PointerLockControls;
 
@@ -27,6 +32,7 @@ export class PlayerController {
   private verticalVelocity = 0;
   private grounded = true;
   private supportedFloorY: number | null = null;
+  private movementConstraint: ((nextX: number, nextZ: number, currentPosition: Vector3) => boolean) | null = null;
 
   constructor(
     private readonly camera: PerspectiveCamera,
@@ -73,6 +79,13 @@ export class PlayerController {
     return target.normalize();
   }
 
+  consumeLookDelta(target = { x: 0, y: 0 }): { x: number; y: number } {
+    target.x = this.pendingLookDeltaX;
+    target.y = this.pendingLookDeltaY;
+    this.clearLookBuffer();
+    return target;
+  }
+
   lookToward(target: Vector3, blend = 1): void {
     this.lookDirection.copy(target).sub(this.controls.object.position);
 
@@ -104,18 +117,29 @@ export class PlayerController {
     this.supportedFloorY = height;
   }
 
+  setMovementConstraint(
+    constraint: ((nextX: number, nextZ: number, currentPosition: Vector3) => boolean) | null,
+  ): void {
+    this.movementConstraint = constraint;
+  }
+
   update(
     deltaSeconds: number,
     input: MovementState,
     jumpRequested = false,
     collisionEnabled = true,
     speedMultiplier = 1,
+    applyLook = true,
+    jumpVelocityMultiplier = 1,
+    movementOptions: PlayerMovementOptions = {},
   ): void {
     if (!this.controls.isLocked) {
       return;
     }
 
-    this.applySmoothedLook(deltaSeconds);
+    if (applyLook) {
+      this.applySmoothedLook(deltaSeconds);
+    }
 
     this.camera.getWorldDirection(this.forward);
     this.forward.y = 0;
@@ -133,26 +157,36 @@ export class PlayerController {
 
     const position = this.controls.object.position;
     if (this.movement.lengthSq() > 0) {
+      const baseSpeed = (input.sprint ? GAME_CONFIG.player.sprintSpeed : GAME_CONFIG.player.walkSpeed)
+        * speedMultiplier
+        * (input.sprint ? movementOptions.sprintMultiplier ?? 1 : 1);
+      const dodgeStrafeAmount = input.strafe
+        * baseSpeed
+        * Math.max(0, (movementOptions.strafeMultiplier ?? 1) - 1)
+        * deltaSeconds;
       this.movement.normalize().multiplyScalar(
-        (input.sprint ? GAME_CONFIG.player.sprintSpeed : GAME_CONFIG.player.walkSpeed)
-          * speedMultiplier
-          * deltaSeconds,
+        baseSpeed * deltaSeconds,
       );
+      if (dodgeStrafeAmount !== 0) {
+        this.movement.addScaledVector(this.right, dodgeStrafeAmount);
+      }
 
       const nextX = position.x + this.movement.x;
       const nextZ = position.z + this.movement.z;
 
-      if (!collisionEnabled || !isBlocked(nextX, position.z, this.colliders, GAME_CONFIG.player.radius)) {
+      const canMoveX = !this.movementConstraint || this.movementConstraint(nextX, position.z, position);
+      if (canMoveX && (!collisionEnabled || !isBlocked(nextX, position.z, this.colliders, GAME_CONFIG.player.radius))) {
         position.x = nextX;
       }
 
-      if (!collisionEnabled || !isBlocked(position.x, nextZ, this.colliders, GAME_CONFIG.player.radius)) {
+      const canMoveZ = !this.movementConstraint || this.movementConstraint(position.x, nextZ, position);
+      if (canMoveZ && (!collisionEnabled || !isBlocked(position.x, nextZ, this.colliders, GAME_CONFIG.player.radius))) {
         position.z = nextZ;
       }
     }
 
     if (jumpRequested && this.grounded) {
-      this.verticalVelocity = GAME_CONFIG.player.jumpVelocity;
+      this.verticalVelocity = GAME_CONFIG.player.jumpVelocity * jumpVelocityMultiplier;
       this.grounded = false;
     }
 

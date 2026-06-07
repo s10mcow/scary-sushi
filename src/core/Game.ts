@@ -18,8 +18,10 @@ import {
   Quaternion,
   Raycaster,
   SphereGeometry,
+  Texture,
   TorusGeometry,
   Vector3,
+  VideoTexture,
 } from 'three';
 
 import type { AppShell } from './AppShell';
@@ -48,6 +50,10 @@ import {
   type OfficeChapterData,
   type OfficeJumpscareStageModel,
 } from '../scene/createOfficeChapter';
+import { createChapterFour, type ChapterFourData } from '../scene/createChapterFour';
+import { createChapterFive, type ChapterFiveData } from '../scene/createChapterFive';
+import { createChapterSix, type ChapterSixData, type ChapterSixItemType } from '../scene/createChapterSix';
+import { createChapterSeven, type ChapterSevenData } from '../scene/createChapterSeven';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -88,7 +94,7 @@ import {
   type MonsterUpdateState,
   type MonsterVariant,
 } from '../systems/monster/MonsterController';
-import { InputController, type WeaponSelectId } from '../systems/input/InputController';
+import { InputController, type MovementState, type WeaponSelectId } from '../systems/input/InputController';
 import { VoiceInputController } from '../systems/input/VoiceInputController';
 import { BearJumpScareAudio } from '../systems/audio/BearJumpScareAudio';
 import { CoffeeMachineAudio } from '../systems/audio/CoffeeMachineAudio';
@@ -99,13 +105,16 @@ import { PartyShowAudio } from '../systems/audio/PartyShowAudio';
 import { PowerEventAudio } from '../systems/audio/PowerEventAudio';
 import { DoomEnemyController, type DoomEnemyVariant } from '../systems/doom/DoomEnemyController';
 import { FlashlightController } from '../systems/player/FlashlightController';
-import { PlayerController } from '../systems/player/PlayerController';
+import { PlayerController, type PlayerMovementOptions } from '../systems/player/PlayerController';
 import { ZombieController } from '../systems/zombie/ZombieController';
 import {
   createHud,
   type HudChapterId,
+  type HudChapterFiveMonitorAction,
   type HudJumpScareVariant,
+  type MinecraftInventoryAction,
   type OfficeCameraPuppetHudPhase,
+  type OfficeDeathNoticePhase,
   type OfficeModeMenuDifficulty,
   type OfficeModeMenuMode,
   type OfficeModeMenuStep,
@@ -171,6 +180,10 @@ const CHAPTER_TWO_AFTERMATH_BEAR_DIALOGUE = [
 ] as const;
 const START_IN_CHAPTER_TWO = false;
 const START_IN_CHAPTER_THREE = true;
+const START_IN_CHAPTER_FOUR = false;
+const START_IN_CHAPTER_FIVE = false;
+const START_IN_CHAPTER_SIX = false;
+const START_IN_CHAPTER_SEVEN = false;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -286,8 +299,36 @@ interface PlacementMarker {
 }
 
 type OfficeJumpscareAnimatronic = 'quacky' | 'fluffle' | 'bori' | 'foxy';
+type OfficeFuseWireColor = 'green' | 'blue' | 'red';
 type OfficeGameModeDifficulty = OfficeModeMenuDifficulty;
 type OfficeCameraPuppetPhase = 'idle' | OfficeCameraPuppetHudPhase;
+
+interface OfficeSpeechRecognitionResultEventLike extends Event {
+  resultIndex: number;
+  results: {
+    length: number;
+    [index: number]: {
+      isFinal: boolean;
+      length: number;
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface OfficeSpeechRecognitionLike extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: OfficeSpeechRecognitionResultEventLike) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type OfficeSpeechRecognitionConstructor = new () => OfficeSpeechRecognitionLike;
 
 interface OfficeVentBoyState {
   root: Group;
@@ -348,6 +389,10 @@ interface ActiveOfficeJumpscare {
   blackoutMaterial: MeshBasicMaterial;
   closeCuePlayed: boolean;
   reopenJumpscareMenu: boolean;
+  gameModeDeath: boolean;
+  cameraCaptureVideoElement: HTMLVideoElement | null;
+  cameraCaptureTexture: Texture | VideoTexture | null;
+  cameraCaptureMaterial: MeshBasicMaterial | null;
   materialStates: OfficeCutsceneMaterialState[];
 }
 
@@ -359,11 +404,31 @@ interface OfficeCutsceneMaterialState {
   eye: boolean;
 }
 
+type OfficePrizeItemId = 'glass' | 'tiny-bear' | 'lollipop' | 'duck-toy' | 'stuffie';
+type OfficeThrowableKind = 'glass' | 'tiny-bear';
+
 interface ActiveOfficeGlassThrow {
   root: Group;
   velocity: Vector3;
   elapsed: number;
+  crashElapsed: number;
   crashed: boolean;
+  kind: OfficeThrowableKind;
+}
+
+interface MicrophoneSoundRecording {
+  id: string;
+  dataUrl: string;
+  createdAt: number;
+}
+
+type CameraToolCaptureKind = 'picture' | 'video';
+
+interface CameraToolCapture {
+  id: string;
+  kind: CameraToolCaptureKind;
+  dataUrl: string;
+  createdAt: number;
 }
 
 interface OfficeGameModeConfig {
@@ -382,16 +447,35 @@ interface OfficeGameModeAnimatronicState {
   model: OfficeJumpscareStageModel;
   route: Vector3[];
   routeIndex: number;
-  state: 'stage' | 'wander' | 'chase' | 'rush' | 'door' | 'retreat';
+  state: 'stage' | 'wander' | 'chase' | 'rush' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch';
   waitTimer: number;
+  doorBreachTimer: number;
+  doorBreachDoorId: 'left' | 'right' | null;
   attackCooldown: number;
   lostSightTimer: number;
   stuckTimer: number;
   progressStallTimer: number;
   detourTarget: Vector3 | null;
   detourTimer: number;
+  distractionTarget: Vector3 | null;
   lastKnownPlayerPosition: Vector3;
+  chaseCommitTarget: Vector3;
+  chaseCommitTimer: number;
+  chaseCommitCooldown: number;
+  chaseGiveUpTimer: number;
+  insultStareTimer: number;
+  insultChargeTimer: number;
+  insultCooldown: number;
+  cameraStareTimer: number;
+  cameraStareCooldown: number;
+  cameraStareCameraId: number | null;
+  senseTimer: number;
+  cachedCanSeePlayer: boolean;
+  cachedNoiseResponse: OfficeGameModeNoiseResponse;
+  cachedBlockedDoorId: 'left' | 'right' | null;
 }
+
+type OfficeGameModeNoiseResponse = 'none' | 'investigate' | 'rush';
 
 const OFFICE_JUMPSCARE_DEFINITIONS: OfficeJumpscareDefinition[] = [
   { id: 'quacky-1', animatronic: 'quacky', variant: 1, label: 'Quacky: Red-Eye Flicker', body: 'His red eyes flicker in the distance, then he appears in your face screaming.', cue: 'stomp-roar', duration: 2 },
@@ -416,25 +500,25 @@ const OFFICE_GAME_MODE_CONFIGS: Record<OfficeGameModeDifficulty, OfficeGameModeC
     lostSightSeconds: 5,
     walkSpeed: 0.85,
     chaseSpeed: 5.35,
-    attackRange: 0.92,
+    attackRange: 0.28,
   },
   normal: {
     label: 'Normal',
     powerMultiplier: 1,
     detectionRange: 6.2,
-    lostSightSeconds: 6,
+    lostSightSeconds: 5,
     walkSpeed: 1.05,
     chaseSpeed: 5.65,
-    attackRange: 1.05,
+    attackRange: 0.3,
   },
   hard: {
     label: 'Hard',
     powerMultiplier: 1.36,
     detectionRange: 9.4,
-    lostSightSeconds: 7,
+    lostSightSeconds: 5,
     walkSpeed: 1.24,
     chaseSpeed: 6.05,
-    attackRange: 1.16,
+    attackRange: 0.32,
   },
 };
 
@@ -444,18 +528,104 @@ const OFFICE_GAME_MODE_IDLE_DRAIN_PER_SECOND = 0.025;
 const OFFICE_GAME_MODE_TOTAL_NIGHTS = 5;
 const OFFICE_GAME_MODE_NIGHT_SECONDS = 5 * 60;
 const OFFICE_GAME_MODE_DAY_SECONDS = 3 * 60;
+const OFFICE_FUSE_WIRE_COLORS: OfficeFuseWireColor[] = ['green', 'blue', 'red'];
 const OFFICE_VENT_BOY_STARE_LIMIT_SECONDS = 2.65;
 const OFFICE_VENT_BOY_SPEED = 0.82;
 const OFFICE_FOXY_CAMERA_TRIGGER_MIN_SECONDS = 15;
-const OFFICE_FOXY_CAMERA_TRIGGER_MAX_SECONDS = 20;
-const OFFICE_FOXY_RUSH_SPEED = GAME_CONFIG.player.sprintSpeed * 2;
-const OFFICE_CAMERA_PUPPET_CHANCE = 0.05;
+const OFFICE_FOXY_CAMERA_TRIGGER_MAX_SECONDS = 15.35;
+const OFFICE_GAME_MODE_CHASE_MATCH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.06;
+const OFFICE_FOXY_RUSH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.1;
+const OFFICE_PLAYER_SPRINT_SPEED_MULTIPLIER = 1.22;
+const OFFICE_PLAYER_STRAFE_SPEED_MULTIPLIER = 1.18;
+const OFFICE_PLAYER_SPRINT_DODGE_STRAFE_MULTIPLIER = 1.72;
+const OFFICE_PLAYER_CLOSE_DODGE_STRAFE_MULTIPLIER = 2.28;
+const OFFICE_PLAYER_CLOSE_DODGE_RANGE = 6.1;
 const OFFICE_CAMERA_PUPPET_CAMERA_FAIL_SECONDS = 2.25;
-const OFFICE_CAMERA_PUPPET_REOPEN_SECONDS = 3;
+const OFFICE_CAMERA_PUPPET_REOPEN_SECONDS = 2;
 const OFFICE_CAMERA_PUPPET_JUMPSCARE_SECONDS = 1.35;
-const OFFICE_FREDDY_POWER_OUT_ATTACK_DELAY = 4.6;
+const OFFICE_FREDDY_POWER_OUT_ATTACK_DELAY = 12.4;
 const OFFICE_NOISE_INVESTIGATE_THRESHOLD = 0.18;
 const OFFICE_NOISE_RUSH_THRESHOLD = 0.68;
+const OFFICE_VOICE_HEAR_MIN_LEVEL = 0.04;
+const OFFICE_VOICE_NOISE_MULTIPLIER = 2.05;
+const OFFICE_VOICE_RANGE_MIN_MULTIPLIER = 1.24;
+const OFFICE_VOICE_RANGE_MAX_MULTIPLIER = 1.86;
+const OFFICE_VOICE_YELL_RANGE_MULTIPLIER = 1.92;
+const OFFICE_VOICE_INVESTIGATE_THRESHOLD = 0.12;
+const OFFICE_VOICE_RUSH_THRESHOLD = 0.56;
+const OFFICE_STAGE_YELL_LEVEL = 0.52;
+const OFFICE_STAGE_YELL_RADIUS_PADDING = 8.5;
+const OFFICE_YELL_ATTRACT_RANGE = 24;
+const OFFICE_STAGE_VOICE_RELEASE_COOLDOWN = 2.4;
+const OFFICE_STAGE_YELL_PRIMARY_RELEASE_MIN_CHANCE = 0.2;
+const OFFICE_STAGE_YELL_PRIMARY_RELEASE_MAX_CHANCE = 0.4;
+const OFFICE_STAGE_YELL_CHAIN_RELEASE_CHANCE = 0.1;
+const OFFICE_CHASE_GIVE_UP_SECONDS = 10;
+const OFFICE_INSULT_STARE_SECONDS = 1.65;
+const OFFICE_INSULT_CHARGE_SECONDS = 10;
+const OFFICE_INSULT_COOLDOWN_SECONDS = 12;
+const OFFICE_INSULT_PHRASES = [
+  "you're slow",
+  'you are slow',
+  'your slow',
+  "you're ugly",
+  'you are ugly',
+  'your ugly',
+  "you're stupid",
+  'you are stupid',
+  'your stupid',
+  "you're dumb",
+  'you are dumb',
+  'your dumb',
+] as const;
+const OFFICE_DOOR_BREACH_CHANCE = 0.1;
+const OFFICE_DOOR_BREACH_SECONDS = 1.75;
+const OFFICE_DEATH_DIED_NOTICE_SECONDS = 1.45;
+const OFFICE_DEATH_FIRED_NOTICE_SECONDS = 4.8;
+const MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY = 'scary-sushi:microphone-sound-tool:recordings';
+const MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY = 'scary-sushi:microphone-sound-tool:next-index';
+const MICROPHONE_SOUND_LEGACY_STORAGE_KEY = 'scary-sushi:microphone-sound-tool:latest';
+const MICROPHONE_SOUND_MAX_RECORDINGS = 999;
+const MICROPHONE_JUMPSCARE_RECORDING_ID: string | null = '010';
+const OFFICE_THROW_SOUND_RECORDING_ID = '004';
+const OFFICE_DOOR_OPEN_SOUND_RECORDING_ID = '012';
+const OFFICE_DOOR_CLOSE_SOUND_RECORDING_ID = '013';
+const CAMERA_TOOL_CAPTURES_STORAGE_KEY = 'scary-sushi:camera-tool:captures';
+const CAMERA_TOOL_NEXT_PICTURE_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-picture-index';
+const CAMERA_TOOL_NEXT_VIDEO_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-video-index';
+const CAMERA_TOOL_MAX_CAPTURES = 24;
+const OFFICE_JUMPSCARE_CAMERA_CAPTURE_ASSIGNMENTS: Partial<Record<OfficeJumpscareAnimatronic, {
+  kind: CameraToolCaptureKind;
+  id: string;
+}>> = {
+};
+const OFFICE_JUMPSCARE_VIDEO_ASSET_ASSIGNMENTS: Partial<Record<OfficeJumpscareAnimatronic, {
+  src: string;
+  label: string;
+}>> = {
+};
+const OFFICE_BORI_STAGE_WANDER_CHANCE = 0.1;
+const OFFICE_BORI_STAGE_YELL_RUSH_CHANCE = 0.1;
+const OFFICE_DISTRACTION_RANGE = 38;
+const OFFICE_DISTRACTION_LOOK_SECONDS = 1.25;
+const OFFICE_GLASS_SHARD_VISIBLE_SECONDS = 5;
+const OFFICE_TINY_BEAR_VISIBLE_SECONDS = 4.2;
+const OFFICE_LOLLIPOP_BOOST_SECONDS = 10;
+const OFFICE_LOLLIPOP_SPEED_MULTIPLIER = 2;
+const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
+  glass: 'Glass Cup',
+  'tiny-bear': 'Tiny Bear',
+  lollipop: 'Lollipop',
+  'duck-toy': 'Duck Toy',
+  stuffie: 'Stuffie',
+};
+const OFFICE_PRIZE_HOTBAR_SLOTS: Array<{ slot: number; item: OfficePrizeItemId }> = [
+  { slot: 5, item: 'glass' },
+  { slot: 6, item: 'tiny-bear' },
+  { slot: 7, item: 'lollipop' },
+  { slot: 8, item: 'duck-toy' },
+  { slot: 9, item: 'stuffie' },
+];
 const OFFICE_GAME_MODE_OFFICE_CENTER = new Vector3(-240, GAME_CONFIG.player.height, 184);
 const OFFICE_GAME_MODE_OFFICE_SPAWN = new Vector3(-240, GAME_CONFIG.player.height, 186.2);
 const OFFICE_GAME_MODE_OFFICE_LOOK_TARGET = new Vector3(-240, GAME_CONFIG.player.height, 181.2);
@@ -523,10 +693,59 @@ const OFFICE_GAME_MODE_ANIMATRONIC_FLOOR_Y: Record<OfficeJumpscareAnimatronic, n
   foxy: 1.17,
 };
 const OFFICE_GAME_MODE_COLLISION_RADIUS = 0.52;
+const OFFICE_GAME_MODE_SEPARATION_RADIUS = 1.22;
+const OFFICE_GAME_MODE_SEPARATION_STRENGTH = 0.82;
 const OFFICE_GAME_MODE_STAGE_LIFT = 0.07;
+const OFFICE_GAME_MODE_LINE_SAMPLE_DISTANCE = 0.55;
+const OFFICE_GAME_MODE_PATH_SAMPLE_DISTANCE = 0.52;
+const OFFICE_GAME_MODE_STAGE_SENSE_INTERVAL = 0.38;
+const OFFICE_GAME_MODE_WANDER_SENSE_INTERVAL = 0.24;
+const OFFICE_GAME_MODE_CHASE_SENSE_INTERVAL = 1.05;
+const OFFICE_GAME_MODE_CHASE_COMMIT_RANGE = 6.4;
+const OFFICE_GAME_MODE_CHASE_COMMIT_SECONDS = 1.75;
+const OFFICE_GAME_MODE_CHASE_COMMIT_DISTANCE = 16.5;
+const OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN = 0.42;
+const OFFICE_GAME_MODE_CAMERA_STARE_RANGE = 18.5;
+const OFFICE_GAME_MODE_CAMERA_STARE_VIEW_DOT = 0.32;
+const OFFICE_GAME_MODE_CAMERA_STARE_CHANCE_PER_SECOND = 0.62;
+const OFFICE_GAME_MODE_CAMERA_STARE_MIN_SECONDS = 2.2;
+const OFFICE_GAME_MODE_CAMERA_STARE_MAX_SECONDS = 4.4;
+const OFFICE_GAME_MODE_CAMERA_STARE_COOLDOWN_MIN_SECONDS = 10;
+const OFFICE_GAME_MODE_CAMERA_STARE_COOLDOWN_MAX_SECONDS = 18;
+const OFFICE_GAME_MODE_DIRECT_LOOKAHEAD = OFFICE_GAME_MODE_COLLISION_RADIUS * 1.35;
+const OFFICE_GAME_MODE_MOVE_ANGLES = [0.42, -0.42, 0.82, -0.82, Math.PI / 2, -Math.PI / 2, Math.PI] as const;
+const OFFICE_GAME_MODE_DETOUR_SIDES = [-1, 1] as const;
+const OFFICE_GAME_MODE_DETOUR_FORWARD_DISTANCES = [0.75, 1.25, 1.85] as const;
+const OFFICE_GAME_MODE_DETOUR_SIDE_DISTANCES = [0.9, 1.45, 2.1, 2.85] as const;
+const OFFICE_GAME_MODE_DETOUR_ANGLES = [0.62, -0.62, 1.05, -1.05] as const;
+const OFFICE_GAME_MODE_DETOUR_DISTANCES = [1.25, 2, 2.8] as const;
+const OFFICE_GAME_MODE_OPEN_SPOT_RADII = [0.45, 0.75, 1.15, 1.65, 2.25, 3] as const;
+const CHAPTER_THREE_RENDER_SCALE = 0.68;
+const CHAPTER_THREE_CAMERA_RENDER_SCALE = 0.38;
+const CHAPTER_THREE_NIGHT_RENDER_SCALE = 0.62;
+const CHAPTER_FOUR_RENDER_SCALE = 0.82;
+const CHAPTER_FOUR_BOX_CAMERA_DISTANCE = 4.1;
+const CHAPTER_FOUR_BOX_CAMERA_HEIGHT = 2.35;
+const CHAPTER_FOUR_BOX_CAMERA_RADIUS = 0.22;
+const CHAPTER_FOUR_CROUCH_DROP = 0.52;
+const CHAPTER_FOUR_PURPLE_JUMPSCARE_DURATION = 2.35;
+const CHAPTER_FOUR_PURPLE_JUMPSCARE_COOLDOWN = 1.8;
+const CHAPTER_FOUR_BLUE_JUMPSCARE_DURATION = 2.6;
+const CHAPTER_FOUR_BLUE_JUMPSCARE_COOLDOWN = 1.35;
+const CHAPTER_FOUR_GREEN_JUMPSCARE_DURATION = 2.45;
+const CHAPTER_FOUR_GREEN_JUMPSCARE_COOLDOWN = 1.25;
+const DEFAULT_RENDER_PIXEL_RATIO = 1.1;
+const PERFORMANCE_RENDER_PIXEL_RATIO = 1;
 const OFFICE_VENT_GRATE_DROP_RADIUS = 0.34;
 const OFFICE_VENT_GRATE_DROP_OPEN_AMOUNT = 0.86;
 const OFFICE_VENT_DROP_DURATION = 0.82;
+const CHAPTER_THREE_HUD_SYNC_INTERVAL = 1 / 8;
+
+type ChapterSevenInteractable =
+  | { kind: 'cupboard'; item: ChapterSevenData['houseUpperCupboards'][number]; score: number }
+  | { kind: 'drawer'; item: ChapterSevenData['houseDrawers'][number]; score: number }
+  | { kind: 'fridge'; item: ChapterSevenData['houseFridge']; score: number }
+  | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
 export class Game {
   private readonly scene;
@@ -535,6 +754,10 @@ export class Game {
   private readonly level;
   private readonly chapterTwo: ChapterTwoLevelData;
   private readonly officeChapter: OfficeChapterData;
+  private readonly chapterFour: ChapterFourData;
+  private readonly chapterFive: ChapterFiveData;
+  private readonly chapterSix: ChapterSixData;
+  private readonly chapterSeven: ChapterSevenData;
   private readonly zombieMode: ZombieModeData;
   private readonly doomMode: DoomModeData;
   private readonly lighting;
@@ -574,12 +797,37 @@ export class Game {
   private readonly carriedDrinkAnchor = new Group();
   private readonly officeBasketballAnchor = new Group();
   private readonly officeGlassAnchor = new Group();
+  private readonly officePrizeItemAnchor = new Group();
+  private readonly officePrizeItemModels = new Map<OfficePrizeItemId, Group>();
   private readonly officeTabletAnchor = new Group();
+  private readonly chapterFourBoxHeldAnchor = new Group();
+  private readonly chapterFourBoxHideAnchor = new Group();
+  private readonly chapterFourBoxWideAnchor = new Group();
+  private readonly chapterFourBlueJumpscareAnchor = new Group();
+  private readonly chapterFourBlueJumpscareHead = new Group();
+  private readonly chapterFourBlueJumpscareMaw = new Group();
+  private readonly chapterFourBlueJumpscareLeftArm = new Group();
+  private readonly chapterFourBlueJumpscareRightArm = new Group();
+  private readonly chapterFourGreenJumpscareAnchor = new Group();
+  private readonly chapterFourGreenJumpscareBody = new Group();
+  private readonly chapterFourGreenJumpscareMaw = new Group();
+  private readonly chapterFourGreenJumpscareLeftArm = new Group();
+  private readonly chapterFourGreenJumpscareRightArm = new Group();
+  private readonly chapterFourBoxWideCamera = new PerspectiveCamera(64, 1, 0.05, 120);
   private readonly officeTabletViewCamera = new PerspectiveCamera(58, 1, 0.05, 120);
   private readonly officeTabletViewPosition = new Vector3();
   private readonly officeTabletViewQuaternion = new Quaternion();
+  private readonly chapterFourBoxWorldAnchor = new Group();
+  private readonly chapterFourBoxCameraForward = new Vector3();
+  private readonly chapterFourBoxCameraFocus = new Vector3();
+  private readonly chapterFourBoxCameraDesired = new Vector3();
+  private readonly chapterFourBoxCameraSafe = new Vector3();
+  private readonly chapterFourBoxCameraSample = new Vector3();
   private readonly zombieWeaponAnchor = new Group();
+  private readonly chapterSixHeldItemAnchor = new Group();
+  private readonly chapterSixPettingArmAnchor = new Group();
   private readonly placementToolAnchor = new Group();
+  private readonly microphoneSoundToolAnchor = new Group();
   private readonly placementMarkerRoot = new Group();
   private readonly placementPreview = new Group();
   private readonly placementRaycaster = new Raycaster();
@@ -602,6 +850,11 @@ export class Game {
   private readonly chapterTwoDodoAttackLookTarget = new Vector3();
   private readonly chapterTwoDodoAttackViewPosition = new Vector3();
   private readonly chapterTwoDodoAttackWakePosition = new Vector3();
+  private readonly chapterFiveAimDirection = new Vector3(0, 0, -1);
+  private readonly chapterFiveCameraPosition = new Vector3();
+  private readonly chapterFiveFlightLookTarget = new Vector3();
+  private readonly chapterFiveLookDelta = { x: 0, y: 0 };
+  private chapterFiveAlarmWasActive = false;
   private readonly zombieAimPoint = new Vector3();
   private readonly zombieForward = new Vector3();
   private readonly zombieRayPoint = new Vector3();
@@ -623,15 +876,23 @@ export class Game {
   private zombieWeaponVisual: HeldZombieWeaponVisual | null = null;
   private zombieWeaponVisualId: WeaponSelectId | null = null;
   private zombieWeaponVisualMode: 'zombie' | 'doom' | null = null;
+  private chapterSixHeldItemModel: Group | null = null;
+  private chapterSixHeldItemType: ChapterSixItemType | null = null;
+  private chapterSixPossumPickupTimer = 0;
   private holdingPlate = false;
   private plateRecipeId: string | null = null;
   private platedRecipeId: string | null = null;
   private chapterExitUnlocked = false;
   private chapterTwoActive = false;
   private officeChapterActive = false;
+  private chapterFourActive = false;
+  private chapterFiveActive = false;
+  private chapterSixActive = false;
+  private chapterSevenActive = false;
   private zombieModeActive = false;
   private doomModeActive = false;
   private chapterMenuOpen = false;
+  private curatorToolOpen = false;
   private chapterTwoPuzzlePiecesCollected = 0;
   private chapterTwoRedPuzzleSolved = false;
   private chapterTwoEggsHeld = 0;
@@ -658,6 +919,11 @@ export class Game {
   private officeChapterTickets = 0;
   private officeBasketballHeld = false;
   private officeGlassHeld = false;
+  private officeHeldPrizeItem: OfficePrizeItemId | null = null;
+  private readonly officePrizeInventory = new Map<OfficePrizeItemId, number>();
+  private officePrizeBonusMultiplier = 1;
+  private officeLollipopBoostRemaining = 0;
+  private officeLollipopUseTimer = 0;
   private readonly officeGlassThrows: ActiveOfficeGlassThrow[] = [];
   private officePrizeWheelLastTickIndex = 0;
   private officePrizeWheelWasSpinning = false;
@@ -670,9 +936,23 @@ export class Game {
   private officeModeMenuStep: OfficeModeMenuStep = 'mode';
   private officeModeMenuPendingMode: OfficeModeMenuMode | null = null;
   private activeOfficeJumpscare: ActiveOfficeJumpscare | null = null;
+  private officeDeathNoticePhase: OfficeDeathNoticePhase | null = null;
+  private officeDeathNoticeTimer = 0;
   private officeTabletHeld = false;
   private officeTabletCameraFeedActive = false;
   private officeTabletCameraIndex = 0;
+  private chapterFourBoxHeld = false;
+  private chapterFourBoxActive = false;
+  private chapterFourBoxViewMode: 'normal' | 'wide' = 'normal';
+  private chapterFourBoxWideCameraReady = false;
+  private chapterFourLockerId: string | null = null;
+  private chapterFourCrouching = false;
+  private chapterFourPurpleJumpscareTimer = 0;
+  private chapterFourPurpleJumpscareCooldown = 0;
+  private chapterFourBlueJumpscareTimer = 0;
+  private chapterFourBlueJumpscareCooldown = 0;
+  private chapterFourGreenJumpscareTimer = 0;
+  private chapterFourGreenJumpscareCooldown = 0;
   private officeCameraPuppetPhase: OfficeCameraPuppetPhase = 'idle';
   private officeCameraPuppetTimer = 0;
   private officeMode: OfficeModeMenuMode = 'creator';
@@ -680,11 +960,19 @@ export class Game {
   private officeGameModeDifficulty: OfficeGameModeDifficulty = 'normal';
   private officeGameModePower = 100;
   private officeGameModePowerOut = false;
+  private officePowerRebootRequired = false;
+  private readonly officeFuseWireConnected: Record<OfficeFuseWireColor, boolean> = {
+    green: false,
+    blue: false,
+    red: false,
+  };
   private officeFreddyPowerOutTimer = 0;
+  private officePowerOutBoriDoor: 'left' | 'right' | null = null;
   private officeGameModeNightPhase = false;
   private officeGameModePhaseTime = 0;
   private officeGameModeNight = 1;
   private readonly officeGameModeAnimatronics: OfficeGameModeAnimatronicState[] = [];
+  private officeStageVoiceReleaseCooldown = 0;
   private officeFoxyCameraWatchTime = 0;
   private officeFoxyCameraTriggerSeconds = OFFICE_FOXY_CAMERA_TRIGGER_MIN_SECONDS;
   private officeFoxyRushCooldown = 0;
@@ -693,7 +981,47 @@ export class Game {
   private officePlayerNoiseLevel = 0;
   private officePlayerVoiceLevel = 0;
   private readonly officePlayerNoisePosition = new Vector3();
+  private readonly officeGameModeAnimatronicPosition = new Vector3();
+  private officeMicrophoneEnabled = false;
+  private officeMicrophoneManualOff = false;
+  private officeMicrophoneStartPending = false;
+  private officeMicrophoneAutoStatusShown = false;
+  private officeMicrophoneStartToken = 0;
+  private officeSpeechRecognition: OfficeSpeechRecognitionLike | null = null;
+  private officeSpeechRecognitionRunning = false;
+  private officeInsultHeardTimer = 0;
+  private microphoneSoundToolActive = false;
+  private microphoneSoundRecorder: MediaRecorder | null = null;
+  private microphoneSoundStream: MediaStream | null = null;
+  private microphoneSoundChunks: Blob[] = [];
+  private microphoneSoundPreviewUrl: string | null = null;
+  private microphoneSoundPreviewRecordingId: string | null = null;
+  private microphoneSoundPlayback: HTMLAudioElement | null = null;
+  private officeDoorSoundPlayback: HTMLAudioElement | null = null;
+  private officeDoorSoundTarget: { doorId: 'left' | 'right'; open: boolean } | null = null;
+  private microphoneSoundRecording = false;
+  private microphoneSoundDiscardStop = false;
+  private microphoneSoundSaved = false;
+  private microphoneSoundMessage = 'No custom sound recorded yet.';
+  private microphoneSoundLibraryLoaded = false;
+  private readonly microphoneSoundRecordings: MicrophoneSoundRecording[] = [];
+  private microphoneSoundJumpscareRecordingId: string | null = null;
+  private cameraToolActive = false;
+  private cameraToolStream: MediaStream | null = null;
+  private cameraToolVideo: HTMLVideoElement | null = null;
+  private cameraToolRecorder: MediaRecorder | null = null;
+  private cameraToolChunks: Blob[] = [];
+  private cameraToolRecording = false;
+  private cameraToolDiscardStop = false;
+  private cameraToolPreviewUrl: string | null = null;
+  private cameraToolPreviewKind: CameraToolCaptureKind | null = null;
+  private cameraToolPreviewCaptureId: string | null = null;
+  private cameraToolSaved = false;
+  private cameraToolMessage = 'No picture or video captured yet.';
+  private cameraToolLibraryLoaded = false;
+  private readonly cameraToolCaptures: CameraToolCapture[] = [];
   private officeVentBoy: OfficeVentBoyState | null = null;
+  private hudSyncTimer = 0;
   private chapterTwoCardTime = 0;
   private chapterTwoCoffeeJob: ChapterTwoCoffeeJob | null = null;
   private activeCoffeeDrink: ActiveCoffeeDrink | null = null;
@@ -737,6 +1065,15 @@ export class Game {
     this.loadDeletedOfficeSecurityCameras();
     this.applyDeletedOfficeSecurityCameras();
     this.officeChapter.root.visible = false;
+    this.chapterFour = createChapterFour();
+    this.chapterFour.root.visible = false;
+    this.chapterFive = createChapterFive();
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix = createChapterSix();
+    this.chapterSix.root.visible = false;
+    this.chapterSeven = createChapterSeven();
+    this.chapterSeven.root.visible = false;
     this.zombieMode = createZombieMode();
     this.zombieMode.root.visible = false;
     this.doomMode = createDoomMode();
@@ -746,7 +1083,17 @@ export class Game {
     this.player = new PlayerController(
       this.camera,
       this.renderer.domElement,
-      [...this.level.colliders, ...this.chapterTwo.colliders, ...this.officeChapter.colliders, ...this.zombieMode.colliders, ...this.doomMode.colliders],
+      [
+        ...this.level.colliders,
+        ...this.chapterTwo.colliders,
+        ...this.officeChapter.colliders,
+        ...this.chapterFour.colliders,
+        ...this.chapterFive.colliders,
+        ...this.chapterSix.colliders,
+        ...this.chapterSeven.colliders,
+        ...this.zombieMode.colliders,
+        ...this.doomMode.colliders,
+      ],
       this.level.spawn,
     );
     this.flashlight = new FlashlightController(this.lighting.flashlight);
@@ -781,9 +1128,15 @@ export class Game {
     this.scene.add(this.level.root);
     this.scene.add(this.chapterTwo.root);
     this.scene.add(this.officeChapter.root);
+    this.scene.add(this.chapterFour.root);
+    this.scene.add(this.chapterFive.root);
+    this.scene.add(this.chapterSix.root);
+    this.scene.add(this.chapterSeven.root);
     this.scene.add(this.zombieMode.root);
     this.scene.add(this.doomMode.root);
     this.scene.add(this.camera);
+    this.camera.add(this.chapterFive.screenShip);
+    this.camera.add(this.chapterFive.repairWrench);
     this.monsters.forEach((monster) => this.scene.add(monster.root));
     this.zombieControllers.forEach((zombie) => this.scene.add(zombie.root));
     this.doomEnemies.forEach((enemy) => this.scene.add(enemy.root));
@@ -815,19 +1168,54 @@ export class Game {
     this.officeGlassAnchor.rotation.set(0.16, -0.28, -0.08);
     this.officeGlassAnchor.visible = false;
     this.officeGlassAnchor.add(this.createOfficeGlassModel());
+    this.camera.add(this.officePrizeItemAnchor);
+    this.officePrizeItemAnchor.position.set(0.34, -0.46, -0.62);
+    this.officePrizeItemAnchor.rotation.set(0.1, -0.24, 0.06);
+    this.officePrizeItemAnchor.visible = false;
+    this.createOfficePrizeItemModels();
     this.camera.add(this.officeTabletAnchor);
     this.officeTabletAnchor.position.set(0.34, -0.36, -0.72);
     this.officeTabletAnchor.rotation.set(-0.1, -0.18, 0.04);
     this.officeTabletAnchor.visible = false;
     this.createOfficeTabletModel();
+    this.camera.add(this.chapterFourBoxHeldAnchor);
+    this.chapterFourBoxHeldAnchor.position.set(0.36, -0.46, -0.64);
+    this.chapterFourBoxHeldAnchor.rotation.set(0.08, -0.22, 0.06);
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.camera.add(this.chapterFourBoxHideAnchor);
+    this.chapterFourBoxHideAnchor.position.set(0, -0.18, -0.34);
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.camera.add(this.chapterFourBoxWideAnchor);
+    this.chapterFourBoxWideAnchor.position.set(0, -0.08, -0.38);
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.createChapterFourBoxModels();
+    this.camera.add(this.chapterFourBlueJumpscareAnchor);
+    this.createChapterFourBlueJumpscareModel();
+    this.camera.add(this.chapterFourGreenJumpscareAnchor);
+    this.createChapterFourGreenJumpscareModel();
+    this.scene.add(this.chapterFourBoxWorldAnchor);
+    this.chapterFourBoxWorldAnchor.visible = false;
     this.camera.add(this.zombieWeaponAnchor);
     this.zombieWeaponAnchor.position.set(0.46, -0.36, -0.58);
     this.zombieWeaponAnchor.visible = false;
+    this.camera.add(this.chapterSixHeldItemAnchor);
+    this.chapterSixHeldItemAnchor.position.set(0.46, -0.34, -0.72);
+    this.chapterSixHeldItemAnchor.rotation.set(-0.18, -0.42, 0.16);
+    this.chapterSixHeldItemAnchor.visible = false;
+    this.camera.add(this.chapterSixPettingArmAnchor);
+    this.chapterSixPettingArmAnchor.visible = false;
+    this.createChapterSixPettingArmModel();
     this.camera.add(this.placementToolAnchor);
     this.placementToolAnchor.position.set(0.42, -0.38, -0.62);
     this.placementToolAnchor.rotation.set(-0.12, -0.28, 0.08);
     this.placementToolAnchor.visible = false;
     this.createPlacementToolModel();
+    this.camera.add(this.microphoneSoundToolAnchor);
+    this.microphoneSoundToolAnchor.position.set(0.4, -0.36, -0.58);
+    this.microphoneSoundToolAnchor.rotation.set(-0.08, -0.2, 0.08);
+    this.microphoneSoundToolAnchor.visible = false;
+    this.createMicrophoneSoundToolModel();
+    this.loadSavedMicrophoneSounds();
     this.createPlacementPreviewModel();
     this.scene.add(this.placementMarkerRoot, this.placementPreview);
     this.placementPreview.visible = false;
@@ -848,14 +1236,27 @@ export class Game {
     this.hud.onChapterSelect(this.handleChapterSelection);
     this.hud.onOfficeJumpscareSelect(this.handleOfficeJumpscareSelection);
     this.hud.onOfficeModeSelect(this.handleOfficeModeSelection);
+    this.hud.onMicrophoneToggle(this.handleMicrophoneToggle);
+    this.hud.onMinecraftInventoryAction(this.handleMinecraftInventoryAction);
+    this.hud.onChapterFiveMonitorAction(this.handleChapterFiveMonitorAction);
+    this.hud.onCuratorSave(this.handleCuratorSave);
     this.player.controls.addEventListener('lock', this.handleLockChange);
     this.player.controls.addEventListener('unlock', this.handleLockChange);
+    window.addEventListener('keydown', this.handleGlobalKeyDown, { capture: true });
     this.shell.root.addEventListener('click', this.handlePlayAreaClick);
 
     this.resizeObserver.observe(this.shell.viewport);
     this.resize();
 
-    if (START_IN_CHAPTER_THREE) {
+    if (START_IN_CHAPTER_SEVEN) {
+      this.beginChapterSeven();
+    } else if (START_IN_CHAPTER_SIX) {
+      this.beginChapterSix();
+    } else if (START_IN_CHAPTER_FIVE) {
+      this.beginChapterFive();
+    } else if (START_IN_CHAPTER_FOUR) {
+      this.beginChapterFour();
+    } else if (START_IN_CHAPTER_THREE) {
       this.beginOfficeChapter();
     } else if (START_IN_CHAPTER_TWO) {
       this.beginChapterTwo();
@@ -875,6 +1276,7 @@ export class Game {
     this.resizeObserver.disconnect();
     this.player.controls.removeEventListener('lock', this.handleLockChange);
     this.player.controls.removeEventListener('unlock', this.handleLockChange);
+    window.removeEventListener('keydown', this.handleGlobalKeyDown, { capture: true });
     this.shell.root.removeEventListener('click', this.handlePlayAreaClick);
     this.input.destroy();
     this.player.destroy();
@@ -888,6 +1290,10 @@ export class Game {
     this.partyShowAudio.destroy();
     this.powerEventAudio.destroy();
     this.voiceInput.destroy();
+    this.stopOfficeSpeechRecognition();
+    this.stopMicrophoneSoundRecording(true);
+    this.releaseMicrophoneSoundStream();
+    this.revokeMicrophoneSoundPreviewUrl();
     this.hud.destroy();
     this.renderer.dispose();
     this.shell.viewport.replaceChildren();
@@ -896,16 +1302,40 @@ export class Game {
   private readonly resize = (): void => {
     const width = Math.max(this.shell.viewport.clientWidth, 1);
     const height = Math.max(this.shell.viewport.clientHeight, 1);
-    const renderScale = this.doomModeActive ? 0.22 : this.officeTabletCameraFeedActive ? 0.48 : 1;
+    const officeRenderScale = this.officeTabletCameraFeedActive
+      ? CHAPTER_THREE_CAMERA_RENDER_SCALE
+      : this.getOfficeNightBlend() > 0.01
+        ? CHAPTER_THREE_NIGHT_RENDER_SCALE
+        : CHAPTER_THREE_RENDER_SCALE;
+    const renderScale = this.doomModeActive
+      ? 0.22
+      : this.officeChapterActive
+        ? officeRenderScale
+        : this.chapterFourActive
+          ? CHAPTER_FOUR_RENDER_SCALE
+          : this.chapterFiveActive
+            ? 0.92
+            : this.chapterSixActive
+              ? 0.9
+              : this.chapterSevenActive
+                ? 0.9
+                : 1;
     const renderWidth = Math.max(1, Math.round(width * renderScale));
     const renderHeight = Math.max(1, Math.round(height * renderScale));
 
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.chapterFourBoxWideCamera.aspect = width / height;
+    this.chapterFourBoxWideCamera.updateProjectionMatrix();
     this.officeTabletViewCamera.aspect = width / height;
     this.officeTabletViewCamera.updateProjectionMatrix();
     this.renderer.toneMapping = this.doomModeActive ? NoToneMapping : ACESFilmicToneMapping;
-    this.renderer.setPixelRatio(this.doomModeActive ? 1 : Math.min(window.devicePixelRatio, 1.25));
+    this.renderer.setPixelRatio(
+      this.doomModeActive || this.officeChapterActive || this.chapterFourActive
+        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive
+        ? PERFORMANCE_RENDER_PIXEL_RATIO
+        : Math.min(window.devicePixelRatio, DEFAULT_RENDER_PIXEL_RATIO),
+    );
     this.renderer.setSize(renderWidth, renderHeight, false);
     this.renderer.domElement.style.width = `${width}px`;
     this.renderer.domElement.style.height = `${height}px`;
@@ -917,16 +1347,124 @@ export class Game {
     this.syncHud();
   };
 
+  private readonly handleGlobalKeyDown = (event: KeyboardEvent): void => {
+    if ((event.code !== 'KeyB' && event.code !== 'KeyJ' && event.code !== 'KeyK' && event.code !== 'KeyZ' && event.code !== 'KeyX' && event.code !== 'KeyT' && event.code !== 'KeyE') || event.repeat) {
+      return;
+    }
+
+    if (event.code === 'KeyE') {
+      const chapterFiveMonitor = this.chapterFiveActive ? this.chapterFive.getMonitorState() : null;
+      if (
+        this.chapterFiveActive
+        && this.chapterFive.isInteriorMode()
+        && chapterFiveMonitor?.active
+        && chapterFiveMonitor.landed
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.stepOutToChapterFiveSurface();
+      } else if (this.chapterFiveActive && chapterFiveMonitor?.active) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.chapterFive.setMonitorActive(false);
+        this.pushStatus('Cockpit computer closed.', 1.8);
+        this.player.lock();
+        this.syncHud();
+      }
+      return;
+    }
+
+    if (event.code === 'KeyT') {
+      if (!this.chapterFiveActive) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.toggleChapterFiveInteriorMode();
+      return;
+    }
+
+    if (this.chapterFourActive && this.chapterFourBoxActive && (event.code === 'KeyZ' || event.code === 'KeyX')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.setChapterFourBoxViewMode(event.code === 'KeyZ' ? 'wide' : 'normal');
+      this.syncHud();
+      return;
+    }
+
+    if (event.code === 'KeyZ' || event.code === 'KeyX') {
+      return;
+    }
+
+    if (event.code === 'KeyK' && !event.repeat) {
+      if (
+        this.activeOfficeJumpscare
+        || this.officeCameraPuppetPhase === 'jumpscare'
+        || this.activeJumpscare
+        || this.chapterFourPurpleJumpscareTimer > 0
+        || this.chapterFourBlueJumpscareTimer > 0
+        || this.chapterFourGreenJumpscareTimer > 0
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.setCuratorToolOpen(!this.curatorToolOpen);
+      return;
+    }
+
+    if (event.code === 'KeyJ') {
+      if (
+        !this.officeChapterActive
+        || this.activeOfficeJumpscare
+        || this.officeCameraPuppetPhase === 'jumpscare'
+        || this.activeJumpscare
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (this.officeJumpscareMenuOpen) {
+        this.setOfficeJumpscareMenuOpen(false);
+      } else {
+        this.openOfficeJumpscareMenu();
+      }
+      return;
+    }
+
+    if (event.code === 'KeyB' && this.chapterFourActive && (this.chapterFourBoxHeld || this.chapterFourBoxActive)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.setChapterFourBoxHeld(false);
+      this.syncHud();
+      return;
+    }
+
+  };
+
   private readonly handlePlayAreaClick = (event: MouseEvent): void => {
     if (this.player.isLocked()) {
       return;
     }
 
-    if (this.chapterMenuOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen) {
-      return;
+    const clickedMenu = event.target instanceof Element
+      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory');
+    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen) {
+      if (clickedMenu) {
+        return;
+      }
+
+      this.chapterMenuOpen = false;
+      this.curatorToolOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+      this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__chapter-menu, .hud__office-jumpscare-menu, .hud__office-mode-menu')) {
+    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory')) {
       return;
     }
 
@@ -939,6 +1477,7 @@ export class Game {
     this.partyShowAudio.resume();
     this.powerEventAudio.resume();
     this.player.lock();
+    this.requestOfficeMicrophoneStart('auto');
   };
 
   private readonly handleChapterSelection = (chapterId: HudChapterId): void => {
@@ -948,6 +1487,14 @@ export class Game {
       this.beginChapterTwo();
     } else if (chapterId === 'chapter-3') {
       this.beginOfficeChapter();
+    } else if (chapterId === 'chapter-4') {
+      this.beginChapterFour();
+    } else if (chapterId === 'chapter-5') {
+      this.beginChapterFive();
+    } else if (chapterId === 'chapter-6') {
+      this.beginChapterSix();
+    } else if (chapterId === 'chapter-7') {
+      this.beginChapterSeven();
     } else if (chapterId === 'doom-fps') {
       this.beginDoomMode();
     } else {
@@ -964,7 +1511,7 @@ export class Game {
       return;
     }
 
-    this.startOfficeJumpscare(definition, this.officeJumpscareMenuOpen);
+    this.startOfficeJumpscare(definition, true);
     this.syncHud();
   };
 
@@ -999,6 +1546,210 @@ export class Game {
     this.setOfficeModeMenuOpen(false);
   };
 
+  private readonly handleMicrophoneToggle = (): void => {
+    if (!this.officeChapterActive) {
+      return;
+    }
+
+    if (!this.officeMicrophoneEnabled) {
+      this.officeMicrophoneManualOff = false;
+      this.requestOfficeMicrophoneStart('manual');
+      return;
+    }
+
+    if (this.officeMicrophoneStartPending) {
+      this.officeMicrophoneManualOff = true;
+      this.officeMicrophoneEnabled = false;
+      this.officeMicrophoneStartPending = false;
+      this.officeMicrophoneStartToken += 1;
+      this.stopOfficeSpeechRecognition();
+      this.officePlayerVoiceLevel = 0;
+      this.officePlayerNoiseLevel = 0;
+      this.pushStatus('Microphone start cancelled.', 1.8);
+    } else {
+      this.officeMicrophoneManualOff = true;
+      this.voiceInput.stop();
+      this.stopOfficeSpeechRecognition();
+      this.officeMicrophoneEnabled = false;
+      this.officeMicrophoneStartToken += 1;
+      this.officePlayerVoiceLevel = 0;
+      this.officePlayerNoiseLevel = 0;
+      this.pushStatus('Microphone off. Animatronics cannot hear your voice.', 2.4);
+    }
+    this.syncHud();
+  };
+
+  private readonly handleMinecraftInventoryAction = (action: MinecraftInventoryAction): void => {
+    if (!this.chapterSixActive || !this.chapterSix.isInventoryOpen()) {
+      return;
+    }
+
+    this.chapterSix.handleInventoryAction(action);
+    this.syncHud();
+  };
+
+  private requestOfficeMicrophoneStart(mode: 'manual' | 'auto'): void {
+    if (
+      !this.officeChapterActive
+      || this.voiceInput.isActive()
+      || this.officeMicrophoneStartPending
+      || (mode === 'auto' && (!this.officeGameModeActive || this.officeMicrophoneManualOff || this.voiceInput.isBlocked()))
+    ) {
+      return;
+    }
+
+    this.officeMicrophoneEnabled = true;
+    this.officeMicrophoneStartPending = true;
+    const startToken = ++this.officeMicrophoneStartToken;
+    if (mode === 'manual') {
+      this.pushStatus('Microphone turning on. Allow browser permission if asked.', 2.4);
+    } else if (!this.officeMicrophoneAutoStatusShown) {
+      this.officeMicrophoneAutoStatusShown = true;
+      this.pushStatus('Chapter 3 voice listening is turning on. Talking can attract wandering animatronics.', 3);
+    }
+    this.syncHud();
+
+    void this.voiceInput.start().then((started) => {
+      if (startToken !== this.officeMicrophoneStartToken) {
+        if (started) {
+          this.voiceInput.stop();
+        }
+        this.stopOfficeSpeechRecognition();
+        return;
+      }
+
+      this.officeMicrophoneStartPending = false;
+      if (!started) {
+        this.officeMicrophoneEnabled = false;
+        this.stopOfficeSpeechRecognition();
+        this.officePlayerVoiceLevel = 0;
+        this.officePlayerNoiseLevel = 0;
+        if (mode === 'manual') {
+          this.pushStatus('Microphone stayed off. Allow microphone permission in the browser to use voice noise.', 3.2);
+        } else if (!this.voiceInput.isBlocked()) {
+          this.officeMicrophoneAutoStatusShown = false;
+        }
+        this.syncHud();
+        return;
+      }
+
+      this.officeMicrophoneEnabled = true;
+      this.startOfficeSpeechRecognition();
+      this.pushStatus(
+        mode === 'manual'
+          ? 'Microphone on. Animatronics can hear your voice in Night Mode and Game Mode.'
+          : 'Microphone on. Wandering animatronics can hear you talk from farther away.',
+        2.8,
+      );
+      this.syncHud();
+    });
+  }
+
+  private startOfficeSpeechRecognition(): void {
+    if (this.officeSpeechRecognitionRunning || this.officeSpeechRecognition) {
+      return;
+    }
+
+    const recognitionConstructor = (
+      (window as Window & {
+        SpeechRecognition?: OfficeSpeechRecognitionConstructor;
+        webkitSpeechRecognition?: OfficeSpeechRecognitionConstructor;
+      }).SpeechRecognition
+      ?? (window as Window & {
+        SpeechRecognition?: OfficeSpeechRecognitionConstructor;
+        webkitSpeechRecognition?: OfficeSpeechRecognitionConstructor;
+      }).webkitSpeechRecognition
+    );
+    if (!recognitionConstructor) {
+      return;
+    }
+
+    const recognition = new recognitionConstructor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognition.onresult = (event) => {
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result?.[0]?.transcript ?? '';
+        if (this.isOfficeInsultTranscript(transcript)) {
+          this.officeInsultHeardTimer = 1.4;
+        }
+      }
+    };
+    recognition.onerror = () => {
+      this.officeSpeechRecognitionRunning = false;
+    };
+    recognition.onend = () => {
+      this.officeSpeechRecognitionRunning = false;
+      if (this.officeSpeechRecognition === recognition) {
+        this.officeSpeechRecognition = null;
+      }
+      if (this.officeMicrophoneEnabled && this.officeChapterActive && this.officeGameModeActive) {
+        window.setTimeout(() => this.startOfficeSpeechRecognition(), 220);
+      }
+    };
+
+    this.officeSpeechRecognition = recognition;
+    try {
+      recognition.start();
+      this.officeSpeechRecognitionRunning = true;
+    } catch {
+      this.officeSpeechRecognition = null;
+      this.officeSpeechRecognitionRunning = false;
+    }
+  }
+
+  private stopOfficeSpeechRecognition(): void {
+    const recognition = this.officeSpeechRecognition;
+    this.officeSpeechRecognition = null;
+    this.officeSpeechRecognitionRunning = false;
+    if (!recognition) {
+      return;
+    }
+
+    recognition.onend = null;
+    recognition.onerror = null;
+    recognition.onresult = null;
+    try {
+      recognition.stop();
+    } catch {
+      // Speech recognition may already be stopped by the browser.
+    }
+  }
+
+  private isOfficeInsultTranscript(transcript: string): boolean {
+    const normalized = transcript
+      .toLowerCase()
+      .replace(/[^a-z'\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return OFFICE_INSULT_PHRASES.some((phrase) => normalized.includes(phrase));
+  }
+
+  private readonly handleChapterFiveMonitorAction = (action: HudChapterFiveMonitorAction): void => {
+    if (!this.chapterFiveActive || !this.chapterFive.isInteriorMode()) {
+      return;
+    }
+
+    this.pushStatus(this.chapterFive.applyMonitorAction(action), 2.4);
+    this.syncHud();
+  };
+
+  private readonly handleCuratorSave = (slotLabel: string, summary: string): void => {
+    console.info(`[Character Creator] ${summary}`);
+    this.pushStatus(`${slotLabel} saved in the Character Creator. Tell Codex "${slotLabel}" when you want this design used.`, 4.2);
+    this.syncHud();
+  };
+
+  private updateChapterFiveAlarmAudio(): void {
+    const alarmActive = this.chapterFiveActive && this.chapterFive.getMonitorState().arrivalAlarmActive;
+    if (alarmActive && !this.chapterFiveAlarmWasActive) {
+      this.gameplaySfxAudio.playSpaceshipAlarm();
+    }
+    this.chapterFiveAlarmWasActive = alarmActive;
+  }
+
   private setChapterMenuOpen(open: boolean): void {
     if (this.chapterMenuOpen === open) {
       this.syncHud();
@@ -1007,16 +1758,59 @@ export class Game {
 
     this.chapterMenuOpen = open;
     if (open) {
+      this.curatorToolOpen = false;
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
     }
 
     if (open && this.player.isLocked()) {
+      this.syncHud();
       this.player.controls.unlock();
       return;
     }
 
     this.syncHud();
+  }
+
+  private setCuratorToolOpen(open: boolean): void {
+    if (this.curatorToolOpen === open) {
+      this.syncHud();
+      return;
+    }
+
+    this.curatorToolOpen = open;
+    if (open) {
+      this.chapterMenuOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+      this.officeModeMenuStep = 'mode';
+      this.officeModeMenuPendingMode = null;
+    }
+
+    if (open && this.player.isLocked()) {
+      this.syncHud();
+      this.player.controls.unlock();
+      return;
+    }
+
+    this.syncHud();
+  }
+
+  private openOfficeJumpscareMenu(): void {
+    if (!this.officeChapterActive) {
+      return;
+    }
+
+    this.chapterMenuOpen = false;
+    this.curatorToolOpen = false;
+    this.officeModeMenuOpen = false;
+    this.officeModeMenuStep = 'mode';
+    this.officeModeMenuPendingMode = null;
+    this.officeJumpscareMenuOpen = true;
+    this.syncHud();
+    if (this.player.isLocked()) {
+      this.player.controls.unlock();
+    }
   }
 
   private setOfficeJumpscareMenuOpen(open: boolean): void {
@@ -1032,10 +1826,12 @@ export class Game {
     this.officeJumpscareMenuOpen = open;
     if (open) {
       this.setChapterMenuOpen(false);
+      this.curatorToolOpen = false;
       this.officeModeMenuOpen = false;
     }
 
     if (open && this.player.isLocked()) {
+      this.syncHud();
       this.player.controls.unlock();
       return;
     }
@@ -1056,6 +1852,7 @@ export class Game {
     this.officeModeMenuOpen = open;
     if (open) {
       this.setChapterMenuOpen(false);
+      this.curatorToolOpen = false;
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuStep = 'mode';
       this.officeModeMenuPendingMode = null;
@@ -1079,6 +1876,33 @@ export class Game {
     this.chapterTwoEggQuestNoticeTime = Math.max(this.chapterTwoEggQuestNoticeTime - deltaSeconds, 0);
     this.chapterTwoDodoTrailNoticeTime = Math.max(this.chapterTwoDodoTrailNoticeTime - deltaSeconds, 0);
     this.chapterTwoPowerOutageNoticeTime = Math.max(this.chapterTwoPowerOutageNoticeTime - deltaSeconds, 0);
+    const chapterFourPurpleWasJumpscaring = this.chapterFourPurpleJumpscareTimer > 0;
+    const chapterFourBlueWasJumpscaring = this.chapterFourBlueJumpscareTimer > 0;
+    const chapterFourGreenWasJumpscaring = this.chapterFourGreenJumpscareTimer > 0;
+    this.chapterFourPurpleJumpscareTimer = Math.max(0, this.chapterFourPurpleJumpscareTimer - deltaSeconds);
+    this.chapterFourPurpleJumpscareCooldown = Math.max(0, this.chapterFourPurpleJumpscareCooldown - deltaSeconds);
+    this.chapterFourBlueJumpscareTimer = Math.max(0, this.chapterFourBlueJumpscareTimer - deltaSeconds);
+    this.chapterFourBlueJumpscareCooldown = Math.max(0, this.chapterFourBlueJumpscareCooldown - deltaSeconds);
+    this.chapterFourGreenJumpscareTimer = Math.max(0, this.chapterFourGreenJumpscareTimer - deltaSeconds);
+    this.chapterFourGreenJumpscareCooldown = Math.max(0, this.chapterFourGreenJumpscareCooldown - deltaSeconds);
+    if (chapterFourPurpleWasJumpscaring && this.chapterFourPurpleJumpscareTimer <= 0 && this.chapterFourActive) {
+      this.chapterFourCrouching = false;
+      this.player.teleport(this.chapterFour.spawn);
+      this.player.lookToward(this.chapterFour.lookTarget, 1);
+      this.pushStatus('Purple chomps. You wake back up at the Chapter 4 spawn area.', 3);
+      this.syncHud();
+      return;
+    }
+    if (chapterFourBlueWasJumpscaring && this.chapterFourBlueJumpscareTimer <= 0 && this.chapterFourActive) {
+      this.beginChapterFour();
+      this.pushStatus('Blue finishes the jumpscare. Chapter 4 restarts, and Blue moves somewhere else.', 3.2);
+      return;
+    }
+    if (chapterFourGreenWasJumpscaring && this.chapterFourGreenJumpscareTimer <= 0 && this.chapterFourActive) {
+      this.beginChapterFour();
+      this.pushStatus('Green finishes the jumpscare. Chapter 4 restarts, and Green wanders somewhere else.', 3.2);
+      return;
+    }
     this.updateChapterExit(deltaSeconds);
     this.updateChapterTwoCoffee(deltaSeconds);
     this.updateCoffeeBoost(deltaSeconds);
@@ -1092,8 +1916,15 @@ export class Game {
       }
     }
 
+    this.updateOfficeDeathNotice(deltaSeconds);
+    const officeDeathNoticeActive = this.officeDeathNoticePhase !== null;
     const officeJumpscareActive = this.activeOfficeJumpscare !== null || this.officeCameraPuppetPhase === 'jumpscare';
-    const jumpscareLocked = this.activeJumpscare !== null || officeJumpscareActive;
+    const jumpscareLocked = this.activeJumpscare !== null
+      || officeDeathNoticeActive
+      || officeJumpscareActive
+      || this.chapterFourPurpleJumpscareTimer > 0
+      || this.chapterFourBlueJumpscareTimer > 0
+      || this.chapterFourGreenJumpscareTimer > 0;
     const chapterTwoSeated = this.chapterTwoActive && this.chapterTwoSeatId !== null;
     const chapterTwoClimbing = this.chapterTwoActive && this.chapterTwoClimb !== null;
     const chapterTwoSliding = this.chapterTwoActive && this.chapterTwoSlide !== null;
@@ -1105,16 +1936,27 @@ export class Game {
     const officeBallPitSliding = this.officeChapterActive && this.officeBallPitSlide !== null;
     const officeVentActive = this.officeChapterActive && this.officeVentActive;
     const officeVentDropping = this.officeChapterActive && this.officeVentDrop !== null;
+    const chapterFourBoxHiding = this.chapterFourActive && this.chapterFourBoxActive;
+    const chapterFourLockerHiding = this.chapterFourActive && this.chapterFourLockerId !== null;
     this.zombieFireCooldown = Math.max(0, this.zombieFireCooldown - deltaSeconds);
     this.zombieWeaponKick = Math.max(0, this.zombieWeaponKick - deltaSeconds * 6.8);
 
-    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && this.input.consumeChapterMenuToggle()) {
-      this.setChapterMenuOpen(!this.chapterMenuOpen);
+    const chapterMenuToggle = this.input.consumeChapterMenuToggle();
+    if (chapterMenuToggle) {
+      if (this.chapterMenuOpen) {
+        this.setChapterMenuOpen(false);
+      } else if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding) {
+        this.setChapterMenuOpen(true);
+      }
     }
 
     const officeJumpscareMenuToggle = this.input.consumeOfficeJumpscareMenuToggle();
     if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && this.officeChapterActive && !this.officeModeMenuOpen && officeJumpscareMenuToggle) {
-      this.setOfficeJumpscareMenuOpen(!this.officeJumpscareMenuOpen);
+      if (this.officeJumpscareMenuOpen) {
+        this.setOfficeJumpscareMenuOpen(false);
+      } else {
+        this.openOfficeJumpscareMenu();
+      }
     }
 
     if (this.input.consumeHudHelpToggle()) {
@@ -1122,7 +1964,7 @@ export class Game {
     }
 
     const modeOrToolToggle = this.input.consumePlacementToolToggle();
-    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && modeOrToolToggle) {
+    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && modeOrToolToggle) {
       if (this.officeChapterActive) {
         this.setOfficeModeMenuOpen(!this.officeModeMenuOpen);
       } else if (!this.chapterMenuOpen) {
@@ -1139,9 +1981,16 @@ export class Game {
     }
 
     const hotbarSlot = this.input.consumeHotbarSlot();
-    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && this.officeChapterActive && hotbarSlot) {
-      if (this.officeTabletCameraFeedActive) {
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive) && hotbarSlot) {
+      if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.selectOfficeTabletCameraBySlot(hotbarSlot);
+      } else if (this.microphoneSoundToolActive) {
+        this.previewMicrophoneSoundBySlot(hotbarSlot);
+      } else if (this.chapterFourActive) {
+        this.handleChapterFourHotbarSlot(hotbarSlot);
+      } else if (this.chapterSixActive) {
+        this.chapterSix.selectHotbarSlot(hotbarSlot);
+        this.syncHud();
       } else {
         this.handleOfficeHotbarSlot(hotbarSlot);
       }
@@ -1154,12 +2003,23 @@ export class Game {
       this.selectDoomWeapon(weaponSelect);
     }
 
-    if (!chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && this.input.consumeFlashlightToggle()) {
+    if (!chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !chapterFourLockerHiding && this.input.consumeFlashlightToggle()) {
       this.flashlight.toggle();
     }
 
     const movementState = this.input.getMovementState();
+    this.chapterFourCrouching = this.chapterFourActive
+      && this.player.isLocked()
+      && !jumpscareLocked
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen
+      && !chapterFourBoxHiding
+      && !chapterFourLockerHiding
+      && this.input.isSpaceHeld();
     const jumpRequested = !this.doomModeActive
+      && !this.chapterFourActive
+      && !this.chapterFiveActive
       && !jumpscareLocked
       && !chapterTwoBearRefusing
       && !chapterTwoSeated
@@ -1172,8 +2032,11 @@ export class Game {
       && !officeBallPitSliding
       && !officeVentActive
       && !officeVentDropping
+      && !chapterFourBoxHiding
+      && !chapterFourLockerHiding
       && this.input.consumeJump();
     const isTryingToMove = movementState.forward !== 0 || movementState.strafe !== 0;
+    const hasSprintStamina = this.officeChapterActive || this.stamina > 0.5;
     const sprinting = this.doomModeActive
       ? this.player.isLocked() && !jumpscareLocked && !chapterTwoSeated && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeSeated && !officeTabletViewing && !officeBallPitHiding && !officeVentActive && !officeVentDropping && isTryingToMove
       : this.player.isLocked()
@@ -1189,9 +2052,12 @@ export class Game {
         && !officeBallPitSliding
         && !officeVentActive
         && !officeVentDropping
+        && !chapterFourBoxHiding
+        && !chapterFourLockerHiding
+        && !this.chapterFourCrouching
         && isTryingToMove
         && movementState.sprint
-        && this.stamina > 0.5;
+        && hasSprintStamina;
 
     const effectiveMovement = jumpscareLocked
       ? { forward: 0, strafe: 0, sprint: false }
@@ -1217,27 +2083,87 @@ export class Game {
         ? { forward: 0, strafe: 0, sprint: false }
       : officeVentActive
         ? { ...movementState, sprint: false }
+      : chapterFourBoxHiding
+        ? { ...movementState, sprint: false }
+      : chapterFourLockerHiding
+        ? { forward: 0, strafe: 0, sprint: false }
+      : this.chapterFourCrouching
+        ? { ...movementState, sprint: false }
+      : this.chapterFiveActive && !this.chapterFive.isInteriorMode() && !this.chapterFive.isSurfaceMode()
+        ? {
+          forward: movementState.forward,
+          strafe: 0,
+          sprint: isTryingToMove && movementState.sprint,
+        }
       : this.doomModeActive
         ? { forward: movementState.forward, strafe: movementState.strafe, sprint: isTryingToMove }
       : sprinting
         ? movementState
         : { ...movementState, sprint: false };
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && this.input.consumeDrop()) {
-      this.handleDrop();
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeDrop()) {
+      if (this.microphoneSoundToolActive) {
+        void this.saveMicrophoneSound();
+      } else if (this.cameraToolActive) {
+        void this.saveCameraToolCapture();
+      } else {
+        this.handleDrop();
+      }
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && this.input.consumeUseItem()) {
-      this.handleUseItem();
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeUseItem()) {
+      if (this.chapterFourActive && this.player.isLocked() && !this.activeJumpscare) {
+        this.toggleChapterFourBox();
+      } else {
+        this.handleUseItem();
+      }
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && this.input.consumePlacementMarkerDelete() && this.placementToolActive) {
-      this.handlePlacementToolRightClick();
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumePlacementMarkerDelete() && (this.placementToolActive || this.microphoneSoundToolActive || this.cameraToolActive)) {
+      if (this.microphoneSoundToolActive) {
+        this.deleteMicrophoneSound();
+      } else if (this.cameraToolActive) {
+        this.deleteCameraToolCapture();
+      } else {
+        this.handlePlacementToolRightClick();
+      }
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && this.input.consumeFire()) {
+    const chapterSixPickupRequested = this.input.consumePickup();
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && chapterSixPickupRequested && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
+      if (this.chapterSix.pickUpLookedAtPossum()) {
+        this.startChapterSixPossumPickupAnimation();
+        this.pushStatus('You pick up the possum. It is now in the selected hotbar slot.', 2.4);
+        this.syncHud();
+      } else {
+        this.pushStatus('Look closely at the possum and press R to pick it up.', 1.8);
+      }
+    }
+
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeSecondaryFire() && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
+      if (this.chapterSix.petLookedAtPossum()) {
+        this.pushStatus('You lean down and pet the possum. It flips over for belly rubs.', 2.8);
+        this.syncHud();
+        return;
+      }
+
+      const placed = this.chapterSix.placeSelectedBlock(this.player.getPosition());
+      this.pushStatus(
+        placed
+          ? 'Block placed from the selected hotbar slot.'
+          : 'No placeable block is selected, or that block face is blocked.',
+        1.6,
+      );
+      this.syncHud();
+    }
+
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeFire()) {
       if (this.officeChapterActive && (this.officeTabletHeld || this.officeTabletCameraFeedActive)) {
         this.toggleOfficeTabletCameraFeed();
+      } else if (this.microphoneSoundToolActive) {
+        this.previewMicrophoneSound();
+      } else if (this.cameraToolActive) {
+        void this.captureCameraToolPicture();
       } else if (this.placementToolActive) {
         this.placePlacementMarker();
       } else {
@@ -1251,14 +2177,91 @@ export class Game {
         : 0,
     );
     this.player.setSupportedFloor(this.getSupportedFloorHeight());
-    const playerPositionBeforeMove = this.player.getPosition().clone();
-    this.player.update(
-      deltaSeconds,
-      effectiveMovement,
-      jumpRequested,
-      !officeVentActive && !officeVentDropping,
-      officeVentActive ? 0.42 : 1,
+    this.player.setMovementConstraint(
+      this.chapterSixActive
+        ? (nextX, nextZ, currentPosition) => this.chapterSix.canPlayerOccupy(currentPosition, nextX, nextZ)
+        : null,
     );
+    const playerPositionBeforeMove = this.player.getPosition().clone();
+    this.updateOfficePrizeTimers(deltaSeconds);
+    const officePrizeSpeedScale = this.officeChapterActive && this.officeLollipopBoostRemaining > 0
+      ? OFFICE_LOLLIPOP_SPEED_MULTIPLIER
+      : 1;
+    const movementSpeedScale = (officeVentActive ? 0.42 : 1) * officePrizeSpeedScale;
+    const playerMovementOptions = this.getOfficePlayerMovementOptions(effectiveMovement);
+    if (this.chapterFiveActive && !this.chapterFive.isInteriorMode() && !this.chapterFive.isSurfaceMode()) {
+      this.player.update(
+        deltaSeconds,
+        { forward: 0, strafe: 0, sprint: false },
+        false,
+        false,
+        0,
+        false,
+      );
+      this.camera.getWorldDirection(this.chapterFiveAimDirection).normalize();
+      this.camera.getWorldPosition(this.chapterFiveCameraPosition);
+      const chapterFiveCanSteer = this.player.isLocked() && !this.chapterMenuOpen && !jumpscareLocked;
+      const chapterFiveLookDelta = chapterFiveCanSteer
+        ? this.player.consumeLookDelta(this.chapterFiveLookDelta)
+        : { x: 0, y: 0 };
+      this.chapterFive.update(
+        deltaSeconds,
+        chapterFiveCanSteer
+          ? {
+            forward: effectiveMovement.forward,
+            strafe: effectiveMovement.strafe,
+            sprint: effectiveMovement.sprint,
+            lookDeltaX: chapterFiveLookDelta.x,
+            lookDeltaY: chapterFiveLookDelta.y,
+            aimDirection: this.chapterFiveAimDirection,
+            cameraPosition: this.chapterFiveCameraPosition,
+            repairing: this.input.isInteractHeld(),
+          }
+          : {
+            forward: 0,
+            strafe: 0,
+            sprint: false,
+            lookDeltaX: 0,
+            lookDeltaY: 0,
+            aimDirection: this.chapterFiveAimDirection,
+            cameraPosition: this.chapterFiveCameraPosition,
+            repairing: false,
+          },
+      );
+      if (chapterFiveCanSteer) {
+        this.chapterFive.getFlightLookTarget(this.chapterFiveCameraPosition, this.chapterFiveFlightLookTarget);
+        this.player.lookToward(this.chapterFiveFlightLookTarget, 1);
+      }
+    } else {
+      this.player.update(
+        deltaSeconds,
+        effectiveMovement,
+        jumpRequested,
+        !officeVentActive && !officeVentDropping,
+        movementSpeedScale,
+        true,
+        this.chapterSixActive ? 1.34 : 1,
+        playerMovementOptions,
+      );
+    }
+    if (this.chapterFiveActive && (this.chapterFive.isInteriorMode() || this.chapterFive.isSurfaceMode())) {
+      this.camera.getWorldDirection(this.chapterFiveAimDirection).normalize();
+      this.camera.getWorldPosition(this.chapterFiveCameraPosition);
+      this.chapterFive.update(deltaSeconds, {
+        forward: 0,
+        strafe: 0,
+        sprint: false,
+        lookDeltaX: 0,
+        lookDeltaY: 0,
+        aimDirection: this.chapterFiveAimDirection,
+        cameraPosition: this.chapterFiveCameraPosition,
+        repairing: this.input.isInteractHeld() && this.player.isLocked(),
+      });
+    }
+    this.updateChapterFiveAlarmAudio();
+    if (chapterFourLockerHiding) {
+      this.lockPlayerInChapterFourLocker();
+    }
     if (officeVentActive) {
       this.constrainOfficeVentPosition();
     }
@@ -1297,11 +2300,12 @@ export class Game {
       deltaSeconds,
       this.player.isLocked()
         && !this.chapterMenuOpen
+        && !this.chapterFiveActive
         && !playerInOfficeBallPit
         && horizontalMoveDistance > 0.001,
       effectiveMovement.sprint,
     );
-    this.updateStamina(deltaSeconds, sprinting);
+    this.updateStamina(deltaSeconds, sprinting && !this.chapterFiveActive && !this.officeChapterActive);
     this.updateChapterTwoClimb(deltaSeconds);
     this.updateChapterTwoSlide(deltaSeconds);
 
@@ -1309,7 +2313,7 @@ export class Game {
       this.updateZombieMode(deltaSeconds);
     } else if (this.doomModeActive) {
       this.updateDoomMode(deltaSeconds);
-    } else if (this.chapterTwoActive || this.officeChapterActive) {
+    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive) {
       this.monsterState = this.unlockedMonsterState;
       this.touchingMonster = null;
     } else {
@@ -1317,13 +2321,13 @@ export class Game {
     }
     this.updateHealth(deltaSeconds);
     this.updateAtmosphere();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
     }
     this.updateOfficeGlassThrows(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateMachineJobs(deltaSeconds);
     }
 
@@ -1348,12 +2352,71 @@ export class Game {
       this.doomMode.update(deltaSeconds);
     } else if (this.officeChapterActive) {
       this.officeChapter.update(deltaSeconds, this.player.getPosition());
+      this.updateOfficeDoorSoundPlayback();
       this.updateOfficePrizeWheelAudio();
       this.updateOfficeVentDrop();
       this.updateOfficeModeCycle(deltaSeconds);
       this.updateOfficeGameMode(deltaSeconds);
-      this.updateOfficeCameraPuppetThreat(deltaSeconds);
-    } else if (!this.chapterTwoActive && !this.officeChapterActive) {
+      this.updateOfficeCameraPuppetThreat();
+    } else if (this.chapterFourActive) {
+      const chapterFourMoving = horizontalMoveDistance > 0.006;
+      const chapterFourPlayerState = {
+        position: this.player.getPosition(),
+        crouching: this.chapterFourCrouching,
+        boxActive: this.chapterFourBoxActive,
+        lockerActive: this.chapterFourLockerId !== null,
+        moving: chapterFourMoving,
+        sprinting: effectiveMovement.sprint,
+        noiseLevel: chapterFourMoving
+          ? effectiveMovement.sprint
+            ? 1
+            : this.chapterFourCrouching
+              ? 0.18
+              : this.chapterFourBoxActive
+                ? 0.58
+                : 0.46
+          : 0,
+      };
+      this.chapterFour.update(deltaSeconds, chapterFourPlayerState);
+      if (this.chapterFour.consumeBlueRoar()) {
+        this.gameplaySfxAudio.playOfficeJumpscareCue('stomp-roar');
+        this.pushStatus('Blue roars and reaches both arms out.', 2.2);
+      }
+      if (this.chapterFour.consumeBlueStomp()) {
+        this.gameplaySfxAudio.playBlueStomp();
+      }
+      if (this.chapterFour.consumeGreenSense()) {
+        this.pushStatus('Green sweeps his long arms through the hallway. Stay out of his hands.', 2.6);
+      }
+      if (this.chapterFour.consumeGreenSqueak()) {
+        this.gameplaySfxAudio.playGreenSqueak();
+      }
+      const greenBoxGrabbed = this.chapterFour.consumeGreenBoxGrab();
+      const greenTouchedPlayer = this.chapterFour.consumeGreenTouch();
+      if (
+        !jumpscareLocked
+        && this.chapterFourGreenJumpscareCooldown <= 0
+        && (greenBoxGrabbed || greenTouchedPlayer)
+      ) {
+        this.triggerChapterFourGreenJumpscare(greenBoxGrabbed);
+      }
+      if (
+        !jumpscareLocked
+        && this.chapterFourBlueJumpscareCooldown <= 0
+        && this.chapterFour.isBlueCatching(chapterFourPlayerState)
+      ) {
+        this.triggerChapterFourBlueJumpscare();
+      }
+      if (
+        !jumpscareLocked
+        && this.chapterFourPurpleJumpscareCooldown <= 0
+        && this.chapterFour.isMistHandsCatching(this.player.getPosition(), this.chapterFourCrouching)
+      ) {
+        this.triggerChapterFourPurpleJumpscare();
+      }
+    } else if (this.chapterSevenActive) {
+      this.chapterSeven.update(deltaSeconds, this.player.getPosition());
+    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
       this.chapterTwo.update(deltaSeconds, this.player.getPosition());
@@ -1409,12 +2472,31 @@ export class Game {
     this.updateZombieWeaponDisplay(deltaSeconds, isTryingToMove && !jumpscareLocked, sprinting);
     this.updateZombieBulletTracers(deltaSeconds);
     this.updatePlacementToolDisplay();
+    this.chapterSix.update(
+      deltaSeconds,
+      this.camera,
+      this.player.getPosition(),
+      this.chapterSixActive && this.player.isLocked() && !this.chapterMenuOpen && !this.chapterSix.isInventoryOpen(),
+      this.input.isFireHeld(),
+    );
+    if (this.chapterSixActive && this.chapterSix.consumePossumSqueak()) {
+      this.gameplaySfxAudio.playPossumSqueak();
+    }
+    this.updateChapterSixHeldItemDisplay(deltaSeconds);
+    this.updateChapterSixPettingArmDisplay(deltaSeconds);
+    this.updateMicrophoneSoundToolDisplay();
     this.updateOfficeTabletDisplay();
+    this.updateChapterFourBoxDisplay();
+    this.updateChapterFourBlueJumpscareModel();
+    this.updateChapterFourGreenJumpscareModel();
     this.updateOfficeGlassDisplay();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.zombieModeActive && !this.doomModeActive) {
+    this.updateOfficePrizeItemDisplay();
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateStoveLight();
     }
-    this.syncHud();
+    if (this.shouldSyncHudThisFrame(deltaSeconds, jumpscareLocked)) {
+      this.syncHud();
+    }
     this.renderScene();
   };
 
@@ -1431,6 +2513,12 @@ export class Game {
       this.resize();
     }
 
+    if (this.chapterFourActive && this.chapterFourBoxActive && this.chapterFourBoxViewMode === 'wide') {
+      this.updateChapterFourBoxWideCamera();
+      this.renderer.render(this.scene, this.chapterFourBoxWideCamera);
+      return;
+    }
+
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -1442,8 +2530,121 @@ export class Game {
     this.officeTabletViewCamera.quaternion.copy(this.officeTabletViewQuaternion);
   }
 
+  private updateChapterFourBoxWideCamera(): void {
+    const playerPosition = this.player.getPosition();
+    this.camera.getWorldDirection(this.chapterFourBoxCameraForward);
+    this.chapterFourBoxCameraForward.y = 0;
+    if (this.chapterFourBoxCameraForward.lengthSq() < 0.0001) {
+      this.chapterFourBoxCameraForward.set(0, 0, -1);
+    }
+    this.chapterFourBoxCameraForward.normalize();
+
+    const floorY = playerPosition.y - GAME_CONFIG.player.height;
+    this.chapterFourBoxCameraFocus.set(playerPosition.x, floorY + 0.88, playerPosition.z);
+    this.chapterFourBoxCameraDesired.copy(this.chapterFourBoxCameraFocus);
+    this.chapterFourBoxCameraDesired.addScaledVector(this.chapterFourBoxCameraForward, -CHAPTER_FOUR_BOX_CAMERA_DISTANCE);
+    this.chapterFourBoxCameraDesired.y = floorY + CHAPTER_FOUR_BOX_CAMERA_HEIGHT;
+    this.chapterFourBoxCameraSafe.copy(this.chapterFourBoxCameraFocus);
+    this.chapterFourBoxCameraSafe.y = floorY + 1.35;
+
+    const isCameraCandidateClear = (candidate: Vector3): boolean => {
+      if (isBlocked(candidate.x, candidate.z, this.chapterFour.colliders, CHAPTER_FOUR_BOX_CAMERA_RADIUS)) {
+        return false;
+      }
+
+      const lineSamples = 7;
+      for (let index = 1; index < lineSamples; index += 1) {
+        this.chapterFourBoxCameraSample.lerpVectors(this.chapterFourBoxCameraFocus, candidate, index / lineSamples);
+        if (isBlocked(
+          this.chapterFourBoxCameraSample.x,
+          this.chapterFourBoxCameraSample.z,
+          this.chapterFour.colliders,
+          CHAPTER_FOUR_BOX_CAMERA_RADIUS * 0.72,
+        )) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    const samples = 12;
+    let safeDistance = 0;
+    for (let index = 1; index <= samples; index += 1) {
+      this.chapterFourBoxCameraSample.lerpVectors(
+        this.chapterFourBoxCameraFocus,
+        this.chapterFourBoxCameraDesired,
+        index / samples,
+      );
+      if (isBlocked(
+        this.chapterFourBoxCameraSample.x,
+        this.chapterFourBoxCameraSample.z,
+        this.chapterFour.colliders,
+        CHAPTER_FOUR_BOX_CAMERA_RADIUS,
+      )) {
+        break;
+      }
+
+      this.chapterFourBoxCameraSafe.copy(this.chapterFourBoxCameraSample);
+      safeDistance = this.chapterFourBoxCameraSafe.distanceTo(this.chapterFourBoxCameraFocus);
+    }
+
+    if (safeDistance < 1.25) {
+      let foundFallback = false;
+      if (
+        this.chapterFourBoxWideCameraReady
+        && this.chapterFourBoxWideCamera.position.distanceTo(this.chapterFourBoxCameraFocus) > 1.1
+        && isCameraCandidateClear(this.chapterFourBoxWideCamera.position)
+      ) {
+        this.chapterFourBoxCameraSafe.copy(this.chapterFourBoxWideCamera.position);
+        foundFallback = true;
+      }
+
+      if (!foundFallback) {
+        const fallbackDistance = 1.65;
+        const desiredAngle = Math.atan2(
+          this.chapterFourBoxCameraDesired.z - this.chapterFourBoxCameraFocus.z,
+          this.chapterFourBoxCameraDesired.x - this.chapterFourBoxCameraFocus.x,
+        );
+        const fallbackOffsets = [0.55, -0.55, 1.05, -1.05, 1.65, -1.65, Math.PI] as const;
+        for (const offset of fallbackOffsets) {
+          this.chapterFourBoxCameraSafe.set(
+            this.chapterFourBoxCameraFocus.x + Math.cos(desiredAngle + offset) * fallbackDistance,
+            floorY + CHAPTER_FOUR_BOX_CAMERA_HEIGHT,
+            this.chapterFourBoxCameraFocus.z + Math.sin(desiredAngle + offset) * fallbackDistance,
+          );
+          if (!isCameraCandidateClear(this.chapterFourBoxCameraSafe)) {
+            continue;
+          }
+
+          foundFallback = true;
+          break;
+        }
+      }
+
+      if (!foundFallback) {
+        this.chapterFourBoxCameraSafe.set(
+          this.chapterFourBoxCameraFocus.x,
+          floorY + CHAPTER_FOUR_BOX_CAMERA_HEIGHT + 0.35,
+          this.chapterFourBoxCameraFocus.z,
+        );
+      }
+    }
+
+    if (
+      !this.chapterFourBoxWideCameraReady
+      || this.chapterFourBoxWideCamera.position.distanceToSquared(this.chapterFourBoxCameraSafe) > 144
+    ) {
+      this.chapterFourBoxWideCamera.position.copy(this.chapterFourBoxCameraSafe);
+      this.chapterFourBoxWideCameraReady = true;
+    } else {
+      this.chapterFourBoxWideCamera.position.lerp(this.chapterFourBoxCameraSafe, 0.28);
+    }
+    this.chapterFourBoxWideCamera.lookAt(this.chapterFourBoxCameraFocus);
+  }
+
   private updateStamina(deltaSeconds: number, sprinting: boolean): void {
-    if (this.doomModeActive) {
+    if (this.doomModeActive || this.officeChapterActive) {
       this.stamina = GAME_CONFIG.player.staminaMax;
       return;
     }
@@ -1469,6 +2670,17 @@ export class Game {
 
   private updateCoffeeBoost(deltaSeconds: number): void {
     this.coffeeBoostRemaining = Math.max(0, this.coffeeBoostRemaining - deltaSeconds);
+  }
+
+  private updateOfficePrizeTimers(deltaSeconds: number): void {
+    if (!this.officeChapterActive) {
+      this.officeLollipopBoostRemaining = 0;
+      this.officeLollipopUseTimer = 0;
+      return;
+    }
+
+    this.officeLollipopBoostRemaining = Math.max(0, this.officeLollipopBoostRemaining - deltaSeconds);
+    this.officeLollipopUseTimer = Math.max(0, this.officeLollipopUseTimer - deltaSeconds);
   }
 
   private createOfficeGlassModel(): Group {
@@ -1523,6 +2735,251 @@ export class Game {
 
     root.add(hand, thumb, finger, glass, rim, base);
     return root;
+  }
+
+  private createOfficePrizeHandModel(): Group {
+    const root = new Group();
+    const handMaterial = new MeshStandardMaterial({
+      color: 0xc88c65,
+      roughness: 0.7,
+      metalness: 0.02,
+    });
+
+    const palm = new Mesh(new BoxGeometry(0.22, 0.14, 0.16), handMaterial);
+    palm.position.set(0.02, -0.1, 0.08);
+    palm.rotation.set(0.08, -0.28, 0.04);
+    const thumb = new Mesh(new CylinderGeometry(0.028, 0.035, 0.22, 10), handMaterial);
+    thumb.position.set(-0.1, -0.015, -0.005);
+    thumb.rotation.set(0.7, 0.16, -0.74);
+    const finger = new Mesh(new CylinderGeometry(0.026, 0.031, 0.22, 10), handMaterial);
+    finger.position.set(0.1, -0.01, -0.02);
+    finger.rotation.set(0.66, -0.16, 0.56);
+    root.add(palm, thumb, finger);
+    return root;
+  }
+
+  private createOfficeTinyBearToyModel(includeHand = false): Group {
+    const root = new Group();
+    const furMaterial = new MeshStandardMaterial({
+      color: 0x9b5f36,
+      emissive: 0x160804,
+      emissiveIntensity: 0.08,
+      roughness: 0.76,
+      metalness: 0.02,
+    });
+    const muzzleMaterial = new MeshStandardMaterial({
+      color: 0xd6ad82,
+      roughness: 0.72,
+      metalness: 0.02,
+    });
+    const darkMaterial = new MeshStandardMaterial({
+      color: 0x16100c,
+      emissive: 0x030100,
+      emissiveIntensity: 0.12,
+      roughness: 0.5,
+      metalness: 0.02,
+    });
+
+    if (includeHand) {
+      root.add(this.createOfficePrizeHandModel());
+    }
+
+    const toy = new Group();
+    toy.position.set(0, 0.07, -0.13);
+    const body = new Mesh(new SphereGeometry(0.09, 14, 10), furMaterial);
+    body.scale.set(0.88, 1.02, 0.72);
+    const head = new Mesh(new SphereGeometry(0.07, 14, 10), furMaterial);
+    head.position.y = 0.115;
+    const muzzle = new Mesh(new SphereGeometry(0.032, 10, 8), muzzleMaterial);
+    muzzle.position.set(0, 0.104, -0.058);
+    muzzle.scale.set(1.25, 0.72, 0.62);
+    const nose = new Mesh(new SphereGeometry(0.01, 8, 6), darkMaterial);
+    nose.position.set(0, 0.112, -0.082);
+    [-0.038, 0.038].forEach((x) => {
+      const ear = new Mesh(new SphereGeometry(0.025, 10, 8), furMaterial);
+      ear.position.set(x, 0.17, -0.004);
+      toy.add(ear);
+      const eye = new Mesh(new SphereGeometry(0.007, 8, 6), darkMaterial);
+      eye.position.set(x * 0.52, 0.126, -0.066);
+      toy.add(eye);
+    });
+    [-0.055, 0.055].forEach((x) => {
+      const arm = new Mesh(new SphereGeometry(0.025, 10, 8), furMaterial);
+      arm.position.set(x, 0.02, -0.026);
+      arm.scale.set(0.72, 1.1, 0.62);
+      const leg = new Mesh(new SphereGeometry(0.026, 10, 8), furMaterial);
+      leg.position.set(x * 0.7, -0.068, -0.016);
+      leg.scale.set(0.9, 0.58, 0.72);
+      toy.add(arm, leg);
+    });
+    toy.add(body, head, muzzle, nose);
+    root.add(toy);
+    return root;
+  }
+
+  private createOfficeLollipopModel(includeHand = false): Group {
+    const root = new Group();
+    const candyMaterial = new MeshStandardMaterial({
+      color: 0xff4f95,
+      emissive: 0x66122f,
+      emissiveIntensity: 0.18,
+      roughness: 0.32,
+      metalness: 0.04,
+    });
+    const stripeMaterial = new MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0x44223a,
+      emissiveIntensity: 0.08,
+      roughness: 0.36,
+      metalness: 0.02,
+    });
+    const stickMaterial = new MeshStandardMaterial({
+      color: 0xf8e5bf,
+      roughness: 0.58,
+      metalness: 0.02,
+    });
+
+    if (includeHand) {
+      root.add(this.createOfficePrizeHandModel());
+    }
+
+    const candy = new Group();
+    candy.position.set(0, 0.09, -0.14);
+    candy.rotation.z = -0.18;
+    const stick = new Mesh(new CylinderGeometry(0.01, 0.012, 0.32, 10), stickMaterial);
+    stick.position.y = -0.1;
+    stick.rotation.z = 0.08;
+    const head = new Mesh(new SphereGeometry(0.075, 18, 12), candyMaterial);
+    head.position.y = 0.09;
+    head.scale.set(1.05, 1.05, 0.32);
+    for (let index = 0; index < 3; index += 1) {
+      const stripe = new Mesh(new TorusGeometry(0.04 + index * 0.014, 0.0035, 6, 20), stripeMaterial);
+      stripe.position.set(0, 0.09, -0.003 + index * 0.002);
+      stripe.rotation.z = index * 0.6;
+      stripe.scale.y = 0.62;
+      head.add(stripe);
+    }
+    candy.add(stick, head);
+    root.add(candy);
+    return root;
+  }
+
+  private createOfficeDuckToyModel(includeHand = false): Group {
+    const root = new Group();
+    const duckMaterial = new MeshStandardMaterial({
+      color: 0xf5c747,
+      emissive: 0x4c2a00,
+      emissiveIntensity: 0.16,
+      roughness: 0.58,
+      metalness: 0.02,
+    });
+    const beakMaterial = new MeshStandardMaterial({
+      color: 0xf07b22,
+      emissive: 0x4e1604,
+      emissiveIntensity: 0.14,
+      roughness: 0.42,
+      metalness: 0.02,
+    });
+    const bibMaterial = new MeshStandardMaterial({
+      color: 0x4aa6d8,
+      emissive: 0x062c44,
+      emissiveIntensity: 0.12,
+      roughness: 0.5,
+      metalness: 0.03,
+    });
+    const darkMaterial = new MeshStandardMaterial({
+      color: 0x101010,
+      roughness: 0.5,
+      metalness: 0.02,
+    });
+
+    if (includeHand) {
+      root.add(this.createOfficePrizeHandModel());
+    }
+
+    const duck = new Group();
+    duck.position.set(0, 0.075, -0.13);
+    const body = new Mesh(new SphereGeometry(0.105, 16, 12), duckMaterial);
+    body.scale.set(1.18, 0.9, 0.78);
+    const head = new Mesh(new SphereGeometry(0.07, 14, 10), duckMaterial);
+    head.position.set(0, 0.12, -0.03);
+    const beak = new Mesh(new BoxGeometry(0.07, 0.026, 0.06), beakMaterial);
+    beak.position.set(0, 0.116, -0.09);
+    beak.scale.z = 0.7;
+    const bib = new Mesh(new BoxGeometry(0.1, 0.052, 0.014), bibMaterial);
+    bib.position.set(0, 0.026, -0.085);
+    bib.rotation.x = -0.25;
+    [-0.026, 0.026].forEach((x) => {
+      const eye = new Mesh(new SphereGeometry(0.008, 8, 6), darkMaterial);
+      eye.position.set(x, 0.136, -0.088);
+      duck.add(eye);
+    });
+    duck.add(body, head, beak, bib);
+    root.add(duck);
+    return root;
+  }
+
+  private createOfficeStuffieModel(includeHand = false): Group {
+    const root = new Group();
+    const plushMaterial = new MeshStandardMaterial({
+      color: 0xb884d2,
+      emissive: 0x2a0c3a,
+      emissiveIntensity: 0.12,
+      roughness: 0.86,
+      metalness: 0.01,
+    });
+    const muzzleMaterial = new MeshStandardMaterial({
+      color: 0xf0c7e8,
+      roughness: 0.78,
+      metalness: 0.01,
+    });
+    const darkMaterial = new MeshStandardMaterial({
+      color: 0x120816,
+      roughness: 0.42,
+      metalness: 0.02,
+    });
+
+    if (includeHand) {
+      root.add(this.createOfficePrizeHandModel());
+    }
+
+    const plush = new Group();
+    plush.position.set(0, 0.06, -0.13);
+    const body = new Mesh(new SphereGeometry(0.125, 16, 12), plushMaterial);
+    body.scale.set(0.92, 1.12, 0.72);
+    const head = new Mesh(new SphereGeometry(0.088, 16, 12), plushMaterial);
+    head.position.y = 0.16;
+    const muzzle = new Mesh(new SphereGeometry(0.036, 10, 8), muzzleMaterial);
+    muzzle.position.set(0, 0.148, -0.072);
+    muzzle.scale.set(1.3, 0.7, 0.58);
+    [-0.054, 0.054].forEach((x) => {
+      const ear = new Mesh(new SphereGeometry(0.03, 10, 8), plushMaterial);
+      ear.position.set(x, 0.235, -0.006);
+      const eye = new Mesh(new SphereGeometry(0.008, 8, 6), darkMaterial);
+      eye.position.set(x * 0.46, 0.172, -0.078);
+      const paw = new Mesh(new SphereGeometry(0.032, 10, 8), plushMaterial);
+      paw.position.set(x, -0.055, -0.018);
+      paw.scale.set(0.86, 0.62, 0.7);
+      plush.add(ear, eye, paw);
+    });
+    plush.add(body, head, muzzle);
+    root.add(plush);
+    return root;
+  }
+
+  private createOfficePrizeItemModels(): void {
+    const models: Array<[OfficePrizeItemId, Group]> = [
+      ['tiny-bear', this.createOfficeTinyBearToyModel(true)],
+      ['lollipop', this.createOfficeLollipopModel(true)],
+      ['duck-toy', this.createOfficeDuckToyModel(true)],
+      ['stuffie', this.createOfficeStuffieModel(true)],
+    ];
+
+    models.forEach(([item, model]) => {
+      model.visible = false;
+      this.officePrizeItemModels.set(item, model);
+      this.officePrizeItemAnchor.add(model);
+    });
   }
 
   private createOfficeTabletModel(): void {
@@ -1607,6 +3064,524 @@ export class Game {
     rightHand.rotation.set(0.08, 0.28, -0.22);
 
     this.officeTabletAnchor.add(tablet, screen, screenLabel, homeButton, leftHand, rightHand);
+  }
+
+  private prepareChapterFourJumpscareLayer(root: Group, backdrop: Mesh): void {
+    root.traverse((object) => {
+      if (!(object instanceof Mesh)) {
+        return;
+      }
+
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        material.depthTest = false;
+        material.depthWrite = false;
+        material.needsUpdate = true;
+      });
+      object.renderOrder = object === backdrop ? 46 : 48;
+    });
+  }
+
+  private createChapterFourBlueJumpscareModel(): void {
+    const skinMaterial = new MeshStandardMaterial({
+      color: 0x1f62d7,
+      emissive: 0x061940,
+      emissiveIntensity: 0.18,
+      roughness: 0.78,
+      metalness: 0.02,
+    });
+    const eyeMaterial = new MeshStandardMaterial({
+      color: 0xff2525,
+      emissive: 0xff0000,
+      emissiveIntensity: 1.15,
+      roughness: 0.32,
+      metalness: 0.02,
+    });
+    const buttonMaterial = new MeshStandardMaterial({
+      color: 0x111823,
+      emissive: 0x010309,
+      emissiveIntensity: 0.28,
+      roughness: 0.48,
+      metalness: 0.16,
+    });
+    const buttonHoleMaterial = new MeshStandardMaterial({
+      color: 0xc8e8ff,
+      emissive: 0x4aa4ff,
+      emissiveIntensity: 0.46,
+      roughness: 0.35,
+      metalness: 0.04,
+    });
+    const crownMaterial = new MeshStandardMaterial({
+      color: 0xd7a83d,
+      emissive: 0x5c3a00,
+      emissiveIntensity: 0.38,
+      roughness: 0.36,
+      metalness: 0.36,
+    });
+    const mouthMaterial = new MeshBasicMaterial({
+      color: 0x00030b,
+    });
+    const backdropMaterial = new MeshBasicMaterial({
+      color: 0x000000,
+      depthWrite: false,
+    });
+    const droolMaterial = new MeshStandardMaterial({
+      color: 0xaeefff,
+      emissive: 0x2a9cc4,
+      emissiveIntensity: 0.32,
+      roughness: 0.18,
+      metalness: 0.02,
+      transparent: true,
+      opacity: 0.68,
+    });
+
+    const root = this.chapterFourBlueJumpscareAnchor;
+    root.clear();
+    root.visible = false;
+
+    const body = new Mesh(new SphereGeometry(0.82, 24, 16), skinMaterial);
+    body.position.set(0, 0.62, 0);
+    body.scale.set(0.74, 1.15, 0.52);
+    body.rotation.x = -0.18;
+
+    const neck = new Mesh(new CylinderGeometry(0.16, 0.2, 0.54, 14), skinMaterial);
+    neck.position.set(0, 1.38, 0.08);
+    neck.rotation.x = -0.32;
+
+    const head = this.chapterFourBlueJumpscareHead;
+    head.clear();
+    head.position.set(0, 1.82, 0.18);
+
+    const headShell = new Mesh(new SphereGeometry(0.5, 24, 18), skinMaterial);
+    headShell.scale.set(1.0, 1.08, 0.9);
+    head.add(headShell);
+
+    const lowerFace = new Mesh(new SphereGeometry(0.32, 18, 12), skinMaterial);
+    lowerFace.position.set(0, -0.16, 0.38);
+    lowerFace.scale.set(1.15, 0.56, 0.34);
+    head.add(lowerFace);
+
+    const crown = new Group();
+    crown.position.set(0, 0.58, 0.03);
+    head.add(crown);
+    const crownBand = new Mesh(new BoxGeometry(0.74, 0.14, 0.18), crownMaterial);
+    crownBand.position.set(0, 0, 0);
+    crown.add(crownBand);
+    [-0.27, 0, 0.27].forEach((offsetX, index) => {
+      const point = new Mesh(new CylinderGeometry(0.025, 0.09, 0.36 + (index === 1 ? 0.1 : 0), 4), crownMaterial);
+      point.position.set(offsetX, 0.2, 0);
+      point.rotation.z = index === 0 ? 0.18 : index === 2 ? -0.18 : 0;
+      crown.add(point);
+    });
+
+    const goodEye = new Mesh(new SphereGeometry(0.095, 16, 10), eyeMaterial);
+    goodEye.position.set(-0.17, 0.08, 0.43);
+    goodEye.scale.set(1.1, 1.2, 0.34);
+    head.add(goodEye);
+
+    const buttonEye = new Mesh(new CylinderGeometry(0.11, 0.11, 0.03, 22), buttonMaterial);
+    buttonEye.position.set(0.18, 0.08, 0.445);
+    buttonEye.rotation.x = Math.PI / 2;
+    head.add(buttonEye);
+    [-0.035, 0.035].forEach((offset) => {
+      const horizontalHole = new Mesh(new BoxGeometry(0.018, 0.018, 0.012), buttonHoleMaterial);
+      horizontalHole.position.set(0.18 + offset, 0.082, 0.468);
+      head.add(horizontalHole);
+      const verticalHole = new Mesh(new BoxGeometry(0.018, 0.018, 0.012), buttonHoleMaterial);
+      verticalHole.position.set(0.18, 0.082 + offset, 0.468);
+      head.add(verticalHole);
+    });
+
+    const maw = this.chapterFourBlueJumpscareMaw;
+    maw.clear();
+    maw.position.set(0, -0.18, 0.45);
+    const mouth = new Mesh(new SphereGeometry(0.22, 18, 12), mouthMaterial);
+    mouth.scale.set(1.35, 1.8, 0.22);
+    maw.add(mouth);
+    head.add(maw);
+
+    const drool = new Mesh(new CylinderGeometry(0.02, 0.01, 0.45, 8), droolMaterial);
+    drool.position.set(0.11, -0.42, 0.47);
+    drool.rotation.z = -0.08;
+    head.add(drool);
+
+    const makeArm = (side: -1 | 1, arm: Group): void => {
+      arm.clear();
+      arm.position.set(side * 0.62, 1.12, 0.08);
+      const upper = new Mesh(new CylinderGeometry(0.085, 0.105, 0.72, 14), skinMaterial);
+      upper.position.set(side * 0.02, -0.08, 0.28);
+      upper.rotation.x = Math.PI / 2;
+      upper.rotation.z = side * 0.22;
+      const forearm = new Mesh(new CylinderGeometry(0.07, 0.085, 0.76, 14), skinMaterial);
+      forearm.position.set(side * 0.04, -0.16, 0.74);
+      forearm.rotation.x = Math.PI / 2;
+      forearm.rotation.z = side * 0.1;
+      const hand = new Mesh(new SphereGeometry(0.16, 16, 10), skinMaterial);
+      hand.position.set(side * 0.06, -0.17, 1.18);
+      hand.scale.set(0.86, 0.58, 0.68);
+      arm.add(upper, forearm, hand);
+    };
+
+    makeArm(-1, this.chapterFourBlueJumpscareLeftArm);
+    makeArm(1, this.chapterFourBlueJumpscareRightArm);
+    const backdrop = new Mesh(new PlaneGeometry(9, 5.6), backdropMaterial);
+    backdrop.position.set(0, 1.34, -1.08);
+    root.add(backdrop, body, neck, head, this.chapterFourBlueJumpscareLeftArm, this.chapterFourBlueJumpscareRightArm);
+    this.prepareChapterFourJumpscareLayer(root, backdrop);
+  }
+
+  private createChapterFourGreenJumpscareModel(): void {
+    const skinMaterial = new MeshStandardMaterial({
+      color: 0x1ca64f,
+      emissive: 0x062a14,
+      emissiveIntensity: 0.22,
+      roughness: 0.82,
+      metalness: 0.02,
+    });
+    const eyeMaterial = new MeshStandardMaterial({
+      color: 0xf4fff0,
+      emissive: 0x9eff8d,
+      emissiveIntensity: 0.22,
+      roughness: 0.34,
+      metalness: 0.02,
+    });
+    const pupilMaterial = new MeshBasicMaterial({
+      color: 0x050806,
+    });
+    const mouthMaterial = new MeshBasicMaterial({
+      color: 0x030405,
+    });
+    const toothMaterial = new MeshStandardMaterial({
+      color: 0xf0ead2,
+      roughness: 0.58,
+      metalness: 0.01,
+    });
+    const tongueMaterial = new MeshStandardMaterial({
+      color: 0xc93535,
+      emissive: 0x3d0505,
+      emissiveIntensity: 0.18,
+      roughness: 0.52,
+      metalness: 0.02,
+    });
+    const backdropMaterial = new MeshBasicMaterial({
+      color: 0x000000,
+      depthWrite: false,
+    });
+
+    const root = this.chapterFourGreenJumpscareAnchor;
+    root.clear();
+    root.visible = false;
+
+    const body = this.chapterFourGreenJumpscareBody;
+    body.clear();
+    body.position.set(0, 0.9, 0);
+
+    const torso = new Mesh(new CylinderGeometry(0.22, 0.3, 2.25, 18), skinMaterial);
+    torso.position.set(0, 0.05, 0);
+    torso.scale.set(0.72, 1, 0.58);
+    body.add(torso);
+
+    const headCap = new Mesh(new SphereGeometry(0.4, 20, 14), skinMaterial);
+    headCap.position.set(0, 1.22, 0.12);
+    headCap.scale.set(0.84, 0.72, 0.62);
+    body.add(headCap);
+
+    const faceBulge = new Mesh(new SphereGeometry(0.46, 20, 14), skinMaterial);
+    faceBulge.position.set(0, 1.0, 0.38);
+    faceBulge.scale.set(0.82, 0.74, 0.5);
+    body.add(faceBulge);
+
+    [-0.18, 0.18].forEach((offsetX, index) => {
+      const eye = new Mesh(new SphereGeometry(0.15, 16, 10), eyeMaterial);
+      eye.position.set(offsetX, 1.32 + (index === 0 ? 0.03 : -0.02), 0.56);
+      eye.scale.set(1.1, 1.2, 0.52);
+      body.add(eye);
+      const pupil = new Mesh(new SphereGeometry(0.048, 10, 8), pupilMaterial);
+      pupil.position.set(offsetX + (index === 0 ? 0.035 : -0.02), 1.31 + (index === 0 ? -0.015 : 0.02), 0.64);
+      pupil.scale.set(1, 1, 0.45);
+      body.add(pupil);
+    });
+
+    const maw = this.chapterFourGreenJumpscareMaw;
+    maw.clear();
+    maw.position.set(0, 0.82, 0.66);
+    const mouth = new Mesh(new SphereGeometry(0.3, 18, 12), mouthMaterial);
+    mouth.scale.set(1.24, 1.28, 0.22);
+    maw.add(mouth);
+    [-0.23, -0.12, 0, 0.12, 0.23].forEach((offsetX, index) => {
+      const upperTooth = new Mesh(new CylinderGeometry(0, 0.034, 0.24 + (index % 2) * 0.04, 4), toothMaterial);
+      upperTooth.position.set(offsetX, 0.14, 0.09);
+      upperTooth.rotation.x = Math.PI * 0.5;
+      upperTooth.rotation.z = (index - 2) * 0.12;
+      maw.add(upperTooth);
+      const lowerTooth = new Mesh(new CylinderGeometry(0, 0.03, 0.22 + ((index + 1) % 2) * 0.035, 4), toothMaterial);
+      lowerTooth.position.set(offsetX * 0.92, -0.15, 0.09);
+      lowerTooth.rotation.x = -Math.PI * 0.5;
+      lowerTooth.rotation.z = (2 - index) * 0.1;
+      maw.add(lowerTooth);
+    });
+    const tongue = new Mesh(new CylinderGeometry(0.038, 0.052, 0.54, 10), tongueMaterial);
+    tongue.position.set(0.04, -0.24, 0.1);
+    tongue.rotation.set(Math.PI / 2, 0.04, -0.12);
+    maw.add(tongue);
+    body.add(maw);
+
+    const makeArm = (side: -1 | 1, arm: Group): void => {
+      arm.clear();
+      arm.position.set(side * 0.34, 1.22, 0.06);
+      const upper = new Mesh(new CylinderGeometry(0.05, 0.07, 0.92, 14), skinMaterial);
+      upper.position.set(side * 0.24, -0.18, 0.36);
+      upper.rotation.set(Math.PI / 2, 0, side * 0.2);
+      const elbow = new Mesh(new SphereGeometry(0.1, 12, 8), skinMaterial);
+      elbow.position.set(side * 0.38, -0.3, 0.78);
+      const forearm = new Mesh(new CylinderGeometry(0.04, 0.06, 1.15, 14), skinMaterial);
+      forearm.position.set(side * 0.48, -0.3, 1.28);
+      forearm.rotation.set(Math.PI / 2, 0, side * 0.1);
+      const hand = new Mesh(new SphereGeometry(0.15, 14, 10), skinMaterial);
+      hand.position.set(side * 0.56, -0.3, 1.92);
+      hand.scale.set(0.9, 0.48, 0.76);
+      arm.add(upper, elbow, forearm, hand);
+      [-0.1, -0.03, 0.04, 0.11].forEach((offset, index) => {
+        const finger = new Mesh(new CylinderGeometry(0.012, 0.018, 0.34 - index * 0.025, 8), skinMaterial);
+        finger.position.set(side * (0.58 + Math.abs(offset) * 0.14), -0.31, 2.16 + offset);
+        finger.rotation.x = Math.PI / 2 + 0.1;
+        finger.rotation.z = side * (0.18 + index * 0.04);
+        arm.add(finger);
+      });
+    };
+
+    makeArm(-1, this.chapterFourGreenJumpscareLeftArm);
+    makeArm(1, this.chapterFourGreenJumpscareRightArm);
+    const backdrop = new Mesh(new PlaneGeometry(9, 5.6), backdropMaterial);
+    backdrop.position.set(0, 1.24, -1.05);
+    root.add(backdrop, body, this.chapterFourGreenJumpscareLeftArm, this.chapterFourGreenJumpscareRightArm);
+    this.prepareChapterFourJumpscareLayer(root, backdrop);
+  }
+
+  private createChapterFourBoxModels(): void {
+    const cardboardMaterial = new MeshStandardMaterial({
+      color: 0xa97745,
+      emissive: 0x261205,
+      emissiveIntensity: 0.08,
+      roughness: 0.92,
+      metalness: 0.01,
+    });
+    const edgeMaterial = new MeshStandardMaterial({
+      color: 0x5b321a,
+      emissive: 0x120603,
+      emissiveIntensity: 0.06,
+      roughness: 0.86,
+      metalness: 0.02,
+    });
+    const tapeMaterial = new MeshStandardMaterial({
+      color: 0xc09256,
+      emissive: 0x2a1605,
+      emissiveIntensity: 0.05,
+      roughness: 0.82,
+      metalness: 0.01,
+    });
+    const creaseMaterial = new MeshStandardMaterial({
+      color: 0x4b2914,
+      emissive: 0x0b0301,
+      emissiveIntensity: 0.04,
+      roughness: 0.94,
+      metalness: 0.01,
+    });
+    const handMaterial = new MeshStandardMaterial({
+      color: 0xc88c65,
+      roughness: 0.7,
+      metalness: 0.02,
+    });
+    const insideMaterial = new MeshBasicMaterial({
+      color: 0x7d4d2c,
+      transparent: true,
+      opacity: 0.98,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const peepholeEdgeMaterial = new MeshBasicMaterial({
+      color: 0x7b4d2b,
+      transparent: true,
+      opacity: 0.98,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const insideCreaseMaterial = new MeshBasicMaterial({
+      color: 0x9a6338,
+      transparent: true,
+      opacity: 0.48,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+
+    const heldBox = new Mesh(new BoxGeometry(0.48, 0.32, 0.38), cardboardMaterial);
+    heldBox.position.set(0, 0.02, -0.08);
+    const heldFrontEdge = new Mesh(new BoxGeometry(0.52, 0.035, 0.045), edgeMaterial);
+    heldFrontEdge.position.set(0, 0.2, -0.29);
+    const heldBackEdge = new Mesh(new BoxGeometry(0.5, 0.032, 0.04), edgeMaterial);
+    heldBackEdge.position.set(0, 0.19, 0.11);
+    const heldLeftEdge = new Mesh(new BoxGeometry(0.04, 0.035, 0.38), edgeMaterial);
+    heldLeftEdge.position.set(-0.27, 0.2, -0.08);
+    const heldRightEdge = new Mesh(new BoxGeometry(0.04, 0.035, 0.38), edgeMaterial);
+    heldRightEdge.position.set(0.27, 0.2, -0.08);
+    const heldLeftFlap = new Mesh(new BoxGeometry(0.24, 0.035, 0.31), cardboardMaterial);
+    heldLeftFlap.position.set(-0.16, 0.27, -0.1);
+    heldLeftFlap.rotation.set(0.22, 0, 0.28);
+    const heldRightFlap = new Mesh(new BoxGeometry(0.24, 0.035, 0.31), cardboardMaterial);
+    heldRightFlap.position.set(0.16, 0.27, -0.1);
+    heldRightFlap.rotation.set(0.18, 0, -0.28);
+    const heldBackFlap = new Mesh(new BoxGeometry(0.44, 0.032, 0.18), cardboardMaterial);
+    heldBackFlap.position.set(0, 0.255, 0.09);
+    heldBackFlap.rotation.x = -0.34;
+    const heldTape = new Mesh(new BoxGeometry(0.055, 0.012, 0.41), tapeMaterial);
+    heldTape.position.set(0, 0.191, -0.08);
+    const heldFrontTape = new Mesh(new BoxGeometry(0.38, 0.014, 0.035), tapeMaterial);
+    heldFrontTape.position.set(0, 0.045, -0.286);
+    const heldLeftCrease = new Mesh(new BoxGeometry(0.015, 0.29, 0.012), creaseMaterial);
+    heldLeftCrease.position.set(-0.13, 0.02, -0.277);
+    const heldRightCrease = heldLeftCrease.clone();
+    heldRightCrease.position.x = 0.13;
+    const heldHand = new Mesh(new BoxGeometry(0.24, 0.14, 0.18), handMaterial);
+    heldHand.position.set(-0.18, -0.15, 0.02);
+    heldHand.rotation.set(0.1, -0.24, 0.14);
+    const heldSecondHand = new Mesh(new BoxGeometry(0.2, 0.12, 0.16), handMaterial);
+    heldSecondHand.position.set(0.22, -0.13, -0.01);
+    heldSecondHand.rotation.set(0.04, 0.22, -0.1);
+    this.chapterFourBoxHeldAnchor.add(
+      heldHand,
+      heldSecondHand,
+      heldBox,
+      heldFrontEdge,
+      heldBackEdge,
+      heldLeftEdge,
+      heldRightEdge,
+      heldLeftFlap,
+      heldRightFlap,
+      heldBackFlap,
+      heldTape,
+      heldFrontTape,
+      heldLeftCrease,
+      heldRightCrease,
+    );
+
+    const leftPanel = new Mesh(new BoxGeometry(0.58, 1.34, 0.06), insideMaterial);
+    leftPanel.position.set(-0.51, 0, 0);
+    const rightPanel = new Mesh(new BoxGeometry(0.58, 1.34, 0.06), insideMaterial);
+    rightPanel.position.set(0.51, 0, 0);
+    const topPanel = new Mesh(new BoxGeometry(1.34, 0.48, 0.06), insideMaterial);
+    topPanel.position.set(0, 0.46, 0);
+    const bottomPanel = new Mesh(new BoxGeometry(1.34, 0.48, 0.06), insideMaterial);
+    bottomPanel.position.set(0, -0.46, 0);
+    const peepholeTop = new Mesh(new BoxGeometry(0.5, 0.08, 0.07), peepholeEdgeMaterial);
+    peepholeTop.position.set(0, 0.25, -0.02);
+    const peepholeBottom = new Mesh(new BoxGeometry(0.5, 0.08, 0.07), peepholeEdgeMaterial);
+    peepholeBottom.position.set(0, -0.25, -0.02);
+    const peepholeLeft = new Mesh(new BoxGeometry(0.08, 0.5, 0.07), peepholeEdgeMaterial);
+    peepholeLeft.position.set(-0.25, 0, -0.02);
+    const peepholeRight = new Mesh(new BoxGeometry(0.08, 0.5, 0.07), peepholeEdgeMaterial);
+    peepholeRight.position.set(0.25, 0, -0.02);
+    const leftVerticalCrease = new Mesh(new BoxGeometry(0.026, 1.18, 0.074), insideCreaseMaterial);
+    leftVerticalCrease.position.set(-0.51, 0, 0.018);
+    const rightVerticalCrease = leftVerticalCrease.clone();
+    rightVerticalCrease.position.x = 0.51;
+    const topCrease = new Mesh(new BoxGeometry(1.16, 0.024, 0.074), insideCreaseMaterial);
+    topCrease.position.set(0, 0.42, 0.018);
+    const bottomCrease = topCrease.clone();
+    bottomCrease.position.y = -0.42;
+    this.chapterFourBoxHideAnchor.add(
+      leftPanel,
+      rightPanel,
+      topPanel,
+      bottomPanel,
+      peepholeTop,
+      peepholeBottom,
+      peepholeLeft,
+      peepholeRight,
+      leftVerticalCrease,
+      rightVerticalCrease,
+      topCrease,
+      bottomCrease,
+    );
+
+    const wideInsideMaterial = new MeshBasicMaterial({
+      color: 0x7a4928,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const wideEdgeMaterial = new MeshBasicMaterial({
+      color: 0x3c210f,
+      transparent: true,
+      opacity: 0.96,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const wideTopPanel = new Mesh(new BoxGeometry(1.68, 0.18, 0.07), wideInsideMaterial);
+    wideTopPanel.position.set(0, 0.58, 0);
+    wideTopPanel.rotation.x = 0.18;
+    const wideBottomLip = new Mesh(new BoxGeometry(1.42, 0.16, 0.07), wideInsideMaterial);
+    wideBottomLip.position.set(0, -0.62, 0);
+    wideBottomLip.rotation.x = -0.12;
+    const wideLeftWall = new Mesh(new BoxGeometry(0.18, 1.22, 0.07), wideInsideMaterial);
+    wideLeftWall.position.set(-0.86, -0.02, 0);
+    wideLeftWall.rotation.z = -0.08;
+    const wideRightWall = new Mesh(new BoxGeometry(0.18, 1.22, 0.07), wideInsideMaterial);
+    wideRightWall.position.set(0.86, -0.02, 0);
+    wideRightWall.rotation.z = 0.08;
+    const wideCeilingFlap = new Mesh(new BoxGeometry(1.04, 0.16, 0.06), wideInsideMaterial);
+    wideCeilingFlap.position.set(0, 0.38, -0.08);
+    wideCeilingFlap.rotation.x = 0.45;
+    const wideLeftTape = new Mesh(new BoxGeometry(0.04, 1.1, 0.078), wideEdgeMaterial);
+    wideLeftTape.position.set(-0.68, -0.02, 0.024);
+    const wideRightTape = wideLeftTape.clone();
+    wideRightTape.position.x = 0.68;
+    const wideTopCrease = new Mesh(new BoxGeometry(1.32, 0.026, 0.08), wideEdgeMaterial);
+    wideTopCrease.position.set(0, 0.48, 0.026);
+    const wideBottomCrease = wideTopCrease.clone();
+    wideBottomCrease.position.y = -0.52;
+    this.chapterFourBoxWideAnchor.add(
+      wideTopPanel,
+      wideBottomLip,
+      wideLeftWall,
+      wideRightWall,
+      wideCeilingFlap,
+      wideLeftTape,
+      wideRightTape,
+      wideTopCrease,
+      wideBottomCrease,
+    );
+
+    const worldBoxRoot = new Group();
+    const worldBoxShell = new Mesh(new BoxGeometry(0.92, 0.82, 0.92), cardboardMaterial);
+    worldBoxShell.position.set(0, 0.54, 0);
+    const worldFrontEdge = new Mesh(new BoxGeometry(0.98, 0.08, 0.08), edgeMaterial);
+    worldFrontEdge.position.set(0, 0.98, -0.5);
+    const worldBackEdge = new Mesh(new BoxGeometry(0.98, 0.08, 0.08), edgeMaterial);
+    worldBackEdge.position.set(0, 0.98, 0.5);
+    const worldLeftEdge = new Mesh(new BoxGeometry(0.08, 0.08, 1.0), edgeMaterial);
+    worldLeftEdge.position.set(-0.5, 0.98, 0);
+    const worldRightEdge = new Mesh(new BoxGeometry(0.08, 0.08, 1.0), edgeMaterial);
+    worldRightEdge.position.set(0.5, 0.98, 0);
+    const worldTopFlap = new Mesh(new BoxGeometry(0.44, 0.04, 0.62), cardboardMaterial);
+    worldTopFlap.position.set(-0.24, 1.12, 0);
+    worldTopFlap.rotation.z = 0.22;
+    const worldTopFlapRight = new Mesh(new BoxGeometry(0.44, 0.04, 0.62), cardboardMaterial);
+    worldTopFlapRight.position.set(0.24, 1.12, 0);
+    worldTopFlapRight.rotation.z = -0.22;
+    const worldTape = new Mesh(new BoxGeometry(0.08, 0.018, 0.92), tapeMaterial);
+    worldTape.position.set(0, 0.965, 0);
+    worldBoxRoot.add(
+      worldBoxShell,
+      worldFrontEdge,
+      worldBackEdge,
+      worldLeftEdge,
+      worldRightEdge,
+      worldTopFlap,
+      worldTopFlapRight,
+      worldTape,
+    );
+    this.chapterFourBoxWorldAnchor.add(worldBoxRoot);
   }
 
   private createPlacementToolModel(): void {
@@ -1711,6 +3686,54 @@ export class Game {
     );
   }
 
+  private createMicrophoneSoundToolModel(): void {
+    const handleMaterial = new MeshStandardMaterial({
+      color: 0x24202a,
+      roughness: 0.7,
+      metalness: 0.2,
+    });
+    const grilleMaterial = new MeshStandardMaterial({
+      color: 0x343b48,
+      emissive: 0x080a10,
+      emissiveIntensity: 0.15,
+      roughness: 0.38,
+      metalness: 0.55,
+    });
+    const lightMaterial = new MeshStandardMaterial({
+      color: 0xff3f98,
+      emissive: 0xff2b8e,
+      emissiveIntensity: 0.75,
+      roughness: 0.26,
+      metalness: 0.04,
+    });
+    const handMaterial = new MeshStandardMaterial({
+      color: 0xf0b88b,
+      roughness: 0.62,
+      metalness: 0.02,
+    });
+
+    const handPalm = new Mesh(new BoxGeometry(0.24, 0.16, 0.18), handMaterial);
+    handPalm.position.set(0.01, -0.08, 0.02);
+    handPalm.rotation.set(0.12, -0.18, 0.1);
+
+    const micHandle = new Mesh(new CylinderGeometry(0.055, 0.07, 0.62, 16), handleMaterial);
+    micHandle.position.set(0.05, 0.03, -0.22);
+    micHandle.rotation.set(0.85, -0.08, -0.08);
+
+    const micHead = new Mesh(new SphereGeometry(0.14, 18, 12), grilleMaterial);
+    micHead.position.set(0.09, 0.3, -0.48);
+    micHead.scale.set(1, 0.82, 1);
+
+    const grilleBand = new Mesh(new CylinderGeometry(0.145, 0.145, 0.06, 18), handleMaterial);
+    grilleBand.position.copy(micHead.position);
+    grilleBand.rotation.x = Math.PI / 2;
+
+    const recordLight = new Mesh(new SphereGeometry(0.032, 10, 8), lightMaterial);
+    recordLight.position.set(0.14, 0.17, -0.36);
+
+    this.microphoneSoundToolAnchor.add(handPalm, micHandle, micHead, grilleBand, recordLight);
+  }
+
   private createPlacementPreviewModel(): void {
     this.placementPreview.name = 'Placement Marker Preview';
     this.placementPreview.userData.placementToolIgnore = true;
@@ -1793,11 +3816,26 @@ export class Game {
 
     this.placementToolActive = active;
     if (active) {
+      this.microphoneSoundToolActive = false;
+      this.microphoneSoundToolAnchor.visible = false;
+      if (this.microphoneSoundRecording) {
+        this.stopMicrophoneSoundRecording();
+      }
+      this.clearCameraToolState();
       this.officeTabletHeld = false;
       this.officeTabletCameraFeedActive = false;
       this.officeTabletAnchor.visible = false;
       this.officeGlassHeld = false;
       this.officeGlassAnchor.visible = false;
+      this.clearOfficeHeldPrizeItem();
+      this.chapterFourBoxHeld = false;
+      this.chapterFourBoxActive = false;
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+      this.chapterFourBoxHeldAnchor.visible = false;
+      this.chapterFourBoxHideAnchor.visible = false;
+      this.chapterFourBoxWideAnchor.visible = false;
+      this.chapterFourBoxWorldAnchor.visible = false;
     }
     if (!active) {
       this.placementPreview.visible = false;
@@ -1811,6 +3849,1027 @@ export class Game {
     );
   }
 
+  private setMicrophoneSoundToolActive(active: boolean): void {
+    if (this.microphoneSoundToolActive === active) {
+      return;
+    }
+
+    this.microphoneSoundToolActive = active;
+    if (active) {
+      this.setPlacementToolActive(false);
+      this.clearCameraToolState();
+      this.officeTabletHeld = false;
+      this.officeTabletCameraFeedActive = false;
+      this.officeTabletAnchor.visible = false;
+      this.officeGlassHeld = false;
+      this.officeGlassAnchor.visible = false;
+      this.clearOfficeHeldPrizeItem();
+      this.chapterFourBoxHeld = false;
+      this.chapterFourBoxActive = false;
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+      this.chapterFourBoxHeldAnchor.visible = false;
+      this.chapterFourBoxHideAnchor.visible = false;
+      this.chapterFourBoxWideAnchor.visible = false;
+      this.chapterFourBoxWorldAnchor.visible = false;
+    } else {
+      this.microphoneSoundToolAnchor.visible = false;
+      if (this.microphoneSoundRecording) {
+        this.stopMicrophoneSoundRecording();
+      }
+    }
+
+    this.pushStatus(
+      active
+        ? 'Microphone Sound Tool equipped. Press E to record, left click to preview, D saves the next sound number: sound 009, sound 010, sound 011, then sound 100 and beyond.'
+        : 'Microphone Sound Tool put away.',
+      active ? 3.8 : 1.6,
+    );
+  }
+
+  private clearMicrophoneSoundToolState(): void {
+    this.microphoneSoundToolActive = false;
+    this.microphoneSoundToolAnchor.visible = false;
+    if (this.microphoneSoundRecording) {
+      this.stopMicrophoneSoundRecording(true);
+    }
+  }
+
+  private setCameraToolActive(active: boolean): void {
+    if (this.cameraToolActive === active) {
+      return;
+    }
+
+    this.cameraToolActive = active;
+    if (active) {
+      this.setPlacementToolActive(false);
+      this.setMicrophoneSoundToolActive(false);
+      this.officeTabletHeld = false;
+      this.officeTabletCameraFeedActive = false;
+      this.officeTabletAnchor.visible = false;
+      this.officeGlassHeld = false;
+      this.officeGlassAnchor.visible = false;
+      this.clearOfficeHeldPrizeItem();
+      this.chapterFourBoxHeld = false;
+      this.chapterFourBoxActive = false;
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+      this.chapterFourBoxHeldAnchor.visible = false;
+      this.chapterFourBoxHideAnchor.visible = false;
+      this.chapterFourBoxWideAnchor.visible = false;
+      this.chapterFourBoxWorldAnchor.visible = false;
+      this.loadCameraToolCaptures();
+    } else if (this.cameraToolRecording) {
+      this.stopCameraToolVideoRecording(true);
+    }
+    if (!active) {
+      this.releaseCameraToolStream();
+    }
+
+    this.pushStatus(
+      active
+        ? 'Camera Tool equipped. Allow camera and microphone permission, then left click takes a picture and E records video with audio.'
+        : 'Camera Tool put away.',
+      active ? 4.2 : 1.6,
+    );
+    if (active) {
+      void this.ensureCameraToolStream();
+    }
+  }
+
+  private clearCameraToolState(): void {
+    this.cameraToolActive = false;
+    if (this.cameraToolRecording) {
+      this.stopCameraToolVideoRecording(true);
+    }
+    this.releaseCameraToolStream();
+  }
+
+  private async startMicrophoneSoundRecording(): Promise<void> {
+    if (this.microphoneSoundRecording) {
+      return;
+    }
+
+    if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      this.microphoneSoundMessage = 'This browser cannot record microphone audio.';
+      this.pushStatus(this.microphoneSoundMessage, 3);
+      this.syncHud();
+      return;
+    }
+
+    try {
+      this.releaseMicrophoneSoundStream();
+      this.microphoneSoundStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.microphoneSoundChunks = [];
+      this.microphoneSoundDiscardStop = false;
+      this.microphoneSoundRecorder = new MediaRecorder(this.microphoneSoundStream);
+      this.microphoneSoundRecorder.addEventListener('dataavailable', (event) => {
+        if (event.data.size > 0) {
+          this.microphoneSoundChunks.push(event.data);
+        }
+      });
+      this.microphoneSoundRecorder.addEventListener('stop', () => {
+        this.handleMicrophoneSoundRecordingStopped();
+      });
+      this.microphoneSoundRecorder.start();
+      this.microphoneSoundRecording = true;
+      this.microphoneSoundSaved = false;
+      this.microphoneSoundMessage = 'Recording now. Make the sound effect, then press E again to stop.';
+      this.pushStatus('Recording custom sound effect. Press E again to stop.', 3);
+      this.syncHud();
+    } catch {
+      this.releaseMicrophoneSoundStream();
+      this.microphoneSoundRecording = false;
+      this.microphoneSoundMessage = 'Microphone permission was blocked. Allow microphone access and try again.';
+      this.pushStatus(this.microphoneSoundMessage, 3.4);
+      this.syncHud();
+    }
+  }
+
+  private stopMicrophoneSoundRecording(discard = false): void {
+    this.microphoneSoundDiscardStop = discard;
+    if (this.microphoneSoundRecorder && this.microphoneSoundRecorder.state !== 'inactive') {
+      this.microphoneSoundRecorder.stop();
+      return;
+    }
+
+    this.microphoneSoundRecording = false;
+    this.microphoneSoundRecorder = null;
+    this.releaseMicrophoneSoundStream();
+  }
+
+  private handleMicrophoneSoundRecordingStopped(): void {
+    const discard = this.microphoneSoundDiscardStop;
+    this.microphoneSoundDiscardStop = false;
+    this.microphoneSoundRecording = false;
+    this.microphoneSoundRecorder = null;
+    this.releaseMicrophoneSoundStream();
+
+    if (discard) {
+      this.microphoneSoundChunks = [];
+      return;
+    }
+
+    if (this.microphoneSoundChunks.length === 0) {
+      this.microphoneSoundMessage = 'No sound was captured. Press E and try recording again.';
+      this.pushStatus(this.microphoneSoundMessage, 2.8);
+      this.syncHud();
+      return;
+    }
+
+    const blob = new Blob(this.microphoneSoundChunks, {
+      type: this.microphoneSoundChunks[0]?.type || 'audio/webm',
+    });
+    this.microphoneSoundChunks = [];
+    this.revokeMicrophoneSoundPreviewUrl();
+    this.microphoneSoundPreviewUrl = URL.createObjectURL(blob);
+    this.microphoneSoundPreviewRecordingId = null;
+    this.microphoneSoundSaved = false;
+    this.microphoneSoundMessage = 'Recording ready. Left click previews it. Press D to save it as the next sound number.';
+    this.pushStatus('Recording ready. Left click previews it, D saves it as the next sound number.', 3.2);
+    this.syncHud();
+  }
+
+  private previewMicrophoneSound(): void {
+    if (!this.microphoneSoundPreviewUrl) {
+      this.loadSavedMicrophoneSounds();
+      const latestRecording = this.getLatestMicrophoneSoundRecording();
+      if (latestRecording) {
+        this.setMicrophoneSoundPreviewFromRecording(latestRecording);
+      }
+    }
+
+    if (!this.microphoneSoundPreviewUrl) {
+      this.microphoneSoundMessage = 'No custom sound recorded yet. Press E to record one.';
+      this.pushStatus(this.microphoneSoundMessage, 2.4);
+      return;
+    }
+
+    this.microphoneSoundPlayback?.pause();
+    this.microphoneSoundPlayback = new Audio(this.microphoneSoundPreviewUrl);
+    this.microphoneSoundPlayback.volume = 0.9;
+    void this.microphoneSoundPlayback.play().catch(() => {
+      this.pushStatus('Click the play space once, then preview the sound again.', 2.6);
+    });
+  }
+
+  private previewMicrophoneSoundBySlot(slot: number): void {
+    this.loadSavedMicrophoneSounds();
+    const recording = this.microphoneSoundRecordings[slot - 1] ?? null;
+    if (!recording) {
+      this.microphoneSoundMessage = `No saved sound effect in slot ${slot}.`;
+      this.pushStatus(this.microphoneSoundMessage, 2.2);
+      this.syncHud();
+      return;
+    }
+
+    this.setMicrophoneSoundPreviewFromRecording(recording);
+    this.microphoneSoundMessage = `${this.formatMicrophoneSoundLabel(recording.id)} selected from Sound effects.`;
+    this.previewMicrophoneSound();
+    this.pushStatus(`Playing ${this.formatMicrophoneSoundLabel(recording.id)}.`, 2.1);
+    this.syncHud();
+  }
+
+
+  private async saveMicrophoneSound(): Promise<void> {
+    if (!this.microphoneSoundPreviewUrl) {
+      this.microphoneSoundMessage = 'Record a sound before saving.';
+      this.pushStatus(this.microphoneSoundMessage, 2.4);
+      this.syncHud();
+      return;
+    }
+
+    if (this.microphoneSoundSaved && this.microphoneSoundPreviewRecordingId) {
+      this.microphoneSoundMessage = `${this.formatMicrophoneSoundLabel(this.microphoneSoundPreviewRecordingId)} is already saved.`;
+      this.pushStatus(this.microphoneSoundMessage, 2.4);
+      this.syncHud();
+      return;
+    }
+
+    try {
+      this.loadSavedMicrophoneSounds();
+      const response = await fetch(this.microphoneSoundPreviewUrl);
+      const blob = await response.blob();
+      const dataUrl = await this.blobToDataUrl(blob);
+      const id = this.getNextMicrophoneSoundRecordingId();
+      const recording: MicrophoneSoundRecording = {
+        id,
+        dataUrl,
+        createdAt: Date.now(),
+      };
+      this.microphoneSoundRecordings.push(recording);
+      while (this.microphoneSoundRecordings.length > MICROPHONE_SOUND_MAX_RECORDINGS) {
+        const removed = this.microphoneSoundRecordings.shift();
+        if (removed && this.microphoneSoundJumpscareRecordingId === removed.id) {
+          this.microphoneSoundJumpscareRecordingId = null;
+        }
+      }
+      this.saveMicrophoneSoundLibrary();
+      this.revokeMicrophoneSoundPreviewUrl();
+      this.microphoneSoundPreviewUrl = dataUrl;
+      this.microphoneSoundPreviewRecordingId = id;
+      this.microphoneSoundSaved = true;
+      this.microphoneSoundMessage = `Saved as ${this.formatMicrophoneSoundLabel(id)}. Tell Codex: I want ${this.formatMicrophoneSoundLabel(id)} only.`;
+      this.pushStatus(`Saved as ${this.formatMicrophoneSoundLabel(id)}.`, 2.8);
+      this.syncHud();
+    } catch {
+      this.microphoneSoundMessage = 'Could not save this sound effect. Try recording a shorter sound.';
+      this.pushStatus(this.microphoneSoundMessage, 3);
+      this.syncHud();
+    }
+  }
+
+  private deleteMicrophoneSound(): void {
+    this.stopMicrophoneSoundRecording(true);
+    this.microphoneSoundPlayback?.pause();
+    this.microphoneSoundPlayback = null;
+    this.loadSavedMicrophoneSounds();
+    if (!this.microphoneSoundPreviewRecordingId && !this.microphoneSoundPreviewUrl) {
+      const latestRecording = this.getLatestMicrophoneSoundRecording();
+      if (latestRecording) {
+        this.setMicrophoneSoundPreviewFromRecording(latestRecording);
+      }
+    }
+
+    const recordingId = this.microphoneSoundPreviewRecordingId;
+    if (recordingId) {
+      const recordingIndex = this.microphoneSoundRecordings.findIndex((recording) => recording.id === recordingId);
+      if (recordingIndex >= 0) {
+        this.microphoneSoundRecordings.splice(recordingIndex, 1);
+        if (this.microphoneSoundJumpscareRecordingId === recordingId) {
+          this.microphoneSoundJumpscareRecordingId = null;
+        }
+        this.saveMicrophoneSoundLibrary();
+      }
+    }
+
+    this.revokeMicrophoneSoundPreviewUrl();
+    this.microphoneSoundPreviewRecordingId = null;
+    this.microphoneSoundSaved = false;
+    this.microphoneSoundMessage = recordingId
+      ? `Deleted ${this.formatMicrophoneSoundLabel(recordingId)}.`
+      : 'Deleted the unsaved preview sound. Press E to record a new one.';
+    this.pushStatus(this.microphoneSoundMessage, 2.2);
+    this.syncHud();
+  }
+
+  private loadSavedMicrophoneSounds(): void {
+    if (this.microphoneSoundLibraryLoaded) {
+      return;
+    }
+
+    this.microphoneSoundLibraryLoaded = true;
+    try {
+      const rawRecordings = window.localStorage.getItem(MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY);
+      if (rawRecordings) {
+        const parsedRecordings = JSON.parse(rawRecordings) as MicrophoneSoundRecording[];
+        let migratedIds = false;
+        const usedIds = new Set<string>();
+        parsedRecordings.forEach((recording, index) => {
+          if (
+            recording
+            && typeof recording.id === 'string'
+            && typeof recording.dataUrl === 'string'
+            && typeof recording.createdAt === 'number'
+          ) {
+            let id = this.normalizeMicrophoneSoundRecordingId(recording.id);
+            while (usedIds.has(id)) {
+              id = String(Number.parseInt(id, 10) + 1).padStart(3, '0');
+            }
+            usedIds.add(id);
+            migratedIds = migratedIds || id !== recording.id;
+            this.microphoneSoundRecordings.push({
+              ...recording,
+              id,
+              createdAt: recording.createdAt + index * 0.001,
+            });
+          }
+        });
+        if (migratedIds) {
+          this.saveMicrophoneSoundLibrary();
+        }
+      }
+
+      const legacyDataUrl = window.localStorage.getItem(MICROPHONE_SOUND_LEGACY_STORAGE_KEY);
+      if (legacyDataUrl && this.microphoneSoundRecordings.length === 0) {
+        this.microphoneSoundRecordings.push({
+          id: '001',
+          dataUrl: legacyDataUrl,
+          createdAt: Date.now(),
+        });
+        window.localStorage.setItem(MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY, '2');
+        this.saveMicrophoneSoundLibrary();
+      }
+
+      if (this.microphoneSoundRecordings.length > 0 && !this.microphoneSoundPreviewUrl) {
+        const latestRecording = this.getLatestMicrophoneSoundRecording();
+        if (latestRecording) {
+          this.setMicrophoneSoundPreviewFromRecording(latestRecording);
+          this.microphoneSoundMessage = `${this.formatMicrophoneSoundLabel(latestRecording.id)} loaded. Left click previews it.`;
+        }
+      }
+    } catch {
+      // Local storage is optional for this tool.
+    }
+  }
+
+  private saveMicrophoneSoundLibrary(): void {
+    try {
+      window.localStorage.setItem(MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY, JSON.stringify(this.microphoneSoundRecordings));
+      if (this.microphoneSoundJumpscareRecordingId) {
+        window.localStorage.setItem(`${MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY}:jumpscare`, this.microphoneSoundJumpscareRecordingId);
+      } else {
+        window.localStorage.removeItem(`${MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY}:jumpscare`);
+      }
+    } catch {
+      // Local storage may be unavailable or full.
+    }
+  }
+
+  private getNextMicrophoneSoundRecordingId(): string {
+    let nextIndex = this.microphoneSoundRecordings.length + 1;
+    try {
+      const savedNextIndex = Number.parseInt(window.localStorage.getItem(MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY) ?? '', 10);
+      if (Number.isFinite(savedNextIndex) && savedNextIndex > 0) {
+        nextIndex = Math.max(nextIndex, savedNextIndex);
+      }
+    } catch {
+      // Use the in-memory fallback.
+    }
+
+    const maxExistingIndex = this.microphoneSoundRecordings.reduce((maxIndex, recording) => {
+      const numericId = Number.parseInt(recording.id, 10);
+      return Number.isFinite(numericId) ? Math.max(maxIndex, numericId) : maxIndex;
+    }, 0);
+    nextIndex = Math.max(nextIndex, maxExistingIndex + 1);
+    try {
+      window.localStorage.setItem(MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY, String(nextIndex + 1));
+    } catch {
+      // Local storage is optional.
+    }
+
+    return String(nextIndex).padStart(3, '0');
+  }
+
+  private normalizeMicrophoneSoundRecordingId(recordingId: string): string {
+    const trimmed = recordingId.trim();
+    const numericId = Number.parseInt(trimmed, 10);
+    if (!Number.isFinite(numericId) || numericId <= 0) {
+      return trimmed || '001';
+    }
+
+    return String(numericId).padStart(3, '0');
+  }
+
+  private formatMicrophoneSoundLabel(recordingId: string): string {
+    return `sound ${this.normalizeMicrophoneSoundRecordingId(recordingId)}`;
+  }
+
+  private getLatestMicrophoneSoundRecording(): MicrophoneSoundRecording | null {
+    this.loadSavedMicrophoneSounds();
+    return this.microphoneSoundRecordings[this.microphoneSoundRecordings.length - 1] ?? null;
+  }
+
+  private setMicrophoneSoundPreviewFromRecording(recording: MicrophoneSoundRecording): void {
+    this.revokeMicrophoneSoundPreviewUrl();
+    this.microphoneSoundPreviewUrl = recording.dataUrl;
+    this.microphoneSoundPreviewRecordingId = recording.id;
+    this.microphoneSoundSaved = true;
+  }
+
+  private getMicrophoneSoundRecordingById(recordingId: string): MicrophoneSoundRecording | null {
+    this.loadSavedMicrophoneSounds();
+    const normalizedId = this.normalizeMicrophoneSoundRecordingId(recordingId);
+    return this.microphoneSoundRecordings.find((recording) => recording.id === normalizedId) ?? null;
+  }
+
+  private getMicrophoneJumpscareRecordingId(): string | null {
+    if (MICROPHONE_JUMPSCARE_RECORDING_ID) {
+      return MICROPHONE_JUMPSCARE_RECORDING_ID;
+    }
+
+    this.loadSavedMicrophoneSounds();
+    if (this.microphoneSoundJumpscareRecordingId) {
+      return this.microphoneSoundJumpscareRecordingId;
+    }
+
+    try {
+      const savedId = window.localStorage.getItem(`${MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY}:jumpscare`);
+      this.microphoneSoundJumpscareRecordingId = savedId ? this.normalizeMicrophoneSoundRecordingId(savedId) : null;
+      return this.microphoneSoundJumpscareRecordingId;
+    } catch {
+      return null;
+    }
+  }
+
+  private playMicrophoneSoundEffect(fallback?: () => void, recordingId?: string): boolean {
+    const recording = recordingId ? this.getMicrophoneSoundRecordingById(recordingId) : null;
+    if (recording) {
+      this.microphoneSoundPlayback?.pause();
+      this.microphoneSoundPlayback = new Audio(recording.dataUrl);
+      this.microphoneSoundPlayback.volume = 1;
+      void this.microphoneSoundPlayback.play().catch(() => {
+        fallback?.();
+      });
+      return true;
+    }
+
+    if (!this.microphoneSoundPreviewUrl) {
+      this.loadSavedMicrophoneSounds();
+    }
+
+    if (!this.microphoneSoundPreviewUrl) {
+      return false;
+    }
+
+    this.microphoneSoundPlayback?.pause();
+    this.microphoneSoundPlayback = new Audio(this.microphoneSoundPreviewUrl);
+    this.microphoneSoundPlayback.volume = 1;
+    void this.microphoneSoundPlayback.play().catch(() => {
+      fallback?.();
+    });
+    return true;
+  }
+
+  private playOfficeJumpscareSound(cue: OfficeJumpscareCue = 'stomp-roar'): void {
+    this.gameplaySfxAudio.playOfficeJumpscareCue(cue);
+  }
+
+  private playCustomJumpscareSound(fallbackCue: OfficeJumpscareCue): void {
+    const recordingId = this.getMicrophoneJumpscareRecordingId();
+    if (recordingId && this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playOfficeJumpscareCue(fallbackCue), recordingId)) {
+      return;
+    }
+
+    this.gameplaySfxAudio.playOfficeJumpscareCue(fallbackCue);
+  }
+
+  private playPurpleJumpscareSound(): void {
+    this.playCustomJumpscareSound('bear-grab');
+  }
+
+  private playOfficeDoorToggleSound(doorId: 'left' | 'right', open: boolean): void {
+    const recordingId = open ? OFFICE_DOOR_OPEN_SOUND_RECORDING_ID : OFFICE_DOOR_CLOSE_SOUND_RECORDING_ID;
+    const recording = this.getMicrophoneSoundRecordingById(recordingId);
+    this.stopOfficeDoorSound();
+
+    if (!recording) {
+      this.gameplaySfxAudio.playSecurityDoor(open);
+      return;
+    }
+
+    const audio = new Audio(recording.dataUrl);
+    audio.volume = 1;
+    audio.loop = true;
+    this.officeDoorSoundPlayback = audio;
+    this.officeDoorSoundTarget = { doorId, open };
+    void audio.play().catch(() => {
+      if (this.officeDoorSoundPlayback === audio) {
+        this.stopOfficeDoorSound();
+      }
+      this.gameplaySfxAudio.playSecurityDoor(open);
+    });
+  }
+
+  private updateOfficeDoorSoundPlayback(): void {
+    if (!this.officeDoorSoundPlayback || !this.officeDoorSoundTarget) {
+      return;
+    }
+
+    const door = this.getOfficeDoorById(this.officeDoorSoundTarget.doorId);
+    if (!door) {
+      this.stopOfficeDoorSound();
+      return;
+    }
+
+    const fullyOpen = this.officeDoorSoundTarget.open
+      && door.targetOpenAmount >= 0.999
+      && door.openAmount >= 0.999;
+    const fullyClosed = !this.officeDoorSoundTarget.open
+      && door.targetOpenAmount <= 0.001
+      && door.openAmount <= 0.001;
+    if (fullyOpen || fullyClosed) {
+      this.stopOfficeDoorSound();
+    }
+  }
+
+  private stopOfficeDoorSound(): void {
+    this.officeDoorSoundPlayback?.pause();
+    this.officeDoorSoundPlayback = null;
+    this.officeDoorSoundTarget = null;
+  }
+
+  private releaseMicrophoneSoundStream(): void {
+    this.microphoneSoundStream?.getTracks().forEach((track) => track.stop());
+    this.microphoneSoundStream = null;
+  }
+
+  private revokeMicrophoneSoundPreviewUrl(): void {
+    if (this.microphoneSoundPreviewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(this.microphoneSoundPreviewUrl);
+    }
+    this.microphoneSoundPreviewUrl = null;
+    this.microphoneSoundPreviewRecordingId = null;
+  }
+
+  private blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Could not read microphone recording.'));
+        }
+      });
+      reader.addEventListener('error', () => reject(reader.error ?? new Error('Could not read microphone recording.')));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  private async ensureCameraToolStream(): Promise<MediaStream | null> {
+    if (this.cameraToolStream) {
+      return this.cameraToolStream;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.cameraToolMessage = 'This browser cannot use the camera or microphone.';
+      this.pushStatus(this.cameraToolMessage, 3);
+      this.syncHud();
+      return null;
+    }
+
+    try {
+      this.cameraToolStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 960 },
+          height: { ideal: 540 },
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      this.cameraToolVideo = document.createElement('video');
+      this.cameraToolVideo.muted = true;
+      this.cameraToolVideo.playsInline = true;
+      this.cameraToolVideo.srcObject = this.cameraToolStream;
+      await this.cameraToolVideo.play();
+      this.cameraToolMessage = 'Camera and microphone ready. Left click takes a picture; E records video with your voice.';
+      this.syncHud();
+      return this.cameraToolStream;
+    } catch {
+      this.releaseCameraToolStream();
+      this.cameraToolMessage = 'Camera or microphone permission was blocked. Allow both permissions and try again.';
+      this.pushStatus(this.cameraToolMessage, 3.4);
+      this.syncHud();
+      return null;
+    }
+  }
+
+  private async captureCameraToolPicture(): Promise<void> {
+    const stream = await this.ensureCameraToolStream();
+    if (!stream || !this.cameraToolVideo) {
+      return;
+    }
+
+    await this.waitForCameraToolVideoReady();
+    const width = this.cameraToolVideo.videoWidth || 960;
+    const height = this.cameraToolVideo.videoHeight || 540;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.cameraToolMessage = 'Could not capture a picture from the camera.';
+      this.pushStatus(this.cameraToolMessage, 2.8);
+      this.syncHud();
+      return;
+    }
+
+    context.drawImage(this.cameraToolVideo, 0, 0, width, height);
+    this.revokeCameraToolPreviewUrl();
+    this.cameraToolPreviewUrl = canvas.toDataURL('image/png');
+    this.cameraToolPreviewKind = 'picture';
+    this.cameraToolPreviewCaptureId = null;
+    this.cameraToolSaved = false;
+    this.cameraToolMessage = 'Picture captured. Press D to save it as the next picture number.';
+    this.pushStatus('Picture captured. Press D to save it.', 2.6);
+    this.syncHud();
+  }
+
+  private async toggleCameraToolVideoRecording(): Promise<void> {
+    if (this.cameraToolRecording) {
+      this.stopCameraToolVideoRecording();
+      return;
+    }
+
+    if (typeof MediaRecorder === 'undefined') {
+      this.cameraToolMessage = 'This browser cannot record camera video.';
+      this.pushStatus(this.cameraToolMessage, 3);
+      this.syncHud();
+      return;
+    }
+
+    const stream = await this.ensureCameraToolStream();
+    if (!stream) {
+      return;
+    }
+
+    this.cameraToolChunks = [];
+    this.cameraToolDiscardStop = false;
+    this.cameraToolRecorder = new MediaRecorder(stream);
+    this.cameraToolRecorder.addEventListener('dataavailable', (event) => {
+      if (event.data.size > 0) {
+        this.cameraToolChunks.push(event.data);
+      }
+    });
+    this.cameraToolRecorder.addEventListener('stop', () => {
+      this.handleCameraToolVideoRecordingStopped();
+    });
+    this.cameraToolRecorder.start();
+    this.cameraToolRecording = true;
+    this.cameraToolSaved = false;
+    this.cameraToolMessage = 'Recording video and microphone audio. Press E again to stop, then D to save.';
+    this.pushStatus('Camera video and microphone audio recording. Press E again to stop.', 3);
+    this.syncHud();
+  }
+
+  private stopCameraToolVideoRecording(discard = false): void {
+    this.cameraToolDiscardStop = discard;
+    if (this.cameraToolRecorder && this.cameraToolRecorder.state !== 'inactive') {
+      this.cameraToolRecorder.stop();
+      return;
+    }
+
+    this.cameraToolRecording = false;
+    this.cameraToolRecorder = null;
+  }
+
+  private handleCameraToolVideoRecordingStopped(): void {
+    const discard = this.cameraToolDiscardStop;
+    this.cameraToolDiscardStop = false;
+    this.cameraToolRecording = false;
+    this.cameraToolRecorder = null;
+    if (discard) {
+      this.cameraToolChunks = [];
+      return;
+    }
+
+    if (this.cameraToolChunks.length === 0) {
+      this.cameraToolMessage = 'No video was captured. Press E and try recording again.';
+      this.pushStatus(this.cameraToolMessage, 2.8);
+      this.syncHud();
+      return;
+    }
+
+    const blob = new Blob(this.cameraToolChunks, {
+      type: this.cameraToolChunks[0]?.type || 'video/webm',
+    });
+    this.cameraToolChunks = [];
+    this.revokeCameraToolPreviewUrl();
+    this.cameraToolPreviewUrl = URL.createObjectURL(blob);
+    this.cameraToolPreviewKind = 'video';
+    this.cameraToolPreviewCaptureId = null;
+    this.cameraToolSaved = false;
+    this.cameraToolMessage = 'Video captured. Press D to save it as the next video number.';
+    this.pushStatus('Video captured. Press D to save it.', 2.8);
+    this.syncHud();
+  }
+
+  private async saveCameraToolCapture(): Promise<void> {
+    if (!this.cameraToolPreviewUrl || !this.cameraToolPreviewKind) {
+      this.cameraToolMessage = 'Take a picture or record a video before saving.';
+      this.pushStatus(this.cameraToolMessage, 2.6);
+      this.syncHud();
+      return;
+    }
+
+    if (this.cameraToolSaved && this.cameraToolPreviewCaptureId) {
+      this.cameraToolMessage = `${this.formatCameraToolCaptureLabel(this.cameraToolPreviewKind, this.cameraToolPreviewCaptureId)} is already saved.`;
+      this.pushStatus(this.cameraToolMessage, 2.4);
+      this.syncHud();
+      return;
+    }
+
+    try {
+      this.loadCameraToolCaptures();
+      const response = await fetch(this.cameraToolPreviewUrl);
+      const blob = await response.blob();
+      const dataUrl = await this.blobToDataUrl(blob);
+      const kind = this.cameraToolPreviewKind;
+      const id = this.getNextCameraToolCaptureId(kind);
+      const capture: CameraToolCapture = {
+        id,
+        kind,
+        dataUrl,
+        createdAt: Date.now(),
+      };
+      this.cameraToolCaptures.push(capture);
+      while (this.cameraToolCaptures.length > CAMERA_TOOL_MAX_CAPTURES) {
+        this.cameraToolCaptures.shift();
+      }
+      this.saveCameraToolCaptureLibrary();
+      this.revokeCameraToolPreviewUrl();
+      this.cameraToolPreviewUrl = dataUrl;
+      this.cameraToolPreviewKind = kind;
+      this.cameraToolPreviewCaptureId = id;
+      this.cameraToolSaved = true;
+      this.cameraToolMessage = `Saved as ${this.formatCameraToolCaptureLabel(kind, id)}.`;
+      this.pushStatus(this.cameraToolMessage, 2.8);
+      this.syncHud();
+    } catch {
+      this.cameraToolMessage = 'Could not save this camera capture. Try a shorter video.';
+      this.pushStatus(this.cameraToolMessage, 3);
+      this.syncHud();
+    }
+  }
+
+  private deleteCameraToolCapture(): void {
+    if (this.cameraToolRecording) {
+      this.stopCameraToolVideoRecording(true);
+    }
+
+    this.loadCameraToolCaptures();
+    const captureId = this.cameraToolPreviewCaptureId;
+    if (captureId && this.cameraToolPreviewKind) {
+      const captureIndex = this.cameraToolCaptures.findIndex((capture) => (
+        capture.id === captureId && capture.kind === this.cameraToolPreviewKind
+      ));
+      if (captureIndex >= 0) {
+        this.cameraToolCaptures.splice(captureIndex, 1);
+        this.saveCameraToolCaptureLibrary();
+      }
+    }
+
+    this.revokeCameraToolPreviewUrl();
+    this.cameraToolPreviewKind = null;
+    this.cameraToolPreviewCaptureId = null;
+    this.cameraToolSaved = false;
+    this.cameraToolMessage = captureId
+      ? `Deleted camera capture ${captureId}.`
+      : 'Deleted the unsaved camera preview.';
+    this.pushStatus(this.cameraToolMessage, 2.2);
+    this.syncHud();
+  }
+
+  private loadCameraToolCaptures(): void {
+    if (this.cameraToolLibraryLoaded) {
+      return;
+    }
+
+    this.cameraToolLibraryLoaded = true;
+    try {
+      const rawCaptures = window.localStorage.getItem(CAMERA_TOOL_CAPTURES_STORAGE_KEY);
+      if (!rawCaptures) {
+        return;
+      }
+
+      const parsedCaptures = JSON.parse(rawCaptures) as CameraToolCapture[];
+      parsedCaptures.forEach((capture) => {
+        if (
+          capture
+          && (capture.kind === 'picture' || capture.kind === 'video')
+          && typeof capture.id === 'string'
+          && typeof capture.dataUrl === 'string'
+          && typeof capture.createdAt === 'number'
+        ) {
+          this.cameraToolCaptures.push(capture);
+        }
+      });
+    } catch {
+      // Local storage is optional for this tool.
+    }
+  }
+
+  private saveCameraToolCaptureLibrary(): void {
+    try {
+      window.localStorage.setItem(CAMERA_TOOL_CAPTURES_STORAGE_KEY, JSON.stringify(this.cameraToolCaptures));
+    } catch {
+      // Local storage may be unavailable or full.
+    }
+  }
+
+  private getNextCameraToolCaptureId(kind: CameraToolCaptureKind): string {
+    const storageKey = kind === 'picture'
+      ? CAMERA_TOOL_NEXT_PICTURE_INDEX_STORAGE_KEY
+      : CAMERA_TOOL_NEXT_VIDEO_INDEX_STORAGE_KEY;
+    let nextIndex = this.cameraToolCaptures.filter((capture) => capture.kind === kind).length + 1;
+    try {
+      const savedNextIndex = Number.parseInt(window.localStorage.getItem(storageKey) ?? '', 10);
+      if (Number.isFinite(savedNextIndex) && savedNextIndex > 0) {
+        nextIndex = Math.max(nextIndex, savedNextIndex);
+      }
+    } catch {
+      // Use the in-memory fallback.
+    }
+
+    const maxExistingIndex = this.cameraToolCaptures.reduce((maxIndex, capture) => {
+      if (capture.kind !== kind) {
+        return maxIndex;
+      }
+      const numericId = Number.parseInt(capture.id, 10);
+      return Number.isFinite(numericId) ? Math.max(maxIndex, numericId) : maxIndex;
+    }, 0);
+    nextIndex = Math.max(nextIndex, maxExistingIndex + 1);
+    try {
+      window.localStorage.setItem(storageKey, String(nextIndex + 1));
+    } catch {
+      // Local storage is optional.
+    }
+
+    return String(nextIndex).padStart(3, '0');
+  }
+
+  private formatCameraToolCaptureLabel(kind: CameraToolCaptureKind, id: string): string {
+    return `${kind} ${id}`;
+  }
+
+  private getCameraToolCaptureById(kind: CameraToolCaptureKind, id: string): CameraToolCapture | null {
+    this.loadCameraToolCaptures();
+    const normalizedId = id.padStart(3, '0');
+    return this.cameraToolCaptures.find((capture) => capture.kind === kind && capture.id === normalizedId) ?? null;
+  }
+
+  private getLatestCameraToolCapture(kind: CameraToolCaptureKind): CameraToolCapture | null {
+    this.loadCameraToolCaptures();
+    return this.cameraToolCaptures
+      .filter((capture) => capture.kind === kind)
+      .reduce<CameraToolCapture | null>((latestCapture, capture) => {
+        if (!latestCapture || capture.createdAt > latestCapture.createdAt) {
+          return capture;
+        }
+        return latestCapture;
+      }, null);
+  }
+
+  private waitForCameraToolVideoReady(): Promise<void> {
+    if (!this.cameraToolVideo || this.cameraToolVideo.videoWidth > 0) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      const video = this.cameraToolVideo;
+      if (!video) {
+        resolve();
+        return;
+      }
+      const timeout = window.setTimeout(resolve, 900);
+      video.addEventListener('loadedmetadata', () => {
+        window.clearTimeout(timeout);
+        resolve();
+      }, { once: true });
+    });
+  }
+
+  private releaseCameraToolStream(): void {
+    this.cameraToolStream?.getTracks().forEach((track) => track.stop());
+    this.cameraToolStream = null;
+    if (this.cameraToolVideo) {
+      this.cameraToolVideo.srcObject = null;
+    }
+    this.cameraToolVideo = null;
+  }
+
+  private revokeCameraToolPreviewUrl(): void {
+    if (this.cameraToolPreviewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(this.cameraToolPreviewUrl);
+    }
+    this.cameraToolPreviewUrl = null;
+    this.cameraToolPreviewCaptureId = null;
+  }
+
+  private getOfficePrizeItemCount(item: OfficePrizeItemId): number {
+    return this.officePrizeInventory.get(item) ?? 0;
+  }
+
+  private addOfficePrizeItem(item: OfficePrizeItemId, count: number): void {
+    this.officePrizeInventory.set(item, this.getOfficePrizeItemCount(item) + count);
+  }
+
+  private consumeOfficePrizeItem(item: OfficePrizeItemId, count = 1): boolean {
+    const current = this.getOfficePrizeItemCount(item);
+    if (current < count) {
+      return false;
+    }
+
+    const next = current - count;
+    if (next > 0) {
+      this.officePrizeInventory.set(item, next);
+    } else {
+      this.officePrizeInventory.delete(item);
+      if (this.officeHeldPrizeItem === item) {
+        this.clearOfficeHeldPrizeItem();
+      }
+    }
+    return true;
+  }
+
+  private clearOfficeHeldPrizeItem(): void {
+    this.officeHeldPrizeItem = null;
+    this.officeGlassHeld = false;
+    this.officeGlassAnchor.visible = false;
+    this.officePrizeItemAnchor.visible = false;
+    this.officePrizeItemModels.forEach((model) => {
+      model.visible = false;
+    });
+  }
+
+  private resetOfficePrizeInventory(): void {
+    this.officePrizeInventory.clear();
+    this.officePrizeBonusMultiplier = 1;
+    this.officeLollipopBoostRemaining = 0;
+    this.officeLollipopUseTimer = 0;
+    this.clearOfficeHeldPrizeItem();
+  }
+
+  private setOfficeHeldPrizeItem(item: OfficePrizeItemId, showStatus = true): void {
+    if (this.getOfficePrizeItemCount(item) <= 0) {
+      this.pushStatus(`${OFFICE_PRIZE_ITEM_LABELS[item]} is not in your hotbar yet.`, 1.8);
+      return;
+    }
+
+    this.setPlacementToolActive(false);
+    this.setMicrophoneSoundToolActive(false);
+    this.setCameraToolActive(false);
+    this.officeTabletHeld = false;
+    this.officeTabletCameraFeedActive = false;
+    this.officeTabletAnchor.visible = false;
+    this.officeBasketballHeld = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourBoxWideCameraReady = false;
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+
+    this.officeHeldPrizeItem = item;
+    this.officeGlassHeld = item === 'glass';
+    this.officeGlassAnchor.visible = this.officeGlassHeld;
+    if (!this.officeGlassHeld) {
+      this.officeGlassAnchor.visible = false;
+    }
+
+    if (showStatus) {
+      const action = item === 'glass'
+        ? 'Left click to throw it and shatter it.'
+        : item === 'tiny-bear'
+          ? 'Left click to throw it and squeak it as a distraction.'
+          : item === 'lollipop'
+            ? 'Left click to eat it for a 10 second speed boost.'
+            : item === 'stuffie'
+              ? 'Left click to play the saved stuffie sound.'
+              : 'It looks like a tiny Quacky toy in your hand.';
+      this.pushStatus(`${OFFICE_PRIZE_ITEM_LABELS[item]} equipped. ${action}`, 2.6);
+    }
+  }
+
   private handleOfficeHotbarSlot(slot: number): void {
     if (slot === 1) {
       this.setPlacementToolActive(true);
@@ -1822,7 +4881,121 @@ export class Game {
         this.officeTabletCameraFeedActive = false;
       }
       this.setOfficeTabletHeld(true);
+      return;
     }
+
+    if (slot === 3) {
+      this.setMicrophoneSoundToolActive(true);
+      return;
+    }
+
+    if (slot === 4) {
+      this.setCameraToolActive(true);
+      return;
+    }
+
+    const prizeSlot = OFFICE_PRIZE_HOTBAR_SLOTS.find((entry) => entry.slot === slot);
+    if (prizeSlot) {
+      this.setOfficeHeldPrizeItem(prizeSlot.item);
+    }
+  }
+
+  private handleChapterFourHotbarSlot(slot: number): void {
+    if (slot === 1) {
+      this.setPlacementToolActive(true);
+      return;
+    }
+
+    if (slot === 2) {
+      this.setChapterFourBoxHeld(true);
+      return;
+    }
+
+    if (slot === 3) {
+      this.setMicrophoneSoundToolActive(true);
+    }
+  }
+
+  private setChapterFourBoxHeld(held: boolean, showStatus = true): void {
+    if (this.chapterFourBoxHeld === held && (!held || !this.chapterFourBoxActive)) {
+      return;
+    }
+
+    this.chapterFourBoxHeld = held;
+    if (held) {
+      this.setPlacementToolActive(false);
+      this.setMicrophoneSoundToolActive(false);
+      this.setCameraToolActive(false);
+      this.officeTabletHeld = false;
+      this.officeTabletCameraFeedActive = false;
+      this.officeTabletAnchor.visible = false;
+      this.officeGlassHeld = false;
+      this.officeGlassAnchor.visible = false;
+      this.clearOfficeHeldPrizeItem();
+      this.chapterFourBoxActive = false;
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+    } else {
+      this.chapterFourBoxActive = false;
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+      this.chapterFourBoxHeldAnchor.visible = false;
+      this.chapterFourBoxHideAnchor.visible = false;
+      this.chapterFourBoxWideAnchor.visible = false;
+      this.chapterFourBoxWorldAnchor.visible = false;
+    }
+
+    if (showStatus) {
+      this.pushStatus(
+        held
+          ? 'Cardboard Box equipped. Press C to crawl inside it.'
+          : 'Cardboard Box put away.',
+        held ? 2.8 : 1.4,
+      );
+    }
+  }
+
+  private toggleChapterFourBox(): void {
+    if (!this.chapterFourActive) {
+      return;
+    }
+    if (!this.chapterFourBoxHeld && !this.chapterFourBoxActive) {
+      this.setChapterFourBoxHeld(true, false);
+    }
+
+    this.chapterFourBoxActive = !this.chapterFourBoxActive;
+    if (this.chapterFourBoxActive) {
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+    } else {
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+      this.chapterFourBoxWideAnchor.visible = false;
+      this.chapterFourBoxWorldAnchor.visible = false;
+    }
+    this.pushStatus(
+      this.chapterFourBoxActive
+        ? 'You crawl inside the cardboard box. Press C to get out, Z for wide box view, or X for normal slit view.'
+        : 'You crawl out of the cardboard box.',
+      2.4,
+    );
+  }
+
+  private setChapterFourBoxViewMode(mode: 'normal' | 'wide'): void {
+    if (!this.chapterFourActive || !this.chapterFourBoxActive) {
+      return;
+    }
+
+    this.chapterFourBoxViewMode = mode;
+    if (mode === 'wide') {
+      this.chapterFourBoxWideCameraReady = false;
+    }
+    this.pushStatus(
+      mode === 'wide'
+        ? 'Cardboard Box wide view. The box stays over you while you can see around.'
+        : 'Cardboard Box normal view. You are looking through the front slit.',
+      1.8,
+    );
   }
 
   private getActiveOfficeTabletCamera(): OfficeChapterData['securityCameras'][number] | null {
@@ -1885,9 +5058,20 @@ export class Game {
     this.officeTabletHeld = held;
     if (held) {
       this.setPlacementToolActive(false);
+      this.setMicrophoneSoundToolActive(false);
+      this.setCameraToolActive(false);
       this.officeTabletCameraFeedActive = false;
       this.officeGlassHeld = false;
       this.officeGlassAnchor.visible = false;
+      this.clearOfficeHeldPrizeItem();
+      this.chapterFourBoxHeld = false;
+      this.chapterFourBoxActive = false;
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+      this.chapterFourBoxHeldAnchor.visible = false;
+      this.chapterFourBoxHideAnchor.visible = false;
+      this.chapterFourBoxWideAnchor.visible = false;
+      this.chapterFourBoxWorldAnchor.visible = false;
     } else {
       this.officeTabletCameraFeedActive = false;
       this.officeTabletAnchor.visible = false;
@@ -1915,17 +5099,16 @@ export class Game {
     this.stopOfficeJumpscare();
     this.officeGlassHeld = false;
     this.officeGlassAnchor.visible = false;
+    this.clearOfficeHeldPrizeItem();
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourBoxWideCameraReady = false;
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
     this.clearOfficeGlassThrows();
-  }
-
-  private canOfficeCameraPuppetThreatRun(): boolean {
-    return this.officeChapterActive
-      && this.officeGameModeActive
-      && this.officeGameModeDifficulty === 'hard'
-      && (this.officeMode === 'night' || this.officeMode === 'game')
-      && !this.officeGameModePowerOut
-      && this.officeGameModePower > 0
-      && this.activeOfficeJumpscare === null;
   }
 
   private clearOfficeCameraPuppetThreat(): void {
@@ -1934,112 +5117,20 @@ export class Game {
   }
 
   private maybeStartOfficeCameraPuppetThreat(): void {
-    if (
-      this.officeCameraPuppetPhase !== 'idle'
-      || !this.officeTabletCameraFeedActive
-      || !this.canOfficeCameraPuppetThreatRun()
-      || Math.random() >= OFFICE_CAMERA_PUPPET_CHANCE
-    ) {
-      return;
-    }
-
-    this.officeCameraPuppetPhase = 'camera-face';
-    this.officeCameraPuppetTimer = OFFICE_CAMERA_PUPPET_CAMERA_FAIL_SECONDS;
-    this.gameplaySfxAudio.resume();
-    this.gameplaySfxAudio.playOfficeJumpscareCue('curtain-snap');
-    this.pushStatus('A crying puppet face fills the camera. Drop the tablet now.', 2.2);
+    this.clearOfficeCameraPuppetThreat();
   }
 
   private handleOfficeCameraPuppetFeedClosed(): void {
-    if (this.officeCameraPuppetPhase !== 'camera-face') {
-      return;
-    }
-
-    this.officeCameraPuppetPhase = 'room-watch';
-    this.officeCameraPuppetTimer = OFFICE_CAMERA_PUPPET_REOPEN_SECONDS;
-    this.gameplaySfxAudio.resume();
-    this.gameplaySfxAudio.playOfficeJumpscareCue('hat-blackout');
-    this.pushStatus('The puppet is in the room. Put the camera back up within three seconds.', 3);
+    this.clearOfficeCameraPuppetThreat();
   }
 
   private handleOfficeCameraPuppetFeedOpened(): boolean {
-    if (this.officeCameraPuppetPhase !== 'room-watch') {
-      return false;
-    }
-
     this.clearOfficeCameraPuppetThreat();
-    this.gameplaySfxAudio.resume();
-    this.gameplaySfxAudio.playSmallPanel(true);
-    this.pushStatus('The puppet vanishes behind the tablet static.', 2);
-    return true;
+    return false;
   }
 
-  private triggerOfficeCameraPuppetJumpscare(): void {
-    if (this.officeCameraPuppetPhase === 'jumpscare') {
-      return;
-    }
-
-    this.officeCameraPuppetPhase = 'jumpscare';
-    this.officeCameraPuppetTimer = OFFICE_CAMERA_PUPPET_JUMPSCARE_SECONDS;
-    this.officeTabletCameraFeedActive = false;
-    this.officeTabletHeld = false;
-    this.officeTabletAnchor.visible = false;
-    this.placementToolActive = false;
-    this.placementPreview.visible = false;
-    this.officeGlassHeld = false;
-    this.officeGlassAnchor.visible = false;
-    this.gameplaySfxAudio.resume();
-    this.gameplaySfxAudio.playOfficeJumpscareCue('bear-grab');
-    this.resize();
-    this.pushStatus('The puppet reaches you.', 1.4);
-  }
-
-  private updateOfficeCameraPuppetThreat(deltaSeconds: number): void {
-    if (this.officeCameraPuppetPhase === 'idle') {
-      return;
-    }
-
-    if (this.officeCameraPuppetPhase !== 'jumpscare' && !this.canOfficeCameraPuppetThreatRun()) {
-      this.clearOfficeCameraPuppetThreat();
-      return;
-    }
-
-    this.officeCameraPuppetTimer = Math.max(0, this.officeCameraPuppetTimer - deltaSeconds);
-
-    if (this.officeCameraPuppetPhase === 'camera-face') {
-      if (!this.officeTabletCameraFeedActive) {
-        this.handleOfficeCameraPuppetFeedClosed();
-        return;
-      }
-
-      if (this.officeCameraPuppetTimer <= 0) {
-        this.triggerOfficeCameraPuppetJumpscare();
-      }
-      return;
-    }
-
-    if (this.officeCameraPuppetPhase === 'room-watch') {
-      if (this.officeTabletCameraFeedActive) {
-        this.handleOfficeCameraPuppetFeedOpened();
-        return;
-      }
-
-      if (this.officeCameraPuppetTimer <= 0) {
-        this.triggerOfficeCameraPuppetJumpscare();
-      }
-      return;
-    }
-
-    if (this.officeCameraPuppetTimer > 0) {
-      return;
-    }
-
+  private updateOfficeCameraPuppetThreat(): void {
     this.clearOfficeCameraPuppetThreat();
-    if (this.officeGameModeActive) {
-      this.returnToOfficeAfterGameModeJumpscare();
-    } else {
-      this.pushStatus('The puppet jumpscare fades.', 1.4);
-    }
   }
 
   private toggleOfficeTabletCameraFeed(): void {
@@ -2069,6 +5160,7 @@ export class Game {
     this.placementPreview.visible = false;
     this.officeGlassHeld = false;
     this.officeGlassAnchor.visible = false;
+    this.clearOfficeHeldPrizeItem();
     const camera = this.getActiveOfficeTabletCamera();
     let clearedPuppetThreat = false;
     if (this.officeTabletCameraFeedActive) {
@@ -2087,7 +5179,7 @@ export class Game {
         ? this.officeCameraPuppetPhase === 'camera-face'
           ? 'A crying puppet face fills the camera. Drop the tablet now.'
           : this.officeCameraPuppetPhase === 'room-watch'
-            ? 'The puppet is in the room. Put the camera back up within three seconds.'
+            ? 'The puppet is staring at you. Put the camera back up within two seconds.'
             : 'The puppet reaches you.'
       : this.officeTabletCameraFeedActive
         ? `Viewing ${camera?.label ?? 'tablet camera'} through the tablet. Press number keys to switch, or left click again to return.`
@@ -2097,7 +5189,7 @@ export class Game {
   }
 
   private officeGameModeHasPower(): boolean {
-    return !this.officeGameModeActive || (!this.officeGameModePowerOut && this.officeGameModePower > 0);
+    return !this.officeGameModeActive || (!this.officeGameModePowerOut && !this.officePowerRebootRequired && this.officeGameModePower > 0);
   }
 
   private updateOfficePlayerNoise(
@@ -2121,8 +5213,8 @@ export class Game {
       ? MathUtils.clamp(speed / GAME_CONFIG.player.sprintSpeed, 0, 1.15)
         * (sprinting ? 0.68 : playerInOfficeBallPit ? 0.36 : this.officeVentActive ? 0.16 : 0.28)
       : 0;
-    const voiceLevel = this.voiceInput.getLevel();
-    const voiceNoise = MathUtils.clamp(voiceLevel * 1.35, 0, 1);
+    const voiceLevel = this.officeMicrophoneEnabled ? this.voiceInput.getLevel() : 0;
+    const voiceNoise = MathUtils.clamp(voiceLevel * OFFICE_VOICE_NOISE_MULTIPLIER, 0, 1);
     const targetNoise = Math.max(movementNoise, voiceNoise);
 
     this.officePlayerVoiceLevel = voiceLevel;
@@ -2165,13 +5257,30 @@ export class Game {
         routeIndex: 0,
         state: 'stage',
         waitTimer: 0,
+        doorBreachTimer: 0,
+        doorBreachDoorId: null,
         attackCooldown: 0,
         lostSightTimer: 0,
         stuckTimer: 0,
         progressStallTimer: 0,
         detourTarget: null,
         detourTimer: 0,
+        distractionTarget: null,
         lastKnownPlayerPosition: OFFICE_GAME_MODE_OFFICE_CENTER.clone(),
+        chaseCommitTarget: OFFICE_GAME_MODE_OFFICE_CENTER.clone(),
+        chaseCommitTimer: 0,
+        chaseCommitCooldown: 0,
+        chaseGiveUpTimer: 0,
+        insultStareTimer: 0,
+        insultChargeTimer: 0,
+        insultCooldown: 0,
+        cameraStareTimer: 0,
+        cameraStareCooldown: 0,
+        cameraStareCameraId: null,
+        senseTimer: 0,
+        cachedCanSeePlayer: false,
+        cachedNoiseResponse: 'none',
+        cachedBlockedDoorId: null,
       });
     });
   }
@@ -2200,9 +5309,31 @@ export class Game {
     return floorY;
   }
 
+  private restoreOfficePowerOutBoriEyeFlicker(root: Group): void {
+    root.traverse((object) => {
+      if (!(object instanceof Mesh)) {
+        return;
+      }
+
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (
+          !(material instanceof MeshStandardMaterial)
+          || typeof material.userData.officePowerOutBaseEmissiveIntensity !== 'number'
+        ) {
+          return;
+        }
+
+        material.emissiveIntensity = material.userData.officePowerOutBaseEmissiveIntensity;
+        delete material.userData.officePowerOutBaseEmissiveIntensity;
+      });
+    });
+  }
+
   private resetOfficeGameModeAnimatronics(): void {
     this.ensureOfficeGameModeAnimatronics();
     this.officeGameModeAnimatronics.forEach((animatronic, index) => {
+      this.restoreOfficePowerOutBoriEyeFlicker(animatronic.model.root);
       const start = animatronic.route[0] ?? OFFICE_GAME_MODE_OFFICE_CENTER;
       animatronic.model.root.position.set(
         start.x,
@@ -2216,19 +5347,34 @@ export class Game {
       animatronic.model.root.visible = false;
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
       animatronic.waitTimer = this.getOfficeGameModeStageDwellSeconds(animatronic.animatronic) + index * 5.8;
+      animatronic.doorBreachTimer = 0;
+      animatronic.doorBreachDoorId = null;
       animatronic.attackCooldown = 1.5;
       animatronic.lostSightTimer = 0;
       animatronic.stuckTimer = 0;
       animatronic.progressStallTimer = 0;
       animatronic.detourTarget = null;
       animatronic.detourTimer = 0;
+      animatronic.distractionTarget = null;
       animatronic.lastKnownPlayerPosition.copy(OFFICE_GAME_MODE_OFFICE_CENTER);
+      animatronic.chaseCommitTarget.copy(OFFICE_GAME_MODE_OFFICE_CENTER);
+      animatronic.chaseCommitTimer = 0;
+      animatronic.chaseCommitCooldown = 0;
+      this.clearOfficeAnimatronicChaseTimers(animatronic, true);
+      animatronic.cameraStareTimer = 0;
+      animatronic.cameraStareCooldown = 0;
+      animatronic.cameraStareCameraId = null;
+      animatronic.senseTimer = 0;
+      animatronic.cachedCanSeePlayer = false;
+      animatronic.cachedNoiseResponse = 'none';
+      animatronic.cachedBlockedDoorId = null;
       animatronic.model.leftArm.rotation.set(0, 0, 0);
       animatronic.model.rightArm.rotation.set(0, 0, 0);
       animatronic.model.leftLeg.rotation.set(0, 0, 0);
       animatronic.model.rightLeg.rotation.set(0, 0, 0);
       animatronic.model.leftLegJoint.rotation.set(0, 0, 0);
       animatronic.model.rightLegJoint.rotation.set(0, 0, 0);
+      animatronic.model.root.scale.setScalar(OFFICE_GAME_MODE_ANIMATRONIC_SCALE[animatronic.animatronic]);
     });
   }
 
@@ -2276,6 +5422,13 @@ export class Game {
       : `${this.getOfficeGameModeClockLabel()} to 12 PM (${minutesLeft}m)`;
   }
 
+  private getOfficeGameModePowerLabel(): string {
+    const suffix = this.officeGameModePowerOut
+      ? ' / OUT'
+      : '';
+    return `${Math.ceil(this.officeGameModePower)}%${suffix}`;
+  }
+
   private getOfficeGameModePhaseTimeRemaining(): number {
     const phaseDuration = this.officeGameModeNightPhase
       ? OFFICE_GAME_MODE_NIGHT_SECONDS
@@ -2283,10 +5436,62 @@ export class Game {
     return Math.max(0, phaseDuration - this.officeGameModePhaseTime);
   }
 
+  private resetOfficeFuseBoxPuzzle(resetDoor = false): void {
+    OFFICE_FUSE_WIRE_COLORS.forEach((color) => {
+      this.officeFuseWireConnected[color] = false;
+    });
+    const fuseBox = this.officeChapter.storageFuseBox;
+    fuseBox.targetLeverAmount = 0;
+    fuseBox.leverPulled = false;
+    if (resetDoor) {
+      fuseBox.targetOpenAmount = 0;
+      fuseBox.open = false;
+    }
+    this.syncOfficeFuseBoxVisuals();
+  }
+
+  private syncOfficeFuseBoxVisuals(): void {
+    const fuseBox = this.officeChapter.storageFuseBox;
+    OFFICE_FUSE_WIRE_COLORS.forEach((color) => {
+      const connected = this.officeFuseWireConnected[color];
+      const wire = fuseBox.wires[color];
+      wire.loose.visible = !connected;
+      wire.connected.visible = connected;
+      wire.outletMaterial.emissiveIntensity = connected ? 0.58 : 0.12;
+    });
+
+    const allWiresConnected = OFFICE_FUSE_WIRE_COLORS.every((color) => this.officeFuseWireConnected[color]);
+    if (this.officePowerRebootRequired) {
+      fuseBox.statusLightMaterial.color.setHex(allWiresConnected ? 0xffd95a : 0xff3a2e);
+      fuseBox.statusLightMaterial.emissive.setHex(allWiresConnected ? 0xffb72e : 0xff2a1f);
+      fuseBox.statusLightMaterial.emissiveIntensity = allWiresConnected ? 0.9 : 0.72;
+      return;
+    }
+
+    fuseBox.statusLightMaterial.color.setHex(0x5cff89);
+    fuseBox.statusLightMaterial.emissive.setHex(0x2fff65);
+    fuseBox.statusLightMaterial.emissiveIntensity = 0.68;
+  }
+
+  private completeOfficePowerReboot(): void {
+    this.officePowerRebootRequired = false;
+    this.officeChapter.storageFuseBox.targetLeverAmount = 1;
+    this.officeChapter.storageFuseBox.leverPulled = true;
+    this.syncOfficeFuseBoxVisuals();
+    this.powerEventAudio.resume();
+    this.powerEventAudio.playZap();
+    this.pushStatus('Power rebooted from the ball pit fuse box. Office controls are live again until the next 10 to 20 percent of power is used.', 4.6);
+  }
+
   private resetOfficeGameModeNightState(): void {
     this.officeGameModePower = 100;
     this.officeGameModePowerOut = false;
+    this.officePowerRebootRequired = false;
+    this.resetOfficeFuseBoxPuzzle(true);
     this.officeFreddyPowerOutTimer = 0;
+    this.officePowerOutBoriDoor = null;
+    this.officeMicrophoneManualOff = false;
+    this.officeMicrophoneAutoStatusShown = false;
     this.officePlayerNoiseLevel = 0;
     this.officePlayerVoiceLevel = 0;
     this.resetOfficeFoxyCameraPressure();
@@ -2297,6 +5502,7 @@ export class Game {
     this.officeChapter.doors.forEach((door) => {
       door.targetOpenAmount = 1;
       door.open = true;
+      door.closeBounceTimer = 0;
     });
     this.resetOfficeGameModeAnimatronics();
     if (this.officeGameModeDifficulty === 'hard') {
@@ -2349,12 +5555,18 @@ export class Game {
   private startOfficeGameMode(mode: Exclude<OfficeModeMenuMode, 'creator'>, difficulty: OfficeGameModeDifficulty): void {
     this.officeMode = mode;
     this.officeGameModeActive = true;
+    this.officeDeathNoticePhase = null;
+    this.officeDeathNoticeTimer = 0;
     this.officeGameModeDifficulty = difficulty;
     this.officeGameModePower = 100;
     this.officeGameModePowerOut = false;
+    this.officePowerRebootRequired = false;
+    this.resetOfficeFuseBoxPuzzle(true);
     this.officeFreddyPowerOutTimer = 0;
+    this.officePowerOutBoriDoor = null;
     this.officePlayerNoiseLevel = 0;
     this.officePlayerVoiceLevel = 0;
+    this.officeStageVoiceReleaseCooldown = 0;
     this.officeGameModeNightPhase = true;
     this.officeGameModePhaseTime = 0;
     this.officeGameModeNight = 1;
@@ -2374,24 +5586,27 @@ export class Game {
     this.clearOfficeCameraPuppetThreat();
     this.officeGlassHeld = false;
     this.officeGlassAnchor.visible = false;
+    this.clearOfficeHeldPrizeItem();
     this.officeBasketballHeld = false;
     this.officeBasketballAnchor.visible = false;
     this.officeChapter.setBasketballHeld(false);
     this.officeChapter.doors.forEach((door) => {
       door.targetOpenAmount = 1;
       door.open = true;
+      door.closeBounceTimer = 0;
     });
     this.officeChapter.storageClosetDoor.targetOpenAmount = 1;
     this.officeChapter.storageClosetDoor.open = true;
     this.player.teleport(OFFICE_GAME_MODE_OFFICE_SPAWN);
     this.player.lookToward(OFFICE_GAME_MODE_OFFICE_LOOK_TARGET, 1);
-    this.flashlight.setEnabled(true);
-    void this.voiceInput.start();
+    this.flashlight.setEnabled(false);
+    this.requestOfficeMicrophoneStart('auto');
     this.resetOfficeGameModeAnimatronics();
     if (difficulty === 'hard') {
       this.ensureOfficeVentBoy();
       this.resetOfficeVentBoy();
     }
+    this.resize();
     this.pushStatus(
       `${this.getOfficeModeLabel(mode)} started on ${this.getOfficeGameModeConfig().label}. Survive five nights. Each night runs 12 AM to 6 AM in five minutes.`,
       4.6,
@@ -2400,15 +5615,21 @@ export class Game {
 
   private stopOfficeGameMode(): void {
     this.officeGameModeActive = false;
+    this.officeDeathNoticePhase = null;
+    this.officeDeathNoticeTimer = 0;
     this.officeMode = 'creator';
     this.officeModeMenuOpen = false;
     this.officeModeMenuStep = 'mode';
     this.officeModeMenuPendingMode = null;
     this.officeGameModePowerOut = false;
+    this.officePowerRebootRequired = false;
+    this.resetOfficeFuseBoxPuzzle(true);
     this.officeFreddyPowerOutTimer = 0;
+    this.officePowerOutBoriDoor = null;
     this.officeGameModePower = 100;
     this.officePlayerNoiseLevel = 0;
     this.officePlayerVoiceLevel = 0;
+    this.officeStageVoiceReleaseCooldown = 0;
     this.officeGameModeNightPhase = false;
     this.officeGameModePhaseTime = 0;
     this.officeGameModeNight = 1;
@@ -2417,16 +5638,25 @@ export class Game {
     this.officeFoxyClankCooldown = 0;
     this.officeFoxyRushDoor = null;
     this.clearOfficeCameraPuppetThreat();
+    this.stopOfficeDoorSound();
     this.voiceInput.stop();
+    this.stopOfficeSpeechRecognition();
+    this.officeMicrophoneEnabled = false;
+    this.officeMicrophoneManualOff = false;
+    this.officeMicrophoneStartPending = false;
+    this.officeMicrophoneAutoStatusShown = false;
+    this.officeMicrophoneStartToken += 1;
     this.officeBallPitSlide = null;
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       animatronic.model.root.visible = false;
       animatronic.state = 'stage';
+      animatronic.distractionTarget = null;
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
     });
     if (this.officeVentBoy) {
       this.officeVentBoy.root.visible = false;
     }
+    this.resize();
   }
 
   private isPlayerInsideOfficeRoom(position = this.player.getPosition()): boolean {
@@ -2473,14 +5703,217 @@ export class Game {
       }
 
       animatronic.state = 'retreat';
+      animatronic.doorBreachTimer = 0;
+      animatronic.doorBreachDoorId = null;
       animatronic.routeIndex = 0;
       animatronic.waitTimer = 0.25;
       animatronic.lostSightTimer = 0;
       animatronic.progressStallTimer = 0;
       animatronic.detourTarget = null;
       animatronic.detourTimer = 0;
+      animatronic.distractionTarget = null;
       this.pushStatus(`${animatronic.label} backs away from the ${doorId} door light.`, 2.1);
     });
+  }
+
+  private startOfficeGameModeDoorBreach(
+    animatronic: OfficeGameModeAnimatronicState,
+    doorId: 'left' | 'right',
+  ): void {
+    animatronic.state = 'door-breach';
+    animatronic.doorBreachTimer = 0;
+    animatronic.doorBreachDoorId = doorId;
+    animatronic.waitTimer = 0;
+    animatronic.lostSightTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    this.clearOfficeAnimatronicChaseTimers(animatronic);
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    animatronic.cachedBlockedDoorId = doorId;
+    this.pushStatus(`${animatronic.label} crouches and starts forcing the ${doorId} door up.`, 2.8);
+  }
+
+  private startOfficeGameModeDoorBlockedWait(
+    animatronic: OfficeGameModeAnimatronicState,
+    doorId: 'left' | 'right',
+  ): void {
+    animatronic.state = 'door';
+    animatronic.doorBreachTimer = 0;
+    animatronic.doorBreachDoorId = null;
+    animatronic.waitTimer = 0;
+    animatronic.lostSightTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    animatronic.cachedBlockedDoorId = doorId;
+    this.clearOfficeAnimatronicChaseTimers(animatronic);
+  }
+
+  private tryOfficeDoorCloseHallwayBreach(doorId: 'left' | 'right'): void {
+    if (!this.officeGameModeActive || this.officeDeathNoticePhase || this.activeOfficeJumpscare) {
+      return;
+    }
+
+    const candidate = this.getOfficeDoorCloseHallwayBreachCandidate(doorId);
+    if (!candidate) {
+      return;
+    }
+
+    if (Math.random() < OFFICE_DOOR_BREACH_CHANCE) {
+      this.startOfficeGameModeDoorBreach(candidate, doorId);
+      return;
+    }
+
+    this.startOfficeGameModeDoorBlockedWait(candidate, doorId);
+  }
+
+  private getOfficeDoorCloseHallwayBreachCandidate(
+    doorId: 'left' | 'right',
+  ): OfficeGameModeAnimatronicState | null {
+    const doorWatch = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    let closest: OfficeGameModeAnimatronicState | null = null;
+    let closestDistance = Infinity;
+
+    for (const animatronic of this.officeGameModeAnimatronics) {
+      if (
+        animatronic.state !== 'chase'
+        && animatronic.state !== 'rush'
+        && animatronic.state !== 'door'
+      ) {
+        continue;
+      }
+
+      const position = animatronic.model.root.position;
+      const inSideHallway = doorId === 'left'
+        ? position.x < -244.2
+        : position.x > -235.8;
+      if (!inSideHallway || Math.abs(position.z - doorWatch.z) > 8.6) {
+        continue;
+      }
+
+      const distance = Math.hypot(position.x - doorWatch.x, position.z - doorWatch.z);
+      if (distance > 10.5 || distance >= closestDistance) {
+        continue;
+      }
+
+      closest = animatronic;
+      closestDistance = distance;
+    }
+
+    return closest;
+  }
+
+  private updateOfficeGameModeDoorBreach(
+    animatronic: OfficeGameModeAnimatronicState,
+    deltaSeconds: number,
+    playerPosition: Vector3,
+  ): void {
+    const doorId = animatronic.doorBreachDoorId ?? animatronic.cachedBlockedDoorId;
+    const door = doorId ? this.getOfficeDoorById(doorId) : null;
+    if (!doorId || !door) {
+      animatronic.state = 'rush';
+      animatronic.doorBreachTimer = 0;
+      animatronic.doorBreachDoorId = null;
+      animatronic.lastKnownPlayerPosition.copy(playerPosition);
+      animatronic.chaseGiveUpTimer = 0;
+      return;
+    }
+
+    const previousTimer = animatronic.doorBreachTimer;
+    animatronic.doorBreachTimer = Math.min(
+      OFFICE_DOOR_BREACH_SECONDS,
+      animatronic.doorBreachTimer + deltaSeconds,
+    );
+    const progress = MathUtils.clamp(animatronic.doorBreachTimer / OFFICE_DOOR_BREACH_SECONDS, 0, 1);
+    const root = animatronic.model.root;
+    const doorWatch = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const floorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, doorWatch.x, doorWatch.z);
+    const crouch = progress < 0.48
+      ? MathUtils.smoothstep(progress, 0.04, 0.32)
+      : 1 - MathUtils.smoothstep(progress, 0.48, 0.74);
+    const reachUnder = MathUtils.smoothstep(progress, 0.16, 0.38) * (1 - MathUtils.smoothstep(progress, 0.56, 0.76));
+    const lift = MathUtils.smoothstep(progress, 0.44, 0.82);
+    const brace = MathUtils.smoothstep(progress, 0.58, 0.74) * (1 - MathUtils.smoothstep(progress, 0.84, 1));
+    const jump = Math.sin(MathUtils.smoothstep(progress, 0.72, 0.92) * Math.PI) * 0.24;
+    const shake = brace * Math.sin(this.elapsed * 52);
+    const baseScale = OFFICE_GAME_MODE_ANIMATRONIC_SCALE[animatronic.animatronic];
+
+    root.visible = true;
+    root.position.x = MathUtils.lerp(root.position.x, doorWatch.x, 0.45);
+    root.position.z = MathUtils.lerp(root.position.z, doorWatch.z, 0.45);
+    root.position.y = floorY - crouch * 0.18 + jump;
+    root.scale.set(baseScale, baseScale * (1 - crouch * 0.28 + lift * 0.04), baseScale);
+
+    const faceX = playerPosition.x - root.position.x;
+    const faceZ = playerPosition.z - root.position.z;
+    if (Math.hypot(faceX, faceZ) > 0.01) {
+      root.rotation.y = Math.atan2(faceX, faceZ);
+    }
+    root.rotation.x = MathUtils.lerp(root.rotation.x, crouch * 0.34 - lift * 0.08, 0.38);
+    root.rotation.z = shake * 0.05;
+
+    animatronic.model.head.rotation.x = MathUtils.lerp(animatronic.model.head.rotation.x, crouch * 0.38 - lift * 0.18, 0.36);
+    animatronic.model.head.rotation.y = shake * 0.08;
+    animatronic.model.leftLeg.rotation.x = MathUtils.lerp(animatronic.model.leftLeg.rotation.x, -crouch * 0.72, 0.42);
+    animatronic.model.rightLeg.rotation.x = MathUtils.lerp(animatronic.model.rightLeg.rotation.x, -crouch * 0.72, 0.42);
+    animatronic.model.leftLegJoint.rotation.x = MathUtils.lerp(animatronic.model.leftLegJoint.rotation.x, crouch * 1.05, 0.42);
+    animatronic.model.rightLegJoint.rotation.x = MathUtils.lerp(animatronic.model.rightLegJoint.rotation.x, crouch * 1.05, 0.42);
+    const armRaise = MathUtils.lerp(-1.65, -3.02, lift);
+    animatronic.model.leftArm.rotation.x = MathUtils.lerp(animatronic.model.leftArm.rotation.x, armRaise + reachUnder * 0.42 + shake * 0.08, 0.5);
+    animatronic.model.rightArm.rotation.x = MathUtils.lerp(animatronic.model.rightArm.rotation.x, armRaise + reachUnder * 0.42 - shake * 0.08, 0.5);
+    animatronic.model.leftArm.rotation.z = MathUtils.lerp(animatronic.model.leftArm.rotation.z, 0.34 + lift * 0.26, 0.44);
+    animatronic.model.rightArm.rotation.z = MathUtils.lerp(animatronic.model.rightArm.rotation.z, -0.34 - lift * 0.26, 0.44);
+
+    if (previousTimer < OFFICE_DOOR_BREACH_SECONDS * 0.44 && animatronic.doorBreachTimer >= OFFICE_DOOR_BREACH_SECONDS * 0.44) {
+      this.playOfficeDoorToggleSound(doorId, true);
+      this.gameplaySfxAudio.playSecurityDoorCrash();
+    }
+
+    if (progress >= 0.44) {
+      door.targetOpenAmount = 1;
+      door.open = true;
+      door.openAmount = Math.max(door.openAmount, lift * 0.94);
+      door.closeBounceTimer = 0;
+    }
+
+    if (progress < 1) {
+      return;
+    }
+
+    root.scale.setScalar(baseScale);
+    root.rotation.x = 0;
+    root.rotation.z = 0;
+    animatronic.state = 'rush';
+    animatronic.doorBreachTimer = 0;
+    animatronic.doorBreachDoorId = null;
+    animatronic.lastKnownPlayerPosition.copy(playerPosition);
+    animatronic.chaseGiveUpTimer = 0;
+    animatronic.waitTimer = 0;
+    animatronic.attackCooldown = Math.max(animatronic.attackCooldown, 0.35);
+    animatronic.lostSightTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = true;
+    animatronic.cachedNoiseResponse = 'rush';
+    animatronic.cachedBlockedDoorId = null;
+    this.pushStatus(`${animatronic.label} rips the ${doorId} door up and charges through.`, 2.6);
   }
 
   private getOfficeGameModeFoxy(): OfficeGameModeAnimatronicState | null {
@@ -2516,7 +5949,14 @@ export class Game {
 
   private triggerOfficeFoxyRush(source: 'stage' | 'closet'): void {
     const foxy = this.getOfficeGameModeFoxy();
-    if (!foxy || foxy.state === 'rush' || foxy.state === 'chase' || this.officeFoxyRushCooldown > 0) {
+    if (
+      !foxy
+      || foxy.state === 'rush'
+      || foxy.state === 'chase'
+      || foxy.state === 'distracted'
+      || foxy.state === 'distracted-watch'
+      || this.officeFoxyRushCooldown > 0
+    ) {
       return;
     }
 
@@ -2540,17 +5980,21 @@ export class Game {
     foxy.progressStallTimer = 0;
     foxy.detourTarget = null;
     foxy.detourTimer = 0;
+    foxy.distractionTarget = null;
+    foxy.chaseGiveUpTimer = 0;
+    foxy.insultStareTimer = 0;
+    foxy.insultChargeTimer = 0;
     this.officeFoxyRushDoor = doorId;
     foxy.lastKnownPlayerPosition.copy(this.getOfficeFoxyRushDoorTarget());
     this.officeFoxyRushCooldown = 22;
     this.resetOfficeFoxyCameraPressure();
     this.officeFoxyClankCooldown = 0;
     this.gameplaySfxAudio.resume();
-    this.gameplaySfxAudio.playFoxyClank(0.22);
+    this.gameplaySfxAudio.playFoxyClank(1.08);
     this.pushStatus(
       source === 'closet'
-        ? `A metal clank echoes from the closet. Foxy is sprinting for the ${doorId} door.`
-        : `A metal clank snaps from Foxy's stage. He is sprinting for the ${doorId} door.`,
+        ? `You hear Foxy running loudly from the closet. He is sprinting for the ${doorId} door.`
+        : `You hear Foxy running loudly from his stage. He is sprinting for the ${doorId} door.`,
       3.2,
     );
   }
@@ -2570,7 +6014,7 @@ export class Game {
     }
 
     const foxy = this.getOfficeGameModeFoxy();
-    if (!foxy || foxy.state === 'rush' || foxy.state === 'chase') {
+    if (!foxy || foxy.state === 'rush' || foxy.state === 'chase' || foxy.state === 'distracted' || foxy.state === 'distracted-watch') {
       if (this.officeFoxyCameraWatchTime > 0) {
         this.resetOfficeFoxyCameraPressure();
       }
@@ -2607,13 +6051,24 @@ export class Game {
       return;
     }
 
-    this.gameplaySfxAudio.playFoxyClank(MathUtils.lerp(0.28, 1, closeness));
+    this.gameplaySfxAudio.playFoxyClank(MathUtils.lerp(0.58, 1.28, closeness));
     this.officeFoxyClankCooldown = MathUtils.lerp(0.52, 0.13, closeness);
   }
 
   private getOfficeGameModeStageDwellSeconds(animatronic: OfficeJumpscareAnimatronic): number {
     if (animatronic === 'bori') {
-      return Number.POSITIVE_INFINITY;
+      const difficultyShift = this.officeGameModeDifficulty === 'hard'
+        ? -14
+        : this.officeGameModeDifficulty === 'easy'
+          ? 18
+          : 0;
+      return Math.max(
+        38,
+        86
+          + Math.abs(Math.sin(this.elapsed * 0.17 + 4.4)) * 48
+          + difficultyShift
+          - this.getOfficeGameModeNightPhaseProgress() * 24,
+      );
     }
 
     const nightBase = [48, 38, 28, 17, 8][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 28;
@@ -2678,6 +6133,10 @@ export class Game {
   }
 
   private getOfficeGameModeMaxOffstage(): number {
+    if (this.isOfficeVoiceYellNearStage()) {
+      return this.officeGameModeDifficulty === 'hard' || this.officeGameModeNight >= 4 ? 4 : 3;
+    }
+
     switch (this.officeGameModeNight) {
       case 1:
         return 1;
@@ -2693,8 +6152,23 @@ export class Game {
   }
 
   private shouldOfficeGameModeAnimatronicLeaveStage(animatronic: OfficeGameModeAnimatronicState, canSeePlayer: boolean): boolean {
-    if (animatronic.animatronic === 'bori') {
+    if (animatronic.animatronic === 'quacky' || animatronic.animatronic === 'fluffle') {
       return false;
+    }
+
+    if (animatronic.animatronic === 'bori') {
+      const nightPressure = this.getOfficeGameModeNightPressure();
+      const difficultyBonus = this.officeGameModeDifficulty === 'hard'
+        ? 0.05
+        : this.officeGameModeDifficulty === 'easy'
+          ? -0.04
+          : 0;
+      const chance = MathUtils.clamp(
+        OFFICE_BORI_STAGE_WANDER_CHANCE + nightPressure * 0.08 + difficultyBonus,
+        0.025,
+        0.22,
+      );
+      return Math.random() < chance;
     }
 
     const nightChance = [0.12, 0.26, 0.42, 0.66, 0.94][MathUtils.clamp(this.officeGameModeNight - 1, 0, 4)] ?? 0.42;
@@ -2746,40 +6220,337 @@ export class Game {
     return MathUtils.lerp(7.2, 18.5, nightPressure * 0.62 + clockPressure * 0.38) + difficultyBonus;
   }
 
+  private getOfficeGameModeVoiceNoiseRange(baseRange: number): number {
+    if (this.officePlayerVoiceLevel < OFFICE_VOICE_HEAR_MIN_LEVEL) {
+      return baseRange;
+    }
+
+    const voiceStrength = MathUtils.clamp(this.officePlayerVoiceLevel / 0.62, 0, 1);
+    return baseRange * MathUtils.lerp(
+      OFFICE_VOICE_RANGE_MIN_MULTIPLIER,
+      OFFICE_VOICE_RANGE_MAX_MULTIPLIER,
+      voiceStrength,
+    );
+  }
+
+  private isOfficeVoiceYellNearStage(): boolean {
+    if (this.officePlayerVoiceLevel < OFFICE_STAGE_YELL_LEVEL) {
+      return false;
+    }
+
+    return this.officeChapter.stageFloors.some((stage) => {
+      const distance = Math.hypot(
+        this.officePlayerNoisePosition.x - stage.center.x,
+        this.officePlayerNoisePosition.z - stage.center.z,
+      );
+      return distance <= Math.max(stage.halfWidth, stage.halfDepth) + OFFICE_STAGE_YELL_RADIUS_PADDING;
+    });
+  }
+
+  private needsOfficeStageVoiceRelease(animatronic: OfficeJumpscareAnimatronic): boolean {
+    return animatronic === 'quacky' || animatronic === 'fluffle';
+  }
+
+  private shouldOfficeStageNoiseRelease(animatronic: OfficeGameModeAnimatronicState): boolean {
+    const yellNearStage = this.isOfficeVoiceYellNearStage();
+    if (!yellNearStage) {
+      return !this.needsOfficeStageVoiceRelease(animatronic.animatronic);
+    }
+
+    if (this.officeStageVoiceReleaseCooldown > 0) {
+      return false;
+    }
+
+    const alreadyReleasedByVoice = this.officeGameModeAnimatronics.some((other) => (
+      other !== animatronic
+      && other.state !== 'stage'
+      && (other.animatronic === 'quacky' || other.animatronic === 'fluffle' || other.animatronic === 'bori')
+    ));
+    const chance = animatronic.animatronic === 'bori' || alreadyReleasedByVoice
+      ? OFFICE_STAGE_YELL_CHAIN_RELEASE_CHANCE
+      : MathUtils.lerp(
+        OFFICE_STAGE_YELL_PRIMARY_RELEASE_MIN_CHANCE,
+        OFFICE_STAGE_YELL_PRIMARY_RELEASE_MAX_CHANCE,
+        Math.random(),
+      );
+    return Math.random() < chance;
+  }
+
+  private markOfficeStageVoiceRelease(animatronic: OfficeJumpscareAnimatronic): void {
+    if (this.needsOfficeStageVoiceRelease(animatronic) || this.isOfficeVoiceYellNearStage()) {
+      this.officeStageVoiceReleaseCooldown = OFFICE_STAGE_VOICE_RELEASE_COOLDOWN;
+    }
+  }
+
+  private clearOfficeAnimatronicChaseTimers(animatronic: OfficeGameModeAnimatronicState, clearInsultCharge = false): void {
+    animatronic.chaseGiveUpTimer = 0;
+    animatronic.insultStareTimer = 0;
+    if (clearInsultCharge) {
+      animatronic.insultChargeTimer = 0;
+      animatronic.insultCooldown = 0;
+    }
+  }
+
+  private startOfficeGameModeAnimatronicChase(
+    animatronic: OfficeGameModeAnimatronicState,
+    target: Vector3,
+    state: 'chase' | 'rush' = 'chase',
+  ): void {
+    animatronic.state = state;
+    animatronic.lastKnownPlayerPosition.copy(target);
+    animatronic.waitTimer = 0;
+    animatronic.lostSightTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = state === 'rush' ? 'rush' : 'investigate';
+    animatronic.cachedBlockedDoorId = null;
+    animatronic.chaseGiveUpTimer = 0;
+  }
+
+  private makeOfficeGameModeAnimatronicGiveUp(animatronic: OfficeGameModeAnimatronicState): void {
+    animatronic.state = 'retreat';
+    animatronic.routeIndex = 0;
+    animatronic.waitTimer = 0.18;
+    animatronic.lostSightTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    animatronic.cachedBlockedDoorId = null;
+    animatronic.chaseGiveUpTimer = 0;
+    this.pushStatus(`${animatronic.label} gives up the chase and walks away.`, 2.2);
+  }
+
+  private startOfficeInsultRevenge(animatronic: OfficeGameModeAnimatronicState): void {
+    if (animatronic.insultCooldown > 0 || animatronic.insultChargeTimer > 0 || animatronic.insultStareTimer > 0) {
+      return;
+    }
+
+    animatronic.state = 'chase';
+    animatronic.lastKnownPlayerPosition.copy(this.player.getPosition());
+    animatronic.waitTimer = 0;
+    animatronic.lostSightTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    animatronic.insultStareTimer = OFFICE_INSULT_STARE_SECONDS;
+    animatronic.insultChargeTimer = 0;
+    animatronic.insultCooldown = OFFICE_INSULT_COOLDOWN_SECONDS;
+    this.pushStatus(`${animatronic.label} heard that. Their eyes flicker, and they turn back toward you.`, 3);
+  }
+
+  private updateOfficeInsultEyeFlicker(animatronic: OfficeGameModeAnimatronicState): void {
+    const flickering = animatronic.insultStareTimer > 0;
+    const eyeColor = new Color(0xff2118);
+    animatronic.model.root.traverse((object) => {
+      if (!(object instanceof Mesh)) {
+        return;
+      }
+
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (!(material instanceof MeshBasicMaterial || material instanceof MeshStandardMaterial) || !material.userData.officeCutsceneEye) {
+          return;
+        }
+
+        if (material.userData.officeInsultBaseColor === undefined) {
+          material.userData.officeInsultBaseColor = material.color.getHex();
+        }
+        if (material instanceof MeshStandardMaterial && material.userData.officeInsultBaseEmissive === undefined) {
+          material.userData.officeInsultBaseEmissive = material.emissive.getHex();
+          material.userData.officeInsultBaseEmissiveIntensity = material.emissiveIntensity;
+        }
+
+        if (flickering) {
+          const pulse = Math.sin(this.elapsed * 34) > 0 ? 1 : 0.2;
+          material.color.copy(eyeColor);
+          if (material instanceof MeshStandardMaterial) {
+            material.emissive.copy(eyeColor);
+            material.emissiveIntensity = 0.34 + pulse * 1.8;
+          }
+          return;
+        }
+
+        if (typeof material.userData.officeInsultBaseColor === 'number') {
+          material.color.setHex(material.userData.officeInsultBaseColor);
+          delete material.userData.officeInsultBaseColor;
+        }
+        if (
+          material instanceof MeshStandardMaterial
+          && typeof material.userData.officeInsultBaseEmissive === 'number'
+          && typeof material.userData.officeInsultBaseEmissiveIntensity === 'number'
+        ) {
+          material.emissive.setHex(material.userData.officeInsultBaseEmissive);
+          material.emissiveIntensity = material.userData.officeInsultBaseEmissiveIntensity;
+          delete material.userData.officeInsultBaseEmissive;
+          delete material.userData.officeInsultBaseEmissiveIntensity;
+        }
+      });
+    });
+  }
+
   private getOfficeGameModeNoiseResponse(
     animatronic: OfficeGameModeAnimatronicState,
     animatronicPosition: Vector3,
-  ): 'none' | 'investigate' | 'rush' {
+  ): OfficeGameModeNoiseResponse {
+    const voiceActive = this.officePlayerVoiceLevel >= OFFICE_VOICE_HEAR_MIN_LEVEL;
     if (
-      animatronic.animatronic === 'bori'
-      || !this.officeGameModeActive
+      !this.officeGameModeActive
       || this.officeGameModePowerOut
-      || this.officePlayerNoiseLevel < 0.03
+      || (!voiceActive && this.officePlayerNoiseLevel < 0.03)
     ) {
       return 'none';
     }
 
     const range = this.getOfficeGameModeNoiseRange();
+    const voiceRange = this.getOfficeGameModeVoiceNoiseRange(range);
+    const yellingByVolume = this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL;
+    const effectiveRange = voiceActive
+      ? Math.max(range, voiceRange, yellingByVolume ? OFFICE_YELL_ATTRACT_RANGE : 0)
+      : range;
     const distance = animatronicPosition.distanceTo(this.officePlayerNoisePosition);
-    if (distance > range * (this.officePlayerVoiceLevel > 0.5 ? 1.22 : 1)) {
+    if (distance > effectiveRange) {
       return 'none';
     }
 
-    const distanceFalloff = MathUtils.clamp(1 - distance / Math.max(0.1, range), 0, 1);
-    const heardLevel = this.officePlayerNoiseLevel * (0.48 + distanceFalloff * 0.82);
-    const yelling = this.officePlayerVoiceLevel >= 0.52 && distance <= range * 1.22;
-    if (yelling || heardLevel >= OFFICE_NOISE_RUSH_THRESHOLD) {
+    if (yellingByVolume && distance <= OFFICE_YELL_ATTRACT_RANGE) {
       return 'rush';
     }
 
-    return heardLevel >= OFFICE_NOISE_INVESTIGATE_THRESHOLD ? 'investigate' : 'none';
+    if (animatronic.animatronic === 'bori') {
+      return voiceActive
+        && this.isOfficeVoiceYellNearStage()
+        && Math.random() < OFFICE_BORI_STAGE_YELL_RUSH_CHANCE
+        ? 'rush'
+        : 'none';
+    }
+
+    const distanceFalloff = MathUtils.clamp(1 - distance / Math.max(0.1, range), 0, 1);
+    const voiceDistanceFalloff = MathUtils.clamp(1 - distance / Math.max(0.1, voiceRange), 0, 1);
+    const movementHeardLevel = this.officePlayerNoiseLevel * (0.48 + distanceFalloff * 0.82);
+    const voiceHeardLevel = voiceActive
+      ? MathUtils.clamp(this.officePlayerVoiceLevel * OFFICE_VOICE_NOISE_MULTIPLIER, 0, 1)
+        * (0.34 + voiceDistanceFalloff * 0.92)
+      : 0;
+    const heardLevel = Math.max(movementHeardLevel, voiceHeardLevel);
+    const yelling = yellingByVolume && distance <= range * OFFICE_VOICE_YELL_RANGE_MULTIPLIER;
+    if (yelling || heardLevel >= (voiceActive ? OFFICE_VOICE_RUSH_THRESHOLD : OFFICE_NOISE_RUSH_THRESHOLD)) {
+      return 'rush';
+    }
+
+    return heardLevel >= (voiceActive ? OFFICE_VOICE_INVESTIGATE_THRESHOLD : OFFICE_NOISE_INVESTIGATE_THRESHOLD)
+      ? 'investigate'
+      : 'none';
+  }
+
+  private applyOfficeGameModeSeparation(
+    animatronic: OfficeGameModeAnimatronicState,
+    desiredTarget: Vector3,
+  ): Vector3 {
+    if (animatronic.state !== 'chase' && animatronic.state !== 'rush' && animatronic.state !== 'distracted') {
+      return desiredTarget;
+    }
+
+    const root = animatronic.model.root;
+    let separationX = 0;
+    let separationZ = 0;
+    for (const other of this.officeGameModeAnimatronics) {
+      if (
+        other === animatronic
+        || (other.state !== 'chase' && other.state !== 'rush' && other.state !== 'distracted')
+        || !other.model.root.visible
+      ) {
+        continue;
+      }
+
+      const dx = root.position.x - other.model.root.position.x;
+      const dz = root.position.z - other.model.root.position.z;
+      const distance = Math.hypot(dx, dz);
+      if (distance <= 0.001 || distance >= OFFICE_GAME_MODE_SEPARATION_RADIUS) {
+        continue;
+      }
+
+      const strength = (1 - distance / OFFICE_GAME_MODE_SEPARATION_RADIUS) * OFFICE_GAME_MODE_SEPARATION_STRENGTH;
+      separationX += dx / distance * strength;
+      separationZ += dz / distance * strength;
+    }
+
+    if (separationX === 0 && separationZ === 0) {
+      return desiredTarget;
+    }
+
+    return new Vector3(
+      desiredTarget.x + separationX,
+      desiredTarget.y,
+      desiredTarget.z + separationZ,
+    );
   }
 
   private getOfficeGameModeSpeedMultiplier(): number {
     return 1 + this.getOfficeGameModeNightPressure() * 0.18 + this.getOfficeGameModeNightPhaseProgress() * 0.08;
   }
 
+  private isOfficePlayerNearDodgeThreat(): boolean {
+    if (!this.officeChapterActive || !this.officeGameModeActive || this.officeGameModePowerOut) {
+      return false;
+    }
+
+    const playerPosition = this.player.getPosition();
+    return this.officeGameModeAnimatronics.some((animatronic) => {
+      if (
+        !animatronic.model.root.visible
+        || (animatronic.state !== 'chase' && animatronic.state !== 'rush')
+      ) {
+        return false;
+      }
+
+      return Math.hypot(
+        animatronic.model.root.position.x - playerPosition.x,
+        animatronic.model.root.position.z - playerPosition.z,
+      ) <= OFFICE_PLAYER_CLOSE_DODGE_RANGE;
+    });
+  }
+
+  private getOfficePlayerMovementOptions(input: MovementState): PlayerMovementOptions {
+    if (!this.officeChapterActive) {
+      return {};
+    }
+
+    let strafeMultiplier = 1;
+    if (input.strafe !== 0) {
+      strafeMultiplier = input.sprint
+        ? OFFICE_PLAYER_SPRINT_DODGE_STRAFE_MULTIPLIER
+        : OFFICE_PLAYER_STRAFE_SPEED_MULTIPLIER;
+      if (this.isOfficePlayerNearDodgeThreat()) {
+        strafeMultiplier = OFFICE_PLAYER_CLOSE_DODGE_STRAFE_MULTIPLIER;
+      }
+    }
+
+    return {
+      sprintMultiplier: OFFICE_PLAYER_SPRINT_SPEED_MULTIPLIER,
+      strafeMultiplier,
+    };
+  }
+
   private putOfficeGameModeAnimatronicOnStage(animatronic: OfficeGameModeAnimatronicState): void {
+    this.restoreOfficePowerOutBoriEyeFlicker(animatronic.model.root);
     const start = animatronic.route[0] ?? OFFICE_GAME_MODE_OFFICE_CENTER;
     animatronic.model.root.position.set(
       start.x,
@@ -2791,11 +6562,24 @@ export class Game {
     animatronic.state = 'stage';
     animatronic.routeIndex = 1 % animatronic.route.length;
     animatronic.waitTimer = this.getOfficeGameModeStageDwellSeconds(animatronic.animatronic);
+    animatronic.doorBreachTimer = 0;
+    animatronic.doorBreachDoorId = null;
     animatronic.lostSightTimer = 0;
     animatronic.stuckTimer = 0;
     animatronic.progressStallTimer = 0;
     animatronic.detourTarget = null;
     animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = 0;
+    this.clearOfficeAnimatronicChaseTimers(animatronic, true);
+    animatronic.cameraStareTimer = 0;
+    animatronic.cameraStareCooldown = 0;
+    animatronic.cameraStareCameraId = null;
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    animatronic.cachedBlockedDoorId = null;
     animatronic.model.head.rotation.set(0, 0, 0);
     animatronic.model.leftArm.rotation.set(0, 0, 0);
     animatronic.model.rightArm.rotation.set(0, 0, 0);
@@ -2803,6 +6587,7 @@ export class Game {
     animatronic.model.rightLeg.rotation.set(0, 0, 0);
     animatronic.model.leftLegJoint.rotation.set(0, 0, 0);
     animatronic.model.rightLegJoint.rotation.set(0, 0, 0);
+    animatronic.model.root.scale.setScalar(OFFICE_GAME_MODE_ANIMATRONIC_SCALE[animatronic.animatronic]);
   }
 
   private sendOfficeGameModeAnimatronicOffStage(animatronic: OfficeGameModeAnimatronicState): void {
@@ -2817,11 +6602,168 @@ export class Game {
     animatronic.state = 'wander';
     animatronic.routeIndex = 1 % animatronic.route.length;
     animatronic.waitTimer = 0.2;
+    animatronic.doorBreachTimer = 0;
+    animatronic.doorBreachDoorId = null;
     animatronic.lostSightTimer = 0;
     animatronic.stuckTimer = 0;
     animatronic.progressStallTimer = 0;
     animatronic.detourTarget = null;
     animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = 0;
+    this.clearOfficeAnimatronicChaseTimers(animatronic, true);
+    animatronic.cameraStareTimer = 0;
+    animatronic.cameraStareCooldown = MathUtils.lerp(
+      OFFICE_GAME_MODE_CAMERA_STARE_COOLDOWN_MIN_SECONDS,
+      OFFICE_GAME_MODE_CAMERA_STARE_COOLDOWN_MAX_SECONDS,
+      Math.random(),
+    );
+    animatronic.cameraStareCameraId = null;
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    animatronic.cachedBlockedDoorId = null;
+  }
+
+  private getOfficeGameModeCameraStareTarget(
+    animatronic: OfficeGameModeAnimatronicState,
+  ): OfficeChapterData['securityCameras'][number] | null {
+    if (
+      !this.officeTabletCameraFeedActive
+      || !this.officeGameModeActive
+      || this.officeGameModePowerOut
+      || animatronic.state !== 'wander'
+    ) {
+      return null;
+    }
+
+    const securityCamera = this.getActiveOfficeTabletCamera();
+    if (!securityCamera) {
+      return null;
+    }
+
+    const cameraPosition = securityCamera.viewAnchor.getWorldPosition(new Vector3());
+    const toAnimatronic = animatronic.model.root.position.clone().sub(cameraPosition);
+    toAnimatronic.y = 0;
+    const distance = toAnimatronic.length();
+    if (distance <= 0.001 || distance > OFFICE_GAME_MODE_CAMERA_STARE_RANGE) {
+      return null;
+    }
+
+    const cameraForward = new Vector3(0, 0, -1).applyQuaternion(
+      securityCamera.viewAnchor.getWorldQuaternion(new Quaternion()),
+    );
+    cameraForward.y = 0;
+    if (cameraForward.lengthSq() <= 0.001) {
+      return securityCamera;
+    }
+
+    const viewDot = cameraForward.normalize().dot(toAnimatronic.normalize());
+    return viewDot >= OFFICE_GAME_MODE_CAMERA_STARE_VIEW_DOT ? securityCamera : null;
+  }
+
+  private updateOfficeGameModeCameraStare(
+    animatronic: OfficeGameModeAnimatronicState,
+    deltaSeconds: number,
+  ): boolean {
+    animatronic.cameraStareCooldown = Math.max(0, animatronic.cameraStareCooldown - deltaSeconds);
+    if (animatronic.cameraStareTimer > 0) {
+      animatronic.cameraStareTimer = Math.max(0, animatronic.cameraStareTimer - deltaSeconds);
+    }
+
+    const securityCamera = this.getOfficeGameModeCameraStareTarget(animatronic);
+    if (!securityCamera) {
+      animatronic.cameraStareTimer = 0;
+      animatronic.cameraStareCameraId = null;
+      return false;
+    }
+
+    if (
+      animatronic.cameraStareTimer <= 0
+      && animatronic.cameraStareCooldown <= 0
+      && Math.random() < OFFICE_GAME_MODE_CAMERA_STARE_CHANCE_PER_SECOND * deltaSeconds
+    ) {
+      animatronic.cameraStareTimer = MathUtils.lerp(
+        OFFICE_GAME_MODE_CAMERA_STARE_MIN_SECONDS,
+        OFFICE_GAME_MODE_CAMERA_STARE_MAX_SECONDS,
+        Math.random(),
+      );
+      animatronic.cameraStareCooldown = MathUtils.lerp(
+        OFFICE_GAME_MODE_CAMERA_STARE_COOLDOWN_MIN_SECONDS,
+        OFFICE_GAME_MODE_CAMERA_STARE_COOLDOWN_MAX_SECONDS,
+        Math.random(),
+      );
+      animatronic.cameraStareCameraId = securityCamera.id;
+      animatronic.detourTarget = null;
+      animatronic.detourTimer = 0;
+      animatronic.progressStallTimer = 0;
+      animatronic.waitTimer = 0;
+    }
+
+    if (animatronic.cameraStareTimer <= 0 || animatronic.cameraStareCameraId !== securityCamera.id) {
+      return false;
+    }
+
+    const cameraPosition = securityCamera.viewAnchor.getWorldPosition(new Vector3());
+    const dx = cameraPosition.x - animatronic.model.root.position.x;
+    const dz = cameraPosition.z - animatronic.model.root.position.z;
+    if (Math.hypot(dx, dz) > 0.001) {
+      animatronic.model.root.rotation.y = Math.atan2(dx, dz);
+    }
+    animatronic.model.root.rotation.x = MathUtils.lerp(animatronic.model.root.rotation.x, 0, 0.32);
+    animatronic.model.root.rotation.z = Math.sin(this.elapsed * 2.1) * 0.025;
+    animatronic.model.head.rotation.y = Math.sin(this.elapsed * 4.8) * 0.045;
+    animatronic.model.head.rotation.x = Math.sin(this.elapsed * 3.2) * 0.03;
+    animatronic.model.leftArm.rotation.x = MathUtils.lerp(animatronic.model.leftArm.rotation.x, -0.12, 0.2);
+    animatronic.model.rightArm.rotation.x = MathUtils.lerp(animatronic.model.rightArm.rotation.x, -0.12, 0.2);
+    return true;
+  }
+
+  private startOfficeGameModeChaseCommit(
+    animatronic: OfficeGameModeAnimatronicState,
+    playerPosition: Vector3,
+  ): void {
+    const root = animatronic.model.root;
+    const dx = playerPosition.x - root.position.x;
+    const dz = playerPosition.z - root.position.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance <= 0.001) {
+      return;
+    }
+
+    const directionX = dx / distance;
+    const directionZ = dz / distance;
+    const commitDistance = Math.max(OFFICE_GAME_MODE_CHASE_COMMIT_DISTANCE, distance + 9.2);
+    animatronic.chaseCommitTarget.set(
+      root.position.x + directionX * commitDistance,
+      GAME_CONFIG.player.height,
+      root.position.z + directionZ * commitDistance,
+    );
+    animatronic.chaseCommitTimer = OFFICE_GAME_MODE_CHASE_COMMIT_SECONDS;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.progressStallTimer = 0;
+  }
+
+  private canOfficeGameModeChargeHitPlayer(
+    animatronic: OfficeGameModeAnimatronicState,
+    playerPosition: Vector3,
+    attackRange: number,
+  ): boolean {
+    const root = animatronic.model.root;
+    const toPlayerX = playerPosition.x - root.position.x;
+    const toPlayerZ = playerPosition.z - root.position.z;
+    const forwardX = Math.sin(root.rotation.y);
+    const forwardZ = Math.cos(root.rotation.y);
+    const along = toPlayerX * forwardX + toPlayerZ * forwardZ;
+    if (along < 0 || along > attackRange * 0.72) {
+      return false;
+    }
+
+    const lateral = Math.abs(toPlayerX * forwardZ - toPlayerZ * forwardX);
+    return lateral <= attackRange * 0.16;
   }
 
   private hasOfficeGameModeLineOfSight(from: Vector3, to: Vector3): boolean {
@@ -2832,7 +6774,7 @@ export class Game {
       return true;
     }
 
-    const steps = Math.max(3, Math.ceil(distance / 0.18));
+    const steps = Math.max(3, Math.ceil(distance / OFFICE_GAME_MODE_LINE_SAMPLE_DISTANCE));
     for (let index = 1; index < steps; index += 1) {
       const progress = index / steps;
       const sampleX = from.x + dx * progress;
@@ -2867,7 +6809,7 @@ export class Game {
       return this.canOfficeGameModeAnimatronicStandAt(toX, toZ, radius);
     }
 
-    const steps = Math.max(2, Math.ceil(distance / 0.22));
+    const steps = Math.max(2, Math.ceil(distance / OFFICE_GAME_MODE_PATH_SAMPLE_DISTANCE));
     for (let index = 1; index <= steps; index += 1) {
       const progress = index / steps;
       const sampleX = fromX + dx * progress;
@@ -2926,9 +6868,9 @@ export class Game {
       bestDetour = { x: candidateX, z: candidateZ, score };
     };
 
-    ([-1, 1] as const).forEach((side) => {
-      [0.75, 1.25, 1.85].forEach((forwardDistance, forwardIndex) => {
-        [0.9, 1.45, 2.1, 2.85].forEach((sideDistance, sideIndex) => {
+    OFFICE_GAME_MODE_DETOUR_SIDES.forEach((side) => {
+      OFFICE_GAME_MODE_DETOUR_FORWARD_DISTANCES.forEach((forwardDistance, forwardIndex) => {
+        OFFICE_GAME_MODE_DETOUR_SIDE_DISTANCES.forEach((sideDistance, sideIndex) => {
           considerDetour(
             root.position.x + directionX * forwardDistance + perpX * side * sideDistance,
             root.position.z + directionZ * forwardDistance + perpZ * side * sideDistance,
@@ -2938,12 +6880,12 @@ export class Game {
       });
     });
 
-    [0.62, -0.62, 1.05, -1.05].forEach((angle) => {
+    OFFICE_GAME_MODE_DETOUR_ANGLES.forEach((angle) => {
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
       const rotatedX = directionX * cos - directionZ * sin;
       const rotatedZ = directionX * sin + directionZ * cos;
-      [1.25, 2, 2.8].forEach((detourDistance, index) => {
+      OFFICE_GAME_MODE_DETOUR_DISTANCES.forEach((detourDistance, index) => {
         considerDetour(
           root.position.x + rotatedX * detourDistance,
           root.position.z + rotatedZ * detourDistance,
@@ -3021,7 +6963,9 @@ export class Game {
     const detour = this.findOfficeGameModeDetour(animatronic, desiredTarget);
     if (detour) {
       animatronic.detourTarget = detour;
-      animatronic.detourTimer = animatronic.state === 'chase' || animatronic.state === 'rush' ? 1.35 : 2.25;
+      animatronic.detourTimer = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted'
+        ? 1.35
+        : 2.25;
       animatronic.stuckTimer = 0;
       animatronic.progressStallTimer = 0;
       return true;
@@ -3058,7 +7002,7 @@ export class Game {
   ): Vector3 | null {
     let bestSpot: { x: number; z: number; score: number } | null = null;
 
-    [0.45, 0.75, 1.15, 1.65, 2.25, 3].forEach((radius, radiusIndex) => {
+    OFFICE_GAME_MODE_OPEN_SPOT_RADII.forEach((radius, radiusIndex) => {
       const samples = 10 + radiusIndex * 2;
       for (let index = 0; index < samples; index += 1) {
         const angle = (index / samples) * Math.PI * 2;
@@ -3119,6 +7063,30 @@ export class Game {
       }
     }
 
+    const directMoveX = root.position.x + directionX * step;
+    const directMoveZ = root.position.z + directionZ * step;
+    const directLookAheadX = directMoveX + directionX * OFFICE_GAME_MODE_DIRECT_LOOKAHEAD;
+    const directLookAheadZ = directMoveZ + directionZ * OFFICE_GAME_MODE_DIRECT_LOOKAHEAD;
+    if (
+      this.canOfficeGameModeAnimatronicStandAt(directMoveX, directMoveZ)
+      && this.canOfficeGameModeAnimatronicStandAt(
+        directLookAheadX,
+        directLookAheadZ,
+        OFFICE_GAME_MODE_COLLISION_RADIUS * 0.82,
+      )
+      && this.isOfficeGameModePathClear(root.position.x, root.position.z, directMoveX, directMoveZ)
+    ) {
+      root.position.x = directMoveX;
+      root.position.z = directMoveZ;
+      root.rotation.y = Math.atan2(directionX, directionZ);
+      root.position.y = this.getOfficeGameModeAnimatronicFloorY(
+        animatronic.animatronic,
+        root.position.x,
+        root.position.z,
+      );
+      return true;
+    }
+
     let bestMove: { x: number; z: number; faceX: number; faceZ: number; score: number } | null = null;
     const considerMove = (moveX: number, moveZ: number, faceX: number, faceZ: number, anglePenalty: number): void => {
       const faceLength = Math.hypot(faceX, faceZ);
@@ -3155,13 +7123,12 @@ export class Game {
       bestMove = { x: moveX, z: moveZ, faceX: normalizedFaceX, faceZ: normalizedFaceZ, score };
     };
 
-    const angleCandidates = [0, 0.42, -0.42, 0.82, -0.82, Math.PI / 2, -Math.PI / 2, Math.PI];
-    angleCandidates.forEach((angle, index) => {
+    OFFICE_GAME_MODE_MOVE_ANGLES.forEach((angle) => {
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
       const rotatedX = directionX * cos - directionZ * sin;
       const rotatedZ = directionX * sin + directionZ * cos;
-      const angledStep = step * (index === 0 ? 1 : 0.86);
+      const angledStep = step * 0.86;
       considerMove(
         root.position.x + rotatedX * angledStep,
         root.position.z + rotatedZ * angledStep,
@@ -3176,7 +7143,7 @@ export class Game {
 
     const perpX = -directionZ;
     const perpZ = directionX;
-    ([-1, 1] as const).forEach((side) => {
+    OFFICE_GAME_MODE_DETOUR_SIDES.forEach((side) => {
       considerMove(
         root.position.x + (directionX * 0.25 + perpX * side) * step,
         root.position.z + (directionZ * 0.25 + perpZ * side) * step,
@@ -3413,7 +7380,12 @@ export class Game {
     }
 
     const config = this.getOfficeGameModeConfig();
-    const closedDoors = this.officeChapter.doors.filter((door) => door.targetOpenAmount < 0.5).length;
+    let closedDoors = 0;
+    for (const door of this.officeChapter.doors) {
+      if (door.targetOpenAmount < 0.5) {
+        closedDoors += 1;
+      }
+    }
     const drain = (
       OFFICE_GAME_MODE_IDLE_DRAIN_PER_SECOND
       + (this.officeTabletCameraFeedActive ? OFFICE_GAME_MODE_CAMERA_DRAIN_PER_SECOND : 0)
@@ -3435,6 +7407,7 @@ export class Game {
       door.targetOpenAmount = 1;
       door.open = true;
     });
+    this.officePowerOutBoriDoor = Math.sin(this.elapsed * 1.37) > 0 ? 'left' : 'right';
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       this.putOfficeGameModeAnimatronicOnStage(animatronic);
     });
@@ -3442,7 +7415,86 @@ export class Game {
     this.powerEventAudio.playOutage();
     this.gameplaySfxAudio.resume();
     this.gameplaySfxAudio.playFreddyPowerOutMelody();
-    this.pushStatus(`${this.getOfficeModeLabel()} power is out. Freddy plays a creepy piano melody in the dark.`, 4.2);
+    this.pushStatus(
+      `${this.getOfficeModeLabel()} power is out. Bori's song is pretty long. Watch the ${this.officePowerOutBoriDoor} door.`,
+      5.2,
+    );
+  }
+
+  private updateOfficePowerOutBoriDoor(): void {
+    if (!this.officePowerOutBoriDoor) {
+      return;
+    }
+
+    const bori = this.officeGameModeAnimatronics.find((entry) => entry.animatronic === 'bori');
+    if (!bori) {
+      return;
+    }
+
+    const watch = this.officePowerOutBoriDoor === 'left'
+      ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH
+      : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const side = this.officePowerOutBoriDoor === 'left' ? -1 : 1;
+    const playerPosition = this.player.getPosition();
+    const reveal = MathUtils.smoothstep(
+      1 - this.officeFreddyPowerOutTimer / OFFICE_FREDDY_POWER_OUT_ATTACK_DELAY,
+      0.08,
+      0.28,
+    );
+    const doorwayX = watch.x + side * MathUtils.lerp(0.2, 0.52, reveal);
+    const doorwayZ = watch.z - MathUtils.lerp(2.15, 1.08, reveal);
+
+    bori.model.root.visible = true;
+    bori.model.root.position.set(
+      doorwayX,
+      this.getOfficeGameModeAnimatronicFloorY('bori', doorwayX, doorwayZ),
+      doorwayZ,
+    );
+    bori.model.root.scale.setScalar(OFFICE_GAME_MODE_ANIMATRONIC_SCALE.bori);
+    bori.model.root.rotation.set(0, 0, 0);
+    bori.model.root.rotation.y = Math.atan2(
+      playerPosition.x - bori.model.root.position.x,
+      playerPosition.z - bori.model.root.position.z,
+    );
+    bori.model.root.rotation.z = Math.sin(this.elapsed * 1.85) * 0.085 * reveal;
+    bori.model.root.rotation.x = Math.sin(this.elapsed * 1.2) * 0.035 * reveal;
+    bori.model.head.rotation.set(
+      Math.sin(this.elapsed * 1.45) * 0.08 * reveal,
+      Math.sin(this.elapsed * 2.15) * 0.18 * reveal,
+      Math.cos(this.elapsed * 1.7) * 0.08 * reveal,
+    );
+    bori.model.leftArm.rotation.x = MathUtils.lerp(0, -0.72 + Math.sin(this.elapsed * 1.9) * 0.1, reveal);
+    bori.model.rightArm.rotation.x = MathUtils.lerp(0, -0.74 - Math.sin(this.elapsed * 1.9) * 0.1, reveal);
+    bori.state = 'door';
+    bori.waitTimer = 0;
+    bori.lostSightTimer = 0;
+    bori.detourTarget = null;
+    bori.detourTimer = 0;
+    bori.distractionTarget = null;
+    bori.cachedCanSeePlayer = false;
+    bori.cachedNoiseResponse = 'none';
+    bori.cachedBlockedDoorId = null;
+    this.officeChapter.setStageAnimatronicPresent('bori', false);
+
+    const flicker = Math.floor(this.elapsed * 7.4) % 2 === 0 ? 1 : 0.08;
+    bori.model.root.traverse((object) => {
+      if (!(object instanceof Mesh)) {
+        return;
+      }
+
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (!(material instanceof MeshStandardMaterial) || !material.userData.officeCutsceneEye) {
+          return;
+        }
+
+        const baseIntensity = typeof material.userData.officePowerOutBaseEmissiveIntensity === 'number'
+          ? material.userData.officePowerOutBaseEmissiveIntensity
+          : material.emissiveIntensity;
+        material.userData.officePowerOutBaseEmissiveIntensity = baseIntensity;
+        material.emissiveIntensity = Math.max(baseIntensity, 0.7) * (0.18 + flicker * 2.45);
+      });
+    });
   }
 
   private updateOfficeFreddyPowerOutAttack(deltaSeconds: number): void {
@@ -3455,6 +7507,7 @@ export class Game {
     }
 
     this.officeFreddyPowerOutTimer = Math.max(0, this.officeFreddyPowerOutTimer - deltaSeconds);
+    this.updateOfficePowerOutBoriDoor();
     if (this.officeFreddyPowerOutTimer > 0) {
       return;
     }
@@ -3462,12 +7515,17 @@ export class Game {
     const definition = this.getRandomOfficeJumpscareDefinition('bori')
       ?? OFFICE_JUMPSCARE_DEFINITIONS.find((entry) => entry.id === 'bori-3');
     if (definition) {
+      this.officePowerOutBoriDoor = null;
       this.startOfficeJumpscare(definition);
     }
   }
 
   private updateOfficeModeCycle(deltaSeconds: number): void {
     if (!this.officeChapterActive || !this.officeGameModeActive) {
+      return;
+    }
+
+    if (this.officeDeathNoticePhase) {
       return;
     }
 
@@ -3536,14 +7594,14 @@ export class Game {
   } {
     if (!this.officeGameModeActive) {
       return {
-        ambient: 0.035,
-        hemisphere: 0.045,
+        ambient: 0.16,
+        hemisphere: 0.2,
         flashlightIntensity: GAME_CONFIG.flashlight.intensity * 2.35,
         flashlightDistance: 25,
         flashlightAngle: GAME_CONFIG.flashlight.angle,
         flashlightPenumbra: GAME_CONFIG.flashlight.penumbra,
-        fogNear: 6,
-        fogFar: 42,
+        fogNear: 12,
+        fogFar: 62,
         fogBlend: 1,
       };
     }
@@ -3551,41 +7609,98 @@ export class Game {
     switch (this.officeGameModeDifficulty) {
       case 'easy':
         return {
-          ambient: 0.038,
-          hemisphere: 0.064,
-          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 2.95,
-          flashlightDistance: 42,
+          ambient: 0.17,
+          hemisphere: 0.22,
+          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 3.32,
+          flashlightDistance: 43,
           flashlightAngle: Math.PI / 8.2,
           flashlightPenumbra: 0.34,
-          fogNear: 7.5,
-          fogFar: 42,
+          fogNear: 12,
+          fogFar: 60,
           fogBlend: 1,
         };
       case 'hard':
         return {
-          ambient: 0,
-          hemisphere: 0.001,
-          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 3.55,
-          flashlightDistance: 40,
-          flashlightAngle: Math.PI / 8.8,
-          flashlightPenumbra: 0.28,
-          fogNear: 1.4,
-          fogFar: 18,
+          ambient: 0.045,
+          hemisphere: 0.07,
+          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 2.75,
+          flashlightDistance: 34,
+          flashlightAngle: Math.PI / 9.4,
+          flashlightPenumbra: 0.22,
+          fogNear: 4,
+          fogFar: 30,
           fogBlend: 1,
         };
       case 'normal':
       default:
         return {
-          ambient: 0.008,
-          hemisphere: 0.014,
+          ambient: 0.14,
+          hemisphere: 0.19,
           flashlightIntensity: GAME_CONFIG.flashlight.intensity * 3.25,
           flashlightDistance: 41,
           flashlightAngle: Math.PI / 8.4,
           flashlightPenumbra: 0.31,
-          fogNear: 3.8,
-          fogFar: 28,
+          fogNear: 10,
+          fogFar: 54,
           fogBlend: 1,
         };
+    }
+  }
+
+  private distractOfficeGameModeAnimatronics(position: Vector3, kind: OfficeThrowableKind): void {
+    if (!this.officeChapterActive || !this.officeGameModeActive || this.officeGameModePowerOut) {
+      return;
+    }
+
+    let distractedCount = 0;
+    this.officeGameModeAnimatronics.forEach((animatronic) => {
+      if (
+        !animatronic.model.root.visible
+        || animatronic.animatronic === 'bori'
+        || (animatronic.state !== 'chase' && animatronic.state !== 'rush')
+      ) {
+        return;
+      }
+
+      const distance = Math.hypot(
+        animatronic.model.root.position.x - position.x,
+        animatronic.model.root.position.z - position.z,
+      );
+      if (distance > OFFICE_DISTRACTION_RANGE) {
+        return;
+      }
+
+      const target = new Vector3(
+        position.x,
+        this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, position.x, position.z),
+        position.z,
+      );
+      animatronic.state = 'distracted';
+      animatronic.distractionTarget = target;
+      animatronic.lastKnownPlayerPosition.copy(target);
+      animatronic.waitTimer = 0;
+      animatronic.attackCooldown = Math.max(animatronic.attackCooldown, 0.45);
+      animatronic.lostSightTimer = 0;
+      animatronic.stuckTimer = 0;
+      animatronic.progressStallTimer = 0;
+      animatronic.detourTarget = null;
+      animatronic.detourTimer = 0;
+      animatronic.chaseCommitTimer = 0;
+      animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+      animatronic.senseTimer = OFFICE_DISTRACTION_LOOK_SECONDS;
+      animatronic.cachedCanSeePlayer = false;
+      animatronic.cachedNoiseResponse = 'none';
+      animatronic.cachedBlockedDoorId = null;
+      distractedCount += 1;
+    });
+
+    if (distractedCount > 0) {
+      this.pushStatus(
+        kind === 'glass'
+          ? 'The glass shatters. The chasing animatronic breaks focus and runs to the shards.'
+          : 'The tiny bear squeaks. The chasing animatronic breaks focus and runs to the toy.',
+        2.8,
+      );
     }
   }
 
@@ -3597,30 +7712,92 @@ export class Game {
     const config = this.getOfficeGameModeConfig();
     const root = animatronic.model.root;
     const playerPosition = this.player.getPosition();
-    const animatronicPosition = new Vector3(root.position.x, GAME_CONFIG.player.height, root.position.z);
-    const distanceToPlayer = animatronicPosition.distanceTo(playerPosition);
+    const animatronicPosition = this.officeGameModeAnimatronicPosition.set(
+      root.position.x,
+      GAME_CONFIG.player.height,
+      root.position.z,
+    );
+    const distanceToPlayer = Math.hypot(root.position.x - playerPosition.x, root.position.z - playerPosition.z);
     animatronic.attackCooldown = Math.max(0, animatronic.attackCooldown - deltaSeconds);
+    animatronic.senseTimer = Math.max(0, animatronic.senseTimer - deltaSeconds);
+    const distractionActive = animatronic.state === 'distracted' || animatronic.state === 'distracted-watch';
+    const wasChaseCommitting = animatronic.chaseCommitTimer > 0;
+    animatronic.chaseCommitTimer = Math.max(0, animatronic.chaseCommitTimer - deltaSeconds);
+    if (wasChaseCommitting && animatronic.chaseCommitTimer <= 0) {
+      animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+      animatronic.detourTarget = null;
+      animatronic.detourTimer = 0;
+      animatronic.senseTimer = 0;
+    } else if (!wasChaseCommitting) {
+      animatronic.chaseCommitCooldown = Math.max(0, animatronic.chaseCommitCooldown - deltaSeconds);
+    }
 
-    const blockedDoorId = this.getOfficeGameModeBlockedDoorId(animatronicPosition, playerPosition);
-    const doorBlocked = blockedDoorId !== null;
-    const inDetectionRange = distanceToPlayer <= this.getOfficeGameModeDetectionRange(config);
-    const canSeePlayer = !doorBlocked
-      && !this.officeVentActive
-      && !this.officeVentDrop
-      && !this.officeChapterSeated
-      && !this.officeBallPitHidden
-      && inDetectionRange
-      && this.hasOfficeGameModeLineOfSight(animatronicPosition, playerPosition);
-    const noiseResponse = this.getOfficeGameModeNoiseResponse(animatronic, animatronicPosition);
+    let blockedDoorId = animatronic.cachedBlockedDoorId;
+    let doorBlocked = blockedDoorId !== null;
+    let canSeePlayer = animatronic.cachedCanSeePlayer;
+    let noiseResponse = animatronic.cachedNoiseResponse;
+    const closeAttackRefresh = distanceToPlayer <= config.attackRange * 0.9;
+    animatronic.insultCooldown = Math.max(0, animatronic.insultCooldown - deltaSeconds);
+    if (animatronic.insultChargeTimer > 0) {
+      animatronic.insultChargeTimer = Math.max(0, animatronic.insultChargeTimer - deltaSeconds);
+    }
+    const refreshSense = animatronic.chaseCommitTimer <= 0
+      && !distractionActive
+      && animatronic.state !== 'door-breach'
+      && (
+        animatronic.senseTimer <= 0
+        || animatronic.state === 'rush'
+        || animatronic.state === 'door'
+        || (animatronic.state !== 'chase' && closeAttackRefresh)
+      );
+
+    if (distractionActive) {
+      blockedDoorId = null;
+      doorBlocked = false;
+      canSeePlayer = false;
+      noiseResponse = 'none';
+      animatronic.cachedBlockedDoorId = null;
+      animatronic.cachedCanSeePlayer = false;
+      animatronic.cachedNoiseResponse = 'none';
+    }
+
+    if (refreshSense) {
+      blockedDoorId = this.getOfficeGameModeBlockedDoorId(animatronicPosition, playerPosition);
+      doorBlocked = blockedDoorId !== null;
+      const inDetectionRange = distanceToPlayer <= this.getOfficeGameModeDetectionRange(config);
+      canSeePlayer = !doorBlocked
+        && !this.officeVentActive
+        && !this.officeVentDrop
+        && !this.officeChapterSeated
+        && !this.officeBallPitHidden
+        && inDetectionRange
+        && this.hasOfficeGameModeLineOfSight(animatronicPosition, playerPosition);
+      noiseResponse = this.getOfficeGameModeNoiseResponse(animatronic, animatronicPosition);
+      animatronic.cachedBlockedDoorId = blockedDoorId;
+      animatronic.cachedCanSeePlayer = canSeePlayer;
+      animatronic.cachedNoiseResponse = noiseResponse;
+      animatronic.senseTimer = animatronic.state === 'stage'
+        ? OFFICE_GAME_MODE_STAGE_SENSE_INTERVAL
+        : animatronic.state === 'chase' || animatronic.state === 'rush'
+          ? OFFICE_GAME_MODE_CHASE_SENSE_INTERVAL
+          : OFFICE_GAME_MODE_WANDER_SENSE_INTERVAL;
+    }
 
     if (animatronic.state === 'stage') {
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
       animatronic.model.root.visible = false;
-      if (noiseResponse !== 'none' && canLeaveStage) {
+      if (
+        noiseResponse !== 'none'
+        && canLeaveStage
+        && this.shouldOfficeStageNoiseRelease(animatronic)
+      ) {
         this.sendOfficeGameModeAnimatronicOffStage(animatronic);
-        animatronic.state = noiseResponse === 'rush' ? 'rush' : 'chase';
-        animatronic.lastKnownPlayerPosition.copy(this.officePlayerNoisePosition);
-        animatronic.waitTimer = 0;
+        this.markOfficeStageVoiceRelease(animatronic.animatronic);
+        this.startOfficeGameModeAnimatronicChase(
+          animatronic,
+          this.officePlayerNoisePosition,
+          noiseResponse === 'rush' ? 'rush' : 'chase',
+        );
         return true;
       }
 
@@ -3639,20 +7816,87 @@ export class Game {
     animatronic.model.root.visible = true;
     this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, false);
 
-    if (canSeePlayer) {
+    if (
+      this.officeInsultHeardTimer > 0
+      && (animatronic.state === 'retreat' || animatronic.state === 'wander')
+      && animatronic.insultCooldown <= 0
+      && distanceToPlayer <= OFFICE_YELL_ATTRACT_RANGE
+    ) {
+      this.startOfficeInsultRevenge(animatronic);
+    }
+
+    if (animatronic.insultStareTimer > 0) {
+      animatronic.insultStareTimer = Math.max(0, animatronic.insultStareTimer - deltaSeconds);
+      this.updateOfficeInsultEyeFlicker(animatronic);
+      const dx = playerPosition.x - root.position.x;
+      const dz = playerPosition.z - root.position.z;
+      if (Math.hypot(dx, dz) > 0.01) {
+        root.rotation.y = Math.atan2(dx, dz);
+      }
+      animatronic.model.head.rotation.y = Math.sin(this.elapsed * 18) * 0.06;
+      animatronic.model.leftArm.rotation.x = MathUtils.lerp(animatronic.model.leftArm.rotation.x, -0.28, 0.28);
+      animatronic.model.rightArm.rotation.x = MathUtils.lerp(animatronic.model.rightArm.rotation.x, -0.28, 0.28);
+      if (animatronic.insultStareTimer <= 0) {
+        this.updateOfficeInsultEyeFlicker(animatronic);
+        animatronic.insultChargeTimer = OFFICE_INSULT_CHARGE_SECONDS;
+        this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
+        animatronic.insultChargeTimer = OFFICE_INSULT_CHARGE_SECONDS;
+        animatronic.insultCooldown = OFFICE_INSULT_COOLDOWN_SECONDS;
+        this.pushStatus(`${animatronic.label}'s eyes stop flickering. They sprint at you twice as fast.`, 2.8);
+      }
+      return false;
+    }
+    this.updateOfficeInsultEyeFlicker(animatronic);
+
+    if (animatronic.state === 'door-breach') {
+      this.updateOfficeGameModeDoorBreach(animatronic, deltaSeconds, playerPosition);
+      return false;
+    }
+
+    if (animatronic.state === 'distracted-watch') {
+      animatronic.waitTimer = Math.max(0, animatronic.waitTimer - deltaSeconds);
+      const lookTarget = animatronic.distractionTarget ?? animatronic.model.root.position;
+      const dx = lookTarget.x - root.position.x;
+      const dz = lookTarget.z - root.position.z;
+      if (Math.hypot(dx, dz) > 0.01) {
+        root.rotation.y = Math.atan2(dx, dz);
+      }
+      root.rotation.x = MathUtils.lerp(root.rotation.x, 0.16, 0.28);
+      root.rotation.z = Math.sin(this.elapsed * 8.5) * 0.025;
+      animatronic.model.head.rotation.x = MathUtils.lerp(animatronic.model.head.rotation.x, 0.42, 0.24);
+      animatronic.model.head.rotation.y = Math.sin(this.elapsed * 4.2) * 0.07;
+      animatronic.model.leftArm.rotation.x = MathUtils.lerp(animatronic.model.leftArm.rotation.x, -0.34, 0.2);
+      animatronic.model.rightArm.rotation.x = MathUtils.lerp(animatronic.model.rightArm.rotation.x, -0.34, 0.2);
+      if (animatronic.waitTimer <= 0) {
+        animatronic.distractionTarget = null;
+        this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
+        this.pushStatus(`${animatronic.label} turns away from the distraction and comes running back.`, 2.2);
+      }
+      return false;
+    }
+
+    if (animatronic.state === 'chase' || animatronic.state === 'rush') {
+      if (animatronic.insultChargeTimer <= 0) {
+        animatronic.chaseGiveUpTimer += deltaSeconds;
+        if (animatronic.chaseGiveUpTimer >= OFFICE_CHASE_GIVE_UP_SECONDS) {
+          this.makeOfficeGameModeAnimatronicGiveUp(animatronic);
+          return false;
+        }
+      }
+    } else {
+      animatronic.chaseGiveUpTimer = 0;
+    }
+
+    if (canSeePlayer && animatronic.chaseCommitTimer <= 0) {
       animatronic.lastKnownPlayerPosition.copy(playerPosition);
       animatronic.lostSightTimer = 0;
-    } else if (noiseResponse !== 'none' && animatronic.state !== 'door' && animatronic.state !== 'retreat') {
-      animatronic.lastKnownPlayerPosition.copy(this.officePlayerNoisePosition);
+    } else if (canSeePlayer) {
       animatronic.lostSightTimer = 0;
-      animatronic.waitTimer = 0;
-      animatronic.progressStallTimer = 0;
-      animatronic.detourTarget = null;
-      animatronic.detourTimer = 0;
+    } else if (noiseResponse !== 'none' && animatronic.state !== 'door' && animatronic.state !== 'retreat') {
       if (noiseResponse === 'rush') {
-        animatronic.state = 'rush';
+        this.startOfficeGameModeAnimatronicChase(animatronic, this.officePlayerNoisePosition, 'rush');
       } else if (animatronic.state === 'wander') {
-        animatronic.state = 'chase';
+        this.startOfficeGameModeAnimatronicChase(animatronic, this.officePlayerNoisePosition, 'chase');
       }
     }
 
@@ -3663,16 +7907,20 @@ export class Game {
       animatronic.progressStallTimer = 0;
       animatronic.detourTarget = null;
       animatronic.detourTimer = 0;
+      animatronic.chaseCommitTimer = 0;
+      animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+      this.clearOfficeAnimatronicChaseTimers(animatronic);
     } else if (doorBlocked && (animatronic.state === 'chase' || animatronic.state === 'rush') && blockedDoorId) {
-      animatronic.state = 'door';
-      animatronic.waitTimer = 0;
-      animatronic.lostSightTimer = 0;
-      animatronic.progressStallTimer = 0;
-      animatronic.detourTarget = null;
-      animatronic.detourTimer = 0;
+      if (Math.random() < OFFICE_DOOR_BREACH_CHANCE) {
+        this.startOfficeGameModeDoorBreach(animatronic, blockedDoorId);
+        this.updateOfficeGameModeDoorBreach(animatronic, deltaSeconds, playerPosition);
+        return false;
+      }
+
+      this.startOfficeGameModeDoorBlockedWait(animatronic, blockedDoorId);
     } else if (canSeePlayer && animatronic.attackCooldown <= 0 && animatronic.state !== 'retreat' && animatronic.state !== 'rush') {
-      animatronic.state = 'chase';
-    } else if (animatronic.state === 'chase' && !canSeePlayer) {
+      this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
+    } else if ((animatronic.state === 'chase' || animatronic.state === 'rush') && !canSeePlayer) {
       animatronic.lostSightTimer += deltaSeconds;
       if (animatronic.lostSightTimer >= config.lostSightSeconds) {
         animatronic.state = 'wander';
@@ -3681,14 +7929,41 @@ export class Game {
         animatronic.progressStallTimer = 0;
         animatronic.detourTarget = null;
         animatronic.detourTimer = 0;
+        animatronic.chaseCommitTimer = 0;
+        animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+        this.clearOfficeAnimatronicChaseTimers(animatronic);
+      }
+    } else if (animatronic.state === 'door' && doorBlocked) {
+      animatronic.lostSightTimer += deltaSeconds;
+      if (animatronic.lostSightTimer >= config.lostSightSeconds) {
+        this.makeOfficeGameModeAnimatronicGiveUp(animatronic);
+        return false;
       }
     } else if (animatronic.state === 'door' && !doorBlocked) {
-      animatronic.state = canSeePlayer ? 'chase' : 'retreat';
-      animatronic.routeIndex = 0;
-      animatronic.waitTimer = 0.2;
-      animatronic.progressStallTimer = 0;
-      animatronic.detourTarget = null;
-      animatronic.detourTimer = 0;
+      if (canSeePlayer) {
+        this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
+      } else {
+        animatronic.state = 'retreat';
+        animatronic.routeIndex = 0;
+        animatronic.waitTimer = 0.2;
+        animatronic.progressStallTimer = 0;
+        animatronic.detourTarget = null;
+        animatronic.detourTimer = 0;
+        animatronic.chaseCommitTimer = 0;
+        animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+        this.clearOfficeAnimatronicChaseTimers(animatronic);
+      }
+    }
+
+    if (
+      animatronic.state === 'chase'
+      && canSeePlayer
+      && animatronic.chaseCommitTimer <= 0
+      && animatronic.chaseCommitCooldown <= 0
+      && distanceToPlayer <= OFFICE_GAME_MODE_CHASE_COMMIT_RANGE
+      && distanceToPlayer > config.attackRange * 0.72
+    ) {
+      this.startOfficeGameModeChaseCommit(animatronic, playerPosition);
     }
 
     if (animatronic.state === 'rush' && animatronic.animatronic === 'foxy' && this.officeFoxyRushDoor) {
@@ -3718,7 +7993,10 @@ export class Game {
       }
     }
 
-    if (canSeePlayer && distanceToPlayer <= config.attackRange && animatronic.attackCooldown <= 0) {
+    const playerInAttackRange = animatronic.chaseCommitTimer > 0
+      ? this.canOfficeGameModeChargeHitPlayer(animatronic, playerPosition, config.attackRange)
+      : distanceToPlayer <= config.attackRange;
+    if ((canSeePlayer || animatronic.insultChargeTimer > 0) && playerInAttackRange && animatronic.attackCooldown <= 0) {
       const definition = this.getRandomOfficeJumpscareDefinition(animatronic.animatronic);
       if (definition && !this.activeOfficeJumpscare) {
         animatronic.attackCooldown = 5.2;
@@ -3727,21 +8005,38 @@ export class Game {
       return false;
     }
 
+    if (this.updateOfficeGameModeCameraStare(animatronic, deltaSeconds)) {
+      return false;
+    }
+
     if (animatronic.waitTimer > 0) {
       animatronic.waitTimer = Math.max(0, animatronic.waitTimer - deltaSeconds);
       return false;
     }
 
-    const rawDesiredTarget = animatronic.state === 'rush' && animatronic.animatronic === 'foxy'
+    if (animatronic.insultChargeTimer > 0) {
+      animatronic.lastKnownPlayerPosition.copy(playerPosition);
+    }
+
+    const rawDesiredTarget = animatronic.insultChargeTimer > 0
+      ? playerPosition
+      : animatronic.state === 'rush' && animatronic.animatronic === 'foxy'
       ? this.getOfficeFoxyRushDoorTarget()
       : animatronic.state === 'rush'
       ? this.player.getPosition()
+      : animatronic.state === 'distracted' && animatronic.distractionTarget
+      ? animatronic.distractionTarget
+      : animatronic.state === 'chase' && animatronic.chaseCommitTimer > 0
+      ? animatronic.chaseCommitTarget
       : animatronic.state === 'chase'
       ? animatronic.lastKnownPlayerPosition
       : animatronic.state === 'door' && blockedDoorId
         ? (blockedDoorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH)
         : animatronic.route[animatronic.routeIndex] ?? animatronic.route[0] ?? OFFICE_GAME_MODE_OFFICE_CENTER;
-    const desiredTarget = this.getOfficeGameModeSafeTarget(animatronic, rawDesiredTarget);
+    const desiredTarget = this.applyOfficeGameModeSeparation(
+      animatronic,
+      this.getOfficeGameModeSafeTarget(animatronic, rawDesiredTarget),
+    );
     animatronic.detourTimer = Math.max(0, animatronic.detourTimer - deltaSeconds);
     if (animatronic.detourTarget) {
       const distanceToDetour = Math.hypot(
@@ -3775,7 +8070,9 @@ export class Game {
       const detour = this.findOfficeGameModeDetour(animatronic, desiredTarget);
       if (detour) {
         animatronic.detourTarget = detour;
-        animatronic.detourTimer = animatronic.state === 'chase' || animatronic.state === 'rush' ? 1.15 : 1.85;
+        animatronic.detourTimer = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted'
+          ? 1.15
+          : 1.85;
       }
     }
 
@@ -3785,13 +8082,14 @@ export class Game {
     const dz = target.z - root.position.z;
     const distance = Math.hypot(dx, dz);
     const nightSpeedMultiplier = this.getOfficeGameModeSpeedMultiplier();
-    const speed = animatronic.state === 'rush'
-      ? OFFICE_FOXY_RUSH_SPEED * (this.officeGameModePowerOut ? 1.08 : 1)
-      : animatronic.state === 'chase'
-      ? config.chaseSpeed * nightSpeedMultiplier * (this.officeGameModePowerOut ? 1.18 : 1)
+    const baseSpeed = animatronic.state === 'rush'
+      ? OFFICE_FOXY_RUSH_SPEED
+      : animatronic.state === 'chase' || animatronic.state === 'distracted'
+      ? OFFICE_GAME_MODE_CHASE_MATCH_SPEED
       : animatronic.state === 'retreat'
         ? config.walkSpeed * nightSpeedMultiplier * 1.08
         : config.walkSpeed * nightSpeedMultiplier;
+    const speed = baseSpeed * (animatronic.insultChargeTimer > 0 ? 2 : 1);
 
     if (distance <= 0.16) {
       if (movingToDetour) {
@@ -3802,6 +8100,22 @@ export class Game {
 
       if (animatronic.state === 'rush') {
         animatronic.waitTimer = 0.15;
+        return false;
+      }
+
+      if (animatronic.state === 'distracted') {
+        animatronic.state = 'distracted-watch';
+        animatronic.waitTimer = OFFICE_DISTRACTION_LOOK_SECONDS;
+        animatronic.detourTarget = null;
+        animatronic.detourTimer = 0;
+        animatronic.progressStallTimer = 0;
+        return false;
+      }
+
+      if (animatronic.state === 'chase' && animatronic.chaseCommitTimer > 0) {
+        animatronic.chaseCommitTimer = 0;
+        animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+        animatronic.senseTimer = 0;
         return false;
       }
 
@@ -3846,15 +8160,23 @@ export class Game {
       if (!moved && !animatronic.detourTarget && animatronic.state === 'wander') {
         animatronic.routeIndex = this.getNextOfficeGameModeRouteIndex(animatronic, animatronic.routeIndex);
         animatronic.waitTimer = 0.65;
-      } else if (!moved && !animatronic.detourTarget && (animatronic.state === 'chase' || animatronic.state === 'rush') && animatronic.stuckTimer > 1.15) {
+      } else if (!moved && !animatronic.detourTarget && (animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted') && animatronic.stuckTimer > 1.15) {
+        if (animatronic.state === 'distracted') {
+          animatronic.state = 'distracted-watch';
+          animatronic.waitTimer = OFFICE_DISTRACTION_LOOK_SECONDS * 0.7;
+          animatronic.stuckTimer = 0;
+          return false;
+        }
         animatronic.state = 'wander';
         animatronic.lostSightTimer = 0;
         animatronic.progressStallTimer = 0;
         animatronic.waitTimer = 0.35;
+        animatronic.chaseCommitTimer = 0;
+        animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
       }
     }
 
-    const running = animatronic.state === 'chase' || animatronic.state === 'rush';
+    const running = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted';
     const motionStrength = running ? 1.55 : 0.62;
     const stepCycle = this.elapsed * (running ? 17.5 : 7.4);
     const leftStep = Math.sin(stepCycle);
@@ -3865,14 +8187,24 @@ export class Game {
     animatronic.model.rightLeg.rotation.x = rightStep * (running ? 0.58 : 0.42) * motionStrength;
     animatronic.model.leftLegJoint.rotation.x = Math.max(0, -leftStep) * (running ? 0.74 : 0.48) * motionStrength;
     animatronic.model.rightLegJoint.rotation.x = Math.max(0, -rightStep) * (running ? 0.74 : 0.48) * motionStrength;
-    animatronic.model.leftArm.rotation.x = rightStep * (running ? 0.54 : 0.28) * motionStrength - (running ? 0.18 : 0);
-    animatronic.model.rightArm.rotation.x = leftStep * (running ? 0.54 : 0.28) * motionStrength - (running ? 0.18 : 0);
+    const armSwing = running ? 0.2 : 0.18;
+    const armSide = running ? 0.62 : 0.44;
+    animatronic.model.leftArm.rotation.x = rightStep * armSwing * motionStrength - (running ? 0.08 : 0);
+    animatronic.model.rightArm.rotation.x = leftStep * armSwing * motionStrength - (running ? 0.08 : 0);
+    animatronic.model.leftArm.rotation.y = MathUtils.lerp(animatronic.model.leftArm.rotation.y, running ? 0.16 : 0, 0.24);
+    animatronic.model.rightArm.rotation.y = MathUtils.lerp(animatronic.model.rightArm.rotation.y, running ? -0.16 : 0, 0.24);
+    animatronic.model.leftArm.rotation.z = MathUtils.lerp(animatronic.model.leftArm.rotation.z, armSide, 0.32);
+    animatronic.model.rightArm.rotation.z = MathUtils.lerp(animatronic.model.rightArm.rotation.z, -armSide, 0.32);
     animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 9.4 : 5.6)) * 0.08 * (running ? 1.25 : 0.45);
     return false;
   }
 
   private updateOfficeGameMode(deltaSeconds: number): void {
     if (!this.officeGameModeActive) {
+      return;
+    }
+
+    if (this.officeDeathNoticePhase) {
       return;
     }
 
@@ -3893,9 +8225,16 @@ export class Game {
       return;
     }
 
+    this.officeInsultHeardTimer = Math.max(0, this.officeInsultHeardTimer - deltaSeconds);
+    this.officeStageVoiceReleaseCooldown = Math.max(0, this.officeStageVoiceReleaseCooldown - deltaSeconds);
     const maxOffstage = this.getOfficeGameModeMaxOffstage();
-    let offStageCount = this.officeGameModeAnimatronics.filter((animatronic) => animatronic.state !== 'stage').length;
-    this.officeGameModeAnimatronics.forEach((animatronic) => {
+    let offStageCount = 0;
+    for (const animatronic of this.officeGameModeAnimatronics) {
+      if (animatronic.state !== 'stage') {
+        offStageCount += 1;
+      }
+    }
+    for (const animatronic of this.officeGameModeAnimatronics) {
       const leftStage = this.updateOfficeGameModeAnimatronic(
         animatronic,
         deltaSeconds,
@@ -3904,7 +8243,7 @@ export class Game {
       if (leftStage) {
         offStageCount += 1;
       }
-    });
+    }
     this.updateOfficeVentBoy(deltaSeconds);
   }
 
@@ -3924,6 +8263,81 @@ export class Game {
         ? 'Press M to open the Chapter 3 mode menu, or press 2 to switch to the tablet.'
         : 'Press M to put the Coordinate Tool away.',
       lastMarkerText,
+    ].join('\n');
+  }
+
+  private getMicrophoneSoundToolHudText(): string {
+    this.loadSavedMicrophoneSounds();
+    const soundEffectLines = this.microphoneSoundRecordings.map((recording, index) => (
+      `${index + 1}. ${this.formatMicrophoneSoundLabel(recording.id)}`
+    ));
+    const selectedText = this.microphoneSoundPreviewRecordingId
+      ? `Selected sound effect: ${this.formatMicrophoneSoundLabel(this.microphoneSoundPreviewRecordingId)}.`
+      : this.microphoneSoundPreviewUrl
+        ? 'Selected sound effect: unsaved preview.'
+        : 'Selected sound effect: none.';
+    const savedRecordingsText = soundEffectLines.length > 0
+      ? ['Sound effects:', ...soundEffectLines].join('\n')
+      : 'Sound effects: none yet.';
+    const jumpscareRecordingId = this.getMicrophoneJumpscareRecordingId();
+    const jumpscareText = jumpscareRecordingId
+      ? `Jumpscare sound effect: ${this.formatMicrophoneSoundLabel(jumpscareRecordingId)}.`
+      : 'Jumpscare sound effect: default scare sound.';
+    const savedState = this.microphoneSoundSaved
+      ? `Saved sound: ${this.microphoneSoundPreviewRecordingId ? this.formatMicrophoneSoundLabel(this.microphoneSoundPreviewRecordingId) : 'ready'}.`
+      : this.microphoneSoundPreviewUrl
+        ? 'Recorded sound: preview ready, not saved yet.'
+        : 'Recorded sound: none yet.';
+    return [
+      'Microphone Sound Tool',
+      '1. Press E to start recording.',
+      '2. Make the sound effect into the microphone.',
+      '3. Press E again to stop.',
+      '4. Left click previews the selected sound.',
+      '5. Press D to save as the next sound number: sound 009, sound 010, sound 011, sound 100, and beyond.',
+      '6. Press number keys to play saved sound effects from the list.',
+      '',
+      'Tell Codex: I want sound 001 only.',
+      'Right click deletes the selected sound effect or unsaved preview.',
+      '',
+      savedRecordingsText,
+      '',
+      this.microphoneSoundRecording ? 'Status: recording now.' : `Status: ${this.microphoneSoundMessage}`,
+      selectedText,
+      jumpscareText,
+      savedState,
+    ].join('\n');
+  }
+
+  private getCameraToolHudText(): string {
+    this.loadCameraToolCaptures();
+    const pictureIds = this.cameraToolCaptures
+      .filter((capture) => capture.kind === 'picture')
+      .map((capture) => capture.id);
+    const videoIds = this.cameraToolCaptures
+      .filter((capture) => capture.kind === 'video')
+      .map((capture) => capture.id);
+    const selectedText = this.cameraToolPreviewKind && this.cameraToolPreviewCaptureId
+      ? `Selected: ${this.formatCameraToolCaptureLabel(this.cameraToolPreviewKind, this.cameraToolPreviewCaptureId)}.`
+      : this.cameraToolPreviewKind
+        ? `Selected: unsaved ${this.cameraToolPreviewKind}.`
+        : 'Selected: none.';
+    const savedText = [
+      pictureIds.length > 0 ? `Pictures: ${pictureIds.join(', ')}.` : 'Pictures: none yet.',
+      videoIds.length > 0 ? `Videos: ${videoIds.join(', ')}.` : 'Videos: none yet.',
+    ].join(' ');
+
+    return [
+      '1. Press 4 to equip the Camera Tool.',
+      '2. Allow browser camera and microphone permission when it asks.',
+      '3. Left click takes a picture preview.',
+      '4. Press E to start video with microphone audio, then E again to stop.',
+      '5. Press D to save the preview as picture 001 or video 001.',
+      '',
+      'Right click deletes the selected saved capture or unsaved preview.',
+      this.cameraToolRecording ? 'Status: recording video now.' : `Status: ${this.cameraToolMessage}`,
+      selectedText,
+      savedText,
     ].join('\n');
   }
 
@@ -3980,6 +8394,22 @@ export class Game {
   private getPlacementRaycastRoots(): Object3D[] {
     if (this.officeChapterActive) {
       return [this.officeChapter.root];
+    }
+
+    if (this.chapterFourActive) {
+      return [this.chapterFour.root];
+    }
+
+    if (this.chapterFiveActive) {
+      return [this.chapterFive.root];
+    }
+
+    if (this.chapterSixActive) {
+      return [this.chapterSix.root];
+    }
+
+    if (this.chapterSevenActive) {
+      return [this.chapterSeven.root];
     }
 
     if (this.chapterTwoActive) {
@@ -4203,7 +8633,7 @@ export class Game {
 
   private updatePlacementToolDisplay(): void {
     const tabletActive = this.officeChapterActive && (this.officeTabletHeld || this.officeTabletCameraFeedActive);
-    const toolVisible = this.placementToolActive && this.player.isLocked() && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && !tabletActive;
+    const toolVisible = this.placementToolActive && this.player.isLocked() && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && !tabletActive && !this.microphoneSoundToolActive;
     this.placementToolAnchor.visible = toolVisible;
 
     if (this.officeChapterActive) {
@@ -4246,6 +8676,81 @@ export class Game {
     this.officeTabletAnchor.visible = tabletVisible;
   }
 
+  private updateChapterFourBoxDisplay(): void {
+    const boxVisible = this.chapterFourActive
+      && this.player.isLocked()
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen
+      && !this.officeTabletHeld
+      && !this.officeTabletCameraFeedActive
+      && !this.placementToolActive;
+
+    this.chapterFourBoxHeldAnchor.visible = boxVisible && this.chapterFourBoxHeld && !this.chapterFourBoxActive;
+    this.chapterFourBoxHideAnchor.visible = boxVisible && this.chapterFourBoxActive && this.chapterFourBoxViewMode === 'normal';
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = boxVisible && this.chapterFourBoxActive && this.chapterFourBoxViewMode === 'wide';
+    if (this.chapterFourBoxWorldAnchor.visible) {
+      const playerPosition = this.player.getPosition();
+      this.camera.getWorldDirection(this.chapterFourBoxCameraForward);
+      this.chapterFourBoxCameraForward.y = 0;
+      if (this.chapterFourBoxCameraForward.lengthSq() < 0.0001) {
+        this.chapterFourBoxCameraForward.set(0, 0, -1);
+      }
+      this.chapterFourBoxCameraForward.normalize();
+      this.chapterFourBoxWorldAnchor.position.set(
+        playerPosition.x,
+        playerPosition.y - GAME_CONFIG.player.height,
+        playerPosition.z,
+      );
+      this.chapterFourBoxWorldAnchor.rotation.y = Math.atan2(this.chapterFourBoxCameraForward.x, this.chapterFourBoxCameraForward.z);
+    }
+  }
+
+  private updateChapterFourBlueJumpscareModel(): void {
+    if (this.chapterFourBlueJumpscareTimer <= 0) {
+      this.chapterFourBlueJumpscareAnchor.visible = false;
+      return;
+    }
+
+    const progress = MathUtils.clamp(
+      1 - this.chapterFourBlueJumpscareTimer / CHAPTER_FOUR_BLUE_JUMPSCARE_DURATION,
+      0,
+      1,
+    );
+
+    this.chapterFourBlueJumpscareAnchor.visible = false;
+    this.chapterFour.updateBlueJumpscareView(progress);
+  }
+
+  private updateChapterFourGreenJumpscareModel(): void {
+    if (this.chapterFourGreenJumpscareTimer <= 0) {
+      this.chapterFourGreenJumpscareAnchor.visible = false;
+      return;
+    }
+
+    const progress = MathUtils.clamp(
+      1 - this.chapterFourGreenJumpscareTimer / CHAPTER_FOUR_GREEN_JUMPSCARE_DURATION,
+      0,
+      1,
+    );
+
+    this.chapterFourGreenJumpscareAnchor.visible = false;
+    this.chapterFour.updateGreenJumpscareView(progress);
+  }
+
+  private updateMicrophoneSoundToolDisplay(): void {
+    const tabletActive = this.officeChapterActive && (this.officeTabletHeld || this.officeTabletCameraFeedActive);
+    this.microphoneSoundToolAnchor.visible = this.microphoneSoundToolActive
+      && this.player.isLocked()
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen
+      && !tabletActive
+      && !this.placementToolActive
+      && !(this.chapterFourActive && this.chapterFourBoxActive);
+  }
+
   private updateOfficeGlassDisplay(): void {
     this.officeGlassAnchor.visible = this.officeChapterActive
       && this.officeGlassHeld
@@ -4255,6 +8760,43 @@ export class Game {
       && !this.officeModeMenuOpen
       && !this.officeTabletCameraFeedActive
       && !this.placementToolActive;
+  }
+
+  private updateOfficePrizeItemDisplay(): void {
+    const lollipopUseVisible = this.officeLollipopUseTimer > 0;
+    const displayItem = lollipopUseVisible
+      ? 'lollipop'
+      : this.officeHeldPrizeItem !== 'glass'
+        ? this.officeHeldPrizeItem
+        : null;
+    const visible = this.officeChapterActive
+      && displayItem !== null
+      && this.player.isLocked()
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen
+      && !this.officeTabletCameraFeedActive
+      && !this.placementToolActive
+      && !this.microphoneSoundToolActive;
+
+    this.officePrizeItemAnchor.visible = visible;
+    this.officePrizeItemModels.forEach((model, item) => {
+      model.visible = visible && item === displayItem;
+    });
+
+    const raiseProgress = lollipopUseVisible
+      ? Math.sin(MathUtils.clamp(1 - this.officeLollipopUseTimer / 0.72, 0, 1) * Math.PI)
+      : 0;
+    this.officePrizeItemAnchor.position.set(
+      0.34,
+      -0.46 + raiseProgress * 0.24,
+      -0.62 - raiseProgress * 0.22,
+    );
+    this.officePrizeItemAnchor.rotation.set(
+      0.1 - raiseProgress * 0.22,
+      -0.24,
+      0.06 + raiseProgress * 0.08,
+    );
   }
 
   private updatePlacementMarkerVisibility(): void {
@@ -4278,11 +8820,19 @@ export class Game {
   private getChapterLabel(chapter: HudChapterId): string {
     switch (chapter) {
       case 'chapter-1':
-        return 'Chapter 1';
+        return 'Chapter 1: scary-sushi';
       case 'chapter-2':
-        return 'Chapter 2';
+        return 'Chapter 2: daycare horror';
       case 'chapter-3':
-        return 'Chapter 3';
+        return "Chapter 3: five nights at Bori's";
+      case 'chapter-4':
+        return 'Chapter 4: rainbow friends';
+      case 'chapter-5':
+        return 'Chapter 5: space adventure/horror';
+      case 'chapter-6':
+        return 'Chapter 6: Minecraft';
+      case 'chapter-7':
+      return 'Chapter 7: The House';
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
@@ -4391,6 +8941,11 @@ export class Game {
   private updateAtmosphere(): void {
     this.lighting.flashlight.angle = GAME_CONFIG.flashlight.angle;
     this.lighting.flashlight.penumbra = GAME_CONFIG.flashlight.penumbra;
+    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive ? 980 : GAME_CONFIG.camera.far;
+    if (Math.abs(this.camera.far - targetCameraFar) > 0.01) {
+      this.camera.far = targetCameraFar;
+      this.camera.updateProjectionMatrix();
+    }
 
     if (this.zombieModeActive) {
       const nightBlend = this.getZombieNightBlend();
@@ -4458,14 +9013,14 @@ export class Game {
     if (this.officeChapterActive) {
       const nightBlend = this.getOfficeNightBlend();
       const nightLighting = this.getOfficeNightLightingSettings();
-      this.lighting.ambient.intensity = MathUtils.lerp(0.62, nightLighting.ambient, nightBlend);
-      this.lighting.hemisphere.intensity = MathUtils.lerp(0.82, nightLighting.hemisphere, nightBlend);
+      this.lighting.ambient.intensity = MathUtils.lerp(0.76, nightLighting.ambient, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(0.98, nightLighting.hemisphere, nightBlend);
       this.lighting.flashlight.intensity = MathUtils.lerp(
-        GAME_CONFIG.flashlight.intensity * 0.34,
+        GAME_CONFIG.flashlight.intensity * 0.48,
         nightLighting.flashlightIntensity,
         nightBlend,
       );
-      this.lighting.flashlight.distance = MathUtils.lerp(13, nightLighting.flashlightDistance, nightBlend);
+      this.lighting.flashlight.distance = MathUtils.lerp(17, nightLighting.flashlightDistance, nightBlend);
       this.lighting.flashlight.angle = MathUtils.lerp(GAME_CONFIG.flashlight.angle, nightLighting.flashlightAngle, nightBlend);
       this.lighting.flashlight.penumbra = MathUtils.lerp(GAME_CONFIG.flashlight.penumbra, nightLighting.flashlightPenumbra, nightBlend);
 
@@ -4477,6 +9032,82 @@ export class Game {
         this.scene.fog.color.copy(this.officeChapterFogColor).lerp(this.officeNightFogColor, nightBlend * nightLighting.fogBlend);
         this.scene.fog.near = MathUtils.lerp(42, nightLighting.fogNear, nightBlend);
         this.scene.fog.far = MathUtils.lerp(150, nightLighting.fogFar, nightBlend);
+      }
+
+      return;
+    }
+
+    if (this.chapterFourActive) {
+      this.lighting.ambient.intensity = 0.74;
+      this.lighting.hemisphere.intensity = 0.9;
+      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.34;
+      this.lighting.flashlight.distance = 13;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.copy(this.officeChapterFogColor);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.copy(this.officeChapterFogColor);
+        this.scene.fog.near = 42;
+        this.scene.fog.far = 150;
+      }
+
+      return;
+    }
+
+    if (this.chapterFiveActive) {
+      this.lighting.ambient.intensity = 0.26;
+      this.lighting.hemisphere.intensity = 0.22;
+      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.42;
+      this.lighting.flashlight.distance = 10;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0x112c3f);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0x18364a);
+        this.scene.fog.near = 620;
+        this.scene.fog.far = 1280;
+      }
+
+      return;
+    }
+
+    if (this.chapterSixActive) {
+      this.lighting.ambient.intensity = 0.76;
+      this.lighting.hemisphere.intensity = 0.9;
+      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.3;
+      this.lighting.flashlight.distance = 12;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0x8ccfff);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0x9bd7ff);
+        this.scene.fog.near = 128;
+        this.scene.fog.far = 360;
+      }
+
+      return;
+    }
+
+    if (this.chapterSevenActive) {
+      this.lighting.ambient.intensity = 0.78;
+      this.lighting.hemisphere.intensity = 1.12;
+      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.28;
+      this.lighting.flashlight.distance = 18;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0x8fd7ff);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0xaadfff);
+        this.scene.fog.near = 150;
+        this.scene.fog.far = 620;
       }
 
       return;
@@ -4599,7 +9230,12 @@ export class Game {
   private updateJumpScareLens(deltaSeconds: number): void {
     const intensity = this.getCombinedJumpScareIntensity();
     const targetFov = GAME_CONFIG.camera.fov + intensity * 20;
-    const blend = this.activeJumpscare || this.activeOfficeJumpscare || this.chapterTwoBearRefusalTimer > 0
+    const blend = this.activeJumpscare
+      || this.activeOfficeJumpscare
+      || this.chapterTwoBearRefusalTimer > 0
+      || this.chapterFourPurpleJumpscareTimer > 0
+      || this.chapterFourBlueJumpscareTimer > 0
+      || this.chapterFourGreenJumpscareTimer > 0
       ? Math.min(1, deltaSeconds * 24)
       : Math.min(1, deltaSeconds * 12);
     const nextFov = MathUtils.lerp(this.camera.fov, targetFov, blend);
@@ -4647,7 +9283,73 @@ export class Game {
       return 'chapter-3';
     }
 
+    if (this.chapterFourActive) {
+      return 'chapter-4';
+    }
+
+    if (this.chapterFiveActive) {
+      return 'chapter-5';
+    }
+
+    if (this.chapterSixActive) {
+      return 'chapter-6';
+    }
+
+    if (this.chapterSevenActive) {
+      return 'chapter-7';
+    }
+
     return this.chapterTwoActive ? 'chapter-2' : 'chapter-1';
+  }
+
+  private shouldSyncHudThisFrame(deltaSeconds: number, jumpscareLocked: boolean): boolean {
+    const needsRealtimeHud = jumpscareLocked
+      || this.chapterMenuOpen
+      || this.officeJumpscareMenuOpen
+      || this.officeModeMenuOpen
+      || (this.chapterSixActive && this.chapterSix.isInventoryOpen())
+      || this.placementToolActive
+      || this.officeTabletCameraFeedActive
+      || this.officeCameraPuppetPhase !== 'idle'
+      || this.officeBallPitSlide !== null
+      || this.officeVentDrop !== null
+      || this.chapterTwoClimb !== null
+      || this.chapterTwoSlide !== null
+      || this.chapterTwoDodoNightAttack !== null;
+
+    if (needsRealtimeHud) {
+      this.hudSyncTimer = 0;
+      return true;
+    }
+
+    this.hudSyncTimer = Math.max(0, this.hudSyncTimer - deltaSeconds);
+    if (this.hudSyncTimer > 0) {
+      return false;
+    }
+
+    this.hudSyncTimer = this.officeChapterActive
+      ? CHAPTER_THREE_HUD_SYNC_INTERVAL
+      : 1 / 20;
+    return true;
+  }
+
+  private getIntroHudState(): { eyebrow: string; title: string; summary: string; buttonText: string } {
+    if (this.chapterSevenActive) {
+      return {
+        eyebrow: 'Chapter Seven',
+        title: 'The House',
+        summary: 'Start inside the house with the smaller fridge, counter cabinet, oven, longer cupboards, bookshelf, and table drawers.',
+        buttonText: 'Walk Into The House',
+      };
+    }
+
+    return {
+      eyebrow: 'Studio Kitchen / Round 1',
+      title: 'Scary Sushi',
+      summary:
+        'The challenge is live. Search the maze for raw ingredients, run them through the labeled machines, build the salmon and tuna rolls, and send them down the judges belt.',
+      buttonText: 'Step Onto The Set',
+    };
   }
 
   private syncHud(): void {
@@ -4656,9 +9358,11 @@ export class Game {
 
     this.hud.setTheme(this.doomModeActive ? 'doom' : 'default');
     this.hud.setCrosshairMode(
-      this.zombieModeActive || this.doomModeActive || this.officeChapterActive
-        ? 'firearm'
-        : 'default',
+      this.chapterSixActive
+        ? 'minecraft'
+        : this.zombieModeActive || this.doomModeActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive
+          ? 'firearm'
+          : 'default',
     );
     this.hud.setThreatEye(
       this.doomModeActive && locked && !this.chapterMenuOpen
@@ -4668,6 +9372,8 @@ export class Game {
     this.hud.setFlashlight(this.flashlight.isEnabled());
     this.hud.setHealthLabel('Health');
     this.hud.setStaminaLabel(this.doomModeActive ? 'Armor' : 'Stamina');
+    const intro = this.getIntroHudState();
+    this.hud.setIntro(intro.eyebrow, intro.title, intro.summary, intro.buttonText);
     this.hud.setObjective(this.getObjectiveText());
     const storyNotice = this.getStoryNoticeState();
     this.hud.setStoryNotice(storyNotice.text, storyNotice.active, storyNotice.label);
@@ -4678,19 +9384,37 @@ export class Game {
     );
     this.hud.setChapterLabel(
       this.zombieModeActive
-        ? 'Chapter: Zombie FPS / press P'
+        ? 'Chapter: Zombie FPS'
         : this.doomModeActive
-          ? 'Mode: Doom Run / press P'
-        : this.officeChapterActive
-          ? 'Chapter: 3 / press P'
-        : this.chapterTwoActive
-          ? 'Chapter: 2 / press P'
-          : 'Chapter: 1 / press P',
+          ? 'Mode: Doom Run'
+          : this.officeChapterActive
+            ? "Chapter: five nights at Bori's"
+            : this.chapterFourActive
+              ? 'Chapter: rainbow friends'
+              : this.chapterFiveActive
+                ? 'Chapter: space adventure/horror'
+                : this.chapterSixActive
+                  ? 'Chapter: Minecraft'
+                  : this.chapterSevenActive
+                    ? 'Chapter: Chapter 7: The House'
+                  : this.chapterTwoActive
+                    ? 'Chapter: daycare horror'
+                    : 'Chapter: scary-sushi',
     );
     this.hud.setChapterMenu(this.chapterMenuOpen, currentChapter);
+    this.hud.setCuratorTool(this.curatorToolOpen);
+    this.hud.setCompass(
+      this.chapterFiveActive && !this.chapterFive.isInteriorMode(),
+      this.chapterFive.getCompassHeadingDegrees(),
+    );
+    const chapterFiveMonitor = this.chapterFive.getMonitorState();
+    this.hud.setChapterFiveMonitor(
+      this.chapterFiveActive && this.chapterFive.isInteriorMode() && chapterFiveMonitor.active,
+      chapterFiveMonitor,
+    );
     this.hud.setOfficeJumpscareMenu(
       this.officeJumpscareMenuOpen,
-      this.getOfficeJumpscareOptions(),
+      this.officeJumpscareMenuOpen ? this.getOfficeJumpscareOptions() : [],
     );
     this.hud.setOfficeModeMenu(
       this.officeModeMenuOpen,
@@ -4701,13 +9425,22 @@ export class Game {
     );
     this.hud.setPlacementTool(
       this.placementToolActive,
-      this.getPlacementToolHudText(),
-      this.getPlacementMarkerCopyText(),
+      this.placementToolActive ? this.getPlacementToolHudText() : '',
+      this.placementToolActive ? this.getPlacementMarkerCopyText() : '',
     );
+    this.hud.setMicrophoneTool(
+      this.microphoneSoundToolActive,
+      this.microphoneSoundToolActive ? this.getMicrophoneSoundToolHudText() : '',
+    );
+    this.hud.setCameraTool(
+      this.cameraToolActive,
+      this.cameraToolActive ? this.getCameraToolHudText() : '',
+    );
+    const tabletCameraHudActive = this.officeChapterActive && this.officeTabletCameraFeedActive;
     this.hud.setTabletCameras(
-      this.officeChapterActive && this.officeTabletCameraFeedActive,
-      this.getActiveOfficeTabletCamera()?.label ?? 'No Camera Installed',
-      this.getOfficeTabletCameraSlots(),
+      tabletCameraHudActive,
+      tabletCameraHudActive ? this.getActiveOfficeTabletCamera()?.label ?? 'No Camera Installed' : '',
+      tabletCameraHudActive ? this.getOfficeTabletCameraSlots() : [],
     );
     this.hud.setOfficeHardVignette(
       this.officeChapterActive
@@ -4722,8 +9455,22 @@ export class Game {
       this.officeGameModePowerOut,
       this.officeGameModeActive ? this.getOfficeGameModeNightHudLabel() : '',
       this.officeGameModeActive ? this.getOfficeGameModeTimeHudLabel() : '',
+      this.officeGameModePowerOut ? 'out' : 'normal',
     );
-    this.hud.setInventory(this.getInventoryText());
+    const microphoneListening = this.voiceInput.isActive();
+    this.hud.setMicrophone(
+      this.officeChapterActive,
+      this.officeMicrophoneEnabled,
+      microphoneListening,
+      this.voiceInput.isBlocked(),
+      this.officeMicrophoneEnabled && microphoneListening ? Math.max(this.officePlayerVoiceLevel, this.voiceInput.getLevel()) : 0,
+    );
+    const hideChapterFourInventory = this.chapterFourActive && this.chapterFourBoxActive;
+    this.hud.setInventory(hideChapterFourInventory ? '' : this.getInventoryText());
+    this.hud.setMinecraftInventory(
+      this.chapterSixActive && this.chapterSix.isInventoryOpen(),
+      this.chapterSix.getInventoryView(),
+    );
     const promptText = this.getPromptText(locked);
     this.hud.setPrompt(promptText);
     this.hud.setActionPrompt(this.getActionPromptText(locked, promptText));
@@ -4733,7 +9480,7 @@ export class Game {
         ? this.doomArmor / 100
         : this.stamina / GAME_CONFIG.player.staminaMax,
     );
-    this.hud.setHotbar(this.getHotbarSlots());
+    this.hud.setHotbar(hideChapterFourInventory ? [] : this.getHotbarSlots());
     this.hud.setJumpscare(this.getHudJumpScareVariant(), this.getHudJumpScareIntensity());
     const nightModeAttack = this.getNightModeAttackHudState();
     this.hud.setNightModeAttack(
@@ -4761,7 +9508,30 @@ export class Game {
         ? this.activeOfficeJumpscare.elapsed / this.activeOfficeJumpscare.duration
         : 0,
     );
+    const officeDeathNoticeDuration = this.officeDeathNoticePhase === 'died'
+      ? OFFICE_DEATH_DIED_NOTICE_SECONDS
+      : OFFICE_DEATH_FIRED_NOTICE_SECONDS;
+    this.hud.setOfficeDeathNotice(
+      this.officeDeathNoticePhase !== null,
+      this.officeDeathNoticePhase ?? 'died',
+      this.officeDeathNoticePhase
+        ? 1 - this.officeDeathNoticeTimer / officeDeathNoticeDuration
+        : 0,
+    );
     this.hud.setBallPitHidden(this.officeChapterActive && this.officeBallPitHidden);
+    this.hud.setCrouchInstructions(
+      this.chapterFourActive
+        && locked
+        && !this.chapterMenuOpen
+        && !this.officeJumpscareMenuOpen
+        && !this.officeModeMenuOpen
+        && !this.chapterFourBoxActive
+        && this.chapterFourPurpleJumpscareTimer <= 0
+        && this.chapterFourBlueJumpscareTimer <= 0
+        && this.chapterFourGreenJumpscareTimer <= 0
+        && this.chapterFourLockerId === null,
+      this.chapterFourCrouching,
+    );
     this.level.stationAnimator.setPlateState({
       holdingPlate: this.holdingPlate,
       recipeId: this.plateRecipeId,
@@ -4770,7 +9540,12 @@ export class Game {
     });
 
     if (this.chapterMenuOpen) {
-      this.hud.setStatus('Chapter menu open. Choose a chapter or mode with the mouse, or press P again to close it.');
+      this.hud.setStatus('Chapter menu open. Choose a chapter or mode with the mouse.');
+      return;
+    }
+
+    if (this.curatorToolOpen) {
+      this.hud.setStatus('Character Creator open. Build a design, save a character slot, or press K again to close it.');
       return;
     }
 
@@ -4790,11 +9565,19 @@ export class Game {
           ? 'Pointer unlocked. Click the play space to jump back into the zombie run.'
           : this.doomModeActive
             ? 'Pointer unlocked. Click the play space to jump back into the techbase run.'
-          : this.officeChapterActive
-            ? 'Pointer unlocked. Click the play space to keep exploring the office chapter.'
-          : this.chapterTwoActive
-          ? 'Pointer unlocked. Click the play space to keep exploring the locked daycare wing.'
-          : 'Pointer unlocked. Click anywhere on the play space to jump back into first person.',
+            : this.officeChapterActive
+              ? 'Pointer unlocked. Click the play space to keep exploring the office chapter.'
+              : this.chapterFourActive
+                ? 'Pointer unlocked. Click the play space to keep exploring Chapter 4.'
+                : this.chapterFiveActive
+                  ? this.chapterFive.isInteriorMode()
+                    ? 'Pointer unlocked. Click the play space to keep walking inside the Chapter 5 spaceship.'
+                    : 'Pointer unlocked. Click the play space to keep flying through Chapter 5.'
+                  : this.chapterSevenActive
+                    ? 'Pointer unlocked. Click the play space to keep walking around Chapter 7: The House.'
+                  : this.chapterTwoActive
+                    ? 'Pointer unlocked. Click the play space to keep exploring the locked daycare wing.'
+                    : 'Pointer unlocked. Click anywhere on the play space to jump back into first person.',
       );
       return;
     }
@@ -4804,6 +9587,20 @@ export class Game {
 
   private handleInteract(): void {
     if (!this.player.isLocked() || this.activeJumpscare) {
+      return;
+    }
+
+    if (this.microphoneSoundToolActive) {
+      if (this.microphoneSoundRecording) {
+        this.stopMicrophoneSoundRecording();
+      } else {
+        void this.startMicrophoneSoundRecording();
+      }
+      return;
+    }
+
+    if (this.cameraToolActive) {
+      void this.toggleCameraToolVideoRecording();
       return;
     }
 
@@ -4823,6 +9620,108 @@ export class Game {
       }
 
       this.handleOfficeChapterInteract();
+      return;
+    }
+
+    if (this.chapterFourActive) {
+      this.handleChapterFourInteract();
+      return;
+    }
+
+    if (this.chapterFiveActive) {
+      const monitor = this.chapterFive.getMonitorState();
+      if (this.chapterFive.isInteriorMode() && monitor.landed && !monitor.active) {
+        this.stepOutToChapterFiveSurface();
+        return;
+      }
+
+      if (this.chapterFive.isSurfaceMode()) {
+        this.pushStatus('You are outside on the planet surface. Walk around the landed ship, hills, and abandoned structures.', 2.6);
+        return;
+      }
+
+      const message = this.chapterFive.interactCockpitControl(this.player.getPosition());
+      if (this.chapterFive.getMonitorState().active) {
+        this.syncHud();
+        this.player.controls.unlock();
+      }
+      this.pushStatus(message ?? 'Nothing on the spaceship console is close enough to use.', 2.6);
+      return;
+    }
+
+    if (this.chapterSixActive) {
+      const nextOpen = !this.chapterSix.isInventoryOpen();
+      this.chapterSix.setInventoryOpen(nextOpen);
+      if (nextOpen) {
+        this.player.controls.unlock();
+        this.pushStatus('Inventory open. Left click moves stacks, right click moves one item, and E closes it.', 2.8);
+      } else {
+        this.player.lock();
+        this.pushStatus('Inventory closed. Select a hotbar block and right click a block face to place it.', 2.4);
+      }
+      this.syncHud();
+      return;
+    }
+
+    if (this.chapterSevenActive) {
+      const interactable = this.getLookedAtChapterSevenInteractable();
+      if (interactable?.kind === 'cupboard') {
+        const cupboard = interactable.item;
+        cupboard.targetOpenAmount = cupboard.targetOpenAmount > 0.5 ? 0 : 1;
+        cupboard.open = cupboard.targetOpenAmount > 0.5;
+        this.gameplaySfxAudio.playClosetDoor(cupboard.open);
+        this.pushStatus(
+          cupboard.open
+            ? `${cupboard.label} swing open.`
+            : `${cupboard.label} swing closed.`,
+          2.4,
+        );
+        return;
+      }
+
+      if (interactable?.kind === 'fridge') {
+        const fridge = interactable.item;
+        fridge.targetOpenAmount = fridge.targetOpenAmount > 0.5 ? 0 : 1;
+        fridge.open = fridge.targetOpenAmount > 0.5;
+        this.gameplaySfxAudio.playClosetDoor(fridge.open);
+        this.pushStatus(
+          fridge.open
+            ? 'The fridge opens. There is milk, fruit, and cookies inside.'
+            : 'The fridge closes.',
+          2.4,
+        );
+        return;
+      }
+
+      if (interactable?.kind === 'drawer') {
+        const drawer = interactable.item;
+        drawer.targetOpenAmount = drawer.targetOpenAmount > 0.5 ? 0 : 1;
+        drawer.open = drawer.targetOpenAmount > 0.5;
+        this.gameplaySfxAudio.playClosetDoor(drawer.open);
+        this.pushStatus(
+          drawer.open
+            ? `${drawer.label} slides open. It is empty for now.`
+            : `${drawer.label} slides closed.`,
+          2.4,
+        );
+        return;
+      }
+
+      if (interactable?.kind === 'oven') {
+        const oven = interactable.item;
+        oven.targetOpenAmount = oven.targetOpenAmount > 0.5 ? 0 : 1;
+        oven.open = oven.targetOpenAmount > 0.5;
+        this.gameplaySfxAudio.playClosetDoor(oven.open);
+        this.pushStatus(
+          oven.open
+            ? 'The oven door folds open.'
+            : 'The oven door closes.',
+          2.4,
+        );
+        return;
+      }
+
+      this.pushStatus('Look directly at the fridge, oven, cupboard, or drawer you want, then press E.', 2.6);
       return;
     }
 
@@ -4930,6 +9829,7 @@ export class Game {
     this.officeTabletAnchor.visible = false;
     this.officeGlassHeld = false;
     this.officeGlassAnchor.visible = false;
+    this.clearOfficeHeldPrizeItem();
     this.gameplaySfxAudio.playBallPitDive();
     this.pushStatus('You crouch under the balls.', 1.4);
   }
@@ -4945,17 +9845,7 @@ export class Game {
   }
 
   private getNearestOfficeBallPitSlide(): OfficeChapterData['ballPitSlide'] | null {
-    if (!this.officeChapterActive || this.officeBallPitSlide) {
-      return null;
-    }
-
-    const playerPosition = this.player.getPosition();
-    const slide = this.officeChapter.ballPitSlide;
-    const distance = Math.hypot(
-      playerPosition.x - slide.interactPosition.x,
-      playerPosition.z - slide.interactPosition.z,
-    );
-    return distance <= GAME_CONFIG.player.interactionRange + 0.9 ? slide : null;
+    return null;
   }
 
   private startOfficeBallPitSlide(): void {
@@ -5007,6 +9897,15 @@ export class Game {
     }
 
     if (this.officeChapterActive) {
+      const officeButton = this.getNearestOfficeButton();
+      if (officeButton && this.handleOfficeButtonInteraction(officeButton)) {
+        return;
+      }
+
+      if (this.officeHeldPrizeItem && this.handleOfficePrizeFire()) {
+        return;
+      }
+
       if (this.officeGlassHeld) {
         this.throwOfficeGlass();
         return;
@@ -5054,6 +9953,49 @@ export class Game {
     }
   }
 
+  private handleOfficePrizeFire(): boolean {
+    switch (this.officeHeldPrizeItem) {
+      case 'glass':
+        this.throwOfficeGlass();
+        return true;
+      case 'tiny-bear':
+        this.throwOfficeTinyBear();
+        return true;
+      case 'lollipop':
+        this.useOfficeLollipop();
+        return true;
+      case 'stuffie':
+        this.playOfficePrizeToySound();
+        this.pushStatus('The stuffie peeps when you squish it.', 1.8);
+        return true;
+      case 'duck-toy':
+        this.pushStatus('The tiny duck toy looks like Quacky in your hand.', 1.8);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private playOfficePrizeToySound(): void {
+    this.gameplaySfxAudio.resume();
+    this.gameplaySfxAudio.playStuffiePeep();
+  }
+
+  private useOfficeLollipop(): void {
+    if (!this.consumeOfficePrizeItem('lollipop')) {
+      this.pushStatus('No lollipop is left in your hotbar.', 1.6);
+      return;
+    }
+
+    this.officeLollipopUseTimer = 0.72;
+    this.officeLollipopBoostRemaining = OFFICE_LOLLIPOP_BOOST_SECONDS;
+    this.officeHeldPrizeItem = null;
+    this.officeGlassHeld = false;
+    this.officeGlassAnchor.visible = false;
+    this.gameplaySfxAudio.playSmallPanel(false);
+    this.pushStatus('You eat the lollipop. For 10 seconds, you run twice as fast while the animatronics stay the same speed.', 3.2);
+  }
+
   private handleOfficeBasketballFire(): void {
     if (!this.officeBasketballHeld) {
       return;
@@ -5082,6 +10024,12 @@ export class Game {
   }
 
   private throwOfficeGlass(): void {
+    if (this.getOfficePrizeItemCount('glass') <= 0) {
+      this.clearOfficeHeldPrizeItem();
+      this.pushStatus('No glass cup is left in your hotbar.', 1.6);
+      return;
+    }
+
     const throwStart = this.officeGlassAnchor.getWorldPosition(new Vector3());
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
     const root = this.createOfficeGlassModel();
@@ -5090,16 +10038,49 @@ export class Game {
     root.scale.setScalar(0.9);
     this.scene.add(root);
 
+    this.consumeOfficePrizeItem('glass');
+    this.officeHeldPrizeItem = null;
     this.officeGlassHeld = false;
     this.officeGlassAnchor.visible = false;
     this.officeGlassThrows.push({
       root,
       velocity: forward.multiplyScalar(11.5).add(new Vector3(0, 1.9, 0)),
       elapsed: 0,
+      crashElapsed: 0,
       crashed: false,
+      kind: 'glass',
     });
     this.gameplaySfxAudio.playSmallPanel(false);
     this.pushStatus('You throw the glass. It is about to shatter.', 1.4);
+  }
+
+  private throwOfficeTinyBear(): void {
+    if (this.getOfficePrizeItemCount('tiny-bear') <= 0) {
+      this.clearOfficeHeldPrizeItem();
+      this.pushStatus('No tiny bear is left in your hotbar.', 1.6);
+      return;
+    }
+
+    const throwStart = this.officePrizeItemAnchor.getWorldPosition(new Vector3());
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const root = this.createOfficeTinyBearToyModel(false);
+    root.position.copy(throwStart);
+    root.quaternion.copy(this.camera.quaternion);
+    root.scale.setScalar(1.05);
+    this.scene.add(root);
+
+    this.consumeOfficePrizeItem('tiny-bear');
+    this.officeHeldPrizeItem = null;
+    this.officePrizeItemAnchor.visible = false;
+    this.officeGlassThrows.push({
+      root,
+      velocity: forward.multiplyScalar(10.2).add(new Vector3(0, 1.55, 0)),
+      elapsed: 0,
+      crashElapsed: 0,
+      crashed: false,
+      kind: 'tiny-bear',
+    });
+    this.pushStatus('You throw the tiny bear. It will squeak when it hits the floor.', 1.8);
   }
 
   private updateOfficeGlassThrows(deltaSeconds: number): void {
@@ -5116,9 +10097,14 @@ export class Game {
         if (thrown.elapsed > 0.7 || thrown.root.position.y <= 0.28) {
           this.crashOfficeGlassThrow(thrown);
         }
+      } else {
+        thrown.crashElapsed += deltaSeconds;
       }
 
-      if (thrown.crashed && thrown.elapsed > 1.2) {
+      const visibleSeconds = thrown.kind === 'glass'
+        ? OFFICE_GLASS_SHARD_VISIBLE_SECONDS
+        : OFFICE_TINY_BEAR_VISIBLE_SECONDS;
+      if (thrown.crashed && thrown.crashElapsed > visibleSeconds) {
         thrown.root.parent?.remove(thrown.root);
         this.officeGlassThrows.splice(index, 1);
       }
@@ -5127,9 +10113,23 @@ export class Game {
 
   private crashOfficeGlassThrow(thrown: ActiveOfficeGlassThrow): void {
     thrown.crashed = true;
-    thrown.root.clear();
+    thrown.crashElapsed = 0;
     thrown.root.rotation.set(0, 0, 0);
-    this.gameplaySfxAudio.playGlassCrash();
+    thrown.root.position.y = 0.04;
+
+    if (thrown.kind === 'tiny-bear') {
+      if (!this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playToySqueak(), OFFICE_THROW_SOUND_RECORDING_ID)) {
+        this.gameplaySfxAudio.playToySqueak();
+      }
+      this.distractOfficeGameModeAnimatronics(thrown.root.position, 'tiny-bear');
+      return;
+    }
+
+    thrown.root.clear();
+    if (!this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playGlassCrash(), OFFICE_THROW_SOUND_RECORDING_ID)) {
+      this.gameplaySfxAudio.playGlassCrash();
+    }
+    this.distractOfficeGameModeAnimatronics(thrown.root.position, 'glass');
 
     const shardMaterial = new MeshStandardMaterial({
       color: 0xdfffff,
@@ -5162,11 +10162,110 @@ export class Game {
     this.officeGlassThrows.length = 0;
   }
 
+  private createOfficeJumpscareVideoPlane(
+    definition: OfficeJumpscareDefinition,
+    src: string,
+    sourceLabel: string,
+  ): {
+    mesh: Mesh;
+    video: HTMLVideoElement;
+    texture: VideoTexture;
+    material: MeshBasicMaterial;
+  } {
+    const video = document.createElement('video');
+    video.src = src;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.currentTime = 0;
+    const texture = new VideoTexture(video);
+    const material = new MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+      depthTest: false,
+    });
+    const mesh = new Mesh(new PlaneGeometry(8.6, 5.2), material);
+    mesh.position.set(0, 0, -3.7);
+    mesh.renderOrder = 38;
+
+    void video.play().catch(() => {
+      this.pushStatus(`Click the play space once if ${definition.label} ${sourceLabel} does not start automatically.`, 2.4);
+    });
+
+    return { mesh, video, texture, material };
+  }
+
+  private createOfficeJumpscareCameraCapture(
+    definition: OfficeJumpscareDefinition,
+  ): {
+    mesh: Mesh;
+    video: HTMLVideoElement | null;
+    texture: Texture | VideoTexture;
+    material: MeshBasicMaterial;
+  } | null {
+    const assignment = OFFICE_JUMPSCARE_CAMERA_CAPTURE_ASSIGNMENTS[definition.animatronic];
+    if (assignment) {
+      const exactCapture = this.getCameraToolCaptureById(assignment.kind, assignment.id);
+      const capture = exactCapture ?? this.getLatestCameraToolCapture(assignment.kind);
+      if (!capture) {
+        this.pushStatus(
+          `${definition.label} is set to ${this.formatCameraToolCaptureLabel(assignment.kind, assignment.id)}, but no saved ${assignment.kind}s are in this browser.`,
+          3.8,
+        );
+        return null;
+      }
+
+      if (!exactCapture) {
+        this.pushStatus(
+          `${this.formatCameraToolCaptureLabel(assignment.kind, assignment.id)} is not saved here, so ${definition.label} is using ${this.formatCameraToolCaptureLabel(capture.kind, capture.id)} instead.`,
+          4.2,
+        );
+      }
+
+      if (capture.kind === 'video') {
+        return this.createOfficeJumpscareVideoPlane(
+          definition,
+          capture.dataUrl,
+          this.formatCameraToolCaptureLabel(capture.kind, capture.id),
+        );
+      }
+
+      const image = new Image();
+      image.src = capture.dataUrl;
+      const texture = new Texture(image);
+      image.addEventListener('load', () => {
+        texture.needsUpdate = true;
+      }, { once: true });
+      const material = new MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 1,
+        depthWrite: false,
+        depthTest: false,
+      });
+      const mesh = new Mesh(new PlaneGeometry(8.6, 5.2), material);
+      mesh.position.set(0, 0, -3.7);
+      mesh.renderOrder = 38;
+
+      return { mesh, video: null, texture, material };
+    }
+
+    const videoAssetAssignment = OFFICE_JUMPSCARE_VIDEO_ASSET_ASSIGNMENTS[definition.animatronic];
+    if (videoAssetAssignment) {
+      return this.createOfficeJumpscareVideoPlane(definition, videoAssetAssignment.src, videoAssetAssignment.label);
+    }
+
+    return null;
+  }
+
   private startOfficeJumpscare(definition: OfficeJumpscareDefinition, keepMenuOpen = false): void {
     this.stopOfficeJumpscare();
     this.officeJumpscareMenuOpen = false;
     this.placementToolActive = false;
     this.placementPreview.visible = false;
+    this.clearCameraToolState();
     this.officeTabletHeld = false;
     this.officeTabletCameraFeedActive = false;
     this.officeTabletAnchor.visible = false;
@@ -5175,6 +10274,7 @@ export class Game {
     this.officeChapter.setBasketballHeld(false);
     this.officeGlassHeld = false;
     this.officeGlassAnchor.visible = false;
+    this.clearOfficeHeldPrizeItem();
     this.resize();
 
     const cutsceneRoot = new Group();
@@ -5201,9 +10301,14 @@ export class Game {
     blackout.renderOrder = 42;
     cutsceneRoot.add(blackout);
 
+    const cameraCapture = this.createOfficeJumpscareCameraCapture(definition);
+    if (cameraCapture) {
+      cutsceneRoot.add(cameraCapture.mesh);
+    }
+
     const model = this.createOfficeJumpscareCutsceneModel(definition.animatronic);
     model.root.position.set(0, -0.35, -3.55);
-    model.root.visible = true;
+    model.root.visible = !cameraCapture;
     model.root.traverse((object) => {
       if (!(object instanceof Mesh)) {
         return;
@@ -5236,10 +10341,14 @@ export class Game {
       blackoutMaterial,
       closeCuePlayed: false,
       reopenJumpscareMenu: keepMenuOpen,
+      gameModeDeath: this.officeGameModeActive && !keepMenuOpen,
+      cameraCaptureVideoElement: cameraCapture?.video ?? null,
+      cameraCaptureTexture: cameraCapture?.texture ?? null,
+      cameraCaptureMaterial: cameraCapture?.material ?? null,
       materialStates,
     };
     this.gameplaySfxAudio.resume();
-    this.gameplaySfxAudio.playOfficeJumpscareCue(definition.cue);
+    this.playOfficeJumpscareSound(definition.cue);
     this.transientStatusTime = 0;
   }
 
@@ -5248,8 +10357,63 @@ export class Game {
       return;
     }
 
+    this.activeOfficeJumpscare.cameraCaptureVideoElement?.pause();
+    if (this.activeOfficeJumpscare.cameraCaptureVideoElement) {
+      this.activeOfficeJumpscare.cameraCaptureVideoElement.removeAttribute('src');
+      this.activeOfficeJumpscare.cameraCaptureVideoElement.load();
+    }
+    this.activeOfficeJumpscare.cameraCaptureTexture?.dispose();
+    this.activeOfficeJumpscare.cameraCaptureMaterial?.dispose();
     this.activeOfficeJumpscare.root.parent?.remove(this.activeOfficeJumpscare.root);
     this.activeOfficeJumpscare = null;
+  }
+
+  private startOfficeDeathNotice(): void {
+    this.officeDeathNoticePhase = 'died';
+    this.officeDeathNoticeTimer = OFFICE_DEATH_DIED_NOTICE_SECONDS;
+    this.officeTabletCameraFeedActive = false;
+    this.officeTabletHeld = false;
+    this.officeTabletAnchor.visible = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.placementToolActive = false;
+    this.placementPreview.visible = false;
+    this.clearOfficeHeldPrizeItem();
+    this.pushStatus('You died.', OFFICE_DEATH_DIED_NOTICE_SECONDS);
+    this.syncHud();
+  }
+
+  private updateOfficeDeathNotice(deltaSeconds: number): void {
+    if (!this.officeDeathNoticePhase) {
+      return;
+    }
+
+    this.officeDeathNoticeTimer = Math.max(0, this.officeDeathNoticeTimer - deltaSeconds);
+    if (this.officeDeathNoticeTimer > 0) {
+      return;
+    }
+
+    if (this.officeDeathNoticePhase === 'died') {
+      this.officeDeathNoticePhase = 'fired';
+      this.officeDeathNoticeTimer = OFFICE_DEATH_FIRED_NOTICE_SECONDS;
+      this.pushStatus("Bori's Pizzeria fired you for meddling with the animatronics.", 3.6);
+      this.syncHud();
+      return;
+    }
+
+    this.officeDeathNoticePhase = null;
+    this.officeDeathNoticeTimer = 0;
+    this.resetOfficeGameModeAfterDeath();
+    this.syncHud();
+  }
+
+  private resetOfficeGameModeAfterDeath(): void {
+    this.officeGameModeNight = 1;
+    this.officeGameModePhaseTime = 0;
+    this.officeGameModeNightPhase = true;
+    this.resetOfficeGameModeNightState();
+    this.returnToOfficeAfterGameModeJumpscare();
+    this.pushStatus("You're back at Night 1, 12 AM. The old hours and days reset.", 4);
   }
 
   private returnToOfficeAfterGameModeJumpscare(): void {
@@ -5261,11 +10425,13 @@ export class Game {
     this.officeTabletCameraFeedActive = false;
     this.officeTabletHeld = false;
     this.officeTabletAnchor.visible = false;
+    this.officePowerOutBoriDoor = null;
     this.officeBasketballHeld = false;
     this.officeBasketballAnchor.visible = false;
     this.officeChapter.setBasketballHeld(false);
     this.officeGlassHeld = false;
     this.officeGlassAnchor.visible = false;
+    this.clearOfficeHeldPrizeItem();
     this.clearOfficeGlassThrows();
     this.player.teleport(OFFICE_GAME_MODE_OFFICE_SPAWN);
     this.player.lookToward(OFFICE_GAME_MODE_OFFICE_LOOK_TARGET, 1);
@@ -5771,22 +10937,64 @@ export class Game {
   } {
     switch (cutscene.definition.animatronic) {
       case 'foxy':
-        return { y: -0.4, z: -0.4, scale: 2.34 };
+        return { y: -1.1, z: -0.3, scale: 3.08 };
       case 'bori':
         return {
-          y: cutscene.definition.id === 'bori-2' ? -0.66 : -0.62,
-          z: cutscene.definition.id === 'bori-3' ? -0.38 : -0.42,
-          scale: cutscene.definition.id === 'bori-3' ? 2.44 : 2.36,
+          y: cutscene.definition.id === 'bori-2' ? -1.18 : -1.24,
+          z: cutscene.definition.id === 'bori-3' ? -0.28 : -0.3,
+          scale: cutscene.definition.id === 'bori-3' ? 3.28 : 3.18,
         };
       case 'fluffle':
         return {
-          y: cutscene.definition.id === 'fluffle-2' ? -0.66 : -0.6,
-          z: cutscene.definition.id === 'fluffle-2' ? -0.38 : -0.42,
-          scale: cutscene.definition.id === 'fluffle-2' ? 2.34 : 2.28,
+          y: cutscene.definition.id === 'fluffle-2' ? -1.16 : -1.08,
+          z: cutscene.definition.id === 'fluffle-2' ? -0.28 : -0.31,
+          scale: cutscene.definition.id === 'fluffle-2' ? 3.02 : 2.96,
         };
       case 'quacky':
       default:
-        return { y: -0.6, z: -0.42, scale: 2.26 };
+        return { y: -1.12, z: -0.31, scale: 2.94 };
+    }
+  }
+
+  private getOfficeJumpscareAlreadyPresentPose(cutscene: ActiveOfficeJumpscare): {
+    y: number;
+    z: number;
+    scale: number;
+  } {
+    switch (cutscene.definition.animatronic) {
+      case 'foxy':
+        return { y: -0.82, z: -0.5, scale: 2.32 };
+      case 'bori':
+        return {
+          y: -0.96,
+          z: -0.52,
+          scale: 2.42,
+        };
+      case 'fluffle':
+        return { y: -0.88, z: -0.52, scale: 2.28 };
+      case 'quacky':
+      default:
+        return { y: -0.94, z: -0.52, scale: 2.3 };
+    }
+  }
+
+  private applyOfficeJumpscareAlreadyPresentScream(cutscene: ActiveOfficeJumpscare, progress: number): void {
+    const model = cutscene.modelRoot;
+    const pose = this.getOfficeJumpscareAlreadyPresentPose(cutscene);
+    const hold = 1 - MathUtils.smoothstep(progress, 0.58, 0.78);
+    const visibleScream = 0.74 + Math.sin(cutscene.elapsed * 32) * 0.08;
+    model.visible = true;
+
+    if (hold > 0.001) {
+      model.position.y = MathUtils.lerp(model.position.y, pose.y, hold * 0.42);
+      model.position.z = MathUtils.lerp(model.position.z, Math.max(model.position.z, pose.z), hold * 0.94);
+      model.scale.setScalar(MathUtils.lerp(model.scale.x, Math.max(model.scale.x, pose.scale), hold * 0.88));
+    }
+
+    if (cutscene.definition.animatronic === 'quacky') {
+      cutscene.jaw.rotation.x = Math.min(cutscene.jaw.rotation.x, -1.08 * visibleScream);
+    } else {
+      cutscene.jaw.rotation.x = Math.max(cutscene.jaw.rotation.x, 1.02 * visibleScream);
     }
   }
 
@@ -5803,6 +11011,30 @@ export class Game {
     const pulse = Math.max(0, Math.sin(progress * Math.PI * 8)) * Math.max(0, 1 - progress * 0.7);
 
     model.visible = true;
+    if (cutscene.cameraCaptureTexture) {
+      model.visible = false;
+      model.scale.setScalar(1);
+      cutscene.blackoutMaterial.opacity = MathUtils.smoothstep(progress, 0.94, 1);
+      if (cutscene.cameraCaptureMaterial) {
+        const videoPulse = Math.max(0, Math.sin(progress * Math.PI * 18)) * 0.14;
+        cutscene.cameraCaptureMaterial.opacity = MathUtils.clamp(0.9 + videoPulse, 0.9, 1);
+      }
+
+      if (progress >= 1) {
+        const gameModeDeath = cutscene.gameModeDeath;
+        const reopenJumpscareMenu = cutscene.reopenJumpscareMenu;
+        this.stopOfficeJumpscare();
+        if (gameModeDeath) {
+          this.startOfficeDeathNotice();
+        } else if (reopenJumpscareMenu) {
+          this.officeJumpscareMenuOpen = true;
+          this.pushStatus('Jumpscare menu reopened. Choose another Chapter 3 cutscene, or press J to close it.', 1.4);
+        } else {
+          this.pushStatus('The jumpscare cutscene ends.', 1.4);
+        }
+      }
+      return;
+    }
     model.scale.setScalar(1);
     model.rotation.set(0, 0, 0);
     cutscene.head.rotation.set(0, 0, 0);
@@ -5819,6 +11051,10 @@ export class Game {
     cutscene.rightLeg.rotation.set(0, 0, 0);
     cutscene.leftLegJoint.rotation.set(0, 0, 0);
     cutscene.rightLegJoint.rotation.set(0, 0, 0);
+    if (cutscene.cameraCaptureMaterial) {
+      const videoPulse = Math.max(0, Math.sin(progress * Math.PI * 18)) * 0.18;
+      cutscene.cameraCaptureMaterial.opacity = MathUtils.clamp(0.42 + progress * 0.42 + videoPulse, 0.42, 0.95);
+    }
     this.updateOfficeCutsceneMaterialReveal(cutscene, progress);
 
     switch (cutscene.definition.id) {
@@ -6050,6 +11286,8 @@ export class Game {
       }
     }
 
+    this.applyOfficeJumpscareAlreadyPresentScream(cutscene, progress);
+
     const isBoriCutscene = cutscene.definition.animatronic === 'bori';
     const isBrokenCrawl = cutscene.definition.id === 'fluffle-2';
     const faceCloseTarget = this.getOfficeJumpscareFaceCloseTarget(cutscene);
@@ -6057,7 +11295,7 @@ export class Game {
     if (closeHold > 0) {
       if (!cutscene.closeCuePlayed && progress >= 0.68) {
         cutscene.closeCuePlayed = true;
-        this.gameplaySfxAudio.playOfficeJumpscareCue(cutscene.definition.cue);
+        this.playOfficeJumpscareSound(cutscene.definition.cue);
       }
       if (!(cutscene.definition.id === 'bori-3' && progress > 0.998)) {
         model.visible = true;
@@ -6131,11 +11369,11 @@ export class Game {
     }
 
     if (progress >= 1) {
-      const returnToOffice = this.officeGameModeActive;
+      const gameModeDeath = cutscene.gameModeDeath;
       const reopenJumpscareMenu = cutscene.reopenJumpscareMenu;
       this.stopOfficeJumpscare();
-      if (returnToOffice) {
-        this.returnToOfficeAfterGameModeJumpscare();
+      if (gameModeDeath) {
+        this.startOfficeDeathNotice();
       } else if (reopenJumpscareMenu) {
         this.officeJumpscareMenuOpen = true;
         this.pushStatus('Jumpscare menu reopened. Choose another Chapter 3 cutscene, or press J to close it.', 1.4);
@@ -7420,7 +12658,7 @@ export class Game {
           '',
           `Difficulty: ${config.label}`,
           phaseLine,
-          `Power: ${Math.ceil(this.officeGameModePower)}%${this.officeGameModePowerOut ? ' / OUT' : ''}`,
+          `Power: ${this.getOfficeGameModePowerLabel()}`,
           `Closed doors draining power: ${closedDoors}`,
           'Use the tablet cameras and door controls carefully. Closed doors block animatronics, but they drain power.',
           'M opens the mode menu. J opens the jumpscare test screen.',
@@ -7433,6 +12671,74 @@ export class Game {
         'The side hallways now run into the same wide party room.',
         'Open either office door, follow the hall, and check the far stage with Quacky the Duck, Fluffle the Bunny, and Bori the Bear.',
         'Press M to choose Night, Game, or Creator Mode.',
+      ].join('\n');
+    }
+
+    if (this.chapterFourActive) {
+      return [
+        'Chapter Four: Five Nights Prototype',
+        '',
+        'The left and right hallways now branch into different old rooms, including closer front rooms beside the first halls.',
+        'Walk into the brown room doors to push them open.',
+        'Press 1 for the Coordinate Tool, C for the Cardboard Box, or 3 for the Mic Sound Tool.',
+      ].join('\n');
+    }
+
+    if (this.chapterFiveActive) {
+      if (this.chapterFive.isSurfaceMode()) {
+        return [
+          'Chapter Five: Planet Surface',
+          '',
+          'You are outside after landing.',
+          'The spaceship is resting in a wide open area with visible hills and abandoned structures.',
+          'Walk around the surface with WASD.',
+        ].join('\n');
+      }
+
+      if (this.chapterFive.isInteriorMode()) {
+        return [
+          'Chapter Five: Inside The Spaceship',
+          '',
+          'You are walking through the small ship interior.',
+          'The cockpit is up front, with a tiny bedroom and fuel room off the central walkway.',
+          'Look through the side windows to watch the stars drift past.',
+          'After landing, press E at the cockpit to step outside onto the planet.',
+          'Press T to return to the outside flight view.',
+        ].join('\n');
+      }
+
+      return [
+        'Chapter Five: Spaceship',
+        '',
+        'You are flying a small semi-realistic ship through outer space in a chase view.',
+        'Mouse look aims the ship. W speeds up and S slows down; A and D do not move the ship in this chapter.',
+        'Hold Shift while moving to boost. The thruster flames grow as the ship pushes harder.',
+        'Press T to step inside the ship.',
+      ].join('\n');
+    }
+
+    if (this.chapterSixActive) {
+      return [
+        'Chapter Six: Minecraft',
+        '',
+        'A block world made of pixel-textured cubes.',
+        'Walk over stepped grass hills, dirt layers, exposed stone, and blocky trees.',
+        'This chapter is a terrain prototype for now.',
+      ].join('\n');
+    }
+
+    if (this.chapterSevenActive) {
+      return [
+        'Chapter 7: The House',
+        '',
+        'You spawn inside the big house in the forest clearing.',
+        'The trees use the same round-canopy style as the Zombie First Person Shooter forest.',
+        'The open area between the left rooms has a table with much smaller chairs.',
+        'The end of the gap between the rooms has a bookshelf with varied books and a small empty drawer beside it.',
+        'The back-wall kitchen has a smaller fridge, a counter cabinet between the fridge and oven, a smaller oven, and cupboards running toward the right corner.',
+        'Look at the fridge and press E to open it. It has milk, fruit, and cookies inside.',
+        'Look at a drawer, cupboard, or oven and press E to open exactly that piece.',
+        'Walk into any closed house door to push it open.',
       ].join('\n');
     }
 
@@ -7582,15 +12888,72 @@ export class Game {
     }
 
     if (this.officeChapterActive) {
+      const prizeItems = OFFICE_PRIZE_HOTBAR_SLOTS
+        .map(({ item }) => `${OFFICE_PRIZE_ITEM_LABELS[item]} x${this.getOfficePrizeItemCount(item)}`)
+        .join(', ');
       return [
-        'Inventory: Coordinate Tool, Tablet',
+        'Inventory: Coordinate Tool, Tablet, Mic Sound Tool, Camera Tool, prize hotbar',
         this.getCoordinateToolInventoryLine(),
         this.getOfficeTabletInventoryLine(),
-        `Glass: ${this.officeGlassHeld ? 'held' : 'none'}`,
+        this.getMicrophoneSoundToolInventoryLine(),
+        this.getCameraToolInventoryLine(),
+        `Tickets: ${this.officeChapterTickets}`,
+        `Prizes: ${prizeItems}`,
+        this.officePrizeBonusMultiplier > 1 ? 'Prize Wheel Bonus: next real prize is doubled' : 'Prize Wheel Bonus: none',
+        this.officeLollipopBoostRemaining > 0 ? `Lollipop Boost: ${Math.ceil(this.officeLollipopBoostRemaining)}s` : 'Lollipop Boost: none',
         this.officeGameModeActive
-          ? `${this.getOfficeModeLabel()}: ${this.getOfficeGameModeConfig().label} / Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS} / ${this.getOfficeGameModeClockLabel()} / Power ${Math.ceil(this.officeGameModePower)}%${this.officeGameModePowerOut ? ' / OUT' : ''}`
+          ? `${this.getOfficeModeLabel()}: ${this.getOfficeGameModeConfig().label} / Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS} / ${this.getOfficeGameModeClockLabel()} / Power ${this.getOfficeGameModePowerLabel()}`
           : 'Mode: Creator / Day',
-        'Press 1 for the Coordinate Tool. Press 2 for the tablet. Press M for the mode menu. Press J for jumpscares.',
+        'Press 1 for the Coordinate Tool. Press 2 for the tablet. Press 3 for the Mic Sound Tool. Press 4 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
+      ].join('\n');
+    }
+
+    if (this.chapterFourActive) {
+      return [
+        'Inventory: Coordinate Tool, Cardboard Box, Mic Sound Tool',
+        this.getCoordinateToolInventoryLine(),
+        `Cardboard Box: ${this.chapterFourBoxActive ? 'inside / C gets out / B puts away' : this.chapterFourBoxHeld ? 'held / C crawls in / B puts away' : 'press C'}`,
+        this.getMicrophoneSoundToolInventoryLine(),
+        'Chapter 4: office, first-hall rooms, wider hallway branches, and side rooms with push doors.',
+        'Blue and Purple are active prototypes in this chapter.',
+      ].join('\n');
+    }
+
+    if (this.chapterFiveActive) {
+      return [
+        'Inventory: Coordinate Tool',
+        this.getCoordinateToolInventoryLine(),
+        this.chapterFive.isInteriorMode()
+          ? 'Ship Mode: interior / T returns outside'
+          : 'Ship Mode: outside flight / T enters ship',
+        this.chapterFive.isInteriorMode()
+          ? 'Interior Rooms: cockpit, bedroom, fuel room'
+          : 'Thrusters: W/S and Shift control flame output',
+        'Use the chapter menu button to change chapters.',
+      ].join('\n');
+    }
+
+    if (this.chapterSixActive) {
+      const stacks = this.chapterSix.getInventoryStacks();
+      const inventoryLine = stacks.length > 0
+        ? `Inventory: ${stacks.map((stack) => `${stack.label} x${stack.count}`).join(', ')}`
+        : 'Inventory: empty';
+      return [
+        inventoryLine,
+        'Chapter 6: Minecraft block world',
+        'E opens inventory and the 2x2 crafting grid.',
+        'Hold left click to mine. Number keys select hotbar slots. Right click pets the possum or places the selected block.',
+        'Recipes: log -> planks, two vertical planks -> sticks, four logs -> crafting table, planks over sticks -> wooden pickaxe.',
+      ].join('\n');
+    }
+
+    if (this.chapterSevenActive) {
+      return [
+        'Inventory: Coordinate Tool',
+        this.getCoordinateToolInventoryLine(),
+        'Chapter 7: The House',
+        'Inside spawn: smaller fridge, counter cabinet, oven, extended upper cupboards, bookshelf, and table drawers.',
+        'Use the chapter menu button to change chapters.',
       ].join('\n');
     }
 
@@ -7650,7 +13013,7 @@ export class Game {
 
   private getCoordinateToolInventoryLine(): string {
     const markerCount = this.placementMarkers.filter((marker) => marker.chapter === this.getCurrentHudChapterId()).length;
-    const keyHint = this.officeChapterActive ? 'press 1' : 'press M';
+    const keyHint = this.officeChapterActive || this.chapterFourActive ? 'press 1' : 'press M';
     return `Coordinate Tool: ${this.placementToolActive ? 'equipped' : 'in inventory'} / ${keyHint} / markers here: ${markerCount}`;
   }
 
@@ -7661,6 +13024,55 @@ export class Game {
         ? 'equipped'
         : 'in inventory';
     return `Tablet: ${state} / press 2 / left click opens cameras`;
+  }
+
+  private getMicrophoneSoundToolInventoryLine(): string {
+    this.loadSavedMicrophoneSounds();
+    const state = this.microphoneSoundRecording
+      ? 'recording'
+      : this.microphoneSoundToolActive
+        ? 'equipped'
+        : 'in inventory';
+    const saved = this.microphoneSoundSaved
+      ? `selected ${this.microphoneSoundPreviewRecordingId ? this.formatMicrophoneSoundLabel(this.microphoneSoundPreviewRecordingId) : 'saved sound'}`
+      : this.microphoneSoundPreviewUrl
+        ? 'preview ready, not saved'
+        : this.microphoneSoundRecordings.length > 0
+          ? `${this.microphoneSoundRecordings.length} sound effects`
+          : 'no sound effect';
+    return `Mic Sound Tool: ${state} / press 3 / ${saved}`;
+  }
+
+  private getCameraToolInventoryLine(): string {
+    this.loadCameraToolCaptures();
+    const state = this.cameraToolRecording
+      ? 'recording video'
+      : this.cameraToolActive
+        ? 'equipped'
+        : 'in inventory';
+    const saved = this.cameraToolPreviewKind && this.cameraToolPreviewCaptureId
+      ? `selected ${this.formatCameraToolCaptureLabel(this.cameraToolPreviewKind, this.cameraToolPreviewCaptureId)}`
+      : this.cameraToolPreviewKind
+        ? `preview ${this.cameraToolPreviewKind}, not saved`
+        : `${this.cameraToolCaptures.length} saved captures`;
+    return `Camera Tool: ${state} / press 4 / ${saved}`;
+  }
+
+  private getOfficeHeldPrizeActionText(): string | null {
+    switch (this.officeHeldPrizeItem) {
+      case 'glass':
+        return 'Glass Cup equipped. Left click to throw it and make it shatter.';
+      case 'tiny-bear':
+        return 'Tiny Bear equipped. Left click to throw it and squeak-distract the animatronic.';
+      case 'lollipop':
+        return 'Lollipop equipped. Left click to eat it for a 10 second double-speed boost.';
+      case 'duck-toy':
+        return 'Duck Toy equipped. It looks like a tiny Quacky in your hand.';
+      case 'stuffie':
+        return 'Stuffie equipped. Left click to play the saved custom sound.';
+      default:
+        return null;
+    }
   }
 
   private getStoryNoticeState(): { text: string; active: boolean; label: string } {
@@ -7726,7 +13138,7 @@ export class Game {
 
     return {
       text: this.getChapterExitNoticeText(),
-      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.zombieModeActive && !this.doomModeActive,
+      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.zombieModeActive && !this.doomModeActive,
       label: 'Chapter Shift',
     };
   }
@@ -7830,16 +13242,51 @@ export class Game {
       ];
     }
 
+    if (this.chapterFourActive) {
+      return [
+        coordinateToolSlot,
+        this.getChapterFourBoxHotbarSlot(),
+        this.getMicrophoneSoundToolHotbarSlot(3),
+        ...Array.from({ length: 6 }, () => ({
+          label: 'Empty',
+          count: 0,
+          filled: false,
+        })),
+      ].slice(0, 9);
+    }
+
     if (this.officeChapterActive) {
+      const officePrizeSlots = OFFICE_PRIZE_HOTBAR_SLOTS.map(({ item }) => {
+        const held = this.officeHeldPrizeItem === item || (item === 'lollipop' && this.officeLollipopUseTimer > 0);
+        return {
+          label: `${OFFICE_PRIZE_ITEM_LABELS[item]} ${held ? '[Held]' : ''}`.trim(),
+          count: this.getOfficePrizeItemCount(item),
+          filled: this.getOfficePrizeItemCount(item) > 0 || held,
+        };
+      });
       return [
         coordinateToolSlot,
         this.getOfficeTabletHotbarSlot(),
-        {
-          label: 'Tickets',
-          count: this.officeChapterTickets,
-          filled: this.officeChapterTickets > 0,
-        },
-        ...Array.from({ length: 6 }, () => ({
+        this.getMicrophoneSoundToolHotbarSlot(3),
+        this.getCameraToolHotbarSlot(),
+        ...officePrizeSlots,
+      ];
+    }
+
+    if (this.chapterSixActive) {
+      return this.chapterSix.getHotbarStacks().map((stack) => ({
+        label: stack.label,
+        count: stack.count,
+        filled: stack.filled,
+        type: stack.type,
+        selected: stack.selected,
+      }));
+    }
+
+    if (this.chapterSevenActive) {
+      return [
+        coordinateToolSlot,
+        ...Array.from({ length: 8 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -7866,7 +13313,7 @@ export class Game {
 
   private getCoordinateToolHotbarSlot() {
     return {
-      label: `Coordinate Tool ${this.placementToolActive ? '[Held]' : '[M]'}`,
+      label: `Coordinate Tool ${this.placementToolActive ? '[Held]' : this.officeChapterActive || this.chapterFourActive ? '[1]' : '[M]'}`,
       count: this.placementMarkers.filter((marker) => marker.chapter === this.getCurrentHudChapterId()).length,
       filled: true,
     };
@@ -7877,9 +13324,52 @@ export class Game {
       ? '[Feed]'
       : this.officeTabletHeld
         ? '[Held]'
-        : '[2]';
+        : '[C]';
     return {
       label: `Tablet ${state}`,
+      count: 1,
+      filled: true,
+    };
+  }
+
+  private getMicrophoneSoundToolHotbarSlot(slot: number) {
+    this.loadSavedMicrophoneSounds();
+    const state = this.microphoneSoundRecording
+      ? '[Rec]'
+      : this.microphoneSoundToolActive
+        ? '[Held]'
+        : `[${slot}]`;
+    return {
+      label: `Mic Sound ${state}`,
+      count: this.microphoneSoundRecordings.length + (this.microphoneSoundPreviewUrl && !this.microphoneSoundSaved ? 1 : 0),
+      filled: true,
+    };
+  }
+
+  private getCameraToolHotbarSlot() {
+    this.loadCameraToolCaptures();
+    const state = this.cameraToolRecording
+      ? '[Rec]'
+      : this.cameraToolActive
+        ? '[Held]'
+        : '[4]';
+    return {
+      label: `Camera Tool ${state}`,
+      count: this.cameraToolCaptures.length + (this.cameraToolPreviewUrl && !this.cameraToolSaved ? 1 : 0),
+      filled: true,
+    };
+  }
+
+  private getChapterFourBoxHotbarSlot() {
+    const state = this.chapterFourBoxActive
+      ? this.chapterFourBoxViewMode === 'wide'
+        ? '[Wide]'
+        : '[Inside]'
+      : this.chapterFourBoxHeld
+        ? '[Held]'
+        : '[2]';
+    return {
+      label: `Cardboard Box ${state}`,
       count: 1,
       filled: true,
     };
@@ -7890,10 +13380,44 @@ export class Game {
       return `${this.activeOfficeJumpscare.definition.label} jumpscare cutscene is playing.`;
     }
 
+    if (this.microphoneSoundToolActive) {
+      if (this.microphoneSoundRecording) {
+        return 'Microphone Sound Tool recording. Make the sound, then press E to stop.';
+      }
+
+      return this.microphoneSoundPreviewUrl
+        ? 'Mic Sound Tool active. E records again, left click previews, D saves the next sound number, number keys play saved sound effects.'
+        : 'Mic Sound Tool active. Press E to start recording a custom sound effect.';
+    }
+
+    if (this.cameraToolActive) {
+      if (this.cameraToolRecording) {
+        return 'Camera Tool recording video and microphone audio. Press E to stop, then D to save it as the next video number.';
+      }
+
+      return this.cameraToolPreviewUrl
+        ? 'Camera Tool active. Left click takes a picture, E records video with audio, D saves preview, right click deletes selected.'
+        : 'Camera Tool active. Left click takes a picture; E starts a video recording with microphone audio.';
+    }
+
     if (this.placementToolActive) {
       return locked
         ? 'Coordinate Tool active. Left click drops a marker, right click deletes the latest marker, M puts the tool away.'
         : 'Click the play space to re-enter first person, then use the Coordinate Tool.';
+    }
+
+    if (this.chapterFourActive && this.chapterFourLockerId) {
+      return 'Inside the locker. Look through the metal slits, or press E to step out.';
+    }
+
+    if (this.chapterFourActive && this.chapterFourBoxActive) {
+      return this.chapterFourBoxViewMode === 'wide'
+        ? 'You are under the Cardboard Box with a wide view. Press X for normal slit view or C to crawl out.'
+        : 'You are inside the Cardboard Box. Press Z for wide view, X for normal view, or C to crawl out.';
+    }
+
+    if (this.chapterFourActive && this.chapterFourBoxHeld) {
+      return 'Cardboard Box held. Press C to crawl inside.';
     }
 
     if (this.doomModeActive) {
@@ -7925,7 +13449,7 @@ export class Game {
       }
 
       if (!locked) {
-        return 'WASD moves, Space jumps, Shift runs, left click fires, 1/2 swap weapons, E works doors and the exit switch, F toggles the flashlight, and P opens the chapter menu.';
+        return 'WASD moves, Space jumps, Shift runs, left click fires, 1/2 swap weapons, E works doors and the exit switch, and F toggles the flashlight.';
       }
 
       return this.hasAllDoomKeys()
@@ -7955,7 +13479,7 @@ export class Game {
       }
 
       if (!locked) {
-        return 'WASD moves, Space jumps, Shift sprints, left click fires, 1/2 swap weapons, E upgrades or repairs barricades, F toggles the flashlight, and P opens the chapter menu.';
+        return 'WASD moves, Space jumps, Shift sprints, left click fires, 1/2 swap weapons, E upgrades or repairs barricades, and F toggles the flashlight.';
       }
 
       if (this.zombieNightActive) {
@@ -7965,6 +13489,117 @@ export class Game {
       return 'Daylight prep window. Walk the barricades, spend scrap with E, and get ready before night falls.';
     }
 
+    if (this.chapterFourActive) {
+      if (this.chapterFourBoxActive) {
+        return this.chapterFourBoxViewMode === 'wide'
+          ? 'Cardboard Box wide view. Press X for normal slit view, or C to crawl out.'
+          : 'Inside the Cardboard Box. Press Z for wide box view, X for normal slit view, or C to crawl out.';
+      }
+
+      if (this.chapterFourBoxHeld) {
+        return 'Cardboard Box equipped. Press C to crawl inside it.';
+      }
+
+      const locker = this.getNearestChapterFourLocker();
+      if (locker) {
+        return `Press E to hide in the ${locker.label.toLowerCase()}.`;
+      }
+
+      const door = this.getNearestChapterFourDoor();
+      if (door) {
+        return door.open
+          ? `Press E to close the ${door.label.toLowerCase()}.`
+          : `Press E to open the ${door.label.toLowerCase()}.`;
+      }
+
+      if (!locked) {
+        return 'WASD moves, Space jumps, Shift sprints, F toggles the flashlight, 1 equips the Coordinate Tool, C uses the Cardboard Box, and 3 equips the Mic Sound Tool.';
+      }
+
+      return 'Chapter 4: walk into doors to push them open. Press C for the Cardboard Box, 3 for the Mic Sound Tool, and B to put the box away while held.';
+    }
+
+    if (this.chapterFiveActive) {
+      if (this.chapterFive.isSurfaceMode()) {
+        return locked
+          ? 'Planet surface: walk around the landed ship, hills, and abandoned structures.'
+          : 'Click the play space to keep walking on the planet surface.';
+      }
+
+      if (this.chapterFive.isInteriorMode()) {
+        const monitor = this.chapterFive.getMonitorState();
+        if (monitor.landed && locked && !monitor.active) {
+          return 'Landing complete. Press E to step outside onto the planet surface.';
+        }
+
+        const control = this.chapterFive.getNearestCockpitControl(this.player.getPosition());
+        if (control && locked) {
+          return control.prompt;
+        }
+
+        if (monitor.active && monitor.landed && locked) {
+          return 'Landing complete. Press E to step outside onto the planet surface.';
+        }
+
+        if (monitor.active && locked) {
+          return 'Cockpit computer online. Click a planet or junk row to save/cancel it, then use Autopilot, Engines, or Radar. Press E to close.';
+        }
+
+        if (!locked) {
+          return 'Click the play space to keep walking inside the spaceship. Press T to return outside.';
+        }
+
+        return 'Inside the spaceship. WASD walks through the cockpit, bedroom, and fuel room. Press T to return outside.';
+      }
+
+      if (!locked) {
+        return 'Click the play space to fly. Mouse look aims the ship, W speeds up, S slows down, Shift boosts, and T steps inside.';
+      }
+
+      return 'Chase-view spaceship prototype. Mouse look points the ship, W speeds up, S slows down, Shift boosts the thrusters, and T steps inside.';
+    }
+
+    if (this.chapterSixActive) {
+      if (this.chapterSix.isInventoryOpen()) {
+        return 'Inventory open. Left click moves a stack, right click moves one item into a slot, click the result to craft, and press E to close.';
+      }
+
+      return locked
+        ? 'Chapter 6 Minecraft: hold left click to mine, E opens inventory/crafting, number keys select hotbar, and right click pets the possum or places a block.'
+        : 'Click the play space to walk around the Minecraft block world.';
+    }
+
+    if (this.chapterSevenActive) {
+      const interactable = this.getLookedAtChapterSevenInteractable();
+      if (interactable && locked) {
+        if (interactable.kind === 'cupboard') {
+          return interactable.item.open
+            ? `Press E to close ${interactable.item.label}.`
+            : `Press E to open ${interactable.item.label}.`;
+        }
+
+        if (interactable.kind === 'fridge') {
+          return interactable.item.open
+            ? 'Press E to close the fridge.'
+            : 'Press E to open the fridge.';
+        }
+
+        if (interactable.kind === 'drawer') {
+          return interactable.item.open
+            ? `Press E to close ${interactable.item.label}.`
+            : `Press E to open ${interactable.item.label}.`;
+        }
+
+        return interactable.item.open
+          ? 'Press E to close the oven.'
+          : 'Press E to open the oven.';
+      }
+
+      return locked
+        ? 'Chapter 7: The House controls: WASD moves, walk into house doors to push them open, and look at a fridge, oven, cupboard, or drawer and press E.'
+        : 'Click the play space to walk around Chapter 7: The House.';
+    }
+
     if (this.officeChapterActive) {
       if (this.officeBallPitHidden) {
         return 'Ball pit: press C to come up.';
@@ -7972,6 +13607,7 @@ export class Game {
 
       const ventExit = this.getNearestOfficeVentExit();
       const ventLadder = this.getNearestOfficeVentLadder();
+      const openVentCoverBelow = this.getNearestOpenOfficeVentCoverFromBelow();
       if (this.officeVentActive) {
         return ventExit
           ? ventExit.coverPivot
@@ -7996,11 +13632,17 @@ export class Game {
           : 'Click the play space to re-enter first person, then left click with the tablet to open the camera feed.';
       }
 
+      const heldPrizeText = this.getOfficeHeldPrizeActionText();
+      if (heldPrizeText) {
+        return heldPrizeText;
+      }
+
       const utility = this.getNearestOfficeUtilityInteractable();
       const ballPitSlide = this.getNearestOfficeBallPitSlide();
       const kitchenEntranceDoor = this.getNearestOfficeKitchenEntranceDoor();
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
+      const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
       const bathroomRoomDoor = this.getNearestOfficeBathroomRoomDoor();
@@ -8016,6 +13658,12 @@ export class Game {
 
       if (ventLadder) {
         return 'Press E to climb the ladder into the ceiling vent.';
+      }
+
+      if (openVentCoverBelow) {
+        return this.canReachOpenOfficeVentCoverFromBelow()
+          ? `Press E to close ${openVentCoverBelow.label.toLowerCase()}.`
+          : `Jump under ${openVentCoverBelow.label.toLowerCase()} and press E to close it.`;
       }
 
       if (ballPitSlide) {
@@ -8041,9 +13689,9 @@ export class Game {
       }
 
       if (kitchenGlassShelf) {
-        return this.officeGlassHeld
-          ? 'Glass already in your hand. Left click to throw it.'
-          : 'Press E to pick up a glass from the kitchen shelf.';
+        return this.officeHeldPrizeItem === 'glass'
+          ? 'Glass Cup is already in your hand. Left click to throw it.'
+          : 'Press E to add a glass cup to your hotbar from the kitchen shelf.';
       }
 
       if (utility) {
@@ -8062,6 +13710,21 @@ export class Game {
         return backstageStorageDoor.open
           ? 'Press E to close the backstage suit storage door.'
           : 'Press E to open the backstage suit storage door.';
+      }
+
+      if (storageFuseBox) {
+        if (!storageFuseBox.open) {
+          return 'Press E to open the ball pit fuse box.';
+        }
+
+        if (!this.officePowerRebootRequired) {
+          return 'Fuse box ready. No reboot needed yet.';
+        }
+
+        const nextWireColor = OFFICE_FUSE_WIRE_COLORS.find((color) => !this.officeFuseWireConnected[color]);
+        return nextWireColor
+          ? `Press E to connect the ${nextWireColor} wire.`
+          : 'Press E to pull the fuse-box lever.';
       }
 
       if (storageClosetDoor) {
@@ -8130,8 +13793,8 @@ export class Game {
 
       if (button) {
         return button.buttonType === 'door'
-          ? `Press E on the red button to ${this.getOfficeDoorById(button.doorId)?.open ? 'lower' : 'raise'} the ${button.doorId} office door.`
-          : `Press E on the white button to flash the hall light outside the ${button.doorId} office door.`;
+          ? `Press E or left click the red button to ${this.getOfficeDoorById(button.doorId)?.open ? 'lower' : 'raise'} the ${button.doorId} office door.`
+          : `Press E or left click the white button to flash the hall light outside the ${button.doorId} office door.`;
       }
 
       if (door) {
@@ -8140,8 +13803,8 @@ export class Game {
 
       if (!locked) {
       return this.officeGameModeActive
-        ? `${this.getOfficeModeLabel()} ${this.getOfficeGameModeConfig().label}: Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS}, ${this.getOfficeGameModeClockLabel()}, power ${Math.ceil(this.officeGameModePower)}%. M opens the mode menu, 2 equips the tablet, F toggles the flashlight.`
-        : 'WASD moves, Space jumps, Shift sprints, E uses objects, 1 equips the Coordinate Tool, 2 equips the tablet, M opens the mode menu, F toggles the flashlight, and P opens the chapter menu.';
+        ? `${this.getOfficeModeLabel()} ${this.getOfficeGameModeConfig().label}: Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS}, ${this.getOfficeGameModeClockLabel()}, power ${this.getOfficeGameModePowerLabel()}. M opens the mode menu, 2 equips the tablet, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, F toggles the flashlight.`
+        : 'WASD moves, Space jumps, Shift sprints, E uses objects, 1 equips the Coordinate Tool, 2 equips the tablet, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
       }
 
       return 'The office is quiet for now. Press 2 to hold the tablet, then left click to view the security cameras.';
@@ -8380,7 +14043,21 @@ export class Game {
   }
 
   private getActionPromptText(locked: boolean, promptText: string): string {
-    if (!locked || this.chapterMenuOpen || !this.chapterTwoActive) {
+    if (!locked || this.chapterMenuOpen) {
+      return '';
+    }
+
+    if (this.chapterFiveActive && this.chapterFive.isInteriorMode()) {
+      return this.chapterFive.getNearestCockpitControl(this.player.getPosition()) ? promptText : '';
+    }
+
+    if (this.chapterSevenActive) {
+      return this.getLookedAtChapterSevenInteractable()
+        ? promptText
+        : '';
+    }
+
+    if (!this.chapterTwoActive) {
       return '';
     }
 
@@ -8433,8 +14110,25 @@ export class Game {
       return 'Tablet equipped. Left click to open the Chapter 3 camera list.';
     }
 
-    if (this.officeChapterActive && this.officeGlassHeld) {
-      return 'Glass equipped. Left click to throw it and make it crash.';
+    if (this.chapterFourActive && this.chapterFourBoxActive) {
+      return this.chapterFourBoxViewMode === 'wide'
+        ? 'Cardboard Box wide view active. Press X for normal view or C to crawl out.'
+        : 'You are inside the Cardboard Box. Press Z for wide view or C to crawl out.';
+    }
+
+    if (this.chapterFourActive && this.chapterFourLockerId) {
+      return 'Inside the locker. You can only look through the slits. Press E to step out.';
+    }
+
+    if (this.chapterFourActive && this.chapterFourBoxHeld) {
+      return 'Cardboard Box equipped. Press C to crawl inside it.';
+    }
+
+    if (this.officeChapterActive) {
+      const heldPrizeText = this.getOfficeHeldPrizeActionText();
+      if (heldPrizeText) {
+        return heldPrizeText;
+      }
     }
 
     if (this.transientStatusTime > 0) {
@@ -8492,14 +14186,86 @@ export class Game {
       return 'Daylight holds for now. Spend scrap on the barricades before the next wave starts.';
     }
 
+    if (this.chapterFourActive) {
+      const locker = this.getNearestChapterFourLocker();
+      if (locker) {
+        return `${locker.label} is open enough to hide in. Press E to step inside.`;
+      }
+
+      const door = this.getNearestChapterFourDoor();
+      if (door) {
+        return door.open
+          ? `${door.label} is open. Press E to close it.`
+          : `${door.label} is taped over but usable. Press E to open it.`;
+      }
+
+      return 'Chapter four loaded. The office and side-room doors are push doors. Press C to use the Cardboard Box.';
+    }
+
+    if (this.chapterFiveActive) {
+      if (this.chapterFive.isInteriorMode()) {
+        const control = this.chapterFive.getNearestCockpitControl(this.player.getPosition());
+        if (control) {
+          return `${control.label} is in reach. ${control.prompt}`;
+        }
+
+        const monitor = this.chapterFive.getMonitorState();
+        if (monitor.active) {
+          return `Cockpit computer online. Light speed ${monitor.lightSpeed}/10, engines ${monitor.engineOn ? 'on' : 'off'}, destination ${monitor.destinationLabel}.`;
+        }
+
+        return 'Inside the spaceship. The curved cockpit monitor, bedroom, and fuel room are small, and stars drift by the side windows.';
+      }
+
+      return 'Chapter five loaded. The ship stays centered while mouse look aims its course; W speeds up, S slows down, Shift boosts, and T steps inside.';
+    }
+
+    if (this.chapterSevenActive) {
+      const interactable = this.getLookedAtChapterSevenInteractable();
+      if (interactable) {
+        if (interactable.kind === 'cupboard') {
+          return interactable.item.open
+            ? `${interactable.item.label} are open. Press E to close them.`
+            : `${interactable.item.label} are closed. Press E to open them.`;
+        }
+
+        if (interactable.kind === 'fridge') {
+          return interactable.item.open
+            ? 'The fridge is open. Press E to close it. Inside are milk, fruit, and cookies.'
+            : 'The fridge is closed. Press E to open it.';
+        }
+
+        if (interactable.kind === 'drawer') {
+          return interactable.item.open
+            ? `${interactable.item.label} is open. Press E to close it. It is empty for now.`
+            : `${interactable.item.label} is closed. Press E to open it.`;
+        }
+
+        return interactable.item.open
+          ? 'The oven is open. Press E to close it.'
+          : 'The oven is closed. Press E to open it.';
+      }
+
+      const door = this.getNearestChapterSevenHouseDoor();
+      if (door) {
+        return door.open
+          ? `${door.label} is open.`
+          : `${door.label} opens when you walk into it.`;
+      }
+
+      return 'Chapter 7: The House starts inside, with a smaller fridge, counter cabinet, oven, extended cupboards, a bookshelf, and table or bedside drawers that open with E when you look at them.';
+    }
+
     if (this.officeChapterActive) {
       const ventExit = this.getNearestOfficeVentExit();
       const ventLadder = this.getNearestOfficeVentLadder();
+      const openVentCoverBelow = this.getNearestOpenOfficeVentCoverFromBelow();
       const ballPitSlide = this.getNearestOfficeBallPitSlide();
       const utility = this.getNearestOfficeUtilityInteractable();
       const kitchenEntranceDoor = this.getNearestOfficeKitchenEntranceDoor();
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
+      const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
       const bathroomRoomDoor = this.getNearestOfficeBathroomRoomDoor();
@@ -8538,6 +14304,12 @@ export class Game {
         return 'A ladder leads up to a ceiling vent. Press E to climb into it.';
       }
 
+      if (openVentCoverBelow) {
+        return this.canReachOpenOfficeVentCoverFromBelow()
+          ? `${openVentCoverBelow.label} is open above you. Press E to close it.`
+          : `${openVentCoverBelow.label} is open above you. Jump and press E to pull it shut.`;
+      }
+
       if (ballPitSlide) {
         return 'A short staircase leads up to a half-pipe slide into the ball pit. Press E to slide down.';
       }
@@ -8549,9 +14321,9 @@ export class Game {
       }
 
       if (kitchenGlassShelf) {
-        return this.officeGlassHeld
-          ? 'A glass is in your hand. Left click to throw it and shatter it.'
-          : `${kitchenGlassShelf.label} has cups and glasses. Press E to pick one up.`;
+        return this.officeHeldPrizeItem === 'glass'
+          ? 'A glass cup is in your hand. Left click to throw it and shatter it.'
+          : `${kitchenGlassShelf.label} has cups and glasses. Press E to add one to your hotbar.`;
       }
 
       if (utility) {
@@ -8570,9 +14342,26 @@ export class Game {
           : 'The backstage suit storage door is closed. Press E to open it.';
       }
 
+      if (storageFuseBox) {
+        if (!storageFuseBox.open) {
+          return 'The ball pit fuse box is shut. Press E to open it.';
+        }
+
+        if (!this.officePowerRebootRequired) {
+          return 'The ball pit fuse box is open, but the power does not need rebooting yet.';
+        }
+
+        const nextWireColor = OFFICE_FUSE_WIRE_COLORS.find((color) => !this.officeFuseWireConnected[color]);
+        if (nextWireColor) {
+          return `Power needs rebooting. Press E to connect the ${nextWireColor} wire to the ${nextWireColor} post.`;
+        }
+
+        return 'All fuse wires are matched. Press E to pull the lever and reboot power.';
+      }
+
       if (storageClosetDoor) {
         return storageClosetDoor.open
-          ? 'The cleaning storage closet is open. Pipes are dripping over the supplies inside.'
+          ? 'The cleaning storage closet is open. Pipes drip over supplies inside.'
           : 'The cleaning storage closet is closed. Press E to open it.';
       }
 
@@ -8630,8 +14419,8 @@ export class Game {
 
       if (button) {
         return button.buttonType === 'door'
-          ? `${this.getOfficeDoorById(button.doorId)?.label ?? 'The office door'} will move on the red button.`
-          : `The white button will flash the hall outside the ${button.doorId} office door.`;
+          ? `${this.getOfficeDoorById(button.doorId)?.label ?? 'The office door'} will move when you press E or left click the red button.`
+          : `Press E or left click the white button to flash the hall outside the ${button.doorId} office door.`;
       }
 
       if (door) {
@@ -8641,7 +14430,7 @@ export class Game {
       }
 
       return this.officeGameModeActive
-        ? `Game Mode is live. Power ${Math.ceil(this.officeGameModePower)}%. Closed doors and cameras drain power; lights can scare animatronics away from the door windows.`
+        ? `Game Mode is live. Power ${this.getOfficeGameModePowerLabel()}. Closed doors and cameras drain power.`
         : 'The office is set up: a compact room, twin monitors on the desk, side windows into the halls, red and white control buttons beside each heavy door, and a party room beyond the hallways. Press M to choose a Chapter 3 mode.';
     }
 
@@ -9014,7 +14803,7 @@ export class Game {
     this.chapterTwo.setOccupiedSeat(null);
     this.player.teleport(wakePosition);
     this.player.lookToward(this.chapterTwo.spawn, 1);
-    this.flashlight.setEnabled(true);
+    this.flashlight.setEnabled(false);
     this.pushStatus(
       'You wake up somewhere else in the dark daycare. The dodo is gone, but the night mode is still on.',
       5.2,
@@ -9114,6 +14903,26 @@ export class Game {
 
     if (this.officeChapterActive) {
       return this.getOfficeChapterSupportedFloorHeight();
+    }
+
+    if (this.chapterFourActive) {
+      const chapterFourFloorY = this.chapterFour.getSupportedFloorY(this.player.getPosition());
+      if (this.chapterFourCrouching) {
+        return (chapterFourFloorY ?? GAME_CONFIG.player.height) - CHAPTER_FOUR_CROUCH_DROP;
+      }
+      return chapterFourFloorY;
+    }
+
+    if (this.chapterFiveActive) {
+      return this.chapterFive.getSupportedFloorY(this.player.getPosition());
+    }
+
+    if (this.chapterSixActive) {
+      return this.chapterSix.getSupportedFloorY(this.player.getPosition());
+    }
+
+    if (this.chapterSevenActive) {
+      return this.chapterSeven.getSupportedFloorY(this.player.getPosition());
     }
 
     return null;
@@ -9407,6 +15216,93 @@ export class Game {
     return closest;
   }
 
+  private handleOfficeButtonInteraction(button: OfficeChapterData['buttons'][number]): boolean {
+    if (this.officeGameModeActive && this.officeGameModePowerOut) {
+      this.pushStatus(
+        'The office controls are dead. The power is out.',
+        2.4,
+      );
+      return true;
+    }
+
+    if (button.buttonType === 'flash') {
+      this.officeChapter.flashHallLight(button.doorId);
+      this.repelOfficeGameModeAnimatronicsAtDoor(button.doorId);
+      this.pushStatus(
+        `The white button kicks a hard flash into the hall outside the ${button.doorId} office door.`,
+        2.2,
+      );
+      return true;
+    }
+
+    const door = this.getOfficeDoorById(button.doorId);
+    if (!door) {
+      return false;
+    }
+
+    door.targetOpenAmount = door.targetOpenAmount > 0.5 ? 0 : 1;
+    door.open = door.targetOpenAmount > 0.5;
+    this.playOfficeDoorToggleSound(button.doorId, door.open);
+    if (!door.open) {
+      door.closeBounceTimer = door.closeBounceDuration;
+      this.gameplaySfxAudio.playSecurityDoorCrash();
+    } else {
+      door.closeBounceTimer = 0;
+    }
+    this.pushStatus(
+      door.open
+        ? `${door.label} grinds upward into the ceiling track.`
+        : `${door.label} drops back down and seals the opening.`,
+      2.8,
+    );
+    if (!door.open) {
+      this.tryOfficeDoorCloseHallwayBreach(button.doorId);
+    }
+    return true;
+  }
+
+  private handleOfficeStorageFuseBoxInteract(): boolean {
+    const fuseBox = this.getNearestOfficeStorageFuseBox();
+    if (!fuseBox) {
+      return false;
+    }
+
+    if (!fuseBox.open) {
+      fuseBox.targetOpenAmount = 1;
+      fuseBox.open = true;
+      this.gameplaySfxAudio.playSmallPanel(true);
+      this.pushStatus('The ball pit fuse box opens. Match green, blue, and red wires to their colored posts. The lever is beside the box.', 3.2);
+      return true;
+    }
+
+    if (!this.officePowerRebootRequired) {
+      this.syncOfficeFuseBoxVisuals();
+      this.pushStatus('The fuse box is ready, but the power does not need rebooting yet.', 2.4);
+      return true;
+    }
+
+    const nextWireColor = OFFICE_FUSE_WIRE_COLORS.find((color) => !this.officeFuseWireConnected[color]);
+    if (nextWireColor) {
+      this.officeFuseWireConnected[nextWireColor] = true;
+      this.syncOfficeFuseBoxVisuals();
+      this.gameplaySfxAudio.playSmallPanel(true);
+      this.pushStatus(
+        `You connect the ${nextWireColor} wire to the ${nextWireColor} post.`,
+        2.4,
+      );
+      return true;
+    }
+
+    if (fuseBox.targetLeverAmount < 0.5) {
+      this.completeOfficePowerReboot();
+      this.gameplaySfxAudio.playSmallPanel(true);
+      return true;
+    }
+
+    this.pushStatus('The lever is already pulled and the power is rebooted.', 2);
+    return true;
+  }
+
   private getNearestOfficePartyPlayMachine(): OfficeChapterData['partyPlay'] | null {
     const playerPosition = this.player.getPosition();
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
@@ -9481,14 +15377,14 @@ export class Game {
     const prizeIndex = Math.floor(Math.random() * wheel.prizes.length);
     const segmentAngle = Math.PI * 2 / Math.max(1, wheel.prizes.length);
     const fullTurns = 5 + Math.floor(Math.random() * 3);
+    const targetPrizeRotation = prizeIndex * segmentAngle + segmentAngle * 0.5;
     wheel.selectedPrize = wheel.prizes[prizeIndex] ?? 'Prize';
     wheel.spinTime = 0;
     wheel.spinDuration = 3.6 + Math.random() * 0.65;
     wheel.spinStartRotation = wheel.wheel.rotation.z;
-    wheel.spinTargetRotation = wheel.spinStartRotation
-      + fullTurns * Math.PI * 2
-      + prizeIndex * segmentAngle
-      + segmentAngle * 0.5;
+    wheel.spinTargetRotation = targetPrizeRotation
+      + Math.ceil((wheel.spinStartRotation - targetPrizeRotation) / (Math.PI * 2)) * Math.PI * 2
+      + fullTurns * Math.PI * 2;
     wheel.spinning = true;
     wheel.tickIndex = Math.floor(Math.abs(wheel.wheel.rotation.z) / segmentAngle);
     this.officePrizeWheelLastTickIndex = wheel.tickIndex;
@@ -9521,7 +15417,66 @@ export class Game {
 
     this.officePrizeWheelWasSpinning = false;
     this.gameplaySfxAudio.playSmallPanel(false);
-    this.pushStatus(`The prize wheel slows to a stop on: ${wheel.selectedPrize}.`, 3.2);
+    wheel.selectedPrize = this.getOfficePrizeWheelLandedPrize();
+    this.awardOfficePrizeWheelPrize(wheel.selectedPrize);
+  }
+
+  private getOfficePrizeWheelLandedPrize(): string {
+    const wheel = this.officeChapter.prizeWheel;
+    const prizeCount = wheel.prizes.length;
+    if (prizeCount === 0) {
+      return 'Prize';
+    }
+
+    const segmentAngle = Math.PI * 2 / prizeCount;
+    const normalizedRotation = ((wheel.wheel.rotation.z % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const landedIndex = Math.floor(normalizedRotation / segmentAngle) % prizeCount;
+    return wheel.prizes[landedIndex] ?? 'Prize';
+  }
+
+  private awardOfficePrizeWheelPrize(prize: string): void {
+    if (prize === 'Try Again') {
+      this.pushStatus('The prize wheel lands on Try Again. Spin it again.', 2.6);
+      return;
+    }
+
+    if (prize === 'Bonus') {
+      this.officePrizeBonusMultiplier = 2;
+      this.pushStatus('Bonus active. The next real prize you win gives you twice as much.', 3);
+      return;
+    }
+
+    const count = Math.max(1, this.officePrizeBonusMultiplier);
+    this.officePrizeBonusMultiplier = 1;
+
+    if (prize === 'Ticket') {
+      this.officeChapterTickets += count;
+      this.pushStatus(`The prize wheel gives you ${count === 1 ? 'a ticket' : `${count} tickets`}. Tickets: ${this.officeChapterTickets}.`, 2.8);
+      return;
+    }
+
+    const item = prize === 'Glass Cup'
+      ? 'glass'
+      : prize === 'Tiny Bear'
+        ? 'tiny-bear'
+        : prize === 'Lollipop'
+          ? 'lollipop'
+          : prize === 'Duck Toy'
+            ? 'duck-toy'
+            : prize === 'Stuffie'
+              ? 'stuffie'
+              : null;
+    if (!item) {
+      this.pushStatus(`The prize wheel stops on ${prize}.`, 2.4);
+      return;
+    }
+
+    this.addOfficePrizeItem(item, count);
+    this.setOfficeHeldPrizeItem(item, false);
+    this.pushStatus(
+      `The prize wheel gives you ${count === 1 ? 'one' : String(count)} ${OFFICE_PRIZE_ITEM_LABELS[item]}${count === 1 ? '' : 's'}. It is in your hotbar.`,
+      3,
+    );
   }
 
   private getNearestOfficeFoxyPlayButton(): OfficeChapterData['foxyPlay'] | null {
@@ -9637,6 +15592,53 @@ export class Game {
     }
 
     return closest;
+  }
+
+  private getNearestOpenOfficeVentCoverFromBelow(): OfficeChapterData['ventSystem']['openings'][number] | null {
+    if (this.officeVentActive || this.officeVentDrop) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    let closest: OfficeChapterData['ventSystem']['openings'][number] | null = null;
+    let closestDistance = Infinity;
+
+    for (const opening of this.officeChapter.ventSystem.openings) {
+      if (!opening.coverPivot || !opening.roomCoverPivot || !opening.exitPosition) {
+        continue;
+      }
+
+      const openAmount = Math.max(opening.openAmount ?? 0, opening.targetOpenAmount ?? 0);
+      if (openAmount < 0.45) {
+        continue;
+      }
+
+      const horizontalDistance = Math.hypot(
+        playerPosition.x - opening.exitPosition.x,
+        playerPosition.z - opening.exitPosition.z,
+      );
+      if (horizontalDistance > 1.18 || horizontalDistance >= closestDistance) {
+        continue;
+      }
+
+      closest = opening;
+      closestDistance = horizontalDistance;
+    }
+
+    return closest;
+  }
+
+  private canReachOpenOfficeVentCoverFromBelow(): boolean {
+    const playerPosition = this.player.getPosition();
+    const lookDirection = this.camera.getWorldDirection(new Vector3());
+    return playerPosition.y > GAME_CONFIG.player.height + 0.12 || lookDirection.y > 0.48;
+  }
+
+  private closeOpenOfficeVentCoverFromBelow(opening: OfficeChapterData['ventSystem']['openings'][number]): void {
+    opening.targetOpenAmount = 0;
+    opening.open = false;
+    this.gameplaySfxAudio.playSmallPanel(false);
+    this.pushStatus(`${opening.label} clanks shut above you.`, 1.9);
   }
 
   private constrainOfficeVentPosition(): void {
@@ -9782,6 +15784,10 @@ export class Game {
     const projected = forward.clone().multiplyScalar(along);
     const lateral = toDoor.sub(projected).length();
     return lateral <= 1.05 ? this.officeChapter.storageClosetDoor : null;
+  }
+
+  private getNearestOfficeStorageFuseBox(): OfficeChapterData['storageFuseBox'] | null {
+    return null;
   }
 
   private getNearestOfficeBathroomEntranceDoor(): OfficeChapterData['bathroomEntranceDoor'] | null {
@@ -10018,6 +16024,16 @@ export class Game {
       return;
     }
 
+    const openVentCoverBelow = this.getNearestOpenOfficeVentCoverFromBelow();
+    if (openVentCoverBelow) {
+      if (this.canReachOpenOfficeVentCoverFromBelow()) {
+        this.closeOpenOfficeVentCoverFromBelow(openVentCoverBelow);
+      } else {
+        this.pushStatus(`Jump under ${openVentCoverBelow.label.toLowerCase()} and press E to close it.`, 2.2);
+      }
+      return;
+    }
+
     if (this.getNearestOfficeBallPitSlide()) {
       this.startOfficeBallPitSlide();
       return;
@@ -10044,17 +16060,10 @@ export class Game {
         return;
       }
 
-      this.officeGlassHeld = true;
-      this.officeGlassAnchor.visible = true;
-      this.officeBasketballHeld = false;
-      this.officeBasketballAnchor.visible = false;
-      this.officeChapter.setBasketballHeld(false);
-      this.officeTabletHeld = false;
-      this.officeTabletCameraFeedActive = false;
-      this.officeTabletAnchor.visible = false;
-      this.setPlacementToolActive(false);
+      this.addOfficePrizeItem('glass', 1);
+      this.setOfficeHeldPrizeItem('glass', false);
       this.gameplaySfxAudio.playSmallPanel(false);
-      this.pushStatus(`You pick up a glass from ${kitchenGlassShelf.label}. Left click to throw it.`, 2.8);
+      this.pushStatus(`You pick up a glass from ${kitchenGlassShelf.label}. It is in your hotbar, and left click throws it.`, 2.8);
       return;
     }
 
@@ -10069,6 +16078,10 @@ export class Game {
           : 'The backstage suit storage door swings shut.',
         2.2,
       );
+      return;
+    }
+
+    if (this.handleOfficeStorageFuseBoxInteract()) {
       return;
     }
 
@@ -10166,6 +16179,7 @@ export class Game {
       this.officeBasketballAnchor.visible = true;
       this.officeGlassHeld = false;
       this.officeGlassAnchor.visible = false;
+      this.clearOfficeHeldPrizeItem();
       this.officeTabletHeld = false;
       this.officeTabletCameraFeedActive = false;
       this.officeTabletAnchor.visible = false;
@@ -10240,34 +16254,256 @@ export class Game {
       return;
     }
 
-    if (this.officeGameModeActive && this.officeGameModePowerOut) {
-      this.pushStatus('The office controls are dead. The power is out.', 2.4);
-      return;
+    this.handleOfficeButtonInteraction(button);
+  }
+
+  private getNearestChapterFourDoor(): ChapterFourData['doors'][number] | null {
+    if (!this.chapterFourActive) {
+      return null;
     }
 
-    if (button.buttonType === 'flash') {
-      this.officeChapter.flashHallLight(button.doorId);
-      this.repelOfficeGameModeAnimatronicsAtDoor(button.doorId);
-      this.pushStatus(
-        `The white button kicks a hard flash into the hall outside the ${button.doorId} office door.`,
-        2.2,
+    const playerPosition = this.player.getPosition();
+    let closest: ChapterFourData['doors'][number] | null = null;
+    let closestDistance = Infinity;
+    for (const door of this.chapterFour.doors) {
+      if (door.mode !== 'interact') {
+        continue;
+      }
+      const distance = Math.hypot(
+        playerPosition.x - door.interactPosition.x,
+        playerPosition.z - door.interactPosition.z,
       );
+      if (distance > GAME_CONFIG.player.interactionRange + 0.55 || distance >= closestDistance) {
+        continue;
+      }
+
+      closest = door;
+      closestDistance = distance;
+    }
+
+    return closest;
+  }
+
+  private getNearestChapterSevenHouseDoor(): ChapterSevenData['houseDoor'] | null {
+    if (!this.chapterSevenActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    let closestDoor: ChapterSevenData['houseDoor'] | null = null;
+    let closestDistance = Infinity;
+    for (const door of this.chapterSeven.houseDoors) {
+      const distance = Math.hypot(
+        playerPosition.x - door.interactPosition.x,
+        playerPosition.z - door.interactPosition.z,
+      );
+      if (distance > GAME_CONFIG.player.interactionRange + 1.2 || distance >= closestDistance) {
+        continue;
+      }
+
+      closestDoor = door;
+      closestDistance = distance;
+    }
+
+    return closestDoor;
+  }
+
+  private getChapterSevenLookScore(
+    target: { interactPosition: Vector3; aimPosition: Vector3 },
+    aimRadius: number,
+    rangePadding: number,
+  ): number | null {
+    if (!this.chapterSevenActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const distance = Math.hypot(
+      playerPosition.x - target.interactPosition.x,
+      playerPosition.z - target.interactPosition.z,
+    );
+
+    if (distance > GAME_CONFIG.player.interactionRange + rangePadding) {
+      return null;
+    }
+
+    const cameraPosition = this.camera.getWorldPosition(new Vector3());
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toTarget = target.aimPosition.clone().sub(cameraPosition);
+    const targetDistance = toTarget.length();
+    if (targetDistance <= 0.001) {
+      return null;
+    }
+
+    const along = toTarget.dot(forward);
+    if (along <= 0.2) {
+      return null;
+    }
+
+    const lateral = Math.sqrt(Math.max(0, targetDistance * targetDistance - along * along));
+    if (lateral > aimRadius) {
+      return null;
+    }
+
+    return lateral + along * 0.025;
+  }
+
+  private getLookedAtChapterSevenInteractable(): ChapterSevenInteractable | null {
+    if (!this.chapterSevenActive) {
+      return null;
+    }
+
+    let best: ChapterSevenInteractable | null = null;
+    const keepBest = (candidate: ChapterSevenInteractable): void => {
+      if (!best || candidate.score < best.score) {
+        best = candidate;
+      }
+    };
+
+    const fridgeScore = this.getChapterSevenLookScore(this.chapterSeven.houseFridge, 0.62, 0.95);
+    if (fridgeScore !== null) {
+      keepBest({ kind: 'fridge', item: this.chapterSeven.houseFridge, score: fridgeScore });
+    }
+
+    const ovenScore = this.getChapterSevenLookScore(this.chapterSeven.houseOven, 0.5, 0.95);
+    if (ovenScore !== null) {
+      keepBest({ kind: 'oven', item: this.chapterSeven.houseOven, score: ovenScore });
+    }
+
+    this.chapterSeven.houseDrawers.forEach((drawer) => {
+      const drawerScore = this.getChapterSevenLookScore(drawer, 0.34, 0.85);
+      if (drawerScore !== null) {
+        keepBest({ kind: 'drawer', item: drawer, score: drawerScore });
+      }
+    });
+
+    this.chapterSeven.houseUpperCupboards.forEach((cupboard) => {
+      const cupboardScore = this.getChapterSevenLookScore(cupboard, 0.58, 0.8);
+      if (cupboardScore !== null) {
+        keepBest({ kind: 'cupboard', item: cupboard, score: cupboardScore });
+      }
+    });
+
+    this.chapterSeven.houseBaseCabinets.forEach((cabinet) => {
+      const cabinetScore = this.getChapterSevenLookScore(cabinet, 0.52, 0.85);
+      if (cabinetScore !== null) {
+        keepBest({ kind: 'cupboard', item: cabinet, score: cabinetScore });
+      }
+    });
+
+    return best;
+  }
+
+  private getNearestChapterFourLocker(): ChapterFourData['lockers'][number] | null {
+    if (!this.chapterFourActive || this.chapterFourLockerId !== null) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    let closest: ChapterFourData['lockers'][number] | null = null;
+    let closestDistance = Infinity;
+    for (const locker of this.chapterFour.lockers) {
+      const distance = Math.hypot(
+        playerPosition.x - locker.interactPosition.x,
+        playerPosition.z - locker.interactPosition.z,
+      );
+      if (distance > GAME_CONFIG.player.interactionRange + 0.6 || distance >= closestDistance) {
+        continue;
+      }
+
+      closest = locker;
+      closestDistance = distance;
+    }
+
+    return closest;
+  }
+
+  private getActiveChapterFourLocker(): ChapterFourData['lockers'][number] | null {
+    if (!this.chapterFourLockerId) {
+      return null;
+    }
+
+    return this.chapterFour.lockers.find((locker) => locker.id === this.chapterFourLockerId) ?? null;
+  }
+
+  private enterChapterFourLocker(locker: ChapterFourData['lockers'][number]): void {
+    this.chapterFourLockerId = locker.id;
+    this.setPlacementToolActive(false);
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourBoxWideCameraReady = false;
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.player.teleport(locker.insidePosition);
+    this.player.lookToward(locker.lookTarget, 1);
+    this.gameplaySfxAudio.playClosetDoor(true);
+    this.pushStatus(`You step inside the ${locker.label.toLowerCase()}. You can look through the slits, but you cannot move. Press E to get out.`, 3);
+  }
+
+  private exitChapterFourLocker(): void {
+    const locker = this.getActiveChapterFourLocker();
+    this.chapterFourLockerId = null;
+    if (locker) {
+      this.player.teleport(locker.exitPosition);
+      this.player.lookToward(locker.lookTarget, 0.45);
+    }
+    this.gameplaySfxAudio.playClosetDoor(false);
+    this.pushStatus('You step out of the locker.', 1.8);
+  }
+
+  private lockPlayerInChapterFourLocker(): void {
+    const locker = this.getActiveChapterFourLocker();
+    if (!locker) {
+      this.chapterFourLockerId = null;
       return;
     }
 
-    const door = this.getOfficeDoorById(button.doorId);
+    this.player.getPosition().copy(locker.insidePosition);
+  }
+
+  private handleChapterFourInteract(): void {
+    if (this.chapterFourLockerId) {
+      this.exitChapterFourLocker();
+      return;
+    }
+
+    if (this.chapterFourBoxHeld || this.chapterFourBoxActive) {
+      this.toggleChapterFourBox();
+      return;
+    }
+
+    const locker = this.getNearestChapterFourLocker();
+    if (locker) {
+      this.enterChapterFourLocker(locker);
+      return;
+    }
+
+    const door = this.getNearestChapterFourDoor();
     if (!door) {
+      this.pushStatus('Nothing here needs interaction yet. Use 1 for the Coordinate Tool or C for the Cardboard Box. B puts the box away.', 2.4);
       return;
     }
 
     door.targetOpenAmount = door.targetOpenAmount > 0.5 ? 0 : 1;
     door.open = door.targetOpenAmount > 0.5;
-    this.gameplaySfxAudio.playSecurityDoor(door.open);
+    this.gameplaySfxAudio.playClosetDoor(door.open);
+    if (door.id === 'tiny-tree-shed-door') {
+      this.pushStatus(
+        door.open
+          ? 'The tiny shed door creaks open. You can hide beside the tree.'
+          : 'The tiny shed door shuts.',
+        2.4,
+      );
+      return;
+    }
     this.pushStatus(
       door.open
-        ? `${door.label} grinds upward into the ceiling track.`
-        : `${door.label} drops back down and seals the opening.`,
-      2.8,
+        ? `${door.label} swings open.`
+        : `${door.label} swings shut.`,
+      2.2,
     );
   }
 
@@ -10348,6 +16584,258 @@ export class Game {
     this.coffeeBoostRemaining = CHAPTER_TWO_COFFEE_BOOST_DURATION;
     this.stamina = GAME_CONFIG.player.staminaMax;
     this.pushStatus('The coffee hits hard. Your stamina stays maxed for 5 seconds.', 2.8);
+  }
+
+  private createChapterSixHeldItemModel(type: ChapterSixItemType): Group {
+    const root = new Group();
+    const material = new MeshStandardMaterial({
+      color: this.getChapterSixHeldItemColor(type),
+      roughness: 0.88,
+      metalness: 0.02,
+    });
+
+    if (type === 'possum') {
+      const bodyMaterial = new MeshStandardMaterial({ color: 0x1f1814, roughness: 0.94 });
+      const headMaterial = new MeshStandardMaterial({ color: 0xf1eee6, roughness: 0.88 });
+      const pinkMaterial = new MeshStandardMaterial({ color: 0xf0a0ad, roughness: 0.82 });
+      const darkMaterial = new MeshStandardMaterial({ color: 0x17110f, roughness: 0.9 });
+      const body = new Mesh(new BoxGeometry(0.42, 0.24, 0.52), bodyMaterial);
+      body.position.set(0, -0.02, 0.02);
+      const head = new Mesh(new BoxGeometry(0.3, 0.24, 0.25), headMaterial);
+      head.position.set(0, 0.04, -0.35);
+      const nose = new Mesh(new BoxGeometry(0.08, 0.06, 0.05), pinkMaterial);
+      nose.position.set(0, 0.03, -0.5);
+      const tail = new Mesh(new BoxGeometry(0.07, 0.07, 0.42), pinkMaterial);
+      tail.position.set(0, -0.03, 0.38);
+      tail.rotation.x = -0.24;
+      const leftEar = new Mesh(new BoxGeometry(0.09, 0.12, 0.05), darkMaterial);
+      leftEar.position.set(-0.11, 0.22, -0.34);
+      const rightEar = leftEar.clone();
+      rightEar.position.x = 0.11;
+      const createLeg = (x: number, z: number): Mesh => {
+        const leg = new Mesh(new BoxGeometry(0.07, 0.14, 0.08), darkMaterial);
+        leg.position.set(x, -0.19, z);
+        return leg;
+      };
+      root.add(
+        body,
+        head,
+        nose,
+        tail,
+        leftEar,
+        rightEar,
+        createLeg(-0.14, -0.14),
+        createLeg(0.14, -0.14),
+        createLeg(-0.14, 0.18),
+        createLeg(0.14, 0.18),
+      );
+      root.rotation.set(0.18, 0.38, -0.08);
+      root.scale.setScalar(1.15);
+      return root;
+    }
+
+    if (type === 'sticks') {
+      const stickMaterial = new MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 });
+      [-0.055, 0.055].forEach((offset) => {
+        const stick = new Mesh(new BoxGeometry(0.055, 0.46, 0.055), stickMaterial);
+        stick.position.x = offset;
+        stick.rotation.z = offset < 0 ? 0.22 : -0.18;
+        root.add(stick);
+      });
+      root.scale.setScalar(1.2);
+      return root;
+    }
+
+    if (type === 'wooden-pickaxe') {
+      const handleMaterial = new MeshStandardMaterial({ color: 0x7c4f2c, roughness: 0.9 });
+      const headMaterial = new MeshStandardMaterial({ color: 0xc08a4e, roughness: 0.86 });
+      const handle = new Mesh(new BoxGeometry(0.055, 0.62, 0.055), handleMaterial);
+      handle.rotation.z = -0.42;
+      handle.position.set(0.02, -0.04, 0);
+      const head = new Mesh(new BoxGeometry(0.46, 0.075, 0.08), headMaterial);
+      head.rotation.z = -0.42;
+      head.position.set(-0.1, 0.22, 0);
+      root.add(handle, head);
+      root.scale.setScalar(1.1);
+      return root;
+    }
+
+    if (type === 'wood') {
+      const barkMaterial = new MeshStandardMaterial({ color: 0x6a452a, roughness: 0.92 });
+      const ringMaterial = new MeshStandardMaterial({ color: 0xd0a36c, roughness: 0.88 });
+      const log = new Mesh(new CylinderGeometry(0.18, 0.18, 0.42, 12), barkMaterial);
+      log.rotation.set(Math.PI / 2, 0.28, 0.18);
+      const leftRing = new Mesh(new CylinderGeometry(0.185, 0.185, 0.018, 12), ringMaterial);
+      leftRing.rotation.copy(log.rotation);
+      leftRing.position.z = -0.21;
+      const rightRing = leftRing.clone();
+      rightRing.position.z = 0.21;
+      root.add(log, leftRing, rightRing);
+      return root;
+    }
+
+    const block = new Mesh(new BoxGeometry(0.34, 0.34, 0.34), material);
+    block.rotation.set(0.32, 0.58, 0.08);
+    root.add(block);
+
+    if (type === 'grass') {
+      const grassTop = new Mesh(new BoxGeometry(0.35, 0.025, 0.35), new MeshStandardMaterial({ color: 0x62b44b, roughness: 0.9 }));
+      grassTop.position.y = 0.18;
+      grassTop.rotation.copy(block.rotation);
+      root.add(grassTop);
+    }
+
+    if (type === 'planks' || type === 'crafting-table') {
+      const grooveMaterial = new MeshStandardMaterial({ color: 0x6b3f22, roughness: 0.92 });
+      [-0.08, 0.08].forEach((offset) => {
+        const groove = new Mesh(new BoxGeometry(0.355, 0.012, 0.018), grooveMaterial);
+        groove.position.set(0, 0.178, offset);
+        groove.rotation.copy(block.rotation);
+        root.add(groove);
+      });
+    }
+
+    if (type === 'crafting-table') {
+      const top = new Mesh(new BoxGeometry(0.36, 0.018, 0.36), new MeshStandardMaterial({ color: 0x4f2e18, roughness: 0.9 }));
+      top.position.y = 0.18;
+      top.rotation.copy(block.rotation);
+      const toolMaterial = new MeshStandardMaterial({ color: 0x50565a, roughness: 0.72, metalness: 0.16 });
+      const leftTool = new Mesh(new BoxGeometry(0.04, 0.22, 0.035), toolMaterial);
+      leftTool.position.set(-0.21, -0.02, 0.02);
+      leftTool.rotation.set(0.1, 0, -0.42);
+      const rightTool = new Mesh(new BoxGeometry(0.035, 0.2, 0.035), new MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.86 }));
+      rightTool.position.set(0.21, -0.02, -0.02);
+      rightTool.rotation.set(0.1, 0, 0.36);
+      root.add(top, leftTool, rightTool);
+    }
+
+    return root;
+  }
+
+  private getChapterSixHeldItemColor(type: ChapterSixItemType): number {
+    switch (type) {
+      case 'grass':
+        return 0x4f9e3d;
+      case 'dirt':
+        return 0x7a4b2d;
+      case 'stone':
+        return 0x777d82;
+      case 'wood':
+        return 0x6a452a;
+      case 'leaves':
+        return 0x2f7d38;
+      case 'planks':
+        return 0xb9854e;
+      case 'crafting-table':
+        return 0x9b6338;
+      case 'sticks':
+      case 'wooden-pickaxe':
+        return 0x8b5a2b;
+      case 'possum':
+        return 0x1f1814;
+    }
+  }
+
+  private startChapterSixPossumPickupAnimation(): void {
+    this.chapterSixPossumPickupTimer = 1.1;
+  }
+
+  private updateChapterSixHeldItemDisplay(deltaSeconds: number): void {
+    if (
+      !this.chapterSixActive
+      || !this.player.isLocked()
+      || this.chapterSix.isInventoryOpen()
+      || this.chapterSix.isPettingPossum()
+      || this.chapterMenuOpen
+    ) {
+      this.chapterSixHeldItemAnchor.visible = false;
+      return;
+    }
+
+    const selectedStack = this.chapterSix.getSelectedHotbarStack();
+    if (!selectedStack.type || selectedStack.count <= 0) {
+      this.chapterSixHeldItemAnchor.visible = false;
+      return;
+    }
+
+    if (this.chapterSixHeldItemType !== selectedStack.type || !this.chapterSixHeldItemModel) {
+      if (this.chapterSixHeldItemModel) {
+        this.chapterSixHeldItemAnchor.remove(this.chapterSixHeldItemModel);
+      }
+      this.chapterSixHeldItemType = selectedStack.type;
+      this.chapterSixHeldItemModel = this.createChapterSixHeldItemModel(selectedStack.type);
+      this.chapterSixHeldItemAnchor.add(this.chapterSixHeldItemModel);
+    }
+
+    const bob = Math.sin((this.elapsed + deltaSeconds) * 7.5) * 0.018;
+    const pickup = MathUtils.clamp(this.chapterSixPossumPickupTimer / 1.1, 0, 1);
+    const holdingPossum = selectedStack.type === 'possum';
+    this.chapterSixHeldItemAnchor.visible = true;
+    this.chapterSixHeldItemAnchor.position.set(
+      holdingPossum ? MathUtils.lerp(0.12, 0.42, 1 - pickup) : 0.46,
+      holdingPossum ? MathUtils.lerp(-0.58, -0.36 + bob, 1 - pickup) : -0.34 + bob,
+      holdingPossum ? MathUtils.lerp(-0.86, -0.72, 1 - pickup) : -0.72,
+    );
+    this.chapterSixHeldItemAnchor.rotation.set(
+      holdingPossum ? MathUtils.lerp(-0.48, -0.12 + bob * 0.7, 1 - pickup) : -0.18 + bob * 0.7,
+      holdingPossum ? MathUtils.lerp(-0.02, -0.34, 1 - pickup) : -0.42,
+      holdingPossum ? MathUtils.lerp(0.02, 0.12, 1 - pickup) : 0.16,
+    );
+  }
+
+  private createChapterSixPettingArmModel(): void {
+    this.chapterSixPettingArmAnchor.clear();
+    const skinMaterial = new MeshStandardMaterial({ color: 0xd49b73, roughness: 0.86 });
+    const sleeveMaterial = new MeshStandardMaterial({ color: 0x4f7ec7, roughness: 0.82 });
+    const sleeve = new Mesh(new BoxGeometry(0.18, 0.34, 0.18), sleeveMaterial);
+    sleeve.position.set(0, -0.2, 0.12);
+    const forearm = new Mesh(new BoxGeometry(0.16, 0.66, 0.16), skinMaterial);
+    forearm.position.set(0, 0.16, -0.14);
+    const hand = new Mesh(new BoxGeometry(0.2, 0.12, 0.22), skinMaterial);
+    hand.position.set(0, 0.54, -0.32);
+    this.chapterSixPettingArmAnchor.add(sleeve, forearm, hand);
+  }
+
+  private updateChapterSixPettingArmDisplay(deltaSeconds: number): void {
+    this.chapterSixPossumPickupTimer = Math.max(0, this.chapterSixPossumPickupTimer - deltaSeconds);
+    const pickupActive = this.chapterSixPossumPickupTimer > 0;
+    const visible = this.chapterSixActive
+      && this.player.isLocked()
+      && (this.chapterSix.isPettingPossum() || pickupActive)
+      && !this.chapterMenuOpen;
+    this.chapterSixPettingArmAnchor.visible = visible;
+    if (!visible) {
+      return;
+    }
+
+    if (pickupActive) {
+      const progress = 1 - this.chapterSixPossumPickupTimer / 1.1;
+      const wrap = MathUtils.smoothstep(progress, 0.08, 0.72);
+      this.chapterSixPettingArmAnchor.position.set(
+        MathUtils.lerp(0.48, 0.18, wrap),
+        MathUtils.lerp(-0.72, -0.48, wrap),
+        MathUtils.lerp(-0.58, -0.9, wrap),
+      );
+      this.chapterSixPettingArmAnchor.rotation.set(
+        MathUtils.lerp(-0.4, -1.12, wrap),
+        MathUtils.lerp(-0.58, -0.12, wrap),
+        MathUtils.lerp(0.4, 0.02, wrap),
+      );
+      return;
+    }
+
+    const time = this.elapsed + deltaSeconds;
+    const stroke = (Math.sin(time * 8.4) + 1) * 0.5;
+    this.chapterSixPettingArmAnchor.position.set(
+      MathUtils.lerp(0.22, 0.08, stroke),
+      MathUtils.lerp(-0.62, -0.44, stroke),
+      MathUtils.lerp(-0.72, -1.02, stroke),
+    );
+    this.chapterSixPettingArmAnchor.rotation.set(
+      MathUtils.lerp(-0.72, -1.05, stroke),
+      MathUtils.lerp(-0.28, -0.08, stroke),
+      MathUtils.lerp(0.22, 0.08, stroke),
+    );
   }
 
   private ensureZombieWeaponVisual(): void {
@@ -11128,11 +17616,68 @@ export class Game {
     return MathUtils.clamp(Math.max(flash, slam) + chatter, 0, 1);
   }
 
+  private getChapterFourPurpleJumpscareIntensity(): number {
+    if (this.chapterFourPurpleJumpscareTimer <= 0) {
+      return 0;
+    }
+
+    const progress = MathUtils.clamp(
+      1 - this.chapterFourPurpleJumpscareTimer / CHAPTER_FOUR_PURPLE_JUMPSCARE_DURATION,
+      0,
+      1,
+    );
+    const faceCreep = MathUtils.smoothstep(progress, 0.02, 0.62) * 0.72;
+    const smile = MathUtils.smoothstep(progress, 0.42, 0.78) * 0.28;
+    const chomp = MathUtils.smoothstep(progress, 0.78, 0.94);
+    const twitch = Math.max(0, Math.sin(progress * Math.PI * 18)) * Math.pow(1 - progress, 0.36) * 0.12;
+
+    return MathUtils.clamp(Math.max(faceCreep + smile, chomp) + twitch, 0, 1);
+  }
+
+  private getChapterFourBlueJumpscareIntensity(): number {
+    if (this.chapterFourBlueJumpscareTimer <= 0) {
+      return 0;
+    }
+
+    const progress = MathUtils.clamp(
+      1 - this.chapterFourBlueJumpscareTimer / CHAPTER_FOUR_BLUE_JUMPSCARE_DURATION,
+      0,
+      1,
+    );
+    const laughLean = MathUtils.smoothstep(progress, 0.04, 0.38) * 0.48;
+    const grab = MathUtils.smoothstep(progress, 0.36, 0.68) * 0.34;
+    const scream = MathUtils.smoothstep(progress, 0.62, 0.9);
+    const shake = Math.max(0, Math.sin(progress * Math.PI * 16)) * Math.pow(1 - progress, 0.42) * 0.12;
+
+    return MathUtils.clamp(Math.max(laughLean + grab, scream) + shake, 0, 1);
+  }
+
+  private getChapterFourGreenJumpscareIntensity(): number {
+    if (this.chapterFourGreenJumpscareTimer <= 0) {
+      return 0;
+    }
+
+    const progress = MathUtils.clamp(
+      1 - this.chapterFourGreenJumpscareTimer / CHAPTER_FOUR_GREEN_JUMPSCARE_DURATION,
+      0,
+      1,
+    );
+    const grab = MathUtils.smoothstep(progress, 0.02, 0.34) * 0.42;
+    const rip = MathUtils.smoothstep(progress, 0.28, 0.54) * 0.24;
+    const scream = MathUtils.smoothstep(progress, 0.5, 0.88);
+    const shake = Math.max(0, Math.sin(progress * Math.PI * 24)) * Math.pow(1 - progress, 0.38) * 0.14;
+
+    return MathUtils.clamp(Math.max(grab + rip, scream) + shake, 0, 1);
+  }
+
   private getCombinedJumpScareIntensity(): number {
     return Math.max(
       this.getJumpScareIntensity(),
       this.getChapterTwoBearRefusalIntensity(),
       this.getOfficeJumpscareIntensity(),
+      this.getChapterFourPurpleJumpscareIntensity(),
+      this.getChapterFourBlueJumpscareIntensity(),
+      this.getChapterFourGreenJumpscareIntensity(),
     );
   }
 
@@ -11140,6 +17685,9 @@ export class Game {
     return Math.max(
       this.getJumpScareIntensity(),
       this.getChapterTwoBearRefusalIntensity(),
+      this.getChapterFourPurpleJumpscareIntensity(),
+      this.getChapterFourBlueJumpscareIntensity(),
+      this.getChapterFourGreenJumpscareIntensity(),
     );
   }
 
@@ -11173,6 +17721,18 @@ export class Game {
   }
 
   private getHudJumpScareVariant(): HudJumpScareVariant | null {
+    if (this.chapterFourBlueJumpscareTimer > 0) {
+      return null;
+    }
+
+    if (this.chapterFourGreenJumpscareTimer > 0) {
+      return null;
+    }
+
+    if (this.chapterFourPurpleJumpscareTimer > 0) {
+      return 'purple';
+    }
+
     if (this.activeJumpscare) {
       return this.activeJumpscare.variant;
     }
@@ -11182,6 +17742,71 @@ export class Game {
     }
 
     return null;
+  }
+
+  private triggerChapterFourPurpleJumpscare(): void {
+    this.chapterFourPurpleJumpscareTimer = CHAPTER_FOUR_PURPLE_JUMPSCARE_DURATION;
+    this.chapterFourPurpleJumpscareCooldown = CHAPTER_FOUR_PURPLE_JUMPSCARE_COOLDOWN;
+    this.chapterFourCrouching = false;
+    this.playPurpleJumpscareSound();
+    this.pushStatus('Purple is already in your face. The smile starts to open.', 2.2);
+    this.syncHud();
+  }
+
+  private triggerChapterFourBlueJumpscare(): void {
+    this.chapterFourBlueJumpscareTimer = CHAPTER_FOUR_BLUE_JUMPSCARE_DURATION;
+    this.chapterFourBlueJumpscareCooldown = CHAPTER_FOUR_BLUE_JUMPSCARE_COOLDOWN;
+    this.chapterFourCrouching = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourGreenJumpscareAnchor.visible = false;
+    this.chapterFourBlueJumpscareAnchor.visible = false;
+    this.chapterFour.endGreenJumpscareView();
+    this.chapterFour.beginBlueJumpscareView(this.camera);
+    this.gameplaySfxAudio.playOfficeJumpscareCue('stomp-roar');
+    this.pushStatus('Blue grabs you, opens his mouth wide, and screams in your face.', 2.4);
+    this.syncHud();
+  }
+
+  private triggerChapterFourGreenJumpscare(rippedBox: boolean): void {
+    this.chapterFourGreenJumpscareTimer = CHAPTER_FOUR_GREEN_JUMPSCARE_DURATION;
+    this.chapterFourGreenJumpscareCooldown = CHAPTER_FOUR_GREEN_JUMPSCARE_COOLDOWN;
+    this.chapterFourCrouching = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourBlueJumpscareAnchor.visible = false;
+    this.chapterFourGreenJumpscareAnchor.visible = false;
+    this.chapterFour.endBlueJumpscareView();
+    this.chapterFour.beginGreenJumpscareView(this.camera);
+    this.gameplaySfxAudio.playOfficeJumpscareCue('broken-crawl');
+    this.pushStatus(
+      rippedBox
+        ? 'Green feels the box, rips it off, and grabs you with his long arms.'
+        : 'Green catches you with one sweeping hand and grabs you.',
+      2.4,
+    );
+    this.syncHud();
+  }
+
+  private resetChapterFourPurpleJumpscare(): void {
+    this.chapterFourPurpleJumpscareTimer = 0;
+    this.chapterFourPurpleJumpscareCooldown = 0;
+    this.resetChapterFourBlueJumpscare();
+    this.resetChapterFourGreenJumpscare();
+  }
+
+  private resetChapterFourBlueJumpscare(): void {
+    this.chapterFourBlueJumpscareTimer = 0;
+    this.chapterFourBlueJumpscareCooldown = 0;
+    this.chapterFourBlueJumpscareAnchor.visible = false;
+    this.chapterFour.endBlueJumpscareView();
+  }
+
+  private resetChapterFourGreenJumpscare(): void {
+    this.chapterFourGreenJumpscareTimer = 0;
+    this.chapterFourGreenJumpscareCooldown = 0;
+    this.chapterFourGreenJumpscareAnchor.visible = false;
+    this.chapterFour.endGreenJumpscareView();
   }
 
   private triggerJumpScare(monster: MonsterController): void {
@@ -11315,21 +17940,40 @@ export class Game {
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
     this.chapterTwoCardTime = 0;
-    this.chapterCardTitle = 'Chapter One';
+    this.chapterCardTitle = 'Chapter One: scary-sushi';
     this.chapterCardBody = 'The kitchen challenge is live. Search the maze for raw ingredients, process them through the labeled machines, plate both rolls, and send them to the judges.';
     this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.placementToolActive = false;
+    this.placementToolAnchor.visible = false;
+    this.placementPreview.visible = false;
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
     this.chapterTwo.root.visible = false;
     this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
     this.zombieMode.root.visible = false;
     this.chapterTwo.reset();
     this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -11365,6 +18009,7 @@ export class Game {
     this.officeBasketballAnchor.visible = false;
     this.officeChapter.setBasketballHeld(false);
     this.resetOfficeTabletState();
+    this.chapterFourLockerId = null;
     this.zombieWeaponAnchor.visible = false;
     this.clearZombieBulletTracers();
     this.level.root.visible = true;
@@ -11399,7 +18044,7 @@ export class Game {
   private updateChapterExit(deltaSeconds: number): void {
     this.level.chapterExitDoor.visible = this.chapterExitUnlocked || this.chapterTwoActive;
 
-    if (this.chapterTwoActive || this.officeChapterActive || this.zombieModeActive || this.doomModeActive) {
+    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.zombieModeActive || this.doomModeActive) {
       return;
     }
 
@@ -11488,11 +18133,15 @@ export class Game {
     this.stopOfficeGameMode();
     this.chapterTwoActive = true;
     this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
     this.chapterTwoCardTime = 3.6;
-    this.chapterCardTitle = 'Chapter Two';
+    this.chapterCardTitle = 'Chapter Two: daycare horror';
     this.chapterCardBody =
       CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS && CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS
         ? 'The daycare lobby is still set up for families. Red access is live, every dodo egg is already in your hands, and every missing blue teddy bear is already with you too.'
@@ -11500,15 +18149,27 @@ export class Game {
           ? 'The daycare lobby is still set up for families. Red access is live, and every dodo egg is already in your hands. Find the strange dodo and feed it every egg to reveal the blue key card.'
         : 'The daycare lobby is still set up for families. Red access is live now, but the egg hunt does not begin until you visit the strange dodo.';
     this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
     this.level.root.visible = false;
     this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
     this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -11573,6 +18234,10 @@ export class Game {
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
     this.zombieModeActive = true;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -11581,16 +18246,27 @@ export class Game {
     this.chapterCardBody =
       'The forest goes dark every night. Use the daylight to upgrade the four barricades, then hold the clearing with the pistol and shotgun when the zombies come in.';
     this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
     this.level.root.visible = false;
     this.chapterTwo.root.visible = false;
     this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
     this.doomMode.root.visible = false;
     this.zombieMode.root.visible = true;
     this.chapterTwo.reset();
     this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -11673,6 +18349,10 @@ export class Game {
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = true;
     this.chapterMenuOpen = false;
@@ -11681,16 +18361,28 @@ export class Game {
     this.chapterCardBody =
       'A retro techbase run. Move fast, rip through the demons, grab the red, yellow, and blue key cards, and hit the exit switch.';
     this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
     this.level.root.visible = false;
     this.chapterTwo.root.visible = false;
     this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = true;
     this.chapterTwo.reset();
     this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -11772,28 +18464,544 @@ export class Game {
     this.resize();
   }
 
-  private beginOfficeChapter(): void {
+  private beginChapterFour(): void {
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
-    this.officeChapterActive = true;
+    this.officeChapterActive = false;
+    this.chapterFourActive = true;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
     this.chapterTwoCardTime = 3.6;
-    this.chapterCardTitle = 'Chapter Three';
+    this.chapterCardTitle = 'Chapter Four: rainbow friends';
+    this.chapterCardBody =
+      'A new Five Nights prototype map with an office, two different hallway routes, side rooms with push-open doors, and a cardboard box inventory item.';
+    this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.chapterFour.reset();
+    this.chapterFour.root.visible = true;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterTwoKeycards.clear();
+    this.chapterTwoPuzzlePiecesCollected = 0;
+    this.chapterTwoRedPuzzleSolved = false;
+    this.chapterTwoEggsHeld = 0;
+    this.chapterTwoEggsDeposited = 0;
+    this.chapterTwoEggQuestStarted = false;
+    this.chapterTwoEggQuestNoticeTime = 0;
+    this.chapterTwoBlueBearsHeld = 0;
+    this.chapterTwoBlueBearsReturned = 0;
+    this.chapterTwoBearDialogueIndex = null;
+    this.chapterTwoBearDialogueComplete = false;
+    this.chapterTwoBearChoicePending = false;
+    this.chapterTwoBearQuestAccepted = false;
+    this.chapterTwoBearRefusalTimer = 0;
+    this.chapterTwoDodoTrailActive = false;
+    this.chapterTwoDodoTrailNoticeTime = 0;
+    this.chapterTwoPowerOutageTriggered = false;
+    this.chapterTwoPowerOutageNoticeTime = 0;
+    this.chapterTwoDodoPowerRipSoundPlayed = false;
+    this.chapterTwoDodoNightAttack = null;
+    this.officeChapterTickets = 0;
+    this.officeBasketballHeld = false;
+    this.chapterTwoCoffeeJob = null;
+    this.activeCoffeeDrink = null;
+    this.coffeeBoostRemaining = 0;
+    this.carriedDrinkAnchor.visible = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.resetOfficeTabletState();
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.player.teleport(this.chapterFour.spawn);
+    this.player.lookToward(this.chapterFour.lookTarget, 1);
+    this.pushStatus(
+      'Chapter four loaded. Walk into doors to push them open, press C to crawl inside the Cardboard Box, and press B to put it away.',
+      3.2,
+    );
+    this.resize();
+  }
+
+  private toggleChapterFiveInteriorMode(): void {
+    if (!this.chapterFiveActive) {
+      return;
+    }
+
+    if (this.chapterFive.isSurfaceMode()) {
+      this.pushStatus('You are already outside on the planet surface. The landed ship is behind you.', 2.4);
+      return;
+    }
+
+    if (this.chapterFive.isInteriorMode()) {
+      this.chapterFive.setInteriorMode(false);
+      this.chapterFive.screenShip.visible = true;
+      this.player.teleport(this.chapterFive.spawn);
+      this.player.lookToward(this.chapterFive.lookTarget, 1);
+      this.pushStatus('You return to the outside spaceship view. Press T to step back inside.', 2.4);
+    } else {
+      this.chapterFive.setInteriorMode(true);
+      this.chapterFive.screenShip.visible = false;
+      this.player.teleport(this.chapterFive.interiorSpawn);
+      this.player.lookToward(this.chapterFive.interiorLookTarget, 1);
+      this.flashlight.setEnabled(false);
+      this.pushStatus('You step inside the spaceship. Small rooms branch from the central walkway, and the side windows show stars drifting past.', 3.2);
+    }
+
+    this.syncHud();
+  }
+
+  private stepOutToChapterFiveSurface(): void {
+    if (!this.chapterFiveActive || !this.chapterFive.getMonitorState().landed) {
+      return;
+    }
+
+    this.chapterFive.setMonitorActive(false);
+    this.chapterFive.setSurfaceMode(true);
+    this.chapterFive.screenShip.visible = false;
+    this.player.teleport(this.chapterFive.surfaceSpawn);
+    this.player.lookToward(this.chapterFive.surfaceLookTarget, 1);
+    this.player.lock();
+    this.flashlight.setEnabled(false);
+    this.pushStatus('You step out onto the planet surface. The ship is lying in the open landing area, with hills and abandoned structures around it.', 3.2);
+    this.syncHud();
+  }
+
+  private beginChapterFive(): void {
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = true;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = 'Chapter Five: space adventure/horror';
+    this.chapterCardBody =
+      'A chase-view spaceship prototype: outer space, a semi-realistic ship, thrusters that burn harder when you move faster, and a small T-key interior.';
+    this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.reset();
+    this.chapterFiveAlarmWasActive = false;
+    this.chapterFive.root.visible = true;
+    this.chapterFive.screenShip.visible = true;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterTwoKeycards.clear();
+    this.chapterTwoPuzzlePiecesCollected = 0;
+    this.chapterTwoRedPuzzleSolved = false;
+    this.chapterTwoEggsHeld = 0;
+    this.chapterTwoEggsDeposited = 0;
+    this.chapterTwoEggQuestStarted = false;
+    this.chapterTwoEggQuestNoticeTime = 0;
+    this.chapterTwoBlueBearsHeld = 0;
+    this.chapterTwoBlueBearsReturned = 0;
+    this.chapterTwoBearDialogueIndex = null;
+    this.chapterTwoBearDialogueComplete = false;
+    this.chapterTwoBearChoicePending = false;
+    this.chapterTwoBearQuestAccepted = false;
+    this.chapterTwoBearRefusalTimer = 0;
+    this.chapterTwoDodoTrailActive = false;
+    this.chapterTwoDodoTrailNoticeTime = 0;
+    this.chapterTwoPowerOutageTriggered = false;
+    this.chapterTwoPowerOutageNoticeTime = 0;
+    this.chapterTwoDodoPowerRipSoundPlayed = false;
+    this.chapterTwoDodoNightAttack = null;
+    this.officeChapterTickets = 0;
+    this.officeBasketballHeld = false;
+    this.chapterTwoCoffeeJob = null;
+    this.activeCoffeeDrink = null;
+    this.coffeeBoostRemaining = 0;
+    this.carriedDrinkAnchor.visible = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.resetOfficeTabletState();
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.player.teleport(this.chapterFive.spawn);
+    this.player.lookToward(this.chapterFive.lookTarget, 1);
+    this.pushStatus(
+      'Chapter five loaded. Mouse look aims the spaceship, W speeds up, S slows down, Shift makes the thrusters flare harder, and T steps inside.',
+      3.2,
+    );
+    this.resize();
+  }
+
+  private beginChapterSix(): void {
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = true;
+    this.chapterSevenActive = false;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = 'Chapter Six: Minecraft';
+    this.chapterCardBody =
+      'A bright block world made from pixel-textured grass, dirt, stone, hills, and blocky trees.';
+    this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.placementToolActive = false;
+    this.placementToolAnchor.visible = false;
+    this.placementPreview.visible = false;
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.reset();
+    this.chapterSix.root.visible = true;
+    this.chapterSeven.root.visible = false;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSeven.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterTwoKeycards.clear();
+    this.chapterTwoPuzzlePiecesCollected = 0;
+    this.chapterTwoRedPuzzleSolved = false;
+    this.chapterTwoEggsHeld = 0;
+    this.chapterTwoEggsDeposited = 0;
+    this.chapterTwoEggQuestStarted = false;
+    this.chapterTwoEggQuestNoticeTime = 0;
+    this.chapterTwoBlueBearsHeld = 0;
+    this.chapterTwoBlueBearsReturned = 0;
+    this.chapterTwoBearDialogueIndex = null;
+    this.chapterTwoBearDialogueComplete = false;
+    this.chapterTwoBearChoicePending = false;
+    this.chapterTwoBearQuestAccepted = false;
+    this.chapterTwoBearRefusalTimer = 0;
+    this.chapterTwoDodoTrailActive = false;
+    this.chapterTwoDodoTrailNoticeTime = 0;
+    this.chapterTwoPowerOutageTriggered = false;
+    this.chapterTwoPowerOutageNoticeTime = 0;
+    this.chapterTwoDodoPowerRipSoundPlayed = false;
+    this.chapterTwoDodoNightAttack = null;
+    this.officeChapterTickets = 0;
+    this.officeBasketballHeld = false;
+    this.chapterTwoCoffeeJob = null;
+    this.activeCoffeeDrink = null;
+    this.coffeeBoostRemaining = 0;
+    this.carriedDrinkAnchor.visible = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.resetOfficeTabletState();
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.player.teleport(this.chapterSix.spawn);
+    this.player.lookToward(this.chapterSix.lookTarget, 1);
+    this.pushStatus(
+      'Chapter six loaded. Walk the pixel grass hills, block trees, dirt layers, and exposed stone cubes.',
+      3.2,
+    );
+    this.resize();
+  }
+
+  private beginChapterSeven(): void {
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = true;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = 'Chapter 7: The House';
+    this.chapterCardBody =
+      'Start inside the forest clearing house, with a smaller fridge, counter cabinet, oven, longer back-wall cupboards, a bookcase, and table drawers.';
+    this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.placementToolActive = false;
+    this.placementToolAnchor.visible = false;
+    this.placementPreview.visible = false;
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.reset();
+    this.chapterSeven.root.visible = true;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterTwoKeycards.clear();
+    this.chapterTwoPuzzlePiecesCollected = 0;
+    this.chapterTwoRedPuzzleSolved = false;
+    this.chapterTwoEggsHeld = 0;
+    this.chapterTwoEggsDeposited = 0;
+    this.chapterTwoEggQuestStarted = false;
+    this.chapterTwoEggQuestNoticeTime = 0;
+    this.chapterTwoBlueBearsHeld = 0;
+    this.chapterTwoBlueBearsReturned = 0;
+    this.chapterTwoBearDialogueIndex = null;
+    this.chapterTwoBearDialogueComplete = false;
+    this.chapterTwoBearChoicePending = false;
+    this.chapterTwoBearQuestAccepted = false;
+    this.chapterTwoBearRefusalTimer = 0;
+    this.chapterTwoDodoTrailActive = false;
+    this.chapterTwoDodoTrailNoticeTime = 0;
+    this.chapterTwoPowerOutageTriggered = false;
+    this.chapterTwoPowerOutageNoticeTime = 0;
+    this.chapterTwoDodoPowerRipSoundPlayed = false;
+    this.chapterTwoDodoNightAttack = null;
+    this.officeChapterTickets = 0;
+    this.officeBasketballHeld = false;
+    this.chapterTwoCoffeeJob = null;
+    this.activeCoffeeDrink = null;
+    this.coffeeBoostRemaining = 0;
+    this.carriedDrinkAnchor.visible = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.resetOfficeTabletState();
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.player.teleport(this.chapterSeven.spawn);
+    this.player.lookToward(this.chapterSeven.lookTarget, 1);
+    this.pushStatus(
+      'Chapter 7: The House loaded. Look at the fridge, oven, cupboards, or a specific drawer and press E to open it.',
+      3.2,
+    );
+    this.resize();
+  }
+
+  private beginOfficeChapter(): void {
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = true;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = "Chapter Three: five nights at Bori's";
     this.chapterCardBody =
       'The office doors now lead through side hallways into one wide party room, plus a new top-right hall to a second party room with a pirate fox stage and a ticket basketball game.';
     this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
     this.level.root.visible = false;
     this.chapterTwo.root.visible = false;
     this.officeChapter.root.visible = true;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
     this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -11816,6 +19024,7 @@ export class Game {
     this.chapterTwoBearQuestAccepted = false;
     this.chapterTwoBearRefusalTimer = 0;
     this.officeChapterTickets = 0;
+    this.resetOfficePrizeInventory();
     this.officeBasketballHeld = false;
     this.chapterTwoCoffeeJob = null;
     this.activeCoffeeDrink = null;

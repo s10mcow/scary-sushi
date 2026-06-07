@@ -12,14 +12,14 @@ export class VoiceInputController {
   private blocked = false;
   private smoothedLevel = 0;
 
-  async start(): Promise<void> {
+  async start(): Promise<boolean> {
     if (this.started || this.starting || this.blocked) {
-      return;
+      return this.started;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
       this.blocked = true;
-      return;
+      return false;
     }
 
     this.starting = true;
@@ -30,7 +30,7 @@ export class VoiceInputController {
       );
       if (!AudioContextCtor) {
         this.blocked = true;
-        return;
+        return false;
       }
 
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -48,9 +48,11 @@ export class VoiceInputController {
       this.samples = new Uint8Array(this.analyser.fftSize);
       source.connect(this.analyser);
       this.started = true;
+      return true;
     } catch {
       this.blocked = true;
       this.stop();
+      return false;
     } finally {
       this.starting = false;
     }
@@ -73,6 +75,14 @@ export class VoiceInputController {
     const normalized = Math.max(0, Math.min(1, (rms - 0.018) / 0.18));
     this.smoothedLevel = Math.max(normalized, this.smoothedLevel * 0.84);
     return this.smoothedLevel;
+  }
+
+  isActive(): boolean {
+    return this.started && this.analyser !== null && this.samples !== null;
+  }
+
+  isBlocked(): boolean {
+    return this.blocked;
   }
 
   destroy(): void {

@@ -26,6 +26,10 @@ import { createFloor } from './createFloor';
 import { createLevelMaterials } from './materials';
 import { createWalls } from './createWalls';
 
+const OFFICE_ZERO_VECTOR = new Vector3(0, 0, 0);
+const OFFICE_VISUAL_UPDATE_INTERVAL = 1 / 12;
+const OFFICE_SECURITY_CAMERA_SCAN_LIGHTS_ENABLED = false;
+
 export interface OfficeChapterSeat {
   label: string;
   position: Vector3;
@@ -47,6 +51,8 @@ export interface OfficeChapterDoor {
   targetOpenAmount: number;
   closedY: number;
   openY: number;
+  closeBounceTimer: number;
+  closeBounceDuration: number;
 }
 
 export interface OfficeChapterButton {
@@ -183,6 +189,31 @@ export interface OfficeChapterStorageClosetDoor {
   targetOpenAmount: number;
 }
 
+export type OfficeChapterStorageFuseWireColor = 'green' | 'blue' | 'red';
+
+export interface OfficeChapterStorageFuseBoxWire {
+  color: OfficeChapterStorageFuseWireColor;
+  loose: Mesh;
+  connected: Mesh;
+  outletMaterial: MeshStandardMaterial;
+}
+
+export interface OfficeChapterStorageFuseBox {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  doorPivot: Group;
+  leverPivot: Group;
+  statusLightMaterial: MeshStandardMaterial;
+  wires: Record<OfficeChapterStorageFuseWireColor, OfficeChapterStorageFuseBoxWire>;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
+  leverPulled: boolean;
+  leverAmount: number;
+  targetLeverAmount: number;
+}
+
 export interface OfficeChapterKitchenEntranceDoor {
   label: string;
   root: Group;
@@ -300,6 +331,7 @@ export interface OfficeChapterData {
   securityCameras: OfficeChapterSecurityCamera[];
   backstageStorageDoor: OfficeChapterBackstageStorageDoor;
   storageClosetDoor: OfficeChapterStorageClosetDoor;
+  storageFuseBox: OfficeChapterStorageFuseBox;
   kitchenEntranceDoor: OfficeChapterKitchenEntranceDoor;
   kitchenGlassShelves: OfficeChapterKitchenGlassShelf[];
   bathroomEntranceDoor: OfficeChapterBathroomEntranceDoor;
@@ -331,7 +363,7 @@ const OFFICE_DEPTH = 11;
 const WALL_HEIGHT = 4.1;
 const BALL_PIT_ROOM_HEIGHT = WALL_HEIGHT;
 const WALL_THICKNESS = 0.45;
-const DOOR_MOVE_SPEED = 5.8;
+const DOOR_MOVE_SPEED = 8.4;
 const SIDE_HALL_WIDTH = 4.6;
 const SIDE_HALL_STRAIGHT_LENGTH = 5.8;
 const SIDE_HALL_TURN_LENGTH = 10.2;
@@ -339,6 +371,7 @@ const DOOR_Z_SHIFT = 0.9;
 const OFFICE_WINDOW_DEPTH = 2.2;
 const OFFICE_WINDOW_SILL_HEIGHT = 0.7;
 const OFFICE_WINDOW_HEIGHT = 2.08;
+const OFFICE_SIDE_WINDOWS_VISIBLE = false;
 const OFFICE_HALL_FLASH_FLICKER_DURATION = 2.1;
 const OFFICE_HALL_FLASH_HOLD_DURATION = 1;
 const OFFICE_HALL_FLASH_DURATION = OFFICE_HALL_FLASH_FLICKER_DURATION + OFFICE_HALL_FLASH_HOLD_DURATION;
@@ -438,17 +471,14 @@ function createSlidingDoor(
   root.position.set(x, 0, z);
   root.rotation.y = rotationY;
 
-  const warningMaterial = new MeshStandardMaterial({
-    color: 0xe3c34c,
-    emissive: 0x5f4913,
-    emissiveIntensity: 0.18,
-    roughness: 0.46,
+  const doorGlassMaterial = new MeshStandardMaterial({
+    color: 0x0b1115,
+    emissive: 0x04080a,
+    emissiveIntensity: 0.08,
+    roughness: 0.18,
     metalness: 0.08,
-  });
-  const warningDarkMaterial = new MeshStandardMaterial({
-    color: 0x1f232a,
-    roughness: 0.36,
-    metalness: 0.16,
+    transparent: true,
+    opacity: 0.34,
   });
 
   const leftRail = new Mesh(new BoxGeometry(0.34, 3.92, 0.34), metalMaterial);
@@ -468,68 +498,51 @@ function createSlidingDoor(
 
   const slab = new Group();
   slab.position.y = 0;
-  const slabPanel = new Mesh(new BoxGeometry(4.02, 3.16, 0.18), doorMaterial);
-  slabPanel.position.set(0, 1.55, 0.05);
-  const slabInset = new Mesh(new BoxGeometry(3.52, 2.72, 0.04), frameMaterial);
-  slabInset.position.set(0, 1.56, 0.15);
-  const centerStrip = new Mesh(new BoxGeometry(0.16, 2.88, 0.06), metalMaterial);
-  centerStrip.position.set(0, 1.55, 0.18);
-  const topCap = new Mesh(new BoxGeometry(3.8, 0.22, 0.08), metalMaterial);
-  topCap.position.set(0, 2.94, 0.18);
-  const bottomCap = new Mesh(new BoxGeometry(3.8, 0.22, 0.08), metalMaterial);
-  bottomCap.position.set(0, 0.16, 0.18);
+  const upperPanel = new Mesh(new BoxGeometry(4.02, 0.76, 0.18), doorMaterial);
+  upperPanel.position.set(0, 2.76, 0.05);
+  const lowerPanel = new Mesh(new BoxGeometry(4.02, 0.84, 0.18), doorMaterial);
+  lowerPanel.position.set(0, 0.42, 0.05);
+  const leftPanel = new Mesh(new BoxGeometry(0.74, 1.62, 0.18), doorMaterial);
+  leftPanel.position.set(-1.64, 1.6, 0.05);
+  const rightPanel = leftPanel.clone();
+  rightPanel.position.x = 1.64;
+  const topCap = new Mesh(new BoxGeometry(3.8, 0.16, 0.08), metalMaterial);
+  topCap.position.set(0, 3.08, 0.18);
+  const bottomCap = new Mesh(new BoxGeometry(3.8, 0.16, 0.08), metalMaterial);
+  bottomCap.position.set(0, 0.12, 0.18);
+  const windowGlass = new Mesh(new BoxGeometry(2.62, 1.46, 0.035), doorGlassMaterial);
+  windowGlass.position.set(0, 1.62, 0.17);
+  const windowTopFrame = new Mesh(new BoxGeometry(2.84, 0.12, 0.1), metalMaterial);
+  windowTopFrame.position.set(0, 2.41, 0.2);
+  const windowBottomFrame = windowTopFrame.clone();
+  windowBottomFrame.position.y = 0.83;
+  const windowLeftFrame = new Mesh(new BoxGeometry(0.12, 1.58, 0.1), metalMaterial);
+  windowLeftFrame.position.set(-1.42, 1.62, 0.2);
+  const windowRightFrame = windowLeftFrame.clone();
+  windowRightFrame.position.x = 1.42;
+  const barGeometry = new BoxGeometry(0.045, 1.42, 0.095);
+  const barCount = 15;
+  const bars = new InstancedMesh(barGeometry, metalMaterial, barCount);
+  for (let index = 0; index < barCount; index += 1) {
+    const barX = -1.08 + index * 0.154;
+    bars.setMatrixAt(index, new Matrix4().makeTranslation(barX, 1.62, 0.24));
+  }
+  bars.instanceMatrix.needsUpdate = true;
 
-  slab.add(slabPanel, slabInset, centerStrip, topCap, bottomCap);
-
-  [-1.24, 0, 1.24].forEach((panelX) => {
-    const groove = new Mesh(new BoxGeometry(0.9, 2.38, 0.03), metalMaterial);
-    groove.position.set(panelX, 1.56, 0.18);
-    slab.add(groove);
-  });
-
-  [-0.96, -0.48, 0, 0.48, 0.96].forEach((offsetY) => {
-    const rib = new Mesh(new BoxGeometry(3.72, 0.08, 0.08), metalMaterial);
-    rib.position.set(0, 1.55 + offsetY, 0.18);
-    slab.add(rib);
-  });
-
-  const indicatorA = new Mesh(new BoxGeometry(0.24, 0.24, 0.06), frameMaterial);
-  indicatorA.position.set(-1.54, 2.84, 0.18);
-  const indicatorB = new Mesh(new BoxGeometry(0.24, 0.24, 0.06), frameMaterial);
-  indicatorB.position.set(1.54, 2.84, 0.18);
-  slab.add(indicatorA, indicatorB);
-
-  const cautionBand = new Mesh(new BoxGeometry(3.44, 0.42, 0.04), warningMaterial);
-  cautionBand.position.set(0, 1.58, 0.2);
-  slab.add(cautionBand);
-
-  [-1.3, -0.76, -0.22, 0.32, 0.86, 1.4].forEach((stripeX) => {
-    const stripe = new Mesh(new BoxGeometry(0.28, 0.5, 0.03), warningDarkMaterial);
-    stripe.position.set(stripeX, 1.58, 0.23);
-    stripe.rotation.z = Math.PI / 4;
-    slab.add(stripe);
-  });
-
-  const cautionTagLeft = new Mesh(new BoxGeometry(0.92, 0.22, 0.04), warningMaterial);
-  cautionTagLeft.position.set(-1.22, 2.46, 0.2);
-  cautionTagLeft.rotation.z = -0.48;
-  const cautionTagRight = new Mesh(new BoxGeometry(0.92, 0.22, 0.04), warningMaterial);
-  cautionTagRight.position.set(1.22, 0.7, 0.2);
-  cautionTagRight.rotation.z = -0.48;
-  slab.add(cautionTagLeft, cautionTagRight);
-
-  [-1.42, -1.14, -0.86].forEach((stripeX) => {
-    const stripe = new Mesh(new BoxGeometry(0.12, 0.28, 0.03), warningDarkMaterial);
-    stripe.position.set(stripeX, 2.46, 0.23);
-    stripe.rotation.z = Math.PI / 4;
-    slab.add(stripe);
-  });
-  [1.02, 1.3, 1.58].forEach((stripeX) => {
-    const stripe = new Mesh(new BoxGeometry(0.12, 0.28, 0.03), warningDarkMaterial);
-    stripe.position.set(stripeX, 0.7, 0.23);
-    stripe.rotation.z = Math.PI / 4;
-    slab.add(stripe);
-  });
+  slab.add(
+    upperPanel,
+    lowerPanel,
+    leftPanel,
+    rightPanel,
+    topCap,
+    bottomCap,
+    windowGlass,
+    windowTopFrame,
+    windowBottomFrame,
+    windowLeftFrame,
+    windowRightFrame,
+    bars,
+  );
 
   root.add(leftRail, rightRail, headFrame, motorHousing, leftJamb, rightJamb, topJamb, slab);
 
@@ -555,6 +568,8 @@ function createSlidingDoor(
     targetOpenAmount: 0,
     closedY: 0,
     openY: 3.34,
+    closeBounceTimer: 0,
+    closeBounceDuration: 0.62,
   };
 }
 
@@ -707,6 +722,7 @@ function createSwivelingSecurityCamera(
 
   const scanLight = new PointLight(0xff2525, 0.35, 4.5, 1.8);
   scanLight.position.set(0, -0.02, -0.46);
+  scanLight.visible = OFFICE_SECURITY_CAMERA_SCAN_LIGHTS_ENABLED;
 
   const viewAnchor = new Group();
   viewAnchor.position.set(0, -0.01, -0.58);
@@ -776,7 +792,7 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
   const roomVentShadowMaterial = new MeshBasicMaterial({
     color: 0x020405,
     transparent: true,
-    opacity: 0.82,
+    opacity: 0.18,
     side: DoubleSide,
     depthWrite: false,
   });
@@ -844,7 +860,7 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
       new MeshBasicMaterial({
         color: grate.glow,
         transparent: true,
-        opacity: 0.13,
+        opacity: 0.06,
         side: DoubleSide,
         depthWrite: false,
       }),
@@ -866,29 +882,15 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     coverPivot.position.set(-grate.width / 2, roomY - 0.024, 0);
     const centerBarX = new Mesh(new BoxGeometry(grate.width * 0.82, 0.035, 0.045), roomVentCoverMaterial);
     centerBarX.position.set(grate.width / 2, 0, 0);
-    const centerBarZ = new Mesh(new BoxGeometry(0.045, 0.035, grate.depth * 0.82), roomVentCoverMaterial);
-    centerBarZ.position.set(grate.width / 2, 0.004, 0);
-    const leftSlat = new Mesh(new BoxGeometry(0.035, 0.032, grate.depth * 0.72), roomVentCoverMaterial);
-    leftSlat.position.set(grate.width * 0.28, -0.002, 0);
-    const rightSlat = leftSlat.clone();
-    rightSlat.position.x = grate.width * 0.72;
-    const diagonalA = createBoxSegment(
-      new Vector3(grate.width * 0.12, 0.01, -grate.depth * 0.36),
-      new Vector3(grate.width * 0.88, 0.01, grate.depth * 0.36),
-      0.034,
-      0.034,
-      roomVentCoverMaterial,
-    );
-    const diagonalB = createBoxSegment(
-      new Vector3(grate.width * 0.12, 0.014, grate.depth * 0.36),
-      new Vector3(grate.width * 0.88, 0.014, -grate.depth * 0.36),
-      0.034,
-      0.034,
-      roomVentCoverMaterial,
-    );
-    coverPivot.add(centerBarX, centerBarZ, leftSlat, rightSlat, diagonalA, diagonalB);
+    const slatOffsets = [-0.28, -0.1, 0.1, 0.28];
+    const slats = slatOffsets.map((offset) => {
+      const slat = new Mesh(new BoxGeometry(grate.width * 0.74, 0.032, 0.028), roomVentCoverMaterial);
+      slat.position.set(grate.width / 2, 0.006, grate.depth * offset);
+      return slat;
+    });
+    coverPivot.add(centerBarX, ...slats);
     coverPivot.userData.clearViewPanels = [shadow, glow];
-    coverPivot.userData.clearViewBaseOpacity = [0.82, 0.13];
+    coverPivot.userData.clearViewBaseOpacity = [0.18, 0.06];
 
     const shaftHeight = Math.max(0.12, ductBottomY - WALL_HEIGHT + 0.08);
     const shaftY = WALL_HEIGHT + shaftHeight / 2 - 0.025;
@@ -1161,7 +1163,7 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
       new MeshBasicMaterial({
         color: grate.glow,
         transparent: true,
-        opacity: 0.36,
+        opacity: 0.08,
         side: DoubleSide,
         depthWrite: false,
       }),
@@ -1180,33 +1182,18 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     east.position.x = grate.width / 2;
     const coverPivot = new Group();
     coverPivot.position.set(-grate.width / 2, frameY + 0.018, 0);
-    const coverPoint = (x: number, y: number, z: number): Vector3 => new Vector3(
-      x - coverPivot.position.x,
-      y - coverPivot.position.y,
-      z - coverPivot.position.z,
-    );
-    const crossA = createBoxSegment(
-      coverPoint(-grate.width * 0.42, frameY + 0.018, -grate.depth * 0.42),
-      coverPoint(grate.width * 0.42, frameY + 0.018, grate.depth * 0.42),
-      0.045,
-      0.045,
-      frameMaterial,
-    );
-    const crossB = createBoxSegment(
-      coverPoint(-grate.width * 0.42, frameY + 0.02, grate.depth * 0.42),
-      coverPoint(grate.width * 0.42, frameY + 0.02, -grate.depth * 0.42),
-      0.045,
-      0.045,
-      frameMaterial,
-    );
     const centerBarX = new Mesh(new BoxGeometry(grate.width * 0.78, 0.04, 0.038), frameMaterial);
     centerBarX.position.set(-coverPivot.position.x, 0.035, 0);
-    const centerBarZ = new Mesh(new BoxGeometry(0.038, 0.04, grate.depth * 0.78), frameMaterial);
-    centerBarZ.position.set(-coverPivot.position.x, 0.04, 0);
+    const slatOffsets = [-0.28, -0.09, 0.09, 0.28];
+    const slats = slatOffsets.map((offset) => {
+      const slat = new Mesh(new BoxGeometry(grate.width * 0.72, 0.036, 0.026), frameMaterial);
+      slat.position.set(-coverPivot.position.x, 0.042, grate.depth * offset);
+      return slat;
+    });
 
-    coverPivot.add(crossA, crossB, centerBarX, centerBarZ);
+    coverPivot.add(centerBarX, ...slats);
     coverPivot.userData.clearViewPanels = [glow];
-    coverPivot.userData.clearViewBaseOpacity = [0.36];
+    coverPivot.userData.clearViewBaseOpacity = [0.08];
     grateRoot.add(glow, north, south, west, east, coverPivot);
     root.add(grateRoot);
     return {
@@ -2095,7 +2082,7 @@ function createPartyTable(x: number, z: number, rotationY: number): Group {
 
 const PRIZE_WHEEL_PRIZES = [
   'Stuffie',
-  'Candy',
+  'Glass Cup',
   'Ticket',
   'Tiny Bear',
   'Lollipop',
@@ -4335,11 +4322,11 @@ export function createOfficeChapter(): OfficeChapterData {
     metalness: 0,
   });
   const doorMaterial = new MeshStandardMaterial({
-    color: 0x9f2f27,
-    emissive: 0x5f1a12,
-    emissiveIntensity: 0.28,
-    roughness: 0.44,
-    metalness: 0.22,
+    color: 0xb8c1c5,
+    emissive: 0x111719,
+    emissiveIntensity: 0.08,
+    roughness: 0.34,
+    metalness: 0.58,
   });
   const panelMaterial = new MeshStandardMaterial({
     color: 0xe3e8ee,
@@ -4386,9 +4373,12 @@ export function createOfficeChapter(): OfficeChapterData {
   const upperWindowLeadDepth = upperWindowMinZ - roomMinZ;
   const upperWindowGapCenterZ = upperWindowMaxZ + upperWindowGapToDoor / 2;
   const upperWindowUpperHeight = WALL_HEIGHT - OFFICE_WINDOW_SILL_HEIGHT - OFFICE_WINDOW_HEIGHT;
+  const upperWindowFillY = OFFICE_WINDOW_SILL_HEIGHT + OFFICE_WINDOW_HEIGHT / 2;
   const hallWindowGapPadding = 0.06;
   const hallWindowGapMinZ = upperWindowMinZ - hallWindowGapPadding;
   const hallWindowGapMaxZ = upperWindowMaxZ + hallWindowGapPadding;
+  const hallWindowGapDepth = hallWindowGapMaxZ - hallWindowGapMinZ;
+  const hallWindowGapCenterZ = (hallWindowGapMinZ + hallWindowGapMaxZ) / 2;
   const lowerSideWallDepth = roomMaxZ - openingMaxZ;
   const lowerSideWallCenterZ = openingMaxZ + lowerSideWallDepth / 2;
   const buttonPanelZ = Math.min(roomMaxZ - 0.72, openingMaxZ + 0.86);
@@ -4444,6 +4434,18 @@ export function createOfficeChapter(): OfficeChapterData {
       size: [WALL_THICKNESS, WALL_HEIGHT, lowerSideWallDepth],
     },
   ];
+  if (!OFFICE_SIDE_WINDOWS_VISIBLE) {
+    walls.push(
+      {
+        position: [westWallX, upperWindowFillY, upperWindowCenterZ],
+        size: [WALL_THICKNESS, OFFICE_WINDOW_HEIGHT, OFFICE_WINDOW_DEPTH],
+      },
+      {
+        position: [eastWallX, upperWindowFillY, upperWindowCenterZ],
+        size: [WALL_THICKNESS, OFFICE_WINDOW_HEIGHT, OFFICE_WINDOW_DEPTH],
+      },
+    );
+  }
   const wallResult = createWalls(walls, materials);
   root.add(wallResult.root);
   colliders.push(...wallResult.colliders);
@@ -4537,6 +4539,16 @@ export function createOfficeChapter(): OfficeChapterData {
     hallWalls.push({
       position: [rightTurnCenterX - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS / 2, WALL_HEIGHT / 2, innerHallWallSouthCenterZ],
       size: [WALL_THICKNESS, WALL_HEIGHT, innerHallWallSouthDepth],
+    });
+  }
+  if (!OFFICE_SIDE_WINDOWS_VISIBLE) {
+    hallWalls.push({
+      position: [leftTurnCenterX + SIDE_HALL_WIDTH / 2 - WALL_THICKNESS / 2, WALL_HEIGHT / 2, hallWindowGapCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, hallWindowGapDepth],
+    });
+    hallWalls.push({
+      position: [rightTurnCenterX - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS / 2, WALL_HEIGHT / 2, hallWindowGapCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, hallWindowGapDepth],
     });
   }
   const hallWallResult = createWalls(hallWalls, materials);
@@ -4843,7 +4855,6 @@ export function createOfficeChapter(): OfficeChapterData {
   const ballPit = createBallPit(-207.85, 141.2, 11.1, 15.7);
   root.add(ballPit.root);
   const ballPitSlide = createBallPitHalfPipeSlide(-220.31, 136.33, ballPit);
-  root.add(ballPitSlide.root);
 
   root.add(
     createFloor({
@@ -5594,6 +5605,152 @@ export function createOfficeChapter(): OfficeChapterData {
     storageLeakStream,
     storageLeakPuddle,
   );
+
+  const fuseBoxFrameMaterial = new MeshStandardMaterial({
+    color: 0x3f4648,
+    emissive: 0x070b0c,
+    emissiveIntensity: 0.14,
+    roughness: 0.38,
+    metalness: 0.56,
+  });
+  const fuseBoxDoorMaterial = new MeshStandardMaterial({
+    color: 0x6f777a,
+    emissive: 0x101416,
+    emissiveIntensity: 0.18,
+    roughness: 0.34,
+    metalness: 0.68,
+  });
+  const fuseBoxInsideMaterial = new MeshStandardMaterial({
+    color: 0x171b1d,
+    emissive: 0x050707,
+    emissiveIntensity: 0.22,
+    roughness: 0.52,
+    metalness: 0.24,
+  });
+  const fuseBoxLeverMaterial = new MeshStandardMaterial({
+    color: 0xc0c8ca,
+    emissive: 0x171f20,
+    emissiveIntensity: 0.18,
+    roughness: 0.28,
+    metalness: 0.74,
+  });
+  const fuseBoxLeverGripMaterial = new MeshStandardMaterial({
+    color: 0xffd44a,
+    emissive: 0x7a4c00,
+    emissiveIntensity: 0.44,
+    roughness: 0.34,
+    metalness: 0.08,
+  });
+  const fuseBoxLeverPlateMaterial = new MeshStandardMaterial({
+    color: 0x101315,
+    emissive: 0x030405,
+    emissiveIntensity: 0.2,
+    roughness: 0.5,
+    metalness: 0.18,
+  });
+  const fuseBoxStatusLightMaterial = new MeshStandardMaterial({
+    color: 0xff3a2e,
+    emissive: 0xff2a1f,
+    emissiveIntensity: 0.72,
+    roughness: 0.28,
+    metalness: 0.02,
+  });
+  const storageFuseBoxRoot = new Group();
+  storageFuseBoxRoot.position.set(northPartySideRoomMinX + 0.09, 1.54, 136.33);
+  storageFuseBoxRoot.rotation.y = -Math.PI / 2;
+  const fuseBack = new Mesh(new BoxGeometry(1.32, 1.06, 0.08), fuseBoxInsideMaterial);
+  const fuseFrameTop = new Mesh(new BoxGeometry(1.44, 0.08, 0.12), fuseBoxFrameMaterial);
+  fuseFrameTop.position.set(0, 0.57, -0.01);
+  const fuseFrameBottom = fuseFrameTop.clone();
+  fuseFrameBottom.position.y = -0.57;
+  const fuseFrameLeft = new Mesh(new BoxGeometry(0.08, 1.16, 0.12), fuseBoxFrameMaterial);
+  fuseFrameLeft.position.set(-0.72, 0, -0.01);
+  const fuseFrameRight = fuseFrameLeft.clone();
+  fuseFrameRight.position.x = 0.72;
+  const fuseStatusLight = new Mesh(new SphereGeometry(0.075, 14, 10), fuseBoxStatusLightMaterial);
+  fuseStatusLight.position.set(0.52, 0.42, -0.1);
+  const storageFuseBoxDoorPivot = new Group();
+  storageFuseBoxDoorPivot.position.set(-0.69, 0, -0.1);
+  const storageFuseBoxDoor = new Mesh(new BoxGeometry(1.34, 1.08, 0.055), fuseBoxDoorMaterial);
+  storageFuseBoxDoor.position.set(0.67, 0, -0.02);
+  const storageFuseBoxDoorHandle = new Mesh(new BoxGeometry(0.055, 0.28, 0.08), fuseBoxFrameMaterial);
+  storageFuseBoxDoorHandle.position.set(1.21, 0, -0.08);
+  storageFuseBoxDoorPivot.add(storageFuseBoxDoor, storageFuseBoxDoorHandle);
+  const fuseBoxLeverPlate = new Mesh(new BoxGeometry(0.38, 0.62, 0.045), fuseBoxLeverPlateMaterial);
+  fuseBoxLeverPlate.position.set(1.06, -0.16, -0.135);
+  const storageFuseBoxLeverPivot = new Group();
+  storageFuseBoxLeverPivot.position.set(1.06, 0.08, -0.18);
+  const leverStem = new Mesh(new BoxGeometry(0.085, 0.56, 0.085), fuseBoxLeverMaterial);
+  leverStem.position.y = -0.28;
+  const leverGrip = new Mesh(new SphereGeometry(0.18, 18, 12), fuseBoxLeverGripMaterial);
+  leverGrip.position.y = -0.58;
+  storageFuseBoxLeverPivot.add(leverStem, leverGrip);
+  const fuseWireMaterials: Record<OfficeChapterStorageFuseWireColor, MeshStandardMaterial> = {
+    green: new MeshStandardMaterial({ color: 0x35c46d, emissive: 0x0b4d22, emissiveIntensity: 0.24, roughness: 0.36, metalness: 0.02 }),
+    blue: new MeshStandardMaterial({ color: 0x3396ff, emissive: 0x083b7a, emissiveIntensity: 0.26, roughness: 0.34, metalness: 0.02 }),
+    red: new MeshStandardMaterial({ color: 0xff4638, emissive: 0x7a100b, emissiveIntensity: 0.28, roughness: 0.36, metalness: 0.02 }),
+  };
+  const fuseOutletOffMaterials: Record<OfficeChapterStorageFuseWireColor, MeshStandardMaterial> = {
+    green: new MeshStandardMaterial({ color: 0x17462b, emissive: 0x06160c, emissiveIntensity: 0.12, roughness: 0.44, metalness: 0.08 }),
+    blue: new MeshStandardMaterial({ color: 0x183d6d, emissive: 0x061327, emissiveIntensity: 0.12, roughness: 0.44, metalness: 0.08 }),
+    red: new MeshStandardMaterial({ color: 0x61221d, emissive: 0x230807, emissiveIntensity: 0.12, roughness: 0.44, metalness: 0.08 }),
+  };
+  const fuseWireRows: Array<{ color: OfficeChapterStorageFuseWireColor; y: number }> = [
+    { color: 'green', y: 0.24 },
+    { color: 'blue', y: 0 },
+    { color: 'red', y: -0.24 },
+  ];
+  const fuseWires = fuseWireRows.reduce((wires, row) => {
+    const leftPost = new Mesh(new CylinderGeometry(0.055, 0.055, 0.06, 12), fuseWireMaterials[row.color]);
+    leftPost.position.set(-0.44, row.y, -0.12);
+    leftPost.rotation.x = Math.PI / 2;
+    const outlet = new Mesh(new CylinderGeometry(0.072, 0.072, 0.075, 14), fuseOutletOffMaterials[row.color]);
+    outlet.position.set(0.34, row.y, -0.13);
+    outlet.rotation.x = Math.PI / 2;
+    const loose = new Mesh(new CylinderGeometry(0.025, 0.025, 0.64, 10), fuseWireMaterials[row.color]);
+    loose.position.set(-0.19, row.y - 0.14, -0.14);
+    loose.rotation.z = Math.PI / 2.65;
+    const connected = new Mesh(new CylinderGeometry(0.025, 0.025, 0.78, 10), fuseWireMaterials[row.color]);
+    connected.position.set(-0.05, row.y, -0.15);
+    connected.rotation.z = Math.PI / 2;
+    connected.visible = false;
+    storageFuseBoxRoot.add(leftPost, outlet, loose, connected);
+    wires[row.color] = {
+      color: row.color,
+      loose,
+      connected,
+      outletMaterial: fuseOutletOffMaterials[row.color],
+    };
+    return wires;
+  }, {} as Record<OfficeChapterStorageFuseWireColor, OfficeChapterStorageFuseBoxWire>);
+  storageFuseBoxRoot.add(
+    fuseBack,
+    fuseFrameTop,
+    fuseFrameBottom,
+    fuseFrameLeft,
+    fuseFrameRight,
+    fuseStatusLight,
+    fuseBoxLeverPlate,
+    storageFuseBoxDoorPivot,
+    storageFuseBoxLeverPivot,
+  );
+  storageFuseBoxRoot.visible = false;
+  const storageFuseBox: OfficeChapterStorageFuseBox = {
+    label: 'Ball Pit Fuse Box',
+    root: storageFuseBoxRoot,
+    interactPosition: new Vector3(northPartySideRoomMinX + 0.86, 1.52, 136.33),
+    doorPivot: storageFuseBoxDoorPivot,
+    leverPivot: storageFuseBoxLeverPivot,
+    statusLightMaterial: fuseBoxStatusLightMaterial,
+    wires: fuseWires,
+    open: false,
+    openAmount: 0,
+    targetOpenAmount: 0,
+    leverPulled: false,
+    leverAmount: 0,
+    targetLeverAmount: 0,
+  };
+
   const storageClosetLight = new PointLight(0xa8d7ff, 0.58, 7.5, 1.7);
   storageClosetLight.position.set(storageClosetCenterX, 3.05, storageClosetCenterZ);
   const storageClosetLightFixture = new Mesh(new BoxGeometry(0.74, 0.1, 0.32), panelMaterial);
@@ -6191,8 +6348,10 @@ export function createOfficeChapter(): OfficeChapterData {
     );
   };
 
-  createWindowTrim(westWallX, 1, leftTurnCenterX + SIDE_HALL_WIDTH / 2 - 0.02);
-  createWindowTrim(eastWallX, -1, rightTurnCenterX - SIDE_HALL_WIDTH / 2 + 0.02);
+  if (OFFICE_SIDE_WINDOWS_VISIBLE) {
+    createWindowTrim(westWallX, 1, leftTurnCenterX + SIDE_HALL_WIDTH / 2 - 0.02);
+    createWindowTrim(eastWallX, -1, rightTurnCenterX - SIDE_HALL_WIDTH / 2 + 0.02);
+  }
 
   const spawnTile = new Mesh(new PlaneGeometry(5.4, 5.4), materials.accent);
   spawnTile.rotation.x = -Math.PI / 2;
@@ -6401,7 +6560,10 @@ export function createOfficeChapter(): OfficeChapterData {
   let partyShowReturning = false;
   let partyShowReturnTime = 0;
   let securityCameraTime = 0;
+  let visualUpdateTimer = 0;
   let partyHeadTarget: Vector3 | null = null;
+  const partyHeadDefaultTarget = new Vector3(partyRoomCenterX, 1.72, partyRoomCenterZ);
+  const partyLocalTarget = new Vector3();
   const partyShowReturnStartPosition = new Vector3();
   let partyShowReturnStartRotationY = Math.PI;
   let basketballThrowActive = false;
@@ -6759,7 +6921,7 @@ export function createOfficeChapter(): OfficeChapterData {
       limb.joint.rotation.z = MathUtils.lerp(limb.joint.rotation.z, 0, blend);
     });
     if (animatronic.propGroup) {
-      animatronic.propGroup.position.lerp(new Vector3(0, 0, 0), blend);
+      animatronic.propGroup.position.lerp(OFFICE_ZERO_VECTOR, blend);
       animatronic.propGroup.rotation.x = MathUtils.lerp(animatronic.propGroup.rotation.x, 0, blend);
       animatronic.propGroup.rotation.y = MathUtils.lerp(animatronic.propGroup.rotation.y, 0, blend);
       animatronic.propGroup.rotation.z = MathUtils.lerp(animatronic.propGroup.rotation.z, 0, blend);
@@ -6838,12 +7000,21 @@ export function createOfficeChapter(): OfficeChapterData {
 
     bathroomSinks.forEach((sink) => {
       sink.waterAmount = MathUtils.lerp(sink.waterAmount, sink.waterOn ? 1 : 0, blend);
+      if (!sink.waterOn && sink.waterAmount <= 0.025) {
+        sink.waterAmount = 0;
+        sink.waterStreams.forEach((stream) => {
+          stream.visible = false;
+        });
+        return;
+      }
+
+      const waterTime = storageClosetLeakTime * 18;
       sink.waterStreams.forEach((stream, index) => {
         stream.visible = sink.waterAmount > 0.025;
         stream.scale.set(
-          0.72 + Math.sin(performance.now() * 0.018 + index) * 0.08,
+          0.72 + Math.sin(waterTime + index) * 0.08,
           sink.waterAmount,
-          0.72 + Math.cos(performance.now() * 0.016 + index) * 0.08,
+          0.72 + Math.cos(waterTime * 0.89 + index) * 0.08,
         );
         const material = stream.material;
         if (material instanceof MeshStandardMaterial) {
@@ -6919,13 +7090,19 @@ export function createOfficeChapter(): OfficeChapterData {
       return;
     }
 
-    partyHeadTarget = playerPosition?.clone() ?? partyHeadTarget;
-    const target = partyHeadTarget ?? new Vector3(partyRoomCenterX, 1.72, partyRoomCenterZ);
+    if (playerPosition) {
+      if (partyHeadTarget) {
+        partyHeadTarget.copy(playerPosition);
+      } else {
+        partyHeadTarget = playerPosition.clone();
+      }
+    }
+    const target = partyHeadTarget ?? partyHeadDefaultTarget;
     const headSnap = MathUtils.smoothstep(partyShowTime, 0.02, 0.18);
 
     stageAnimatronics.forEach((animatronic) => {
       animatronic.root.updateMatrixWorld(true);
-      const localTarget = animatronic.root.worldToLocal(target.clone());
+      const localTarget = animatronic.root.worldToLocal(partyLocalTarget.copy(target));
       const direction = localTarget.sub(animatronic.head.position);
       const yaw = MathUtils.clamp(Math.atan2(-direction.x, -direction.z), -0.78, 0.78) * headSnap;
       const pitch = MathUtils.clamp(
@@ -6994,13 +7171,21 @@ export function createOfficeChapter(): OfficeChapterData {
   };
 
   const update = (deltaSeconds: number, playerPosition?: Vector3): void => {
-    securityCameraTime += deltaSeconds;
-    securityCameras.forEach((securityCamera, index) => {
-      const scanSpeed = 0.28 + index * 0.025;
-      const scanWidth = 0.74;
-      securityCamera.pivot.rotation.y = Math.sin(securityCameraTime * scanSpeed + index * 0.7) * scanWidth;
-      securityCamera.scanLight.intensity = 0.24 + Math.abs(Math.sin(securityCameraTime * scanSpeed * 2 + index)) * 0.34;
-    });
+    visualUpdateTimer += deltaSeconds;
+    const runVisualUpdate = visualUpdateTimer >= OFFICE_VISUAL_UPDATE_INTERVAL;
+    const visualDeltaSeconds = runVisualUpdate ? visualUpdateTimer : 0;
+    if (runVisualUpdate) {
+      visualUpdateTimer = 0;
+      securityCameraTime += visualDeltaSeconds;
+      securityCameras.forEach((securityCamera, index) => {
+        const scanSpeed = 0.28 + index * 0.025;
+        const scanWidth = 0.74;
+        securityCamera.pivot.rotation.y = Math.sin(securityCameraTime * scanSpeed + index * 0.7) * scanWidth;
+        if (OFFICE_SECURITY_CAMERA_SCAN_LIGHTS_ENABLED) {
+          securityCamera.scanLight.intensity = 0.24 + Math.abs(Math.sin(securityCameraTime * scanSpeed * 2 + index)) * 0.34;
+        }
+      });
+    }
 
     const blend = 1 - Math.exp(-DOOR_MOVE_SPEED * deltaSeconds);
     doors.forEach((door) => {
@@ -7009,7 +7194,16 @@ export function createOfficeChapter(): OfficeChapterData {
         door.openAmount = door.targetOpenAmount;
       }
 
-      door.slab.position.y = MathUtils.lerp(door.closedY, door.openY, door.openAmount);
+      let bounceOffset = 0;
+      if (door.closeBounceTimer > 0 && door.targetOpenAmount <= 0.001) {
+        door.closeBounceTimer = Math.max(0, door.closeBounceTimer - deltaSeconds);
+        const progress = 1 - door.closeBounceTimer / door.closeBounceDuration;
+        const impact = 1 - MathUtils.smoothstep(door.openAmount, 0.02, 0.22);
+        const bounce = Math.abs(Math.sin(progress * Math.PI * 5.4)) * (1 - progress);
+        bounceOffset = impact * bounce * 0.24;
+      }
+
+      door.slab.position.y = MathUtils.lerp(door.closedY, door.openY, door.openAmount) + bounceOffset;
       door.collider.enabled = door.openAmount < 0.08;
       door.open = door.targetOpenAmount > 0.5;
     });
@@ -7079,21 +7273,51 @@ export function createOfficeChapter(): OfficeChapterData {
     storageClosetDoor.open = storageClosetDoor.targetOpenAmount > 0.5;
     storageClosetDoor.collider.enabled = storageClosetDoor.openAmount < 0.62;
 
-    storageClosetLeakTime += deltaSeconds;
-    storageLeakStream.scale.y = 0.78 + Math.sin(storageClosetLeakTime * 5.4) * 0.08;
-    storageLeakDroplets.forEach((droplet, index) => {
-      const cycle = (storageClosetLeakTime * 0.72 + index * 0.33) % 1;
-      droplet.position.y = MathUtils.lerp(2.28, 0.28, cycle);
-      const scale = MathUtils.lerp(1.05, 0.52, cycle);
-      droplet.scale.setScalar(scale);
-    });
+    storageFuseBox.openAmount = MathUtils.lerp(
+      storageFuseBox.openAmount,
+      storageFuseBox.targetOpenAmount,
+      utilityBlend,
+    );
+    if (Math.abs(storageFuseBox.openAmount - storageFuseBox.targetOpenAmount) < 0.001) {
+      storageFuseBox.openAmount = storageFuseBox.targetOpenAmount;
+    }
+    storageFuseBox.leverAmount = MathUtils.lerp(
+      storageFuseBox.leverAmount,
+      storageFuseBox.targetLeverAmount,
+      utilityBlend,
+    );
+    if (Math.abs(storageFuseBox.leverAmount - storageFuseBox.targetLeverAmount) < 0.001) {
+      storageFuseBox.leverAmount = storageFuseBox.targetLeverAmount;
+    }
+    storageFuseBox.doorPivot.rotation.y = -storageFuseBox.openAmount * Math.PI * 0.78;
+    storageFuseBox.leverPivot.rotation.z = storageFuseBox.leverAmount * Math.PI * 0.62;
+    storageFuseBox.open = storageFuseBox.targetOpenAmount > 0.5;
+    storageFuseBox.leverPulled = storageFuseBox.targetLeverAmount > 0.5;
+
+    if (runVisualUpdate) {
+      storageClosetLeakTime += visualDeltaSeconds;
+      storageLeakStream.scale.y = 0.78 + Math.sin(storageClosetLeakTime * 5.4) * 0.08;
+      storageLeakDroplets.forEach((droplet, index) => {
+        const cycle = (storageClosetLeakTime * 0.72 + index * 0.33) % 1;
+        droplet.position.y = MathUtils.lerp(2.28, 0.28, cycle);
+        const scale = MathUtils.lerp(1.05, 0.52, cycle);
+        droplet.scale.setScalar(scale);
+      });
+    }
 
     ventSystem.openings.forEach((opening) => {
       if (!opening.coverPivot) {
         return;
       }
       const targetOpenAmount = opening.targetOpenAmount ?? 0;
-      opening.openAmount = MathUtils.lerp(opening.openAmount ?? 0, targetOpenAmount, utilityBlend);
+      const currentOpenAmount = opening.openAmount ?? 0;
+      if (targetOpenAmount <= 0.001 && currentOpenAmount <= 0.001) {
+        opening.openAmount = 0;
+        opening.open = false;
+        return;
+      }
+
+      opening.openAmount = MathUtils.lerp(currentOpenAmount, targetOpenAmount, utilityBlend);
       if (Math.abs(opening.openAmount - targetOpenAmount) < 0.001) {
         opening.openAmount = targetOpenAmount;
       }
@@ -7138,22 +7362,24 @@ export function createOfficeChapter(): OfficeChapterData {
       prizeWheel.pointer.rotation.z = MathUtils.lerp(prizeWheel.pointer.rotation.z, 0, utilityBlend);
     }
 
-    kitchenSteamTime += deltaSeconds;
-    kitchenSteamClouds.forEach((cloud, index) => {
-      const phase = (cloud.userData.phase as number) ?? index;
-      const pulse = 1 + Math.sin(kitchenSteamTime * 0.9 + phase) * 0.08;
-      const drift = Math.sin(kitchenSteamTime * 0.55 + phase) * 0.08;
-      cloud.position.y = ((cloud.userData.baseY as number) ?? cloud.position.y) + drift;
-      cloud.scale.set(
-        ((cloud.userData.baseScaleX as number) ?? 1) * pulse,
-        ((cloud.userData.baseScaleY as number) ?? 1) * (1 + Math.cos(kitchenSteamTime * 0.74 + phase) * 0.06),
-        ((cloud.userData.baseScaleZ as number) ?? 1) * (1 + Math.sin(kitchenSteamTime * 0.68 + phase) * 0.06),
-      );
-      const material = cloud.material;
-      if (material instanceof MeshStandardMaterial) {
-        material.opacity = 0.1 + Math.abs(Math.sin(kitchenSteamTime * 0.62 + phase)) * 0.075;
-      }
-    });
+    if (runVisualUpdate) {
+      kitchenSteamTime += visualDeltaSeconds;
+      kitchenSteamClouds.forEach((cloud, index) => {
+        const phase = (cloud.userData.phase as number) ?? index;
+        const pulse = 1 + Math.sin(kitchenSteamTime * 0.9 + phase) * 0.08;
+        const drift = Math.sin(kitchenSteamTime * 0.55 + phase) * 0.08;
+        cloud.position.y = ((cloud.userData.baseY as number) ?? cloud.position.y) + drift;
+        cloud.scale.set(
+          ((cloud.userData.baseScaleX as number) ?? 1) * pulse,
+          ((cloud.userData.baseScaleY as number) ?? 1) * (1 + Math.cos(kitchenSteamTime * 0.74 + phase) * 0.06),
+          ((cloud.userData.baseScaleZ as number) ?? 1) * (1 + Math.sin(kitchenSteamTime * 0.68 + phase) * 0.06),
+        );
+        const material = cloud.material;
+        if (material instanceof MeshStandardMaterial) {
+          material.opacity = 0.1 + Math.abs(Math.sin(kitchenSteamTime * 0.62 + phase)) * 0.075;
+        }
+      });
+    }
 
     updateBasketballThrow(deltaSeconds);
     updateFoxyPlay(deltaSeconds);
@@ -7169,9 +7395,11 @@ export function createOfficeChapter(): OfficeChapterData {
     partyShowReturnTime = 0;
     partyHeadTarget = null;
     securityCameraTime = 0;
+    visualUpdateTimer = 0;
     securityCameras.forEach((securityCamera) => {
       securityCamera.pivot.rotation.y = 0;
       securityCamera.scanLight.intensity = 0.28;
+      securityCamera.scanLight.visible = OFFICE_SECURITY_CAMERA_SCAN_LIGHTS_ENABLED;
     });
     foxyPlayActive = false;
     foxyPlayTime = 0;
@@ -7260,6 +7488,7 @@ export function createOfficeChapter(): OfficeChapterData {
       door.open = false;
       door.openAmount = 0;
       door.targetOpenAmount = 0;
+      door.closeBounceTimer = 0;
       door.slab.position.y = door.closedY;
       door.collider.enabled = true;
     });
@@ -7294,6 +7523,22 @@ export function createOfficeChapter(): OfficeChapterData {
     storageClosetDoor.targetOpenAmount = 0;
     storageClosetDoor.doorPivot.rotation.y = 0;
     storageClosetDoor.collider.enabled = true;
+    storageFuseBox.open = false;
+    storageFuseBox.openAmount = 0;
+    storageFuseBox.targetOpenAmount = 0;
+    storageFuseBox.doorPivot.rotation.y = 0;
+    storageFuseBox.leverPulled = false;
+    storageFuseBox.leverAmount = 0;
+    storageFuseBox.targetLeverAmount = 0;
+    storageFuseBox.leverPivot.rotation.z = 0;
+    (['green', 'blue', 'red'] as const).forEach((color) => {
+      storageFuseBox.wires[color].loose.visible = true;
+      storageFuseBox.wires[color].connected.visible = false;
+      storageFuseBox.wires[color].outletMaterial.emissiveIntensity = 0.12;
+    });
+    storageFuseBox.statusLightMaterial.color.setHex(0xff3a2e);
+    storageFuseBox.statusLightMaterial.emissive.setHex(0xff2a1f);
+    storageFuseBox.statusLightMaterial.emissiveIntensity = 0.72;
     storageClosetLeakTime = 0;
   };
 
@@ -7319,6 +7564,7 @@ export function createOfficeChapter(): OfficeChapterData {
     securityCameras,
     backstageStorageDoor,
     storageClosetDoor,
+    storageFuseBox,
     kitchenEntranceDoor,
     kitchenGlassShelves,
     bathroomEntranceDoor,

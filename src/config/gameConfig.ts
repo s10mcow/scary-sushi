@@ -18,7 +18,7 @@ export const GAME_CONFIG = {
     gravity: 15.4,
     interactionRange: 1.85,
     staminaMax: 100,
-    staminaDrainPerSecond: 34,
+    staminaDrainPerSecond: 22,
     staminaRecoverPerSecond: 24,
     healthMax: 100,
     healthRecoverPerSecond: 8,

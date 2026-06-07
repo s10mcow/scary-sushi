@@ -12,6 +12,7 @@ export class InputController {
   private interactQueued = false;
   private dropQueued = false;
   private useItemQueued = false;
+  private pickupQueued = false;
   private jumpQueued = false;
   private chapterMenuToggleQueued = false;
   private officeJumpscareMenuToggleQueued = false;
@@ -19,6 +20,8 @@ export class InputController {
   private placementToolToggleQueued = false;
   private placementMarkerDeleteQueued = false;
   private fireQueued = false;
+  private secondaryFireQueued = false;
+  private fireHeld = false;
   private choiceYesQueued = false;
   private choiceNoQueued = false;
   private hotbarSlotQueued: number | null = null;
@@ -28,6 +31,8 @@ export class InputController {
     this.target.addEventListener('keydown', this.handleKeyDown);
     this.target.addEventListener('keyup', this.handleKeyUp);
     this.target.addEventListener('mousedown', this.handleMouseDown);
+    this.target.addEventListener('mouseup', this.handleMouseUp);
+    this.target.addEventListener('blur', this.handleBlur);
     this.target.addEventListener('contextmenu', this.handleContextMenu);
   }
 
@@ -37,6 +42,14 @@ export class InputController {
       strafe: Number(this.pressed.has('KeyD')) - Number(this.pressed.has('KeyA')),
       sprint: this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight'),
     };
+  }
+
+  isSpaceHeld(): boolean {
+    return this.pressed.has('Space');
+  }
+
+  isInteractHeld(): boolean {
+    return this.pressed.has('KeyE');
   }
 
   consumeFlashlightToggle(): boolean {
@@ -60,6 +73,12 @@ export class InputController {
   consumeUseItem(): boolean {
     const value = this.useItemQueued;
     this.useItemQueued = false;
+    return value;
+  }
+
+  consumePickup(): boolean {
+    const value = this.pickupQueued;
+    this.pickupQueued = false;
     return value;
   }
 
@@ -105,6 +124,16 @@ export class InputController {
     return value;
   }
 
+  consumeSecondaryFire(): boolean {
+    const value = this.secondaryFireQueued;
+    this.secondaryFireQueued = false;
+    return value;
+  }
+
+  isFireHeld(): boolean {
+    return this.fireHeld && Boolean(this.target.document.pointerLockElement);
+  }
+
   consumeChoiceYes(): boolean {
     const value = this.choiceYesQueued;
     this.choiceYesQueued = false;
@@ -133,6 +162,8 @@ export class InputController {
     this.target.removeEventListener('keydown', this.handleKeyDown);
     this.target.removeEventListener('keyup', this.handleKeyUp);
     this.target.removeEventListener('mousedown', this.handleMouseDown);
+    this.target.removeEventListener('mouseup', this.handleMouseUp);
+    this.target.removeEventListener('blur', this.handleBlur);
     this.target.removeEventListener('contextmenu', this.handleContextMenu);
   }
 
@@ -155,8 +186,8 @@ export class InputController {
       this.useItemQueued = true;
     }
 
-    if (event.code === 'KeyP' && !event.repeat) {
-      this.chapterMenuToggleQueued = true;
+    if (event.code === 'KeyR' && !event.repeat) {
+      this.pickupQueued = true;
     }
 
     if (event.code === 'KeyJ' && !event.repeat) {
@@ -218,13 +249,26 @@ export class InputController {
 
     if (event.button === 2) {
       this.placementMarkerDeleteQueued = true;
+      this.secondaryFireQueued = true;
       event.preventDefault();
       return;
     }
 
     if (event.button === 0) {
+      this.fireHeld = true;
       this.fireQueued = true;
     }
+  };
+
+  private readonly handleMouseUp = (event: MouseEvent): void => {
+    if (event.button === 0) {
+      this.fireHeld = false;
+    }
+  };
+
+  private readonly handleBlur = (): void => {
+    this.fireHeld = false;
+    this.pressed.clear();
   };
 
   private readonly handleContextMenu = (event: MouseEvent): void => {

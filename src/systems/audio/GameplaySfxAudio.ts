@@ -94,6 +94,143 @@ export class GameplaySfxAudio {
     this.playBallPitRustle(true);
   }
 
+  playBlueStomp(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    this.playMetalThud(now, 0.16, 58);
+
+    const boomGain = this.context.createGain();
+    boomGain.gain.setValueAtTime(0.0001, now);
+    boomGain.gain.exponentialRampToValueAtTime(0.14, now + 0.018);
+    boomGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+    boomGain.connect(this.masterGain);
+
+    const boom = this.context.createOscillator();
+    boom.type = 'sine';
+    boom.frequency.setValueAtTime(72 + Math.random() * 8, now);
+    boom.frequency.exponentialRampToValueAtTime(32, now + 0.28);
+    boom.connect(boomGain);
+    this.startSource(boom, now, now + 0.36);
+
+    const dustGain = this.context.createGain();
+    dustGain.gain.setValueAtTime(0.0001, now);
+    dustGain.gain.exponentialRampToValueAtTime(0.055, now + 0.025);
+    dustGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    dustGain.connect(this.masterGain);
+
+    const dust = this.context.createBufferSource();
+    dust.buffer = this.noiseBuffer;
+    dust.playbackRate.value = 0.48 + Math.random() * 0.08;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 310 + Math.random() * 90;
+    dust.connect(lowpass);
+    lowpass.connect(dustGain);
+    this.startSource(dust, now, now + 0.24);
+  }
+
+  playGreenSqueak(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    [0, 0.14, 0.26].forEach((offset, index) => {
+      const start = now + offset;
+      const gain = this.context!.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.038 + index * 0.004, start + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.155);
+      gain.connect(this.masterGain!);
+
+      const squeak = this.context!.createOscillator();
+      squeak.type = 'sawtooth';
+      squeak.frequency.setValueAtTime(540 + Math.random() * 70, start);
+      squeak.frequency.linearRampToValueAtTime(1120 + Math.random() * 120, start + 0.055);
+      squeak.frequency.exponentialRampToValueAtTime(470 + Math.random() * 80, start + 0.155);
+
+      const reed = this.context!.createBiquadFilter();
+      reed.type = 'bandpass';
+      reed.frequency.setValueAtTime(980 + Math.random() * 220, start);
+      reed.Q.value = 8.4;
+      squeak.connect(reed);
+      reed.connect(gain);
+      this.startSource(squeak, start, start + 0.17);
+    });
+
+    const airGain = this.context.createGain();
+    airGain.gain.setValueAtTime(0.0001, now);
+    airGain.gain.exponentialRampToValueAtTime(0.01, now + 0.02);
+    airGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+    airGain.connect(this.masterGain);
+
+    const air = this.context.createBufferSource();
+    air.buffer = this.noiseBuffer;
+    air.playbackRate.value = 1.35 + Math.random() * 0.2;
+    const highpass = this.context.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 760;
+    const band = this.context.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 1380 + Math.random() * 240;
+    band.Q.value = 7.5;
+    air.connect(highpass);
+    highpass.connect(band);
+    band.connect(airGain);
+    this.startSource(air, now, now + 0.36);
+  }
+
+  playPossumSqueak(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    [0, 0.075].forEach((offset, index) => {
+      const start = now + offset;
+      const gain = this.context!.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.085 - index * 0.018, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.11);
+      gain.connect(this.masterGain!);
+
+      const squeak = this.context!.createOscillator();
+      squeak.type = 'sine';
+      squeak.frequency.setValueAtTime(920 + Math.random() * 90, start);
+      squeak.frequency.linearRampToValueAtTime(1320 + Math.random() * 120, start + 0.036);
+      squeak.frequency.exponentialRampToValueAtTime(760 + Math.random() * 70, start + 0.11);
+      squeak.connect(gain);
+      this.startSource(squeak, start, start + 0.12);
+    });
+  }
+
+  playSpaceshipAlarm(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.012;
+    for (let index = 0; index < 6; index += 1) {
+      const start = now + index * 0.46;
+      const gain = this.context.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.035);
+      gain.gain.linearRampToValueAtTime(0.1, start + 0.22);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.36);
+      gain.connect(this.masterGain);
+
+      const alarm = this.context.createOscillator();
+      alarm.type = 'sawtooth';
+      alarm.frequency.setValueAtTime(620, start);
+      alarm.frequency.linearRampToValueAtTime(380, start + 0.34);
+      alarm.connect(gain);
+      this.startSource(alarm, start, start + 0.38);
+    }
+  }
+
   playSecurityDoor(open: boolean): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;
@@ -137,6 +274,17 @@ export class GameplaySfxAudio {
     this.startSource(motor, now, now + duration);
 
     this.playMetalThud(now + duration - 0.04, open ? 0.09 : 0.14, open ? 145 : 96);
+  }
+
+  playSecurityDoorCrash(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.5;
+    this.playMetalThud(now, 0.24, 72);
+    this.playMetalThud(now + 0.16, 0.12, 92);
+    this.playMetalThud(now + 0.32, 0.07, 118);
   }
 
   playClosetDoor(open: boolean): void {
@@ -298,16 +446,62 @@ export class GameplaySfxAudio {
     });
   }
 
+  playToySqueak(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    const gain = this.context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.09, now + 0.13);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+    gain.connect(this.masterGain);
+
+    const squeak = this.context.createOscillator();
+    squeak.type = 'square';
+    squeak.frequency.setValueAtTime(620, now);
+    squeak.frequency.exponentialRampToValueAtTime(1180, now + 0.08);
+    squeak.frequency.exponentialRampToValueAtTime(540, now + 0.28);
+    squeak.connect(gain);
+    this.startSource(squeak, now, now + 0.36);
+  }
+
+  playStuffiePeep(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    [0, 0.055].forEach((offset, index) => {
+      const start = now + offset;
+      const gain = this.context!.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.15 - index * 0.035, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
+      gain.connect(this.masterGain!);
+
+      const peep = this.context!.createOscillator();
+      peep.type = 'sine';
+      peep.frequency.setValueAtTime(1040 + Math.random() * 90, start);
+      peep.frequency.linearRampToValueAtTime(1560 + Math.random() * 120, start + 0.038);
+      peep.frequency.exponentialRampToValueAtTime(900 + Math.random() * 80, start + 0.13);
+      peep.connect(gain);
+      this.startSource(peep, start, start + 0.15);
+    });
+  }
+
   playFoxyClank(intensity: number): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;
     }
 
-    const clampedIntensity = Math.max(0, Math.min(1, intensity));
+    const clampedIntensity = Math.max(0, Math.min(1.35, intensity));
     const now = this.context.currentTime + 0.006;
     const clankGain = this.context.createGain();
     clankGain.gain.setValueAtTime(0.0001, now);
-    clankGain.gain.exponentialRampToValueAtTime(0.045 + clampedIntensity * 0.24, now + 0.008);
+    clankGain.gain.exponentialRampToValueAtTime(0.07 + clampedIntensity * 0.34, now + 0.008);
     clankGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
     clankGain.connect(this.masterGain);
 
@@ -323,7 +517,7 @@ export class GameplaySfxAudio {
     metalFilter.connect(clankGain);
     this.startSource(clank, now, now + 0.2);
 
-    this.playMetalThud(now + 0.01, 0.05 + clampedIntensity * 0.12, 96 + clampedIntensity * 72);
+    this.playMetalThud(now + 0.01, 0.08 + clampedIntensity * 0.18, 96 + clampedIntensity * 72);
   }
 
   playFreddyPowerOutMelody(): void {
@@ -339,19 +533,29 @@ export class GameplaySfxAudio {
       { frequency: 146.83, offset: 1.74 },
       { frequency: 123.47, offset: 2.55 },
       { frequency: 98.0, offset: 3.24 },
+      { frequency: 196.0, offset: 4.42 },
+      { frequency: 185.0, offset: 5.02 },
+      { frequency: 164.81, offset: 5.62 },
+      { frequency: 146.83, offset: 6.36 },
+      { frequency: 123.47, offset: 7.22 },
+      { frequency: 98.0, offset: 7.94 },
+      { frequency: 164.81, offset: 9.04 },
+      { frequency: 146.83, offset: 9.66 },
+      { frequency: 123.47, offset: 10.42 },
+      { frequency: 82.41, offset: 11.15 },
     ];
 
     const reverbBus = this.context.createGain();
-    reverbBus.gain.value = 0.38;
+    reverbBus.gain.value = 0.56;
     reverbBus.connect(this.masterGain);
 
     melody.forEach((note, index) => {
       const start = now + note.offset;
-      const length = index === melody.length - 1 ? 1.22 : 0.86;
+      const length = index === melody.length - 1 ? 1.42 : 0.86;
       const noteGain = this.context!.createGain();
       noteGain.gain.setValueAtTime(0.0001, start);
-      noteGain.gain.exponentialRampToValueAtTime(0.13, start + 0.012);
-      noteGain.gain.exponentialRampToValueAtTime(0.032, start + length * 0.58);
+      noteGain.gain.exponentialRampToValueAtTime(0.18, start + 0.012);
+      noteGain.gain.exponentialRampToValueAtTime(0.044, start + length * 0.58);
       noteGain.gain.exponentialRampToValueAtTime(0.0001, start + length);
       noteGain.connect(reverbBus);
 
@@ -364,7 +568,7 @@ export class GameplaySfxAudio {
 
       const overtoneGain = this.context!.createGain();
       overtoneGain.gain.setValueAtTime(0.0001, start);
-      overtoneGain.gain.exponentialRampToValueAtTime(0.036, start + 0.006);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.052, start + 0.006);
       overtoneGain.gain.exponentialRampToValueAtTime(0.0001, start + length * 0.42);
       overtoneGain.connect(reverbBus);
 
@@ -377,17 +581,17 @@ export class GameplaySfxAudio {
 
     const humGain = this.context.createGain();
     humGain.gain.setValueAtTime(0.0001, now);
-    humGain.gain.exponentialRampToValueAtTime(0.038, now + 0.18);
-    humGain.gain.linearRampToValueAtTime(0.026, now + 3.1);
-    humGain.gain.exponentialRampToValueAtTime(0.0001, now + 4.25);
+    humGain.gain.exponentialRampToValueAtTime(0.064, now + 0.18);
+    humGain.gain.linearRampToValueAtTime(0.044, now + 9.4);
+    humGain.gain.exponentialRampToValueAtTime(0.0001, now + 12.4);
     humGain.connect(this.masterGain);
 
     const hum = this.context.createOscillator();
     hum.type = 'sine';
     hum.frequency.setValueAtTime(49, now);
-    hum.frequency.exponentialRampToValueAtTime(41, now + 4.25);
+    hum.frequency.exponentialRampToValueAtTime(34, now + 12.4);
     hum.connect(humGain);
-    this.startSource(hum, now, now + 4.25);
+    this.startSource(hum, now, now + 12.4);
   }
 
   playOfficeJumpscareCue(cue: OfficeJumpscareCue): void {
