@@ -1224,6 +1224,15 @@ export function createChapterSeven(): ChapterSevenData {
   addDiningTable(leftRoomCenterX, 0);
   addBookshelf(-25.05, -1.25, Math.PI / 2);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
+  const backBedroomDoorFacingDrawer = addDrawer(
+    1187.12 - CENTER_X,
+    74.07 - HOUSE_CENTER_Z,
+    Math.atan2(
+      HOUSE_LEFT_ROOM_WALL_X + 2.25 - (1187.12 - CENTER_X),
+      HOUSE_BACK_ROOM_DOOR_Z - (74.07 - HOUSE_CENTER_Z),
+    ),
+    'Back bedroom door-facing drawer',
+  );
   const houseFridge = addFridge(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z);
   const houseBaseCabinets = [
     addKitchenCounter(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.28, 'Counter base cabinet'),
@@ -1247,6 +1256,7 @@ export function createChapterSeven(): ChapterSevenData {
   });
   const houseDrawers = [
     ...houseDrawer.drawerSlides,
+    ...backBedroomDoorFacingDrawer.drawerSlides,
   ];
   const houseCabinets = [...houseUpperCupboards, ...houseBaseCabinets];
 
