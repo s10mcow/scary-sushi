@@ -472,6 +472,12 @@ interface OfficeGameModeAnimatronicState {
   cameraStareCooldown: number;
   cameraStareCameraId: number | null;
   senseTimer: number;
+  walkCyclePhase: number;
+  walkCycleSpeedMultiplier: number;
+  walkCycleStrideMultiplier: number;
+  walkCycleArmMultiplier: number;
+  walkCycleSideMultiplier: number;
+  walkCycleBounceMultiplier: number;
   cachedCanSeePlayer: boolean;
   cachedNoiseResponse: OfficeGameModeNoiseResponse;
   cachedBlockedDoorId: 'left' | 'right' | null;
@@ -5209,12 +5215,12 @@ export class Game {
 
     if (!this.officeGameModeHasPower()) {
       this.officeTabletCameraFeedActive = false;
-      this.pushStatus('The desk camera monitors are dead. The office power is out.', 2.4);
+      this.pushStatus('The desk camera iPad is dead. The office power is out.', 2.4);
       return;
     }
 
     if (!this.officeTabletCameraFeedActive && !this.getNearestOfficeCameraMonitors()) {
-      this.pushStatus('Use the camera monitors on the office desk to open the camera feed.', 2.2);
+      this.pushStatus('Use the camera iPad on the office desk to open the camera feed.', 2.2);
       return;
     }
 
@@ -5244,16 +5250,16 @@ export class Game {
     this.resize();
     this.pushStatus(
       clearedPuppetThreat
-        ? 'The puppet vanishes behind the monitor static.'
+        ? 'The puppet vanishes behind the iPad static.'
       : this.officeCameraPuppetPhase !== 'idle'
         ? this.officeCameraPuppetPhase === 'camera-face'
-          ? 'A crying puppet face fills the camera. Close the desk monitors now.'
+          ? 'A crying puppet face fills the camera. Close the desk iPad now.'
           : this.officeCameraPuppetPhase === 'room-watch'
             ? 'The puppet is staring at you. Put the camera back up within two seconds.'
             : 'The puppet reaches you.'
       : this.officeTabletCameraFeedActive
-        ? `Viewing ${camera?.label ?? 'desk camera'} on the desk monitors. Press number keys to switch, or left click again to return.`
-        : 'Camera monitor view closed.',
+        ? `Viewing ${camera?.label ?? 'desk camera'} on the desk iPad. Press number keys to switch, or left click again to return.`
+        : 'Camera iPad view closed.',
       clearedPuppetThreat || this.officeCameraPuppetPhase !== 'idle' ? 2.4 : this.officeTabletCameraFeedActive ? 2.6 : 1.4,
     );
   }
@@ -5350,11 +5356,34 @@ export class Game {
         cameraStareCooldown: 0,
         cameraStareCameraId: null,
         senseTimer: 0,
+        walkCyclePhase: Math.random() * Math.PI * 2,
+        walkCycleSpeedMultiplier: 1,
+        walkCycleStrideMultiplier: 1,
+        walkCycleArmMultiplier: 1,
+        walkCycleSideMultiplier: 1,
+        walkCycleBounceMultiplier: 1,
         cachedCanSeePlayer: false,
         cachedNoiseResponse: 'none',
         cachedBlockedDoorId: null,
       });
+      this.randomizeOfficeAnimatronicWalkCycle(this.officeGameModeAnimatronics[this.officeGameModeAnimatronics.length - 1]);
     });
+  }
+
+  private randomizeOfficeAnimatronicWalkCycle(animatronic: OfficeGameModeAnimatronicState): void {
+    const animalSpeedBias = animatronic.animatronic === 'foxy'
+      ? 1.12
+      : animatronic.animatronic === 'bori'
+        ? 0.9
+        : animatronic.animatronic === 'fluffle'
+          ? 1.06
+          : 1;
+    animatronic.walkCyclePhase = Math.random() * Math.PI * 2;
+    animatronic.walkCycleSpeedMultiplier = MathUtils.lerp(0.82, 1.22, Math.random()) * animalSpeedBias;
+    animatronic.walkCycleStrideMultiplier = MathUtils.lerp(0.82, 1.26, Math.random());
+    animatronic.walkCycleArmMultiplier = MathUtils.lerp(0.76, 1.34, Math.random());
+    animatronic.walkCycleSideMultiplier = MathUtils.lerp(0.82, 1.2, Math.random());
+    animatronic.walkCycleBounceMultiplier = MathUtils.lerp(0.55, 1.35, Math.random());
   }
 
   private getOfficeGameModeAnimatronicFloorY(
@@ -5442,6 +5471,7 @@ export class Game {
       animatronic.cachedCanSeePlayer = false;
       animatronic.cachedNoiseResponse = 'none';
       animatronic.cachedBlockedDoorId = null;
+      this.randomizeOfficeAnimatronicWalkCycle(animatronic);
       animatronic.model.leftArm.rotation.set(0, 0, 0);
       animatronic.model.rightArm.rotation.set(0, 0, 0);
       animatronic.model.leftArmJoint.rotation.set(0, 0, 0);
@@ -6840,6 +6870,7 @@ export class Game {
     animatronic.cachedCanSeePlayer = false;
     animatronic.cachedNoiseResponse = 'none';
     animatronic.cachedBlockedDoorId = null;
+    this.randomizeOfficeAnimatronicWalkCycle(animatronic);
   }
 
   private getOfficeGameModeCameraStareTarget(
@@ -7247,6 +7278,43 @@ export class Game {
       : null;
   }
 
+  private openOfficeGameModeDoorsNearAnimatronic(
+    animatronic: OfficeGameModeAnimatronicState,
+    lookAheadX: number,
+    lookAheadZ: number,
+  ): void {
+    const root = animatronic.model.root;
+    const shouldOpenDoor = (
+      door: { label: string; interactPosition: Vector3; open: boolean; targetOpenAmount: number; collider: { centerX: number; centerZ: number; enabled?: boolean } },
+      sound: 'closet' | 'panel' = 'closet',
+    ): void => {
+      if (door.open || door.targetOpenAmount > 0.5 || door.collider.enabled === false) {
+        return;
+      }
+
+      const distanceToCollider = Math.hypot(root.position.x - door.collider.centerX, root.position.z - door.collider.centerZ);
+      const lookAheadDistance = Math.hypot(lookAheadX - door.collider.centerX, lookAheadZ - door.collider.centerZ);
+      const distanceToInteract = Math.hypot(root.position.x - door.interactPosition.x, root.position.z - door.interactPosition.z);
+      if (Math.min(distanceToCollider, lookAheadDistance, distanceToInteract) > 1.85) {
+        return;
+      }
+
+      door.targetOpenAmount = 1;
+      door.open = true;
+      if (sound === 'panel') {
+        this.gameplaySfxAudio.playSmallPanel(true);
+      } else {
+        this.gameplaySfxAudio.playClosetDoor(true);
+      }
+    };
+
+    shouldOpenDoor(this.officeChapter.kitchenEntranceDoor);
+    shouldOpenDoor(this.officeChapter.backstageStorageDoor);
+    shouldOpenDoor(this.officeChapter.storageClosetDoor);
+    shouldOpenDoor(this.officeChapter.bathroomEntranceDoor);
+    this.officeChapter.bathroomRoomDoors.forEach((door) => shouldOpenDoor(door));
+  }
+
   private moveOfficeGameModeAnimatronic(
     animatronic: OfficeGameModeAnimatronicState,
     dx: number,
@@ -7283,6 +7351,7 @@ export class Game {
     const directMoveZ = root.position.z + directionZ * step;
     const directLookAheadX = directMoveX + directionX * OFFICE_GAME_MODE_DIRECT_LOOKAHEAD;
     const directLookAheadZ = directMoveZ + directionZ * OFFICE_GAME_MODE_DIRECT_LOOKAHEAD;
+    this.openOfficeGameModeDoorsNearAnimatronic(animatronic, directLookAheadX, directLookAheadZ);
     if (
       this.canOfficeGameModeAnimatronicStandAt(directMoveX, directMoveZ)
       && this.canOfficeGameModeAnimatronicStandAt(
@@ -8377,22 +8446,30 @@ export class Game {
     }
 
     const running = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted';
-    const motionStrength = running ? 1.55 : 0.62;
-    const stepCycle = this.elapsed * (running ? 17.5 : 7.4);
+    const gaitSpeed = (running ? 17.5 : 7.4) * animatronic.walkCycleSpeedMultiplier;
+    const motionStrength = (running ? 1.55 : 0.62) * animatronic.walkCycleStrideMultiplier;
+    const stepCycle = this.elapsed * gaitSpeed + animatronic.walkCyclePhase;
     const leftStep = Math.sin(stepCycle);
     const rightStep = Math.sin(stepCycle + Math.PI);
+    const bodyBob = Math.abs(Math.sin(stepCycle)) * (running ? 0.035 : 0.018) * animatronic.walkCycleBounceMultiplier;
+    const animationFloorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, animatronic.model.root.position.x, animatronic.model.root.position.z);
     animatronic.model.root.rotation.x = MathUtils.lerp(animatronic.model.root.rotation.x, running ? 0.13 : 0, 0.35);
-    animatronic.model.root.rotation.z = MathUtils.lerp(animatronic.model.root.rotation.z, running ? Math.sin(stepCycle) * 0.035 : 0, 0.35);
+    animatronic.model.root.rotation.z = MathUtils.lerp(
+      animatronic.model.root.rotation.z,
+      running ? Math.sin(stepCycle) * 0.035 * animatronic.walkCycleBounceMultiplier : Math.sin(stepCycle) * 0.012 * animatronic.walkCycleBounceMultiplier,
+      0.35,
+    );
+    animatronic.model.root.position.y = animationFloorY + bodyBob;
     animatronic.model.leftLeg.rotation.x = leftStep * (running ? 0.58 : 0.42) * motionStrength;
     animatronic.model.rightLeg.rotation.x = rightStep * (running ? 0.58 : 0.42) * motionStrength;
     animatronic.model.leftLegJoint.rotation.x = Math.max(0, -leftStep) * (running ? 0.74 : 0.48) * motionStrength;
     animatronic.model.rightLegJoint.rotation.x = Math.max(0, -rightStep) * (running ? 0.74 : 0.48) * motionStrength;
     const leftArmStride = rightStep;
     const rightArmStride = leftStep;
-    const armSwing = running ? 0.32 : 0.24;
-    const armSide = running ? 0.78 : 0.58;
+    const armSwing = (running ? 0.32 : 0.24) * animatronic.walkCycleArmMultiplier;
+    const armSide = (running ? 0.78 : 0.58) * animatronic.walkCycleSideMultiplier;
     const armLean = running ? 0.1 : 0.02;
-    const elbowBend = running ? 0.38 : 0.24;
+    const elbowBend = (running ? 0.38 : 0.24) * animatronic.walkCycleArmMultiplier;
     animatronic.model.leftArm.rotation.x = leftArmStride * armSwing * motionStrength - armLean;
     animatronic.model.rightArm.rotation.x = rightArmStride * armSwing * motionStrength - armLean;
     animatronic.model.leftArm.rotation.y = MathUtils.lerp(
@@ -8435,7 +8512,10 @@ export class Game {
       0.12 + Math.max(0, -rightArmStride) * 0.1,
       0.36,
     );
-    animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 9.4 : 5.6)) * 0.08 * (running ? 1.25 : 0.45);
+    animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 9.4 : 5.6) * animatronic.walkCycleSpeedMultiplier + animatronic.walkCyclePhase * 0.6)
+      * 0.08
+      * (running ? 1.25 : 0.45)
+      * animatronic.walkCycleBounceMultiplier;
     return false;
   }
 
@@ -8500,7 +8580,7 @@ export class Game {
       '',
       'Right click deletes a camera you are aiming at, otherwise it deletes your most recent marker in this area.',
       this.officeChapterActive
-        ? 'Press M to open the Chapter 3 mode menu. Use the desk monitors for cameras.'
+        ? 'Press M to open the Chapter 3 mode menu. Use the desk iPad for cameras.'
         : 'Press M to put the Coordinate Tool away.',
       lastMarkerText,
     ].join('\n');
@@ -12905,7 +12985,7 @@ export class Game {
           phaseLine,
           `Power: ${this.getOfficeGameModePowerLabel()}`,
           `Closed doors draining power: ${closedDoors}`,
-          'Use the desk camera monitors and door controls carefully. Closed doors block animatronics, but they drain power.',
+          'Use the desk camera iPad and door controls carefully. Closed doors block animatronics, but they drain power.',
           'M opens the mode menu. J opens the jumpscare test screen.',
         ].join('\n');
       }
@@ -13149,7 +13229,7 @@ export class Game {
         this.officeGameModeActive
           ? `${this.getOfficeModeLabel()}: ${this.getOfficeGameModeConfig().label} / Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS} / ${this.getOfficeGameModeClockLabel()} / Power ${this.getOfficeGameModePowerLabel()}`
           : 'Mode: Creator / Day',
-        'Press 1 for the Coordinate Tool. Use the desk monitors for cameras. Press 3 for the Mic Sound Tool. Press 4 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
+        'Press 1 for the Coordinate Tool. Use the desk iPad for cameras. Press 3 for the Mic Sound Tool. Press 4 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
       ].join('\n');
     }
 
@@ -13266,7 +13346,7 @@ export class Game {
     const state = this.officeTabletCameraFeedActive
       ? `viewing ${this.getActiveOfficeTabletCamera()?.label ?? 'no camera'}`
       : 'idle';
-    return `Desk Monitors: ${state} / stand at the desk and press E or left click`;
+    return `Desk iPad: ${state} / stand at the desk and press E or left click`;
   }
 
   private getMicrophoneSoundToolInventoryLine(): string {
@@ -13858,8 +13938,8 @@ export class Game {
 
       if (this.getNearestOfficeCameraMonitors()) {
         return locked
-          ? 'Desk camera monitors are in reach. Press E or left click to view the cameras.'
-          : 'Click the play space to re-enter first person, then use the desk monitors for cameras.';
+          ? 'Desk camera iPad is in reach. Press E or left click to view the cameras.'
+          : 'Click the play space to re-enter first person, then use the desk iPad for cameras.';
       }
 
       const heldPrizeText = this.getOfficeHeldPrizeActionText();
@@ -14033,11 +14113,11 @@ export class Game {
 
       if (!locked) {
       return this.officeGameModeActive
-        ? `${this.getOfficeModeLabel()} ${this.getOfficeGameModeConfig().label}: Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS}, ${this.getOfficeGameModeClockLabel()}, power ${this.getOfficeGameModePowerLabel()}. M opens the mode menu, use the desk monitors for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, F toggles the flashlight.`
-        : 'WASD moves, Space jumps, Shift sprints, E uses objects, 1 equips the Coordinate Tool, use the desk monitors for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
+        ? `${this.getOfficeModeLabel()} ${this.getOfficeGameModeConfig().label}: Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS}, ${this.getOfficeGameModeClockLabel()}, power ${this.getOfficeGameModePowerLabel()}. M opens the mode menu, use the desk iPad for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, F toggles the flashlight.`
+        : 'WASD moves, Space jumps, Shift sprints, E uses objects, 1 equips the Coordinate Tool, use the desk iPad for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
       }
 
-      return 'The office is quiet for now. Use the desk monitors to view the security cameras.';
+      return 'The office is quiet for now. Use the desk iPad to view the security cameras.';
     }
 
     if (this.chapterTwoActive) {
@@ -14506,7 +14586,7 @@ export class Game {
       const button = this.getNearestOfficeButton();
       const door = this.getNearestOfficeDoor();
       if (this.officeChapterSeated) {
-        return 'You are sitting at the office chair beside the desk. Left click the desk monitors to view cameras, or press E to stand up.';
+        return 'You are sitting at the office chair beside the desk. Left click the desk iPad to view cameras, or press E to stand up.';
       }
 
       if (this.officeBallPitSlide) {
@@ -14514,7 +14594,7 @@ export class Game {
       }
 
       if (cameraMonitors) {
-        return 'The desk camera monitors are in reach. Press E or left click to view the cameras.';
+        return 'The desk camera iPad is in reach. Press E or left click to view the cameras.';
       }
 
       if (this.isNearOfficeSeat()) {

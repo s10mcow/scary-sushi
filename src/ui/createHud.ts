@@ -821,7 +821,7 @@ export function createHud(host: HTMLElement): HudController {
 
   const tabletCameraLabel = document.createElement('p');
   tabletCameraLabel.className = 'hud__label';
-  tabletCameraLabel.textContent = 'Desk Cameras';
+  tabletCameraLabel.textContent = 'Desk iPad Cameras';
 
   const tabletCameraList = document.createElement('div');
   tabletCameraList.className = 'hud__tablet-camera-list';

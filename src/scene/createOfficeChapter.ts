@@ -6542,6 +6542,30 @@ export function createOfficeChapter(): OfficeChapterData {
   keyboard.position.set(deskX + 0.04, 1.41, deskZ + 0.4);
   const mousePad = new Mesh(new BoxGeometry(0.42, 0.03, 0.32), chairMaterial);
   mousePad.position.set(deskX + 1.48, 1.39, deskZ + 0.42);
+  const cameraTabletFrameMaterial = new MeshStandardMaterial({
+    color: 0x0d1118,
+    emissive: 0x02050a,
+    emissiveIntensity: 0.16,
+    roughness: 0.42,
+    metalness: 0.2,
+  });
+  const cameraTabletScreenMaterial = new MeshStandardMaterial({
+    color: 0x13283a,
+    emissive: 0x18a6ff,
+    emissiveIntensity: 0.42,
+    roughness: 0.24,
+    metalness: 0.06,
+  });
+  const cameraTablet = new Group();
+  cameraTablet.position.set(deskX - 0.72, 1.42, deskZ + 0.42);
+  cameraTablet.rotation.y = -0.14;
+  const cameraTabletFrame = new Mesh(new BoxGeometry(0.92, 0.055, 0.58), cameraTabletFrameMaterial);
+  const cameraTabletScreen = new Mesh(new BoxGeometry(0.78, 0.062, 0.44), cameraTabletScreenMaterial);
+  cameraTabletScreen.position.y = 0.01;
+  const cameraTabletHome = new Mesh(new CylinderGeometry(0.025, 0.025, 0.012, 16), materials.metal);
+  cameraTabletHome.position.set(0.39, 0.045, 0);
+  cameraTabletHome.rotation.z = Math.PI / 2;
+  cameraTablet.add(cameraTabletFrame, cameraTabletScreen, cameraTabletHome);
   const papers = new Mesh(new BoxGeometry(0.96, 0.04, 0.72), paperMaterial);
   papers.position.set(deskX - 1.42, 1.4, deskZ + 0.36);
   papers.rotation.y = -0.22;
@@ -6552,6 +6576,7 @@ export function createOfficeChapter(): OfficeChapterData {
     rightMonitor,
     keyboard,
     mousePad,
+    cameraTablet,
     papers,
   );
 
@@ -6582,7 +6607,7 @@ export function createOfficeChapter(): OfficeChapterData {
     lookTarget: new Vector3(deskX, 1.72, deskZ - 0.16),
   };
   const cameraMonitors: OfficeChapterCameraMonitors = {
-    label: 'Desk Camera Monitors',
+    label: 'Desk Camera iPad',
     interactPosition: new Vector3(deskX, GAME_CONFIG.player.height, deskZ + 0.18),
   };
 
