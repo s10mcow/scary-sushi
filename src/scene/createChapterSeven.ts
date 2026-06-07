@@ -1284,7 +1284,10 @@ export function createChapterSeven(): ChapterSevenData {
   const frontBedroomMarkerDrawer = addDrawer(
     1186.79 - CENTER_X,
     85.79 - HOUSE_CENTER_Z,
-    0,
+    Math.atan2(
+      HOUSE_LEFT_ROOM_WALL_X + 2.25 - (1186.79 - CENTER_X),
+      HOUSE_FRONT_ROOM_DOOR_Z - (85.79 - HOUSE_CENTER_Z),
+    ),
     'Front bedroom marker drawer',
   );
   const houseFridge = addFridge(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z);
