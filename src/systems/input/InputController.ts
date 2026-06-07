@@ -194,6 +194,10 @@ export class InputController {
       this.officeJumpscareMenuToggleQueued = true;
     }
 
+    if (event.code === 'KeyP' && !event.repeat) {
+      this.chapterMenuToggleQueued = true;
+    }
+
     if (event.code === 'KeyV' && !event.repeat) {
       this.hudHelpToggleQueued = true;
     }
