@@ -60,6 +60,7 @@ export interface ChapterSevenDrawerSlide {
   label: string;
   interactPosition: Vector3;
   aimPosition: Vector3;
+  cookieCount: number;
   root: Group;
   closedZ: number;
   openZ: number;
@@ -729,6 +730,26 @@ export function createChapterSeven(): ChapterSevenData {
       knob.rotation.x = Math.PI / 2;
       knob.position.set(0, 0, 0.6);
       slide.add(trayBottom, leftTraySide, rightTraySide, trayBack, front, knob);
+      const cookieRoll = Math.sin((localX + 31.17) * 8.731 + (localZ - 11.42) * 5.913 + label.length * 1.37 + index * 2.81) * 43758.5453;
+      const cookieNormalized = cookieRoll - Math.floor(cookieRoll);
+      const cookieCount = cookieNormalized < 0.36 ? 0 : cookieNormalized < 0.74 ? 1 : 2;
+      for (let cookieIndex = 0; cookieIndex < cookieCount; cookieIndex += 1) {
+        const side = cookieCount === 1 ? 0 : cookieIndex === 0 ? -1 : 1;
+        const cookie = new Mesh(new CylinderGeometry(0.15, 0.15, 0.045, 18), cookieMaterial);
+        cookie.position.set(side * 0.34, -0.09, 0.05 + cookieIndex * 0.12);
+        const chipOffsets = [
+          [-0.045, 0.018],
+          [0.04, -0.025],
+          [0.015, 0.046],
+        ];
+        chipOffsets.forEach(([chipX, chipZ]) => {
+          const chip = new Mesh(new SphereGeometry(0.018, 8, 6), chocolateChipMaterial);
+          chip.position.set(cookie.position.x + chipX, -0.055, cookie.position.z + chipZ);
+          chip.scale.y = 0.42;
+          slide.add(chip);
+        });
+        slide.add(cookie);
+      }
       drawer.add(slide);
       const worldY = drawerY * drawer.scale.y;
       return {
@@ -739,6 +760,7 @@ export function createChapterSeven(): ChapterSevenData {
           Math.max(0.52, worldY),
           worldZ + frontDirection.z * 0.68,
         ),
+        cookieCount,
         root: slide,
         closedZ: 0,
         openZ: 0.72 + index * 0.06,

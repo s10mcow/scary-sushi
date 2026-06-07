@@ -10130,9 +10130,14 @@ export class Game {
         drawer.targetOpenAmount = drawer.targetOpenAmount > 0.5 ? 0 : 1;
         drawer.open = drawer.targetOpenAmount > 0.5;
         this.gameplaySfxAudio.playClosetDoor(drawer.open);
+        const cookieLine = drawer.cookieCount === 0
+          ? ' It is empty.'
+          : drawer.cookieCount === 1
+            ? ' There is one cookie inside.'
+            : ` There are ${drawer.cookieCount} cookies inside.`;
         this.pushStatus(
           drawer.open
-            ? `${drawer.label} slides open. It is empty for now.`
+            ? `${drawer.label} slides open.${cookieLine}`
             : `${drawer.label} slides closed.`,
           2.4,
         );
@@ -14655,7 +14660,11 @@ export class Game {
 
         if (interactable.kind === 'drawer') {
           return interactable.item.open
-            ? `${interactable.item.label} is open. Press E to close it. It is empty for now.`
+            ? `${interactable.item.label} is open. Press E to close it.${interactable.item.cookieCount === 0
+              ? ' It is empty.'
+              : interactable.item.cookieCount === 1
+                ? ' There is one cookie inside.'
+                : ` There are ${interactable.item.cookieCount} cookies inside.`}`
             : `${interactable.item.label} is closed. Press E to open it.`;
         }
 
@@ -16822,7 +16831,7 @@ export class Game {
     }
 
     this.chapterSeven.houseDrawers.forEach((drawer) => {
-      const drawerScore = this.getChapterSevenLookScore(drawer, 0.34, 0.85);
+      const drawerScore = this.getChapterSevenLookScore(drawer, 0.23, 0.85);
       if (drawerScore !== null) {
         keepBest({ kind: 'drawer', item: drawer, score: drawerScore });
       }
