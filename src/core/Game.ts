@@ -587,7 +587,7 @@ const OFFICE_INSULT_PHRASES = [
   'you are dumb',
   'your dumb',
 ] as const;
-const OFFICE_DOOR_BREACH_CHANCE = 0.58;
+const OFFICE_DOOR_BREACH_CHANCE = 0.32;
 const OFFICE_DOOR_BREACH_SECONDS = 4.75;
 const OFFICE_DOOR_LINGER_SECONDS = 2.8;
 const OFFICE_DOOR_LINGER_LAUGH_DELAY = 0.95;
@@ -677,12 +677,12 @@ const OFFICE_GAME_MODE_ROUTES: Record<OfficeJumpscareAnimatronic, Vector3[]> = {
   bori: [
     new Vector3(-235.4, GAME_CONFIG.player.height, 160.9),
     new Vector3(-239.5, GAME_CONFIG.player.height, 166.5),
-    new Vector3(-231.7, GAME_CONFIG.player.height, 176.8),
-    OFFICE_GAME_MODE_RIGHT_DOOR_WATCH.clone(),
-    OFFICE_GAME_MODE_LEFT_DOOR_WATCH.clone(),
+    new Vector3(-235.2, GAME_CONFIG.player.height, 161),
     new Vector3(-247.8, GAME_CONFIG.player.height, 171.2),
     new Vector3(-254.9, GAME_CONFIG.player.height, 171),
-    new Vector3(-235.2, GAME_CONFIG.player.height, 161),
+    OFFICE_GAME_MODE_LEFT_DOOR_WATCH.clone(),
+    new Vector3(-231.7, GAME_CONFIG.player.height, 176.8),
+    OFFICE_GAME_MODE_RIGHT_DOOR_WATCH.clone(),
   ],
   foxy: [
     new Vector3(-199.4, GAME_CONFIG.player.height, 156.8),
@@ -2176,7 +2176,7 @@ export class Game {
     }
 
     if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeFire()) {
-      if (this.officeChapterActive && (this.officeTabletHeld || this.officeTabletCameraFeedActive)) {
+      if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.toggleOfficeTabletCameraFeed();
       } else if (this.microphoneSoundToolActive) {
         this.previewMicrophoneSound();
@@ -4434,8 +4434,11 @@ export class Game {
   }
 
   private spawnOfficeDoorSparks(doorId: 'left' | 'right', liftAmount: number): void {
-    const side = doorId === 'left' ? -1 : 1;
-    const base = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const door = this.getOfficeDoorById(doorId);
+    if (!door) {
+      return;
+    }
+
     const sparkCount = 3 + Math.floor(Math.random() * 3);
     for (let index = 0; index < sparkCount; index += 1) {
       const material = new MeshBasicMaterial({
@@ -4444,20 +4447,26 @@ export class Game {
         opacity: 0.95,
       });
       const spark = new Mesh(new BoxGeometry(0.035, 0.018, 0.018), material);
-      spark.position.set(
-        base.x + side * (0.28 + Math.random() * 0.14),
-        0.72 + liftAmount * 1.15 + Math.random() * 0.28,
-        base.z - 0.28 + (Math.random() - 0.5) * 0.42,
+      const railSide = Math.random() > 0.5 ? 1 : -1;
+      const sparkHeight = Math.random() > 0.28
+        ? MathUtils.lerp(0.64, 3.08, liftAmount) + (Math.random() - 0.5) * 0.34
+        : 3.48 + Math.random() * 0.26;
+      const localPosition = new Vector3(
+        railSide * (1.92 + Math.random() * 0.26),
+        sparkHeight,
+        0.28 + Math.random() * 0.08,
       );
+      spark.position.copy(door.root.localToWorld(localPosition));
       spark.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
       this.officeChapter.root.add(spark);
+
+      const outwardVelocity = new Vector3(0, 0, 0.6 + Math.random() * 0.6).applyQuaternion(door.root.quaternion);
+      const railVelocity = new Vector3(railSide * (0.16 + Math.random() * 0.42), 0, 0).applyQuaternion(door.root.quaternion);
+      const velocity = outwardVelocity.add(railVelocity);
+      velocity.y = 0.58 + Math.random() * 0.8;
       this.activeOfficeDoorSparks.push({
         mesh: spark,
-        velocity: new Vector3(
-          side * (0.45 + Math.random() * 0.7),
-          0.65 + Math.random() * 0.75,
-          (Math.random() - 0.5) * 0.8,
-        ),
+        velocity,
         elapsed: 0,
         duration: 0.22 + Math.random() * 0.22,
       });
@@ -4979,14 +4988,6 @@ export class Game {
       return;
     }
 
-    if (slot === 2) {
-      if (this.officeTabletCameraFeedActive) {
-        this.officeTabletCameraFeedActive = false;
-      }
-      this.setOfficeTabletHeld(true);
-      return;
-    }
-
     if (slot === 3) {
       this.setMicrophoneSoundToolActive(true);
       return;
@@ -5153,41 +5154,6 @@ export class Game {
     this.pushStatus(`${camera?.label ?? `Camera ${slot}`} selected.`, 1.4);
   }
 
-  private setOfficeTabletHeld(held: boolean): void {
-    if (this.officeTabletHeld === held && (!held || !this.officeTabletCameraFeedActive)) {
-      return;
-    }
-
-    this.officeTabletHeld = held;
-    if (held) {
-      this.setPlacementToolActive(false);
-      this.setMicrophoneSoundToolActive(false);
-      this.setCameraToolActive(false);
-      this.officeTabletCameraFeedActive = false;
-      this.officeGlassHeld = false;
-      this.officeGlassAnchor.visible = false;
-      this.clearOfficeHeldPrizeItem();
-      this.chapterFourBoxHeld = false;
-      this.chapterFourBoxActive = false;
-      this.chapterFourBoxViewMode = 'normal';
-      this.chapterFourBoxWideCameraReady = false;
-      this.chapterFourBoxHeldAnchor.visible = false;
-      this.chapterFourBoxHideAnchor.visible = false;
-      this.chapterFourBoxWideAnchor.visible = false;
-      this.chapterFourBoxWorldAnchor.visible = false;
-    } else {
-      this.officeTabletCameraFeedActive = false;
-      this.officeTabletAnchor.visible = false;
-    }
-
-    this.pushStatus(
-      held
-        ? 'Tablet equipped. Left click to open the camera list.'
-        : 'Tablet put away.',
-      held ? 2.8 : 1.4,
-    );
-  }
-
   private resetOfficeTabletState(): void {
     this.officeTabletHeld = false;
     this.officeTabletCameraFeedActive = false;
@@ -5243,22 +5209,23 @@ export class Game {
 
     if (!this.officeGameModeHasPower()) {
       this.officeTabletCameraFeedActive = false;
-      this.pushStatus('The tablet cameras are dead. The office power is out.', 2.4);
+      this.pushStatus('The desk camera monitors are dead. The office power is out.', 2.4);
       return;
     }
 
-    if (!this.officeTabletHeld && !this.officeTabletCameraFeedActive) {
+    if (!this.officeTabletCameraFeedActive && !this.getNearestOfficeCameraMonitors()) {
+      this.pushStatus('Use the camera monitors on the office desk to open the camera feed.', 2.2);
       return;
     }
 
     if (!this.officeTabletCameraFeedActive && this.officeChapter.securityCameras.length === 0) {
-      this.pushStatus('No tablet cameras are installed. Mark a spot with the Coordinate Tool and tell Codex where to add one.', 3);
+      this.pushStatus('No desk cameras are installed. Mark a spot with the Coordinate Tool and tell Codex where to add one.', 3);
       return;
     }
 
     const wasViewingCameraFeed = this.officeTabletCameraFeedActive;
     this.officeTabletCameraFeedActive = !this.officeTabletCameraFeedActive;
-    this.officeTabletHeld = true;
+    this.officeTabletHeld = false;
     this.placementToolActive = false;
     this.placementPreview.visible = false;
     this.officeGlassHeld = false;
@@ -5277,16 +5244,16 @@ export class Game {
     this.resize();
     this.pushStatus(
       clearedPuppetThreat
-        ? 'The puppet vanishes behind the tablet static.'
+        ? 'The puppet vanishes behind the monitor static.'
       : this.officeCameraPuppetPhase !== 'idle'
         ? this.officeCameraPuppetPhase === 'camera-face'
-          ? 'A crying puppet face fills the camera. Drop the tablet now.'
+          ? 'A crying puppet face fills the camera. Close the desk monitors now.'
           : this.officeCameraPuppetPhase === 'room-watch'
             ? 'The puppet is staring at you. Put the camera back up within two seconds.'
             : 'The puppet reaches you.'
       : this.officeTabletCameraFeedActive
-        ? `Viewing ${camera?.label ?? 'tablet camera'} through the tablet. Press number keys to switch, or left click again to return.`
-        : 'Tablet view closed.',
+        ? `Viewing ${camera?.label ?? 'desk camera'} on the desk monitors. Press number keys to switch, or left click again to return.`
+        : 'Camera monitor view closed.',
       clearedPuppetThreat || this.officeCameraPuppetPhase !== 'idle' ? 2.4 : this.officeTabletCameraFeedActive ? 2.6 : 1.4,
     );
   }
@@ -5967,6 +5934,7 @@ export class Game {
     const reachUnder = MathUtils.smoothstep(progress, 0.16, 0.34) * (1 - MathUtils.smoothstep(progress, 0.48, 0.7));
     const grab = MathUtils.smoothstep(progress, 0.3, 0.48);
     const lift = MathUtils.smoothstep(progress, 0.38, 0.96);
+    const doorLift = MathUtils.smoothstep(progress, 0.42, 0.995);
     const oneArmShove = MathUtils.smoothstep(progress, 0.52, 0.92);
     const brace = MathUtils.smoothstep(progress, 0.34, 0.52) * (1 - MathUtils.smoothstep(progress, 0.92, 1));
     const jump = Math.sin(MathUtils.smoothstep(progress, 0.76, 0.98) * Math.PI) * 0.08;
@@ -6028,17 +5996,17 @@ export class Game {
       this.gameplaySfxAudio.playSecurityDoorCrash();
     }
 
-    if (progress >= 0.32) {
-      door.targetOpenAmount = 1;
+    if (progress >= 0.34) {
+      door.targetOpenAmount = Math.max(door.targetOpenAmount, doorLift);
       door.open = true;
-      door.openAmount = Math.max(door.openAmount, lift);
+      door.openAmount = Math.max(door.openAmount, doorLift);
       door.closeBounceTimer = 0;
     }
 
-    if (progress >= 0.3 && progress < 0.96) {
+    if (progress >= 0.34 && progress < 0.995) {
       const sparkBursts = Math.floor(animatronic.doorBreachTimer / 0.11) - Math.floor(previousTimer / 0.11);
       for (let index = 0; index < sparkBursts; index += 1) {
-        this.spawnOfficeDoorSparks(doorId, MathUtils.lerp(0.36, 1.04, lift));
+        this.spawnOfficeDoorSparks(doorId, doorLift);
       }
     }
 
@@ -6049,6 +6017,9 @@ export class Game {
     root.scale.setScalar(baseScale);
     root.rotation.x = 0;
     root.rotation.z = 0;
+    door.targetOpenAmount = 1;
+    door.openAmount = 1;
+    door.open = true;
     animatronic.state = 'rush';
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = null;
@@ -6329,7 +6300,7 @@ export class Game {
   private getOfficeGameModeWaypointDwellSeconds(animatronic: OfficeJumpscareAnimatronic, routeIndex: number): number {
     const doorRoute = this.isOfficeGameModeDoorRoutePoint(animatronic, routeIndex);
     if (doorRoute) {
-      return 0.35 + Math.random() * 0.65;
+      return 1.3 + Math.random() * 1.8;
     }
 
     if (animatronic === 'quacky' && routeIndex >= 2 && routeIndex <= 4) {
@@ -6367,19 +6338,6 @@ export class Game {
       return 0;
     }
 
-    const officePressure = this.getOfficeGameModeNightPressure() * 0.54 + this.getOfficeGameModeNightPhaseProgress() * 0.46;
-    if (reachedRouteIndex !== 0 && Math.random() < MathUtils.lerp(0.32, 0.72, officePressure)) {
-      const doorIndexes = animatronic.route
-        .map((point, index) => ({ point, index }))
-        .filter((entry) => (
-          entry.point.distanceTo(OFFICE_GAME_MODE_LEFT_DOOR_WATCH) < 0.2
-          || entry.point.distanceTo(OFFICE_GAME_MODE_RIGHT_DOOR_WATCH) < 0.2
-        ));
-      if (doorIndexes.length > 0) {
-        return doorIndexes[Math.floor(Math.random() * doorIndexes.length)].index;
-      }
-    }
-
     if (animatronic.animatronic === 'quacky' && reachedRouteIndex === 1) {
       const roll = Math.random();
       if (roll < 0.22) {
@@ -6390,7 +6348,7 @@ export class Game {
         return Math.min(5, routeLength - 1);
       }
 
-      return routeLength - 1;
+      return Math.min(6, routeLength - 1);
     }
 
     return (reachedRouteIndex + 1) % routeLength;
@@ -8542,7 +8500,7 @@ export class Game {
       '',
       'Right click deletes a camera you are aiming at, otherwise it deletes your most recent marker in this area.',
       this.officeChapterActive
-        ? 'Press M to open the Chapter 3 mode menu, or press 2 to switch to the tablet.'
+        ? 'Press M to open the Chapter 3 mode menu. Use the desk monitors for cameras.'
         : 'Press M to put the Coordinate Tool away.',
       lastMarkerText,
     ].join('\n');
@@ -8813,9 +8771,9 @@ export class Game {
     if (cameras.length === 0) {
       this.officeTabletCameraFeedActive = false;
       this.resize();
-      this.pushStatus(`${securityCamera.label} deleted. No tablet cameras are installed now.`, 2.8);
+      this.pushStatus(`${securityCamera.label} deleted. No desk cameras are installed now.`, 2.8);
     } else {
-      this.pushStatus(`${securityCamera.label} deleted from the tablet camera system.`, 2.4);
+      this.pushStatus(`${securityCamera.label} deleted from the desk camera system.`, 2.4);
     }
     this.gameplaySfxAudio.playSmallPanel(false);
     return true;
@@ -10179,6 +10137,11 @@ export class Game {
     }
 
     if (this.officeChapterActive) {
+      if (this.getNearestOfficeCameraMonitors()) {
+        this.toggleOfficeTabletCameraFeed();
+        return;
+      }
+
       const officeButton = this.getNearestOfficeButton();
       if (officeButton && this.handleOfficeButtonInteraction(officeButton)) {
         return;
@@ -12942,7 +12905,7 @@ export class Game {
           phaseLine,
           `Power: ${this.getOfficeGameModePowerLabel()}`,
           `Closed doors draining power: ${closedDoors}`,
-          'Use the tablet cameras and door controls carefully. Closed doors block animatronics, but they drain power.',
+          'Use the desk camera monitors and door controls carefully. Closed doors block animatronics, but they drain power.',
           'M opens the mode menu. J opens the jumpscare test screen.',
         ].join('\n');
       }
@@ -13174,7 +13137,7 @@ export class Game {
         .map(({ item }) => `${OFFICE_PRIZE_ITEM_LABELS[item]} x${this.getOfficePrizeItemCount(item)}`)
         .join(', ');
       return [
-        'Inventory: Coordinate Tool, Tablet, Mic Sound Tool, Camera Tool, prize hotbar',
+        'Inventory: Coordinate Tool, Mic Sound Tool, Camera Tool, prize hotbar',
         this.getCoordinateToolInventoryLine(),
         this.getOfficeTabletInventoryLine(),
         this.getMicrophoneSoundToolInventoryLine(),
@@ -13186,7 +13149,7 @@ export class Game {
         this.officeGameModeActive
           ? `${this.getOfficeModeLabel()}: ${this.getOfficeGameModeConfig().label} / Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS} / ${this.getOfficeGameModeClockLabel()} / Power ${this.getOfficeGameModePowerLabel()}`
           : 'Mode: Creator / Day',
-        'Press 1 for the Coordinate Tool. Press 2 for the tablet. Press 3 for the Mic Sound Tool. Press 4 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
+        'Press 1 for the Coordinate Tool. Use the desk monitors for cameras. Press 3 for the Mic Sound Tool. Press 4 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
       ].join('\n');
     }
 
@@ -13302,10 +13265,8 @@ export class Game {
   private getOfficeTabletInventoryLine(): string {
     const state = this.officeTabletCameraFeedActive
       ? `viewing ${this.getActiveOfficeTabletCamera()?.label ?? 'no camera'}`
-      : this.officeTabletHeld
-        ? 'equipped'
-        : 'in inventory';
-    return `Tablet: ${state} / press 2 / left click opens cameras`;
+      : 'idle';
+    return `Desk Monitors: ${state} / stand at the desk and press E or left click`;
   }
 
   private getMicrophoneSoundToolInventoryLine(): string {
@@ -13548,7 +13509,7 @@ export class Game {
       });
       return [
         coordinateToolSlot,
-        this.getOfficeTabletHotbarSlot(),
+        { label: 'Empty', count: 0, filled: false },
         this.getMicrophoneSoundToolHotbarSlot(3),
         this.getCameraToolHotbarSlot(),
         ...officePrizeSlots,
@@ -13597,19 +13558,6 @@ export class Game {
     return {
       label: `Coordinate Tool ${this.placementToolActive ? '[Held]' : this.officeChapterActive || this.chapterFourActive ? '[1]' : '[M]'}`,
       count: this.placementMarkers.filter((marker) => marker.chapter === this.getCurrentHudChapterId()).length,
-      filled: true,
-    };
-  }
-
-  private getOfficeTabletHotbarSlot() {
-    const state = this.officeTabletCameraFeedActive
-      ? '[Feed]'
-      : this.officeTabletHeld
-        ? '[Held]'
-        : '[C]';
-    return {
-      label: `Tablet ${state}`,
-      count: 1,
       filled: true,
     };
   }
@@ -13908,10 +13856,10 @@ export class Game {
         return `${this.getActiveOfficeTabletCamera()?.label ?? 'No camera installed'}. Press a camera number to switch cameras, or left click to return to your normal view.`;
       }
 
-      if (this.officeTabletHeld) {
+      if (this.getNearestOfficeCameraMonitors()) {
         return locked
-          ? 'Tablet held. Left click to open the camera feed.'
-          : 'Click the play space to re-enter first person, then left click with the tablet to open the camera feed.';
+          ? 'Desk camera monitors are in reach. Press E or left click to view the cameras.'
+          : 'Click the play space to re-enter first person, then use the desk monitors for cameras.';
       }
 
       const heldPrizeText = this.getOfficeHeldPrizeActionText();
@@ -14085,11 +14033,11 @@ export class Game {
 
       if (!locked) {
       return this.officeGameModeActive
-        ? `${this.getOfficeModeLabel()} ${this.getOfficeGameModeConfig().label}: Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS}, ${this.getOfficeGameModeClockLabel()}, power ${this.getOfficeGameModePowerLabel()}. M opens the mode menu, 2 equips the tablet, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, F toggles the flashlight.`
-        : 'WASD moves, Space jumps, Shift sprints, E uses objects, 1 equips the Coordinate Tool, 2 equips the tablet, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
+        ? `${this.getOfficeModeLabel()} ${this.getOfficeGameModeConfig().label}: Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS}, ${this.getOfficeGameModeClockLabel()}, power ${this.getOfficeGameModePowerLabel()}. M opens the mode menu, use the desk monitors for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, F toggles the flashlight.`
+        : 'WASD moves, Space jumps, Shift sprints, E uses objects, 1 equips the Coordinate Tool, use the desk monitors for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
       }
 
-      return 'The office is quiet for now. Press 2 to hold the tablet, then left click to view the security cameras.';
+      return 'The office is quiet for now. Use the desk monitors to view the security cameras.';
     }
 
     if (this.chapterTwoActive) {
@@ -14385,11 +14333,7 @@ export class Game {
     }
 
     if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
-      return `Tablet camera feed active. ${this.getActiveOfficeTabletCamera()?.label ?? 'No camera installed'}. Press a camera number to switch, or left click to return.`;
-    }
-
-    if (this.officeChapterActive && this.officeTabletHeld) {
-      return 'Tablet equipped. Left click to open the Chapter 3 camera list.';
+      return `Desk camera feed active. ${this.getActiveOfficeTabletCamera()?.label ?? 'No camera installed'}. Press a camera number to switch, or left click to return.`;
     }
 
     if (this.chapterFourActive && this.chapterFourBoxActive) {
@@ -14558,14 +14502,19 @@ export class Game {
       const prizeWheel = this.getNearestOfficePrizeWheel();
       const foxyPlay = this.getNearestOfficeFoxyPlayButton();
       const partyPlay = this.getNearestOfficePartyPlayMachine();
+      const cameraMonitors = this.getNearestOfficeCameraMonitors();
       const button = this.getNearestOfficeButton();
       const door = this.getNearestOfficeDoor();
       if (this.officeChapterSeated) {
-        return 'You are sitting at the office chair beside the desk.';
+        return 'You are sitting at the office chair beside the desk. Left click the desk monitors to view cameras, or press E to stand up.';
       }
 
       if (this.officeBallPitSlide) {
         return 'You are sliding down the half-pipe into the ball pit.';
+      }
+
+      if (cameraMonitors) {
+        return 'The desk camera monitors are in reach. Press E or left click to view the cameras.';
       }
 
       if (this.isNearOfficeSeat()) {
@@ -15462,6 +15411,29 @@ export class Game {
     return this.officeChapter.doors.find((door) => door.id === doorId) ?? null;
   }
 
+  private getNearestOfficeCameraMonitors(): OfficeChapterData['cameraMonitors'] | null {
+    if (!this.officeChapterActive) {
+      return null;
+    }
+
+    const monitors = this.officeChapter.cameraMonitors;
+    const playerPosition = this.player.getPosition();
+    const toMonitor = monitors.interactPosition.clone().sub(playerPosition);
+    const flatDistance = Math.hypot(toMonitor.x, toMonitor.z);
+    if (flatDistance > GAME_CONFIG.player.interactionRange + 0.85) {
+      return null;
+    }
+
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const along = toMonitor.dot(forward);
+    if (along <= -0.18) {
+      return null;
+    }
+
+    const lateral = toMonitor.sub(forward.multiplyScalar(Math.max(0, along))).length();
+    return lateral <= 1.35 ? monitors : null;
+  }
+
   private getNearestOfficeButton(): OfficeChapterData['buttons'][number] | null {
     const playerPosition = this.player.getPosition();
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
@@ -16293,6 +16265,11 @@ export class Game {
 
     if (this.officeChapterSeated) {
       this.leaveOfficeChapterSeat();
+      return;
+    }
+
+    if (this.getNearestOfficeCameraMonitors()) {
+      this.toggleOfficeTabletCameraFeed();
       return;
     }
 

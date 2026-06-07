@@ -38,6 +38,11 @@ export interface OfficeChapterSeat {
   lookTarget: Vector3;
 }
 
+export interface OfficeChapterCameraMonitors {
+  label: string;
+  interactPosition: Vector3;
+}
+
 export interface OfficeChapterDoor {
   id: 'left' | 'right';
   label: string;
@@ -317,6 +322,7 @@ export interface OfficeChapterData {
   spawn: Vector3;
   lookTarget: Vector3;
   seat: OfficeChapterSeat;
+  cameraMonitors: OfficeChapterCameraMonitors;
   doors: OfficeChapterDoor[];
   buttons: OfficeChapterButton[];
   partyPlay: OfficeChapterPartyPlayMachine;
@@ -6575,6 +6581,10 @@ export function createOfficeChapter(): OfficeChapterData {
     exitPosition: new Vector3(chairX, 1.72, chairZ + 1.26),
     lookTarget: new Vector3(deskX, 1.72, deskZ - 0.16),
   };
+  const cameraMonitors: OfficeChapterCameraMonitors = {
+    label: 'Desk Camera Monitors',
+    interactPosition: new Vector3(deskX, GAME_CONFIG.player.height, deskZ + 0.18),
+  };
 
   const spawn = new Vector3(OFFICE_CENTER_X, 1.72, OFFICE_CENTER_Z + 2.2);
   const lookTarget = new Vector3(deskX, 1.72, deskZ);
@@ -7584,6 +7594,7 @@ export function createOfficeChapter(): OfficeChapterData {
     spawn,
     lookTarget,
     seat,
+    cameraMonitors,
     doors,
     buttons,
     partyPlay,

@@ -821,7 +821,7 @@ export function createHud(host: HTMLElement): HudController {
 
   const tabletCameraLabel = document.createElement('p');
   tabletCameraLabel.className = 'hud__label';
-  tabletCameraLabel.textContent = 'Tablet Cameras';
+  tabletCameraLabel.textContent = 'Desk Cameras';
 
   const tabletCameraList = document.createElement('div');
   tabletCameraList.className = 'hud__tablet-camera-list';
@@ -1035,7 +1035,7 @@ export function createHud(host: HTMLElement): HudController {
 
   const controlsText = document.createElement('p');
   controlsText.className = 'hud__hint hud__info-bar-body';
-  controlsText.textContent = 'WASD move / Space jump / E interact / 1 Tool / 2 Tablet / K Creator / M Mode / J Jumpscares / F Light / V Hide panels / Esc Pointer';
+  controlsText.textContent = 'WASD move / Space jump / E interact / 1 Tool / 3 Mic / 4 Camera / K Creator / M Mode / J Jumpscares / F Light / V Hide panels / Esc Pointer';
 
   howToPlayBar.append(howToPlayLabel, controlsText);
 
