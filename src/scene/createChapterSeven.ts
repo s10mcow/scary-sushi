@@ -1405,7 +1405,7 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_DEPTH / 2 + 2.2,
     -1,
   );
-  const porchWidth = HOUSE_WIDTH - 1.2;
+  const porchWidth = 23.6;
   const porchDepth = 11.2;
   const porchGapWidth = 4.6;
   const porchCenterZ = HOUSE_DEPTH / 2 + porchDepth / 2 + 0.18;
@@ -1484,6 +1484,34 @@ export function createChapterSeven(): ChapterSevenData {
     post.position.set(postX, 0.72, postZ);
     return post;
   });
+  const porchRoofDepth = porchDepth + 0.9;
+  const porchRoofCenterZ = HOUSE_DEPTH / 2 + porchRoofDepth / 2 - 0.05;
+  const porchRoofDrop = 1.05;
+  const porchRoofAngle = Math.atan2(porchRoofDrop, porchRoofDepth);
+  const porchRoof = new Mesh(new BoxGeometry(porchWidth + 1.1, 0.38, porchRoofDepth), houseRoofMaterial);
+  porchRoof.position.set(0, 5.84, porchRoofCenterZ);
+  porchRoof.rotation.x = porchRoofAngle;
+  const porchRoofFrontTrim = new Mesh(new BoxGeometry(porchWidth + 1.25, 0.34, 0.34), houseTrimMaterial);
+  porchRoofFrontTrim.position.set(0, 5.28, HOUSE_DEPTH / 2 + porchRoofDepth - 0.08);
+  const porchRoofSideTrims = [
+    [-porchWidth / 2 - 0.52, porchRoofCenterZ],
+    [porchWidth / 2 + 0.52, porchRoofCenterZ],
+  ].map(([trimX, trimZ]) => {
+    const trim = new Mesh(new BoxGeometry(0.32, 0.34, porchRoofDepth), houseTrimMaterial);
+    trim.position.set(trimX, 5.72, trimZ);
+    trim.rotation.x = porchRoofAngle;
+    return trim;
+  });
+  const porchRoofPosts = [
+    [-porchWidth / 2, HOUSE_DEPTH / 2 + 0.72, 5.72],
+    [porchWidth / 2, HOUSE_DEPTH / 2 + 0.72, 5.72],
+    [-porchWidth / 2, porchFrontZ, 5.08],
+    [porchWidth / 2, porchFrontZ, 5.08],
+  ].map(([postX, postZ, postHeight]) => {
+    const post = new Mesh(new BoxGeometry(0.34, postHeight, 0.34), houseTrimMaterial);
+    post.position.set(postX, postHeight / 2, postZ);
+    return post;
+  });
   house.add(
     porchFloor,
     ...porchPlanks,
@@ -1492,6 +1520,10 @@ export function createChapterSeven(): ChapterSevenData {
     ...frontLeftRail,
     ...frontRightRail,
     ...porchPosts,
+    porchRoof,
+    porchRoofFrontTrim,
+    ...porchRoofSideTrims,
+    ...porchRoofPosts,
   );
   addCollider(colliders, CENTER_X - porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
