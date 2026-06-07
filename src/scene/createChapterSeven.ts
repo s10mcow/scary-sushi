@@ -1525,6 +1525,8 @@ export function createChapterSeven(): ChapterSevenData {
     ...porchRoofSideTrims,
     ...porchRoofPosts,
   );
+  addRockingChair(1201.37 - CENTER_X, 106.23 - HOUSE_CENTER_Z, 0);
+  addRockingChair(1219.47 - CENTER_X, 101.48 - HOUSE_CENTER_Z, 0);
   addCollider(colliders, CENTER_X - porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X - (porchGapWidth / 2 + frontRailSegmentWidth / 2), HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
