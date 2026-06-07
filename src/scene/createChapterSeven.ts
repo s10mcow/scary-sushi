@@ -1281,6 +1281,12 @@ export function createChapterSeven(): ChapterSevenData {
     ),
     'Back bedroom door-facing drawer',
   );
+  const frontBedroomMarkerDrawer = addDrawer(
+    1186.79 - CENTER_X,
+    85.79 - HOUSE_CENTER_Z,
+    0,
+    'Front bedroom marker drawer',
+  );
   const houseFridge = addFridge(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z);
   const houseBaseCabinets = [
     addKitchenCounter(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.28, 'Counter base cabinet'),
@@ -1305,6 +1311,7 @@ export function createChapterSeven(): ChapterSevenData {
   const houseDrawers = [
     ...houseDrawer.drawerSlides,
     ...backBedroomDoorFacingDrawer.drawerSlides,
+    ...frontBedroomMarkerDrawer.drawerSlides,
   ];
   const houseCabinets = [...houseUpperCupboards, ...houseBaseCabinets];
 
