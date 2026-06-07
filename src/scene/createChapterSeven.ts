@@ -1220,8 +1220,6 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addBed(-23.55, 10.6, 1);
   addBed(-23.55, -10.6, -1);
-  const frontBedroomDrawer = addDrawer(-20.28, 13.15, 0, 'Front bedroom bedside drawer');
-  const backBedroomDrawer = addDrawer(-20.28, -13.15, Math.PI, 'Back bedroom bedside drawer');
   addRockingChair(-14.15, -13.35, -0.28);
   addDiningTable(leftRoomCenterX, 0);
   addBookshelf(-25.05, -1.25, Math.PI / 2);
@@ -1249,8 +1247,6 @@ export function createChapterSeven(): ChapterSevenData {
   });
   const houseDrawers = [
     ...houseDrawer.drawerSlides,
-    ...frontBedroomDrawer.drawerSlides,
-    ...backBedroomDrawer.drawerSlides,
   ];
   const houseCabinets = [...houseUpperCupboards, ...houseBaseCabinets];
 

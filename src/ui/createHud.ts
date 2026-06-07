@@ -4,6 +4,7 @@ export type HudChapterId =
   | 'chapter-1'
   | 'chapter-2'
   | 'chapter-3'
+  | 'chapter-3-copy'
   | 'chapter-4'
   | 'chapter-5'
   | 'chapter-6'
@@ -1254,6 +1255,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-3' as const,
       label: "Chapter 3: five nights at Bori's",
       body: 'A quiet office room with furniture and big side doors.',
+    },
+    {
+      id: 'chapter-3-copy' as const,
+      label: "Chapter 3 Copy: Bori's map sandbox",
+      body: 'A separate copy for reconfiguring the map without changing the full game.',
     },
     {
       id: 'chapter-4' as const,

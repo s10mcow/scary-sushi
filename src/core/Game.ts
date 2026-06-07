@@ -220,6 +220,9 @@ const DOOM_PISTOL_RANGE = 34;
 const DOOM_SHOTGUN_RANGE = 18;
 const DOOM_SHOTGUN_PELLETS = 7;
 const OFFICE_DELETED_CAMERA_STORAGE_KEY = 'scary-sushi.chapter3.deleted-cameras';
+const OFFICE_DELETED_CAMERA_SANDBOX_STORAGE_KEY = 'scary-sushi.chapter3-copy.deleted-cameras';
+const OFFICE_CHAPTER_COPY_OFFSET_X = 108;
+const OFFICE_CHAPTER_COPY_OFFSET_Z = 0;
 
 interface MachineJob {
   id: ProcessingStationId;
@@ -776,7 +779,9 @@ export class Game {
   private readonly renderer;
   private readonly level;
   private readonly chapterTwo: ChapterTwoLevelData;
-  private readonly officeChapter: OfficeChapterData;
+  private readonly mainOfficeChapter: OfficeChapterData;
+  private readonly officeSandboxChapter: OfficeChapterData;
+  private officeChapter: OfficeChapterData;
   private readonly chapterFour: ChapterFourData;
   private readonly chapterFive: ChapterFiveData;
   private readonly chapterSix: ChapterSixData;
@@ -908,6 +913,7 @@ export class Game {
   private chapterExitUnlocked = false;
   private chapterTwoActive = false;
   private officeChapterActive = false;
+  private officeSandboxChapterActive = false;
   private chapterFourActive = false;
   private chapterFiveActive = false;
   private chapterSixActive = false;
@@ -1074,6 +1080,7 @@ export class Game {
   private placementToolActive = false;
   private nextPlacementMarkerId = 1;
   private readonly deletedOfficeSecurityCameraIds = new Set<number>();
+  private readonly deletedOfficeSandboxSecurityCameraIds = new Set<number>();
   private transientStatus =
     'The maze is live. Pull raw ingredients out of the pantry, process them through the station machines, then plate each roll.';
   private transientStatusTime = 0;
@@ -1085,10 +1092,16 @@ export class Game {
     this.level = createLevel();
     this.chapterTwo = createChapterTwoLevel();
     this.chapterTwo.root.visible = false;
-    this.officeChapter = createOfficeChapter();
-    this.loadDeletedOfficeSecurityCameras();
-    this.applyDeletedOfficeSecurityCameras();
+    this.mainOfficeChapter = createOfficeChapter();
+    this.officeSandboxChapter = createOfficeChapter();
+    this.translateOfficeChapterCopy(this.officeSandboxChapter, OFFICE_CHAPTER_COPY_OFFSET_X, OFFICE_CHAPTER_COPY_OFFSET_Z);
+    this.officeChapter = this.mainOfficeChapter;
+    this.loadDeletedOfficeSecurityCameras(OFFICE_DELETED_CAMERA_STORAGE_KEY, this.deletedOfficeSecurityCameraIds);
+    this.loadDeletedOfficeSecurityCameras(OFFICE_DELETED_CAMERA_SANDBOX_STORAGE_KEY, this.deletedOfficeSandboxSecurityCameraIds);
+    this.applyDeletedOfficeSecurityCameras(this.mainOfficeChapter, this.deletedOfficeSecurityCameraIds);
+    this.applyDeletedOfficeSecurityCameras(this.officeSandboxChapter, this.deletedOfficeSandboxSecurityCameraIds);
     this.officeChapter.root.visible = false;
+    this.officeSandboxChapter.root.visible = false;
     this.chapterFour = createChapterFour();
     this.chapterFour.root.visible = false;
     this.chapterFive = createChapterFive();
@@ -1110,7 +1123,8 @@ export class Game {
       [
         ...this.level.colliders,
         ...this.chapterTwo.colliders,
-        ...this.officeChapter.colliders,
+        ...this.mainOfficeChapter.colliders,
+        ...this.officeSandboxChapter.colliders,
         ...this.chapterFour.colliders,
         ...this.chapterFive.colliders,
         ...this.chapterSix.colliders,
@@ -1151,7 +1165,8 @@ export class Game {
 
     this.scene.add(this.level.root);
     this.scene.add(this.chapterTwo.root);
-    this.scene.add(this.officeChapter.root);
+    this.scene.add(this.mainOfficeChapter.root);
+    this.scene.add(this.officeSandboxChapter.root);
     this.scene.add(this.chapterFour.root);
     this.scene.add(this.chapterFive.root);
     this.scene.add(this.chapterSix.root);
@@ -1504,6 +1519,53 @@ export class Game {
     this.requestOfficeMicrophoneStart('auto');
   };
 
+  private translateOfficeChapterCopy(chapter: OfficeChapterData, offsetX: number, offsetZ: number): void {
+    chapter.root.position.x += offsetX;
+    chapter.root.position.z += offsetZ;
+
+    const visited = new WeakSet<object>();
+    const translateValue = (value: unknown): void => {
+      if (!value || typeof value !== 'object') {
+        return;
+      }
+
+      if (value instanceof Vector3) {
+        value.x += offsetX;
+        value.z += offsetZ;
+        return;
+      }
+
+      if (value instanceof Object3D) {
+        return;
+      }
+
+      if (visited.has(value)) {
+        return;
+      }
+      visited.add(value);
+
+      const maybeCollider = value as { centerX?: unknown; centerZ?: unknown; halfWidth?: unknown; halfDepth?: unknown };
+      if (
+        typeof maybeCollider.centerX === 'number'
+        && typeof maybeCollider.centerZ === 'number'
+        && typeof maybeCollider.halfWidth === 'number'
+        && typeof maybeCollider.halfDepth === 'number'
+      ) {
+        maybeCollider.centerX += offsetX;
+        maybeCollider.centerZ += offsetZ;
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach(translateValue);
+        return;
+      }
+
+      Object.values(value).forEach(translateValue);
+    };
+
+    translateValue(chapter);
+  }
+
   private readonly handleChapterSelection = (chapterId: HudChapterId): void => {
     if (chapterId === 'chapter-1') {
       this.beginChapterOne();
@@ -1511,6 +1573,8 @@ export class Game {
       this.beginChapterTwo();
     } else if (chapterId === 'chapter-3') {
       this.beginOfficeChapter();
+    } else if (chapterId === 'chapter-3-copy') {
+      this.beginOfficeChapter(true);
     } else if (chapterId === 'chapter-4') {
       this.beginChapterFour();
     } else if (chapterId === 'chapter-5') {
@@ -5318,7 +5382,7 @@ export class Game {
       const model = createOfficeJumpscareStageModel(animatronic);
       model.root.visible = false;
       model.root.scale.setScalar(OFFICE_GAME_MODE_ANIMATRONIC_SCALE[animatronic]);
-      this.officeChapter.root.add(model.root);
+      this.scene.add(model.root);
       this.officeGameModeAnimatronics.push({
         animatronic,
         label: animatronic === 'quacky'
@@ -5329,7 +5393,7 @@ export class Game {
               ? 'Bori'
               : 'Foxy',
         model,
-        route: OFFICE_GAME_MODE_ROUTES[animatronic].map((point) => point.clone()),
+        route: OFFICE_GAME_MODE_ROUTES[animatronic].map((point) => this.getOfficeGameModePoint(point)),
         routeIndex: 0,
         state: 'stage',
         waitTimer: 0,
@@ -5344,8 +5408,8 @@ export class Game {
         detourTarget: null,
         detourTimer: 0,
         distractionTarget: null,
-        lastKnownPlayerPosition: OFFICE_GAME_MODE_OFFICE_CENTER.clone(),
-        chaseCommitTarget: OFFICE_GAME_MODE_OFFICE_CENTER.clone(),
+        lastKnownPlayerPosition: this.getOfficeGameModeOfficeCenter(),
+        chaseCommitTarget: this.getOfficeGameModeOfficeCenter(),
         chaseCommitTimer: 0,
         chaseCommitCooldown: 0,
         chaseGiveUpTimer: 0,
@@ -5384,6 +5448,41 @@ export class Game {
     animatronic.walkCycleArmMultiplier = MathUtils.lerp(0.76, 1.34, Math.random());
     animatronic.walkCycleSideMultiplier = MathUtils.lerp(0.82, 1.2, Math.random());
     animatronic.walkCycleBounceMultiplier = MathUtils.lerp(0.55, 1.35, Math.random());
+  }
+
+  private getOfficeGameModeOffsetVector(): Vector3 {
+    return this.officeSandboxChapterActive
+      ? new Vector3(OFFICE_CHAPTER_COPY_OFFSET_X, 0, OFFICE_CHAPTER_COPY_OFFSET_Z)
+      : new Vector3();
+  }
+
+  private getOfficeGameModePoint(point: Vector3): Vector3 {
+    return point.clone().add(this.getOfficeGameModeOffsetVector());
+  }
+
+  private getOfficeGameModeDoorWatchPoint(doorId: 'left' | 'right'): Vector3 {
+    return this.getOfficeGameModePoint(doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH);
+  }
+
+  private getOfficeGameModeOfficeCenter(): Vector3 {
+    return this.getOfficeGameModePoint(OFFICE_GAME_MODE_OFFICE_CENTER);
+  }
+
+  private clearOfficeGameModeAnimatronics(): void {
+    this.officeGameModeAnimatronics.forEach((animatronic) => {
+      this.restoreOfficePowerOutBoriEyeFlicker(animatronic.model.root);
+      animatronic.model.root.removeFromParent();
+    });
+    this.officeGameModeAnimatronics.length = 0;
+  }
+
+  private clearOfficeVentBoy(): void {
+    if (!this.officeVentBoy) {
+      return;
+    }
+
+    this.officeVentBoy.root.removeFromParent();
+    this.officeVentBoy = null;
   }
 
   private getOfficeGameModeAnimatronicFloorY(
@@ -5435,7 +5534,7 @@ export class Game {
     this.ensureOfficeGameModeAnimatronics();
     this.officeGameModeAnimatronics.forEach((animatronic, index) => {
       this.restoreOfficePowerOutBoriEyeFlicker(animatronic.model.root);
-      const start = animatronic.route[0] ?? OFFICE_GAME_MODE_OFFICE_CENTER;
+      const start = animatronic.route[0] ?? this.getOfficeGameModeOfficeCenter();
       animatronic.model.root.position.set(
         start.x,
         this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, start.x, start.z),
@@ -5459,8 +5558,8 @@ export class Game {
       animatronic.detourTarget = null;
       animatronic.detourTimer = 0;
       animatronic.distractionTarget = null;
-      animatronic.lastKnownPlayerPosition.copy(OFFICE_GAME_MODE_OFFICE_CENTER);
-      animatronic.chaseCommitTarget.copy(OFFICE_GAME_MODE_OFFICE_CENTER);
+      animatronic.lastKnownPlayerPosition.copy(this.getOfficeGameModeOfficeCenter());
+      animatronic.chaseCommitTarget.copy(this.getOfficeGameModeOfficeCenter());
       animatronic.chaseCommitTimer = 0;
       animatronic.chaseCommitCooldown = 0;
       this.clearOfficeAnimatronicChaseTimers(animatronic, true);
@@ -5703,8 +5802,8 @@ export class Game {
     });
     this.officeChapter.storageClosetDoor.targetOpenAmount = 1;
     this.officeChapter.storageClosetDoor.open = true;
-    this.player.teleport(OFFICE_GAME_MODE_OFFICE_SPAWN);
-    this.player.lookToward(OFFICE_GAME_MODE_OFFICE_LOOK_TARGET, 1);
+    this.player.teleport(this.getOfficeGameModePoint(OFFICE_GAME_MODE_OFFICE_SPAWN));
+    this.player.lookToward(this.getOfficeGameModePoint(OFFICE_GAME_MODE_OFFICE_LOOK_TARGET), 1);
     this.flashlight.setEnabled(false);
     this.requestOfficeMicrophoneStart('auto');
     this.resetOfficeGameModeAnimatronics();
@@ -5767,7 +5866,8 @@ export class Game {
   }
 
   private isPlayerInsideOfficeRoom(position = this.player.getPosition()): boolean {
-    return Math.abs(position.x + 240) <= 6.2 && Math.abs(position.z - 184) <= 5.25;
+    const center = this.getOfficeGameModeOfficeCenter();
+    return Math.abs(position.x - center.x) <= 6.2 && Math.abs(position.z - center.z) <= 5.25;
   }
 
   private getOfficeGameModeBlockedDoorId(
@@ -5782,11 +5882,13 @@ export class Game {
     const rightDoor = this.getOfficeDoorById('right');
     const leftClosed = Boolean(leftDoor && leftDoor.targetOpenAmount < 0.5);
     const rightClosed = Boolean(rightDoor && rightDoor.targetOpenAmount < 0.5);
-    if (leftClosed && animatronicPosition.x < -246.2 && Math.abs(animatronicPosition.z - 184.9) < 6.2) {
+    const leftWatch = this.getOfficeGameModeDoorWatchPoint('left');
+    const rightWatch = this.getOfficeGameModeDoorWatchPoint('right');
+    if (leftClosed && animatronicPosition.x < leftWatch.x + 2.3 && Math.abs(animatronicPosition.z - leftWatch.z) < 6.2) {
       return 'left';
     }
 
-    return rightClosed && animatronicPosition.x > -233.8 && Math.abs(animatronicPosition.z - 184.9) < 6.2
+    return rightClosed && animatronicPosition.x > rightWatch.x - 2.3 && Math.abs(animatronicPosition.z - rightWatch.z) < 6.2
       ? 'right'
       : null;
   }
@@ -5801,7 +5903,7 @@ export class Game {
       return;
     }
 
-    const doorWatch = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const doorWatch = this.getOfficeGameModeDoorWatchPoint(doorId);
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       const position = animatronic.model.root.position;
       const distance = Math.hypot(position.x - doorWatch.x, position.z - doorWatch.z);
@@ -5897,7 +5999,7 @@ export class Game {
   private getOfficeDoorCloseHallwayBreachCandidate(
     doorId: 'left' | 'right',
   ): OfficeGameModeAnimatronicState | null {
-    const doorWatch = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const doorWatch = this.getOfficeGameModeDoorWatchPoint(doorId);
     let closest: OfficeGameModeAnimatronicState | null = null;
     let closestDistance = Infinity;
 
@@ -5912,8 +6014,8 @@ export class Game {
 
       const position = animatronic.model.root.position;
       const inSideHallway = doorId === 'left'
-        ? position.x < -244.2
-        : position.x > -235.8;
+        ? position.x < doorWatch.x + 4.3
+        : position.x > doorWatch.x - 4.3;
       if (!inSideHallway || Math.abs(position.z - doorWatch.z) > 8.6) {
         continue;
       }
@@ -5955,7 +6057,7 @@ export class Game {
     );
     const progress = MathUtils.clamp(animatronic.doorBreachTimer / OFFICE_DOOR_BREACH_SECONDS, 0, 1);
     const root = animatronic.model.root;
-    const doorWatch = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const doorWatch = this.getOfficeGameModeDoorWatchPoint(doorId);
     const doorSide = doorId === 'left' ? -1 : 1;
     const floorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, doorWatch.x, doorWatch.z);
     const crouchDown = MathUtils.smoothstep(progress, 0.05, 0.24);
@@ -6081,9 +6183,9 @@ export class Game {
     }
 
     const doorId = animatronic.cachedBlockedDoorId
-      ?? (animatronic.model.root.position.x < OFFICE_GAME_MODE_OFFICE_CENTER.x ? 'left' : 'right');
+      ?? (animatronic.model.root.position.x < this.getOfficeGameModeOfficeCenter().x ? 'left' : 'right');
     const door = this.getOfficeDoorById(doorId);
-    const doorWatch = doorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const doorWatch = this.getOfficeGameModeDoorWatchPoint(doorId);
     const root = animatronic.model.root;
     const floorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, doorWatch.x, doorWatch.z);
     const elapsed = OFFICE_DOOR_LINGER_SECONDS - animatronic.waitTimer;
@@ -6172,16 +6274,16 @@ export class Game {
 
   private getOfficeFoxyRushDoorTarget(): Vector3 {
     if (this.officeFoxyRushDoor === 'left') {
-      return OFFICE_GAME_MODE_LEFT_DOOR_WATCH;
+      return this.getOfficeGameModeDoorWatchPoint('left');
     }
 
     if (this.officeFoxyRushDoor === 'right') {
-      return OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+      return this.getOfficeGameModeDoorWatchPoint('right');
     }
 
-    return this.player.getPosition().x < OFFICE_GAME_MODE_OFFICE_CENTER.x
-      ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH
-      : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    return this.player.getPosition().x < this.getOfficeGameModeOfficeCenter().x
+      ? this.getOfficeGameModeDoorWatchPoint('left')
+      : this.getOfficeGameModeDoorWatchPoint('right');
   }
 
   private triggerOfficeFoxyRush(source: 'stage' | 'closet'): void {
@@ -6197,9 +6299,11 @@ export class Game {
       return;
     }
 
-    const start = source === 'closet'
-      ? OFFICE_FOXY_CLOSET_RUSH_START
-      : OFFICE_FOXY_STAGE_RUSH_START;
+    const start = this.getOfficeGameModePoint(
+      source === 'closet'
+        ? OFFICE_FOXY_CLOSET_RUSH_START
+        : OFFICE_FOXY_STAGE_RUSH_START,
+    );
     const doorId = source === 'closet' ? 'left' : 'right';
     foxy.model.root.position.set(
       start.x,
@@ -6269,7 +6373,7 @@ export class Game {
     }
 
     const closeToCloset = foxy.state !== 'stage'
-      && foxy.model.root.position.distanceTo(OFFICE_FOXY_CLOSET_RUSH_START) < 7.5;
+      && foxy.model.root.position.distanceTo(this.getOfficeGameModePoint(OFFICE_FOXY_CLOSET_RUSH_START)) < 7.5;
     const source = closeToCloset || Math.sin(this.elapsed * 0.73) > -0.25 ? 'closet' : 'stage';
     this.triggerOfficeFoxyRush(source);
   }
@@ -6791,7 +6895,7 @@ export class Game {
 
   private putOfficeGameModeAnimatronicOnStage(animatronic: OfficeGameModeAnimatronicState): void {
     this.restoreOfficePowerOutBoriEyeFlicker(animatronic.model.root);
-    const start = animatronic.route[0] ?? OFFICE_GAME_MODE_OFFICE_CENTER;
+    const start = animatronic.route[0] ?? this.getOfficeGameModeOfficeCenter();
     animatronic.model.root.position.set(
       start.x,
       this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, start.x, start.z),
@@ -6835,7 +6939,7 @@ export class Game {
   }
 
   private sendOfficeGameModeAnimatronicOffStage(animatronic: OfficeGameModeAnimatronicState): void {
-    const start = animatronic.route[0] ?? OFFICE_GAME_MODE_OFFICE_CENTER;
+    const start = animatronic.route[0] ?? this.getOfficeGameModeOfficeCenter();
     animatronic.model.root.position.set(
       start.x,
       this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, start.x, start.z),
@@ -7554,8 +7658,8 @@ export class Game {
       new Vector3(-226.4, floorY, 141.2),
       new Vector3(-218.8, floorY, 132.3),
       new Vector3(-236.5, floorY, 148.35),
-    ];
-    this.officeChapter.root.add(root);
+    ].map((point) => this.getOfficeGameModePoint(point));
+    this.scene.add(root);
     this.officeVentBoy = {
       root,
       head,
@@ -7716,9 +7820,7 @@ export class Game {
       return;
     }
 
-    const watch = this.officePowerOutBoriDoor === 'left'
-      ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH
-      : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH;
+    const watch = this.getOfficeGameModeDoorWatchPoint(this.officePowerOutBoriDoor);
     const side = this.officePowerOutBoriDoor === 'left' ? -1 : 1;
     const playerPosition = this.player.getPosition();
     const reveal = MathUtils.smoothstep(
@@ -8298,8 +8400,8 @@ export class Game {
       : animatronic.state === 'chase'
       ? animatronic.lastKnownPlayerPosition
       : animatronic.state === 'door' && blockedDoorId
-        ? (blockedDoorId === 'left' ? OFFICE_GAME_MODE_LEFT_DOOR_WATCH : OFFICE_GAME_MODE_RIGHT_DOOR_WATCH)
-        : animatronic.route[animatronic.routeIndex] ?? animatronic.route[0] ?? OFFICE_GAME_MODE_OFFICE_CENTER;
+        ? this.getOfficeGameModeDoorWatchPoint(blockedDoorId)
+        : animatronic.route[animatronic.routeIndex] ?? animatronic.route[0] ?? this.getOfficeGameModeOfficeCenter();
     const desiredTarget = this.applyOfficeGameModeSeparation(
       animatronic,
       this.getOfficeGameModeSafeTarget(animatronic, rawDesiredTarget),
@@ -8835,8 +8937,14 @@ export class Game {
       return false;
     }
 
-    this.deletedOfficeSecurityCameraIds.add(securityCamera.id);
-    this.saveDeletedOfficeSecurityCameras();
+    const deletedCameraIds = this.officeSandboxChapterActive
+      ? this.deletedOfficeSandboxSecurityCameraIds
+      : this.deletedOfficeSecurityCameraIds;
+    deletedCameraIds.add(securityCamera.id);
+    this.saveDeletedOfficeSecurityCameras(
+      this.officeSandboxChapterActive ? OFFICE_DELETED_CAMERA_SANDBOX_STORAGE_KEY : OFFICE_DELETED_CAMERA_STORAGE_KEY,
+      deletedCameraIds,
+    );
     const cameras = this.officeChapter.securityCameras;
     const deletedIndex = cameras.indexOf(securityCamera);
     securityCamera.root.removeFromParent();
@@ -8859,9 +8967,9 @@ export class Game {
     return true;
   }
 
-  private loadDeletedOfficeSecurityCameras(): void {
+  private loadDeletedOfficeSecurityCameras(storageKey: string, deletedCameraIds: Set<number>): void {
     try {
-      const rawCameraIds = window.localStorage.getItem(OFFICE_DELETED_CAMERA_STORAGE_KEY);
+      const rawCameraIds = window.localStorage.getItem(storageKey);
       if (!rawCameraIds) {
         return;
       }
@@ -8873,44 +8981,46 @@ export class Game {
 
       parsedCameraIds.forEach((cameraId) => {
         if (typeof cameraId === 'number' && Number.isFinite(cameraId)) {
-          this.deletedOfficeSecurityCameraIds.add(cameraId);
+          deletedCameraIds.add(cameraId);
         }
       });
     } catch {
-      this.deletedOfficeSecurityCameraIds.clear();
+      deletedCameraIds.clear();
     }
   }
 
-  private saveDeletedOfficeSecurityCameras(): void {
+  private saveDeletedOfficeSecurityCameras(storageKey: string, deletedCameraIds: Set<number>): void {
     try {
       window.localStorage.setItem(
-        OFFICE_DELETED_CAMERA_STORAGE_KEY,
-        JSON.stringify([...this.deletedOfficeSecurityCameraIds]),
+        storageKey,
+        JSON.stringify([...deletedCameraIds]),
       );
     } catch {
       // Camera deletion still works for the current session if local storage is unavailable.
     }
   }
 
-  private applyDeletedOfficeSecurityCameras(): void {
-    if (this.deletedOfficeSecurityCameraIds.size === 0) {
+  private applyDeletedOfficeSecurityCameras(chapter: OfficeChapterData, deletedCameraIds: Set<number>): void {
+    if (deletedCameraIds.size === 0) {
       return;
     }
 
-    for (let index = this.officeChapter.securityCameras.length - 1; index >= 0; index -= 1) {
-      const securityCamera = this.officeChapter.securityCameras[index];
-      if (!this.deletedOfficeSecurityCameraIds.has(securityCamera.id)) {
+    for (let index = chapter.securityCameras.length - 1; index >= 0; index -= 1) {
+      const securityCamera = chapter.securityCameras[index];
+      if (!deletedCameraIds.has(securityCamera.id)) {
         continue;
       }
 
       securityCamera.root.removeFromParent();
-      this.officeChapter.securityCameras.splice(index, 1);
+      chapter.securityCameras.splice(index, 1);
     }
 
-    this.officeTabletCameraIndex = Math.min(
-      this.officeTabletCameraIndex,
-      Math.max(0, this.officeChapter.securityCameras.length - 1),
-    );
+    if (chapter === this.officeChapter) {
+      this.officeTabletCameraIndex = Math.min(
+        this.officeTabletCameraIndex,
+        Math.max(0, chapter.securityCameras.length - 1),
+      );
+    }
   }
 
   private getTargetedOfficeSecurityCamera(): OfficeChapterData['securityCameras'][number] | null {
@@ -9145,6 +9255,8 @@ export class Game {
         return 'Chapter 2: daycare horror';
       case 'chapter-3':
         return "Chapter 3: five nights at Bori's";
+      case 'chapter-3-copy':
+        return "Chapter 3 Copy: Bori's map sandbox";
       case 'chapter-4':
         return 'Chapter 4: rainbow friends';
       case 'chapter-5':
@@ -9600,7 +9712,7 @@ export class Game {
     }
 
     if (this.officeChapterActive) {
-      return 'chapter-3';
+      return this.officeSandboxChapterActive ? 'chapter-3-copy' : 'chapter-3';
     }
 
     if (this.chapterFourActive) {
@@ -10758,8 +10870,8 @@ export class Game {
     this.officeGlassAnchor.visible = false;
     this.clearOfficeHeldPrizeItem();
     this.clearOfficeGlassThrows();
-    this.player.teleport(OFFICE_GAME_MODE_OFFICE_SPAWN);
-    this.player.lookToward(OFFICE_GAME_MODE_OFFICE_LOOK_TARGET, 1);
+    this.player.teleport(this.getOfficeGameModePoint(OFFICE_GAME_MODE_OFFICE_SPAWN));
+    this.player.lookToward(this.getOfficeGameModePoint(OFFICE_GAME_MODE_OFFICE_LOOK_TARGET), 1);
     this.resetOfficeGameModeAnimatronics();
     this.pushStatus('The jumpscare ends and you snap back into the office.', 2.8);
   }
@@ -14559,7 +14671,7 @@ export class Game {
           : `${door.label} opens when you walk into it.`;
       }
 
-      return 'Chapter 7: The House starts inside, with a smaller fridge, counter cabinet, oven, extended cupboards, a bookshelf, and table or bedside drawers that open with E when you look at them.';
+      return 'Chapter 7: The House starts inside, with a smaller fridge, counter cabinet, oven, extended cupboards, a bookshelf, and table drawers that open with E when you look at them.';
     }
 
     if (this.officeChapterActive) {
@@ -19305,8 +19417,15 @@ export class Game {
     this.resize();
   }
 
-  private beginOfficeChapter(): void {
+  private beginOfficeChapter(sandboxCopy = false): void {
     this.stopOfficeGameMode();
+    this.officeSandboxChapterActive = sandboxCopy;
+    this.officeChapter = sandboxCopy ? this.officeSandboxChapter : this.mainOfficeChapter;
+    this.clearOfficeGameModeAnimatronics();
+    this.clearOfficeVentBoy();
+    const inactiveOfficeChapter = sandboxCopy ? this.mainOfficeChapter : this.officeSandboxChapter;
+    inactiveOfficeChapter.root.visible = false;
+    inactiveOfficeChapter.reset();
     this.chapterTwoActive = false;
     this.officeChapterActive = true;
     this.chapterFourActive = false;
@@ -19317,9 +19436,12 @@ export class Game {
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
     this.chapterTwoCardTime = 3.6;
-    this.chapterCardTitle = "Chapter Three: five nights at Bori's";
-    this.chapterCardBody =
-      'The office doors now lead through side hallways into one wide party room, plus a new top-right hall to a second party room with a pirate fox stage and a ticket basketball game.';
+    this.chapterCardTitle = sandboxCopy
+      ? "Chapter Three Copy: Bori's map sandbox"
+      : "Chapter Three: five nights at Bori's";
+    this.chapterCardBody = sandboxCopy
+      ? 'This is a separate copy of the Five Nights at Bori\'s map for reconfiguring and testing without changing the full game chapter.'
+      : 'The office doors now lead through side hallways into one wide party room, plus a new top-right hall to a second party room with a pirate fox stage and a ticket basketball game.';
     this.activeJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
     this.touchingMonster = null;
@@ -19398,7 +19520,9 @@ export class Game {
     this.player.teleport(this.officeChapter.spawn);
     this.player.lookToward(this.officeChapter.lookTarget, 1);
     this.pushStatus(
-      'Chapter three loaded. The top-right corner of the party room now opens into a second party room with a pirate fox stage, hidden tickets, and basketball.',
+      sandboxCopy
+        ? 'Chapter three copy loaded. Reconfigure this sandbox map without changing the full Five Nights at Bori\'s chapter.'
+        : 'Chapter three loaded. The top-right corner of the party room now opens into a second party room with a pirate fox stage, hidden tickets, and basketball.',
       3.2,
     );
     this.resize();
