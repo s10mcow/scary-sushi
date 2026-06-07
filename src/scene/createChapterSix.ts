@@ -492,7 +492,7 @@ export function createChapterSix(): ChapterSixData {
     () => ({ type: null, count: 0 }),
   );
   const cursorStack: { type: ChapterSixItemType | null; count: number } = { type: null, count: 0 };
-  let selectedHotbarSlot = 0;
+  let selectedHotbarSlot: number | null = 0;
   let inventoryOpen = false;
   let selectedBlock: ChapterSixBlockRecord | null = null;
   let selectedPlacementPosition: Vector3 | null = null;
@@ -1202,6 +1202,10 @@ export function createChapterSix(): ChapterSixData {
   };
 
   const placeBlockFromSelectedSlot = (playerPosition: Vector3): boolean => {
+    if (selectedHotbarSlot === null) {
+      return false;
+    }
+
     const slot = inventorySlots[selectedHotbarSlot];
     if (!slot?.type || slot.count <= 0 || !PLACEABLE_ITEMS.has(slot.type) || !selectedPlacementPosition) {
       return false;
@@ -1582,6 +1586,10 @@ export function createChapterSix(): ChapterSixData {
         .map((slot, index) => getSlotView(slot, index === selectedHotbarSlot));
     },
     getSelectedHotbarStack() {
+      if (selectedHotbarSlot === null) {
+        return getSlotView({ type: null, count: 0 }, false);
+      }
+
       return getSlotView(inventorySlots[selectedHotbarSlot] ?? { type: null, count: 0 }, true);
     },
     getInventoryView() {
@@ -1634,6 +1642,10 @@ export function createChapterSix(): ChapterSixData {
       return possums.some((state) => state.petTimer > 0);
     },
     isHoldingPossum() {
+      if (selectedHotbarSlot === null) {
+        return false;
+      }
+
       const selectedSlot = inventorySlots[selectedHotbarSlot];
       return selectedSlot?.type === 'possum' && selectedSlot.count > 0;
     },
@@ -1643,7 +1655,8 @@ export function createChapterSix(): ChapterSixData {
       return queued;
     },
     selectHotbarSlot(slot) {
-      selectedHotbarSlot = MathUtils.clamp(Math.floor(slot) - 1, 0, CHAPTER_SIX_HOTBAR_SLOT_COUNT - 1);
+      const nextSlot = MathUtils.clamp(Math.floor(slot) - 1, 0, CHAPTER_SIX_HOTBAR_SLOT_COUNT - 1);
+      selectedHotbarSlot = selectedHotbarSlot === nextSlot ? null : nextSlot;
     },
     placeSelectedBlock(playerPosition) {
       return placeBlockFromSelectedSlot(playerPosition);
