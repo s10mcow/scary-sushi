@@ -177,6 +177,7 @@ export function createChapterSeven(): ChapterSevenData {
   root.name = 'Chapter 7: The House';
   const colliders: CollisionBox[] = [];
   const counterSurfaces: ChapterSevenCounterSurface[] = [];
+  const bedSurfaces: Array<ChapterSevenCounterSurface & { collider: CollisionBox }> = [];
   let forestTime = 0;
 
   const random = createRandom(707);
@@ -466,7 +467,21 @@ export function createChapterSeven(): ChapterSevenData {
 
     bed.add(frame, mattress, blanket, pillowLeft, pillowRight, ...legs);
     house.add(bed);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 3.9, 6.7);
+    const collider = {
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: 3.9 / 2,
+      halfDepth: 6.7 / 2,
+    };
+    colliders.push(collider);
+    bedSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: 3.45 / 2,
+      halfDepth: 6.05 / 2,
+      floorY: 1.04,
+      collider,
+    });
   };
 
   const addChair = (localX: number, localZ: number, rotationY: number): void => {
@@ -1242,7 +1257,14 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addBed(-23.55, 10.6, 1);
   addBed(-23.55, -10.6, -1);
-  addRockingChair(1200.10 - CENTER_X, 63.31 - HOUSE_CENTER_Z, -Math.PI / 2);
+  addRockingChair(
+    1200.10 - CENTER_X,
+    63.31 - HOUSE_CENTER_Z,
+    Math.atan2(
+      HOUSE_LEFT_ROOM_WALL_X + 2.25 - (1200.10 - CENTER_X),
+      HOUSE_BACK_ROOM_DOOR_Z - (63.31 - HOUSE_CENTER_Z),
+    ),
+  );
   addDiningTable(leftRoomCenterX, 0);
   addBookshelf(-25.05, -1.25, Math.PI / 2);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
@@ -1475,6 +1497,9 @@ export function createChapterSeven(): ChapterSevenData {
         && position.z >= CENTER_Z - HALF_SIZE
         && position.z <= CENTER_Z + HALF_SIZE;
       if (!insideForest) {
+        bedSurfaces.forEach((surface) => {
+          surface.collider.enabled = true;
+        });
         return null;
       }
 
@@ -1484,6 +1509,23 @@ export function createChapterSeven(): ChapterSevenData {
         if (onSurface && position.y > GAME_CONFIG.player.height + 0.18) {
           return GAME_CONFIG.player.height + surface.floorY;
         }
+      }
+
+      let bedFloorY: number | null = null;
+      bedSurfaces.forEach((surface) => {
+        const nearSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth + GAME_CONFIG.player.radius + 0.28
+          && Math.abs(position.z - surface.centerZ) <= surface.halfDepth + GAME_CONFIG.player.radius + 0.28;
+        const highEnoughToClearFrame = position.y > GAME_CONFIG.player.height + 0.22;
+        surface.collider.enabled = !(nearSurface && highEnoughToClearFrame);
+        const onSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth
+          && Math.abs(position.z - surface.centerZ) <= surface.halfDepth;
+        if (onSurface && highEnoughToClearFrame) {
+          bedFloorY = GAME_CONFIG.player.height + surface.floorY;
+        }
+      });
+
+      if (bedFloorY !== null) {
+        return bedFloorY;
       }
 
       return GAME_CONFIG.player.height + getForestFloorY();
@@ -1571,6 +1613,9 @@ export function createChapterSeven(): ChapterSevenData {
         drawer.openAmount = 0;
         drawer.targetOpenAmount = 0;
         drawer.root.position.z = drawer.closedZ;
+      });
+      bedSurfaces.forEach((surface) => {
+        surface.collider.enabled = true;
       });
       houseFridge.open = false;
       houseFridge.openAmount = 0;
