@@ -1525,8 +1525,16 @@ export function createChapterSeven(): ChapterSevenData {
     ...porchRoofSideTrims,
     ...porchRoofPosts,
   );
-  addRockingChair(1201.37 - CENTER_X, 106.23 - HOUSE_CENTER_Z, -Math.PI / 2);
-  addRockingChair(1219.47 - CENTER_X, 101.48 - HOUSE_CENTER_Z, Math.PI / 2);
+  const porchCenterTarget = { x: 0, z: porchCenterZ };
+  const getChairRotationTowardPorchCenter = (localX: number, localZ: number): number => (
+    Math.atan2(porchCenterTarget.x - localX, porchCenterTarget.z - localZ)
+  );
+  const leftPorchChairX = 1201.37 - CENTER_X;
+  const leftPorchChairZ = 106.23 - HOUSE_CENTER_Z;
+  const rightPorchChairX = 1219.47 - CENTER_X;
+  const rightPorchChairZ = 101.48 - HOUSE_CENTER_Z;
+  addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
+  addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   addCollider(colliders, CENTER_X - porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X - (porchGapWidth / 2 + frontRailSegmentWidth / 2), HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
