@@ -173,7 +173,7 @@ export interface ChapterSevenCardboardBox {
 
 const CENTER_X = 1210;
 const CENTER_Z = 80;
-const FOREST_SIZE = 420;
+const FOREST_SIZE = 300;
 const HALF_SIZE = FOREST_SIZE / 2;
 const CLEARING_RADIUS = 42;
 const GRASS_COLOR = 0x3f6f36;
@@ -202,10 +202,10 @@ const HOUSE_FRIDGE_Z = -17.35;
 const HOUSE_ROOF_RISE = 6.2;
 const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
-const TREE_COUNT = 490;
-const GRASS_PATCH_COUNT = 820;
+const TREE_COUNT = 340;
+const GRASS_PATCH_COUNT = 560;
 const ROCK_COUNT = 26;
-const FALLEN_LOG_COUNT = 14;
+const FALLEN_LOG_COUNT = 9;
 
 function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
   const collider = {
@@ -600,6 +600,7 @@ export function createChapterSeven(): ChapterSevenData {
       map: texture,
       roughness: 0.68,
       metalness: 0.02,
+      side: DoubleSide,
     });
   };
   const dogPortraitMaterial = createPortraitMaterial('dog');
@@ -823,31 +824,31 @@ export function createChapterSeven(): ChapterSevenData {
     portraitMaterial: MeshStandardMaterial,
   ): void => {
     const frame = new Group();
-    frame.position.set(localX, localY, localZ + normalZ * 0.045);
+    frame.position.set(localX, localY, localZ + normalZ * 0.12);
     if (normalZ < 0) {
       frame.rotation.y = Math.PI;
     }
 
-    const backing = new Mesh(new BoxGeometry(1.72, 1.18, 0.06), houseTrimMaterial);
-    const portrait = new Mesh(new PlaneGeometry(1.38, 0.9), portraitMaterial);
+    const backing = new Mesh(new BoxGeometry(2.06, 1.42, 0.06), houseTrimMaterial);
+    const portrait = new Mesh(new PlaneGeometry(1.62, 1.04), portraitMaterial);
     portrait.position.z = 0.038;
-    const top = new Mesh(new BoxGeometry(1.86, 0.12, 0.1), houseTrimMaterial);
-    top.position.y = 0.62;
+    const top = new Mesh(new BoxGeometry(2.2, 0.12, 0.1), houseTrimMaterial);
+    top.position.y = 0.74;
     const bottom = top.clone();
-    bottom.position.y = -0.62;
-    const left = new Mesh(new BoxGeometry(0.12, 1.2, 0.1), houseTrimMaterial);
-    left.position.x = -0.9;
+    bottom.position.y = -0.74;
+    const left = new Mesh(new BoxGeometry(0.12, 1.44, 0.1), houseTrimMaterial);
+    left.position.x = -1.07;
     const right = left.clone();
-    right.position.x = 0.9;
-    const innerTop = new Mesh(new BoxGeometry(1.42, 0.055, 0.12), closetHandleMaterial);
-    innerTop.position.y = 0.48;
+    right.position.x = 1.07;
+    const innerTop = new Mesh(new BoxGeometry(1.66, 0.055, 0.12), closetHandleMaterial);
+    innerTop.position.y = 0.56;
     innerTop.position.z = 0.06;
     const innerBottom = innerTop.clone();
-    innerBottom.position.y = -0.48;
-    const innerLeft = new Mesh(new BoxGeometry(0.055, 0.94, 0.12), closetHandleMaterial);
-    innerLeft.position.set(-0.72, 0, 0.06);
+    innerBottom.position.y = -0.56;
+    const innerLeft = new Mesh(new BoxGeometry(0.055, 1.08, 0.12), closetHandleMaterial);
+    innerLeft.position.set(-0.84, 0, 0.06);
     const innerRight = innerLeft.clone();
-    innerRight.position.x = 0.72;
+    innerRight.position.x = 0.84;
 
     frame.add(backing, portrait, top, bottom, left, right, innerTop, innerBottom, innerLeft, innerRight);
     house.add(frame);
@@ -2451,8 +2452,8 @@ export function createChapterSeven(): ChapterSevenData {
     1213.08 - CENTER_X,
     63.85 - HOUSE_CENTER_Z,
     Math.atan2(
-      -(HOUSE_LEFT_ROOM_WALL_X - (1213.08 - CENTER_X)),
-      -(-HOUSE_DEPTH / 2 - (63.85 - HOUSE_CENTER_Z)),
+      -(HOUSE_MARKER_SHORT_WALL_X - (1213.08 - CENTER_X)),
+      -(HOUSE_MARKER_SHORT_WALL_START_Z - (63.85 - HOUSE_CENTER_Z)),
     ),
   );
   const rockingChairX = 1200.10 - CENTER_X;
@@ -2480,7 +2481,10 @@ export function createChapterSeven(): ChapterSevenData {
   const frontBedroomOldWoodenCloset = addOldWoodenCloset(
     1187.70 - CENTER_X,
     96.31 - HOUSE_CENTER_Z,
-    Math.PI / 2,
+    Math.atan2(
+      HOUSE_LEFT_ROOM_WALL_X + 2.25 - (1187.70 - CENTER_X),
+      HOUSE_FRONT_ROOM_DOOR_Z - (96.31 - HOUSE_CENTER_Z),
+    ),
   );
   const oldWoodenClosets = [oldWoodenCloset, frontBedroomOldWoodenCloset];
   addPictureFrame(1193.33 - CENTER_X, 2.4, 84.23 - HOUSE_CENTER_Z, 1, dogPortraitMaterial);
