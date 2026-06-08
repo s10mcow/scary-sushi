@@ -6039,7 +6039,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
         createSwivelingSecurityCamera(
           15,
           'Camera 14 Abandoned Hall End',
-          new Vector3(-143.92, 3.5, 182.25),
+          new Vector3(-143.92, 3.42, 182.25),
           new Vector3(0, 0, 1),
         ),
       ]
