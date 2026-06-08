@@ -171,7 +171,7 @@ export interface ChapterSevenCardboardBox {
 
 const CENTER_X = 1210;
 const CENTER_Z = 80;
-const FOREST_SIZE = 540;
+const FOREST_SIZE = 500;
 const HALF_SIZE = FOREST_SIZE / 2;
 const CLEARING_RADIUS = 42;
 const GRASS_COLOR = 0x3f6f36;
@@ -200,10 +200,10 @@ const HOUSE_FRIDGE_Z = -17.35;
 const HOUSE_ROOF_RISE = 6.2;
 const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
-const TREE_COUNT = 660;
-const GRASS_PATCH_COUNT = 1180;
-const ROCK_COUNT = 38;
-const FALLEN_LOG_COUNT = 22;
+const TREE_COUNT = 600;
+const GRASS_PATCH_COUNT = 1050;
+const ROCK_COUNT = 34;
+const FALLEN_LOG_COUNT = 19;
 
 function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
   const collider = {
@@ -606,6 +606,77 @@ export function createChapterSeven(): ChapterSevenData {
     wall.position.set(localX, height / 2, localZ);
     house.add(wall);
     addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width, depth);
+  };
+
+  const addHouseWallVisualSegment = (
+    localX: number,
+    localZ: number,
+    centerY: number,
+    width: number,
+    height: number,
+    depth: number,
+  ): void => {
+    if (width <= 0.04 || height <= 0.04) {
+      return;
+    }
+
+    const wall = new Mesh(new BoxGeometry(width, height, depth), houseWallMaterial);
+    wall.position.set(localX, centerY, localZ);
+    house.add(wall);
+  };
+
+  const addExteriorWallWithOpenings = (
+    localZ: number,
+    openings: Array<{ centerX: number; centerY: number; width: number; height: number }>,
+  ): void => {
+    const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+    const xMin = -HOUSE_WIDTH / 2;
+    const xMax = HOUSE_WIDTH / 2;
+    const yMin = 0;
+    const yMax = HOUSE_HEIGHT;
+    const clampedOpenings = openings.map((opening) => {
+      const halfWidth = opening.width / 2;
+      const halfHeight = opening.height / 2;
+      return {
+        xMin: clamp(opening.centerX - halfWidth, xMin, xMax),
+        xMax: clamp(opening.centerX + halfWidth, xMin, xMax),
+        yMin: clamp(opening.centerY - halfHeight, yMin, yMax),
+        yMax: clamp(opening.centerY + halfHeight, yMin, yMax),
+      };
+    }).filter((opening) => opening.xMax > opening.xMin && opening.yMax > opening.yMin);
+    const uniqueSorted = (values: number[]): number[] => Array.from(new Set(values.map((value) => Number(value.toFixed(4))))).sort((a, b) => a - b);
+    const xBreaks = uniqueSorted([
+      xMin,
+      xMax,
+      ...clampedOpenings.flatMap((opening) => [opening.xMin, opening.xMax]),
+    ]);
+    const yBreaks = uniqueSorted([
+      yMin,
+      yMax,
+      ...clampedOpenings.flatMap((opening) => [opening.yMin, opening.yMax]),
+    ]);
+
+    for (let xIndex = 0; xIndex < xBreaks.length - 1; xIndex += 1) {
+      const segmentXMin = xBreaks[xIndex];
+      const segmentXMax = xBreaks[xIndex + 1];
+      const centerX = (segmentXMin + segmentXMax) / 2;
+      const width = segmentXMax - segmentXMin;
+      for (let yIndex = 0; yIndex < yBreaks.length - 1; yIndex += 1) {
+        const segmentYMin = yBreaks[yIndex];
+        const segmentYMax = yBreaks[yIndex + 1];
+        const centerY = (segmentYMin + segmentYMax) / 2;
+        const height = segmentYMax - segmentYMin;
+        const insideOpening = clampedOpenings.some((opening) => (
+          centerX > opening.xMin
+          && centerX < opening.xMax
+          && centerY > opening.yMin
+          && centerY < opening.yMax
+        ));
+        if (!insideOpening) {
+          addHouseWallVisualSegment(centerX, localZ, centerY, width, height, HOUSE_WALL_THICKNESS);
+        }
+      }
+    }
   };
 
   const addWallWindow = (
@@ -1899,9 +1970,21 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
-  const backWall = new Mesh(new BoxGeometry(HOUSE_WIDTH, HOUSE_HEIGHT, HOUSE_WALL_THICKNESS), houseWallMaterial);
-  backWall.position.set(0, HOUSE_HEIGHT / 2, -HOUSE_DEPTH / 2);
-  house.add(backWall);
+  const frontRightWindowX = Math.min(1226.75 - CENTER_X, HOUSE_WIDTH / 2 - 1.45);
+  addExteriorWallWithOpenings(-HOUSE_DEPTH / 2, [
+    {
+      centerX: 1224.76 - CENTER_X,
+      centerY: 2.75,
+      width: 1.7,
+      height: 1.25,
+    },
+    {
+      centerX: 1193.08 - CENTER_X,
+      centerY: 2.2,
+      width: 2.9,
+      height: 1.9,
+    },
+  ]);
   addCollider(colliders, CENTER_X, HOUSE_BACK_Z, HOUSE_WIDTH, HOUSE_WALL_THICKNESS);
   addHouseWall(
     HOUSE_MARKER_SHORT_WALL_X,
@@ -1952,13 +2035,26 @@ export function createChapterSeven(): ChapterSevenData {
   );
 
   const frontWallSegmentWidth = (HOUSE_WIDTH - HOUSE_DOOR_WIDTH) / 2;
-  const frontLeftWall = new Mesh(new BoxGeometry(frontWallSegmentWidth, HOUSE_HEIGHT, HOUSE_WALL_THICKNESS), houseWallMaterial);
-  frontLeftWall.position.set(
-    -(HOUSE_DOOR_WIDTH / 2 + frontWallSegmentWidth / 2),
-    HOUSE_HEIGHT / 2,
-    HOUSE_DEPTH / 2,
-  );
-  house.add(frontLeftWall);
+  addExteriorWallWithOpenings(HOUSE_DEPTH / 2, [
+    {
+      centerX: 0,
+      centerY: HOUSE_DOOR_HEIGHT / 2,
+      width: HOUSE_DOOR_WIDTH,
+      height: HOUSE_DOOR_HEIGHT,
+    },
+    {
+      centerX: frontRightWindowX,
+      centerY: 2.38,
+      width: 2.8,
+      height: 1.9,
+    },
+    {
+      centerX: 1191.26 - CENTER_X,
+      centerY: 2.1,
+      width: 2.9,
+      height: 1.9,
+    },
+  ]);
   addCollider(
     colliders,
     CENTER_X - (HOUSE_DOOR_WIDTH / 2 + frontWallSegmentWidth / 2),
@@ -1967,13 +2063,6 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_WALL_THICKNESS,
   );
 
-  const frontRightWall = new Mesh(new BoxGeometry(frontWallSegmentWidth, HOUSE_HEIGHT, HOUSE_WALL_THICKNESS), houseWallMaterial);
-  frontRightWall.position.set(
-    HOUSE_DOOR_WIDTH / 2 + frontWallSegmentWidth / 2,
-    HOUSE_HEIGHT / 2,
-    HOUSE_DEPTH / 2,
-  );
-  house.add(frontRightWall);
   addCollider(
     colliders,
     CENTER_X + HOUSE_DOOR_WIDTH / 2 + frontWallSegmentWidth / 2,
@@ -1982,21 +2071,14 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_WALL_THICKNESS,
   );
 
-  const doorHeader = new Mesh(
-    new BoxGeometry(HOUSE_DOOR_WIDTH + HOUSE_WALL_THICKNESS, HOUSE_HEIGHT - HOUSE_DOOR_HEIGHT, HOUSE_WALL_THICKNESS),
-    houseWallMaterial,
-  );
-  doorHeader.position.set(0, HOUSE_DOOR_HEIGHT + (HOUSE_HEIGHT - HOUSE_DOOR_HEIGHT) / 2, HOUSE_DEPTH / 2);
-  house.add(doorHeader);
-
   addHouseWall(
-    1218.25 - CENTER_X + 10,
-    98.69 - HOUSE_CENTER_Z,
-    20,
+    1218.25 - CENTER_X,
+    98.69 - HOUSE_CENTER_Z - 10,
     HOUSE_WALL_THICKNESS,
+    20,
   );
   addWallWindow(
-    Math.min(1226.75 - CENTER_X, HOUSE_WIDTH / 2 - 1.45),
+    frontRightWindowX,
     HOUSE_DEPTH / 2 - HOUSE_WALL_THICKNESS / 2 - 0.04,
     2.38,
     2.8,
