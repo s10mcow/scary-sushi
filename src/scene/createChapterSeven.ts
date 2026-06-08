@@ -964,20 +964,20 @@ export function createChapterSeven(): ChapterSevenData {
     couch.position.set(localX, 0, localZ);
     couch.rotation.y = rotationY;
 
-    const length = 8;
-    const depth = 2.05;
+    const length = 6.8;
+    const depth = 1.82;
     const base = new Mesh(new BoxGeometry(length, 0.34, depth), yellowCouchMaterial);
     base.position.y = 0.44;
-    const seatOffsets = [-2.55, 0, 2.55];
+    const seatOffsets = [-2.18, 0, 2.18];
     const seats = seatOffsets.map((seatX) => {
-      const cushion = new Mesh(new BoxGeometry(2.42, 0.26, 1.34), yellowCouchMaterial);
+      const cushion = new Mesh(new BoxGeometry(2.04, 0.24, 1.2), yellowCouchMaterial);
       cushion.position.set(seatX, 0.72, -0.2);
       return cushion;
     });
     const back = new Mesh(new BoxGeometry(length + 0.18, 1.18, 0.32), yellowCouchMaterial);
     back.position.set(0, 1.05, 0.88);
     const backCushions = seatOffsets.map((seatX) => {
-      const cushion = new Mesh(new BoxGeometry(2.34, 0.86, 0.18), yellowCouchMaterial);
+      const cushion = new Mesh(new BoxGeometry(1.98, 0.78, 0.18), yellowCouchMaterial);
       cushion.position.set(seatX, 1.08, 0.68);
       cushion.rotation.x = -0.1;
       return cushion;
@@ -989,10 +989,10 @@ export function createChapterSeven(): ChapterSevenData {
     const frontLip = new Mesh(new BoxGeometry(length, 0.18, 0.22), furnitureWoodMaterial);
     frontLip.position.set(0, 0.54, -depth / 2 - 0.04);
     const legs = [
-      [-3.52, -0.82],
-      [3.52, -0.82],
-      [-3.52, 0.72],
-      [3.52, 0.72],
+      [-2.95, -0.72],
+      [2.95, -0.72],
+      [-2.95, 0.64],
+      [2.95, 0.64],
     ].map(([legX, legZ]) => {
       const leg = new Mesh(new BoxGeometry(0.22, 0.36, 0.22), furnitureWoodMaterial);
       leg.position.set(legX, 0.18, legZ);
@@ -2257,7 +2257,7 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addDiningTable(leftRoomCenterX, 0);
   addYellowCouch(
-    1233.90 - CENTER_X - 4,
+    1233.90 - CENTER_X - 3.4,
     97.63 - HOUSE_CENTER_Z,
     0,
   );
