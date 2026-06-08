@@ -54,6 +54,7 @@ import { createChapterFour, type ChapterFourData } from '../scene/createChapterF
 import { createChapterFive, type ChapterFiveData } from '../scene/createChapterFive';
 import { createChapterSix, type ChapterSixData, type ChapterSixItemType } from '../scene/createChapterSix';
 import { createChapterSeven, type ChapterSevenData } from '../scene/createChapterSeven';
+import { createChapterEight, type ChapterEightData } from '../scene/createChapterEight';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -791,6 +792,7 @@ export class Game {
   private readonly chapterFive: ChapterFiveData;
   private readonly chapterSix: ChapterSixData;
   private readonly chapterSeven: ChapterSevenData;
+  private readonly chapterEight: ChapterEightData;
   private readonly zombieMode: ZombieModeData;
   private readonly doomMode: DoomModeData;
   private readonly lighting;
@@ -924,6 +926,7 @@ export class Game {
   private chapterFiveActive = false;
   private chapterSixActive = false;
   private chapterSevenActive = false;
+  private chapterEightActive = false;
   private zombieModeActive = false;
   private doomModeActive = false;
   private chapterMenuOpen = false;
@@ -1119,6 +1122,8 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven = createChapterSeven();
     this.chapterSeven.root.visible = false;
+    this.chapterEight = createChapterEight();
+    this.chapterEight.root.visible = false;
     this.zombieMode = createZombieMode();
     this.zombieMode.root.visible = false;
     this.doomMode = createDoomMode();
@@ -1137,6 +1142,7 @@ export class Game {
         ...this.chapterFive.colliders,
         ...this.chapterSix.colliders,
         ...this.chapterSeven.colliders,
+        ...this.chapterEight.colliders,
         ...this.zombieMode.colliders,
         ...this.doomMode.colliders,
       ],
@@ -1179,6 +1185,7 @@ export class Game {
     this.scene.add(this.chapterFive.root);
     this.scene.add(this.chapterSix.root);
     this.scene.add(this.chapterSeven.root);
+    this.scene.add(this.chapterEight.root);
     this.scene.add(this.zombieMode.root);
     this.scene.add(this.doomMode.root);
     this.scene.add(this.camera);
@@ -1370,6 +1377,8 @@ export class Game {
               ? 0.9
               : this.chapterSevenActive
                 ? 0.9
+                : this.chapterEightActive
+                  ? 0.9
                 : 1;
     const renderWidth = Math.max(1, Math.round(width * renderScale));
     const renderHeight = Math.max(1, Math.round(height * renderScale));
@@ -1383,7 +1392,7 @@ export class Game {
     this.renderer.toneMapping = this.doomModeActive ? NoToneMapping : ACESFilmicToneMapping;
     this.renderer.setPixelRatio(
       this.doomModeActive || this.officeChapterActive || this.chapterFourActive
-        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive
+        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive
         ? PERFORMANCE_RENDER_PIXEL_RATIO
         : Math.min(window.devicePixelRatio, DEFAULT_RENDER_PIXEL_RATIO),
     );
@@ -1595,6 +1604,8 @@ export class Game {
       this.beginChapterSix();
     } else if (chapterId === 'chapter-7') {
       this.beginChapterSeven();
+    } else if (chapterId === 'chapter-8') {
+      this.beginChapterEight();
     } else if (chapterId === 'doom-fps') {
       this.beginDoomMode();
     } else {
@@ -2434,7 +2445,7 @@ export class Game {
       this.updateZombieMode(deltaSeconds);
     } else if (this.doomModeActive) {
       this.updateDoomMode(deltaSeconds);
-    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive) {
+    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive) {
       this.monsterState = this.unlockedMonsterState;
       this.touchingMonster = null;
     } else {
@@ -2442,13 +2453,13 @@ export class Game {
     }
     this.updateHealth(deltaSeconds);
     this.updateAtmosphere();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
     }
     this.updateOfficeGlassThrows(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateMachineJobs(deltaSeconds);
     }
 
@@ -2538,7 +2549,9 @@ export class Game {
       }
     } else if (this.chapterSevenActive) {
       this.chapterSeven.update(deltaSeconds, this.player.getPosition());
-    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive) {
+    } else if (this.chapterEightActive) {
+      this.chapterEight.update(deltaSeconds);
+    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
       this.chapterTwo.update(deltaSeconds, this.player.getPosition());
@@ -2614,7 +2627,7 @@ export class Game {
     this.updateChapterFourGreenJumpscareModel();
     this.updateOfficeGlassDisplay();
     this.updateOfficePrizeItemDisplay();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateStoveLight();
     }
     if (this.shouldSyncHudThisFrame(deltaSeconds, jumpscareLocked)) {
@@ -8916,6 +8929,10 @@ export class Game {
       return [this.chapterSeven.root];
     }
 
+    if (this.chapterEightActive) {
+      return [this.chapterEight.root];
+    }
+
     if (this.chapterTwoActive) {
       return [this.chapterTwo.root];
     }
@@ -9350,7 +9367,9 @@ export class Game {
       case 'chapter-6':
         return 'Chapter 6: Minecraft';
       case 'chapter-7':
-      return 'Chapter 7: The House';
+        return 'Chapter 7: The House';
+      case 'chapter-8':
+        return 'Chapter 8: The Woods';
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
@@ -9459,7 +9478,7 @@ export class Game {
   private updateAtmosphere(): void {
     this.lighting.flashlight.angle = GAME_CONFIG.flashlight.angle;
     this.lighting.flashlight.penumbra = GAME_CONFIG.flashlight.penumbra;
-    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive ? 980 : GAME_CONFIG.camera.far;
+    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive ? 980 : GAME_CONFIG.camera.far;
     if (Math.abs(this.camera.far - targetCameraFar) > 0.01) {
       this.camera.far = targetCameraFar;
       this.camera.updateProjectionMatrix();
@@ -9626,6 +9645,25 @@ export class Game {
         this.scene.fog.color.setHex(0xaadfff);
         this.scene.fog.near = 150;
         this.scene.fog.far = 620;
+      }
+
+      return;
+    }
+
+    if (this.chapterEightActive) {
+      this.lighting.ambient.intensity = 0.64;
+      this.lighting.hemisphere.intensity = 0.86;
+      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.34;
+      this.lighting.flashlight.distance = 16;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0x8db8c3);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0x9fb9af);
+        this.scene.fog.near = 72;
+        this.scene.fog.far = 330;
       }
 
       return;
@@ -9817,6 +9855,10 @@ export class Game {
       return 'chapter-7';
     }
 
+    if (this.chapterEightActive) {
+      return 'chapter-8';
+    }
+
     return this.chapterTwoActive ? 'chapter-2' : 'chapter-1';
   }
 
@@ -9852,6 +9894,15 @@ export class Game {
   }
 
   private getIntroHudState(): { eyebrow: string; title: string; summary: string; buttonText: string } {
+    if (this.chapterEightActive) {
+      return {
+        eyebrow: 'Chapter Eight',
+        title: 'The Woods',
+        summary: 'Walk through a semi-realistic forest camp with a stone-ring fire pit, light-green clearing grass, a crafting bench, and a grinding bench.',
+        buttonText: 'Enter The Woods',
+      };
+    }
+
     if (this.chapterSevenActive) {
       return {
         eyebrow: 'Chapter Seven',
@@ -9915,7 +9966,9 @@ export class Game {
                   ? 'Chapter: Minecraft'
                   : this.chapterSevenActive
                     ? 'Chapter: Chapter 7: The House'
-                  : this.chapterTwoActive
+                    : this.chapterEightActive
+                      ? 'Chapter: Chapter 8: The Woods'
+                      : this.chapterTwoActive
                     ? 'Chapter: daycare horror'
                     : 'Chapter: scary-sushi',
     );
@@ -10093,7 +10146,9 @@ export class Game {
                     : 'Pointer unlocked. Click the play space to keep flying through Chapter 5.'
                   : this.chapterSevenActive
                     ? 'Pointer unlocked. Click the play space to keep walking around Chapter 7: The House.'
-                  : this.chapterTwoActive
+                    : this.chapterEightActive
+                      ? 'Pointer unlocked. Click the play space to keep walking around Chapter 8: The Woods.'
+                      : this.chapterTwoActive
                     ? 'Pointer unlocked. Click the play space to keep exploring the locked daycare wing.'
                     : 'Pointer unlocked. Click anywhere on the play space to jump back into first person.',
       );
@@ -13336,6 +13391,17 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterEightActive) {
+      return [
+        'Chapter 8: The Woods',
+        '',
+        'You are in a semi-realistic forest camp.',
+        'A stone-ring fire pit sits in the middle of a lighter green clearing.',
+        'The crafting bench and grinding bench are placed near the fire pit for later item systems.',
+        'Use the Coordinate Tool if you want to mark more spots in the woods.',
+      ].join('\n');
+    }
+
     if (this.chapterTwoActive) {
       const recovered = this.chapterTwoKeycards.size;
       const raised = this.chapterTwo.securityDoors.filter((door) => door.open).length;
@@ -13551,6 +13617,16 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterEightActive) {
+      return [
+        'Inventory: Coordinate Tool',
+        this.getCoordinateToolInventoryLine(),
+        'Chapter 8: The Woods',
+        'Camp props: fire pit, stone ring, crafting bench, grinding bench.',
+        'Crafting and grinding interactions will be added later.',
+      ].join('\n');
+    }
+
     if (this.chapterTwoActive) {
       const cards = CHAPTER_TWO_KEYCARD_ORDER
         .filter((color) => this.chapterTwoKeycards.has(color))
@@ -13730,7 +13806,7 @@ export class Game {
 
     return {
       text: this.getChapterExitNoticeText(),
-      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.zombieModeActive && !this.doomModeActive,
+      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive,
       label: 'Chapter Shift',
     };
   }
@@ -13876,6 +13952,17 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
+      return [
+        coordinateToolSlot,
+        ...Array.from({ length: 8 }, () => ({
+          label: 'Empty',
+          count: 0,
+          filled: false,
+        })),
+      ];
+    }
+
+    if (this.chapterEightActive) {
       return [
         coordinateToolSlot,
         ...Array.from({ length: 8 }, () => ({
@@ -14206,6 +14293,12 @@ export class Game {
       return locked
         ? 'Chapter 7: The House controls: WASD moves, hold S to crawl, walk into push doors, and press E for furniture, the sliding glass door, or the sink faucet.'
         : 'Click the play space to walk around Chapter 7: The House.';
+    }
+
+    if (this.chapterEightActive) {
+      return locked
+        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, and the benches are ready for later crafting and grinding.'
+        : 'Click the play space to walk around Chapter 8: The Woods.';
     }
 
     if (this.officeChapterActive) {
@@ -14665,6 +14758,10 @@ export class Game {
         : '';
     }
 
+    if (this.chapterEightActive) {
+      return '';
+    }
+
     if (!this.chapterTwoActive) {
       return '';
     }
@@ -14898,6 +14995,10 @@ export class Game {
       }
 
       return 'Chapter 7: The House starts inside on the front bedroom bed. Hold S to crawl, and press E for drawers, cupboards, the cardboard box, old closet, sliding glass door, or sink faucet.';
+    }
+
+    if (this.chapterEightActive) {
+      return 'Chapter 8: The Woods loaded. Explore the trees, fire pit, light-green clearing, crafting bench, and grinding bench.';
     }
 
     if (this.officeChapterActive) {
@@ -15579,6 +15680,10 @@ export class Game {
         return (chapterSevenFloorY ?? GAME_CONFIG.player.height) - CHAPTER_SEVEN_CRAWL_DROP;
       }
       return chapterSevenFloorY;
+    }
+
+    if (this.chapterEightActive) {
+      return this.chapterEight.getSupportedFloorY(this.player.getPosition());
     }
 
     return null;
@@ -18727,6 +18832,7 @@ export class Game {
     this.chapterFiveActive = false;
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
+    this.chapterEightActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -18750,6 +18856,7 @@ export class Game {
     this.chapterFive.screenShip.visible = false;
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
     this.zombieMode.root.visible = false;
     this.chapterTwo.reset();
     this.officeChapter.reset();
@@ -18757,6 +18864,7 @@ export class Game {
     this.chapterFive.reset();
     this.chapterSix.reset();
     this.chapterSeven.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -18827,7 +18935,7 @@ export class Game {
   private updateChapterExit(deltaSeconds: number): void {
     this.level.chapterExitDoor.visible = this.chapterExitUnlocked || this.chapterTwoActive;
 
-    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.zombieModeActive || this.doomModeActive) {
+    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.zombieModeActive || this.doomModeActive) {
       return;
     }
 
@@ -18920,6 +19028,7 @@ export class Game {
     this.chapterFiveActive = false;
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
+    this.chapterEightActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -18945,6 +19054,7 @@ export class Game {
     this.chapterFive.screenShip.visible = false;
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -18953,6 +19063,7 @@ export class Game {
     this.chapterFive.reset();
     this.chapterSix.reset();
     this.chapterSeven.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -19021,6 +19132,7 @@ export class Game {
     this.chapterFiveActive = false;
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
+    this.chapterEightActive = false;
     this.zombieModeActive = true;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -19042,6 +19154,8 @@ export class Game {
     this.chapterFive.root.visible = false;
     this.chapterFive.screenShip.visible = false;
     this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
     this.doomMode.root.visible = false;
     this.zombieMode.root.visible = true;
     this.chapterTwo.reset();
@@ -19050,6 +19164,7 @@ export class Game {
     this.chapterFive.reset();
     this.chapterSix.reset();
     this.chapterSeven.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -19136,6 +19251,7 @@ export class Game {
     this.chapterFiveActive = false;
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
+    this.chapterEightActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = true;
     this.chapterMenuOpen = false;
@@ -19158,6 +19274,7 @@ export class Game {
     this.chapterFive.screenShip.visible = false;
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = true;
     this.chapterTwo.reset();
@@ -19166,6 +19283,7 @@ export class Game {
     this.chapterFive.reset();
     this.chapterSix.reset();
     this.chapterSeven.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -19255,6 +19373,7 @@ export class Game {
     this.chapterFiveActive = false;
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
+    this.chapterEightActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -19276,6 +19395,7 @@ export class Game {
     this.chapterFive.screenShip.visible = false;
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -19283,6 +19403,7 @@ export class Game {
     this.chapterFive.reset();
     this.chapterSix.reset();
     this.chapterSeven.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -19403,6 +19524,7 @@ export class Game {
     this.chapterFiveActive = true;
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
+    this.chapterEightActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -19429,6 +19551,7 @@ export class Game {
     this.chapterFive.screenShip.visible = true;
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -19436,6 +19559,7 @@ export class Game {
     this.chapterFour.reset();
     this.chapterSix.reset();
     this.chapterSeven.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -19517,6 +19641,7 @@ export class Game {
     this.chapterFiveActive = false;
     this.chapterSixActive = true;
     this.chapterSevenActive = false;
+    this.chapterEightActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -19545,6 +19670,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterSix.root.visible = true;
     this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -19552,6 +19678,7 @@ export class Game {
     this.chapterFour.reset();
     this.chapterFive.reset();
     this.chapterSeven.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -19640,6 +19767,7 @@ export class Game {
     this.chapterFiveActive = false;
     this.chapterSixActive = false;
     this.chapterSevenActive = true;
+    this.chapterEightActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -19668,6 +19796,7 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.reset();
     this.chapterSeven.root.visible = true;
+    this.chapterEight.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -19675,6 +19804,7 @@ export class Game {
     this.chapterFour.reset();
     this.chapterFive.reset();
     this.chapterSix.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -19752,6 +19882,132 @@ export class Game {
     this.resize();
   }
 
+  private beginChapterEight(): void {
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
+    this.chapterEightActive = true;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = 'Chapter 8: The Woods';
+    this.chapterCardBody =
+      'A separate woods chapter with semi-realistic trees, a lighter green clearing around a stone-ring fire pit, a crafting bench, and a grinding bench.';
+    this.activeJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.placementToolActive = false;
+    this.placementToolAnchor.visible = false;
+    this.placementPreview.visible = false;
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.chapterEight.reset();
+    this.chapterEight.root.visible = true;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterSevenCrawling = false;
+    this.chapterSevenBoxHidden = false;
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterTwoKeycards.clear();
+    this.chapterTwoPuzzlePiecesCollected = 0;
+    this.chapterTwoRedPuzzleSolved = false;
+    this.chapterTwoEggsHeld = 0;
+    this.chapterTwoEggsDeposited = 0;
+    this.chapterTwoEggQuestStarted = false;
+    this.chapterTwoEggQuestNoticeTime = 0;
+    this.chapterTwoBlueBearsHeld = 0;
+    this.chapterTwoBlueBearsReturned = 0;
+    this.chapterTwoBearDialogueIndex = null;
+    this.chapterTwoBearDialogueComplete = false;
+    this.chapterTwoBearChoicePending = false;
+    this.chapterTwoBearQuestAccepted = false;
+    this.chapterTwoBearRefusalTimer = 0;
+    this.chapterTwoDodoTrailActive = false;
+    this.chapterTwoDodoTrailNoticeTime = 0;
+    this.chapterTwoPowerOutageTriggered = false;
+    this.chapterTwoPowerOutageNoticeTime = 0;
+    this.chapterTwoDodoPowerRipSoundPlayed = false;
+    this.chapterTwoDodoNightAttack = null;
+    this.officeChapterTickets = 0;
+    this.officeBasketballHeld = false;
+    this.chapterTwoCoffeeJob = null;
+    this.activeCoffeeDrink = null;
+    this.coffeeBoostRemaining = 0;
+    this.carriedDrinkAnchor.visible = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.resetOfficeTabletState();
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.player.teleport(this.chapterEight.spawn);
+    this.player.lookToward(this.chapterEight.lookTarget, 1);
+    this.pushStatus(
+      'Chapter 8: The Woods loaded. A fire pit, stone ring, lighter clearing grass, crafting bench, and grinding bench are set up for later systems.',
+      3.2,
+    );
+    this.resize();
+  }
+
   private beginOfficeChapter(sandboxCopy = false): void {
     this.stopOfficeGameMode();
     this.officeSandboxChapterActive = sandboxCopy;
@@ -19767,6 +20023,7 @@ export class Game {
     this.chapterFiveActive = false;
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
+    this.chapterEightActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -19790,6 +20047,7 @@ export class Game {
     this.chapterFive.screenShip.visible = false;
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -19798,6 +20056,7 @@ export class Game {
     this.chapterFive.reset();
     this.chapterSix.reset();
     this.chapterSeven.reset();
+    this.chapterEight.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;

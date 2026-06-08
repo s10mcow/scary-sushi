@@ -9,6 +9,7 @@ export type HudChapterId =
   | 'chapter-5'
   | 'chapter-6'
   | 'chapter-7'
+  | 'chapter-8'
   | 'zombie-fps'
   | 'doom-fps';
 export type HudJumpScareVariant = MonsterVariant | 'bear' | 'quacky' | 'fluffle' | 'bori' | 'foxy' | 'purple' | 'blue' | 'green';
@@ -1280,6 +1281,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-7' as const,
       label: 'Chapter 7: The House',
       body: 'Spawn inside the house with a smaller fridge, counter cabinet, oven, longer cupboards, books, and table drawers.',
+    },
+    {
+      id: 'chapter-8' as const,
+      label: 'Chapter 8: The Woods',
+      body: 'A semi-realistic forest camp with a fire pit, stone ring, crafting bench, and grinding bench.',
     },
     {
       id: 'zombie-fps' as const,
