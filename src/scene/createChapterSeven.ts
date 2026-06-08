@@ -496,6 +496,13 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.82,
     metalness: 0.01,
   });
+  const yellowCouchMaterial = new MeshStandardMaterial({
+    color: 0xd4a82f,
+    emissive: 0x211506,
+    emissiveIntensity: 0.05,
+    roughness: 0.86,
+    metalness: 0.01,
+  });
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -950,6 +957,51 @@ export function createChapterSeven(): ChapterSevenData {
     chair.add(seat, back, ...legs);
     house.add(chair);
     addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 0.92, 0.92);
+  };
+
+  const addYellowCouch = (localX: number, localZ: number, rotationY = 0): void => {
+    const couch = new Group();
+    couch.position.set(localX, 0, localZ);
+    couch.rotation.y = rotationY;
+
+    const length = 8;
+    const depth = 2.05;
+    const base = new Mesh(new BoxGeometry(length, 0.34, depth), yellowCouchMaterial);
+    base.position.y = 0.44;
+    const seatOffsets = [-2.55, 0, 2.55];
+    const seats = seatOffsets.map((seatX) => {
+      const cushion = new Mesh(new BoxGeometry(2.42, 0.26, 1.34), yellowCouchMaterial);
+      cushion.position.set(seatX, 0.72, -0.2);
+      return cushion;
+    });
+    const back = new Mesh(new BoxGeometry(length + 0.18, 1.18, 0.32), yellowCouchMaterial);
+    back.position.set(0, 1.05, 0.88);
+    const backCushions = seatOffsets.map((seatX) => {
+      const cushion = new Mesh(new BoxGeometry(2.34, 0.86, 0.18), yellowCouchMaterial);
+      cushion.position.set(seatX, 1.08, 0.68);
+      cushion.rotation.x = -0.1;
+      return cushion;
+    });
+    const leftArm = new Mesh(new BoxGeometry(0.42, 1.06, depth + 0.08), yellowCouchMaterial);
+    leftArm.position.set(-length / 2 - 0.2, 0.82, 0);
+    const rightArm = leftArm.clone();
+    rightArm.position.x = length / 2 + 0.2;
+    const frontLip = new Mesh(new BoxGeometry(length, 0.18, 0.22), furnitureWoodMaterial);
+    frontLip.position.set(0, 0.54, -depth / 2 - 0.04);
+    const legs = [
+      [-3.52, -0.82],
+      [3.52, -0.82],
+      [-3.52, 0.72],
+      [3.52, 0.72],
+    ].map(([legX, legZ]) => {
+      const leg = new Mesh(new BoxGeometry(0.22, 0.36, 0.22), furnitureWoodMaterial);
+      leg.position.set(legX, 0.18, legZ);
+      return leg;
+    });
+
+    couch.add(base, ...seats, back, ...backCushions, leftArm, rightArm, frontLip, ...legs);
+    house.add(couch);
+    addRotatedFurnitureCollider(localX, localZ, length + 0.84, depth + 0.18, rotationY);
   };
 
   const addDiningTable = (localX: number, localZ: number): void => {
@@ -2204,6 +2256,11 @@ export function createChapterSeven(): ChapterSevenData {
     ),
   );
   addDiningTable(leftRoomCenterX, 0);
+  addYellowCouch(
+    1233.90 - CENTER_X - 4,
+    97.63 - HOUSE_CENTER_Z,
+    0,
+  );
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
   const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
