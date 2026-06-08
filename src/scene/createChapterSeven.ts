@@ -45,6 +45,13 @@ export interface ChapterSevenHouseDoor {
   label: string;
   interactPosition: Vector3;
   doorPivot: Group;
+  slidePanes?: {
+    left: Group;
+    right: Group;
+    leftClosedZ: number;
+    rightClosedZ: number;
+    slideDistance: number;
+  };
   collider: CollisionBox;
   open: boolean;
   openAmount: number;
@@ -303,6 +310,16 @@ export function createChapterSeven(): ChapterSevenData {
     emissiveIntensity: 0.05,
     roughness: 0.86,
     metalness: 0.03,
+  });
+  const slidingGlassMaterial = new MeshStandardMaterial({
+    color: 0xb9e2ec,
+    emissive: 0x10252b,
+    emissiveIntensity: 0.1,
+    roughness: 0.08,
+    metalness: 0.04,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false,
   });
   const houseRoofMaterial = new MeshStandardMaterial({
     color: 0x4d2d22,
@@ -601,6 +618,87 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
+  const createSlidingGlassDoor = (
+    label: string,
+    localX: number,
+    localZ: number,
+    width: number,
+    height: number,
+  ): ChapterSevenHouseDoor => {
+    const doorRoot = new Group();
+    doorRoot.position.set(localX, 0, localZ);
+
+    const paneWidth = width / 2 + 0.16;
+    const paneThickness = 0.12;
+    const frameThickness = 0.16;
+    const leftPane = new Group();
+    const rightPane = new Group();
+    const leftClosedZ = -width / 4;
+    const rightClosedZ = width / 4;
+    leftPane.position.z = leftClosedZ;
+    rightPane.position.z = rightClosedZ;
+
+    const makePane = (side: -1 | 1): Group => {
+      const pane = side < 0 ? leftPane : rightPane;
+      const glass = new Mesh(new BoxGeometry(paneThickness, height - 0.44, paneWidth - 0.32), slidingGlassMaterial);
+      glass.position.y = height / 2;
+      const leftFrame = new Mesh(new BoxGeometry(frameThickness, height, frameThickness), houseTrimMaterial);
+      leftFrame.position.set(0, height / 2, -paneWidth / 2);
+      const rightFrame = leftFrame.clone();
+      rightFrame.position.z = paneWidth / 2;
+      const topFrame = new Mesh(new BoxGeometry(frameThickness, frameThickness, paneWidth), houseTrimMaterial);
+      topFrame.position.set(0, height - frameThickness / 2, 0);
+      const bottomFrame = topFrame.clone();
+      bottomFrame.position.y = frameThickness / 2;
+      const handle = new Mesh(new BoxGeometry(0.18, 1.05, 0.12), houseDoorMaterial);
+      handle.position.set(-0.12, height * 0.52, side < 0 ? paneWidth / 2 - 0.34 : -paneWidth / 2 + 0.34);
+      pane.add(glass, leftFrame, rightFrame, topFrame, bottomFrame, handle);
+      return pane;
+    };
+
+    makePane(-1);
+    makePane(1);
+
+    const topTrack = new Mesh(new BoxGeometry(0.22, 0.22, width + 0.72), houseTrimMaterial);
+    topTrack.position.set(0, height + 0.06, 0);
+    const bottomTrack = new Mesh(new BoxGeometry(0.22, 0.16, width + 0.72), houseTrimMaterial);
+    bottomTrack.position.set(0, 0.08, 0);
+    const leftJamb = new Mesh(new BoxGeometry(0.24, height + 0.18, 0.2), houseTrimMaterial);
+    leftJamb.position.set(0, height / 2, -width / 2 - 0.16);
+    const rightJamb = leftJamb.clone();
+    rightJamb.position.z = width / 2 + 0.16;
+
+    doorRoot.add(leftPane, rightPane, topTrack, bottomTrack, leftJamb, rightJamb);
+    house.add(doorRoot);
+
+    const collider: CollisionBox = {
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: HOUSE_WALL_THICKNESS / 2,
+      halfDepth: width / 2,
+    };
+    colliders.push(collider);
+
+    return {
+      label,
+      interactPosition: new Vector3(CENTER_X + localX - 2.4, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ),
+      doorPivot: doorRoot,
+      slidePanes: {
+        left: leftPane,
+        right: rightPane,
+        leftClosedZ,
+        rightClosedZ,
+        slideDistance: width * 0.33,
+      },
+      collider,
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+      openDirection: 1,
+      pushRadius: 4.6,
+    };
+  };
+
   const addBed = (localX: number, localZ: number, headDirection: 1 | -1): void => {
     const bed = new Group();
     bed.position.set(localX, 0, localZ);
@@ -776,10 +874,10 @@ export function createChapterSeven(): ChapterSevenData {
     closet.position.set(localX, 0, localZ);
     closet.rotation.y = rotationY;
 
-    const width = 3.2;
-    const depth = 1.34;
-    const height = 4.55;
-    const wallThickness = 0.16;
+    const width = 1.9;
+    const depth = 0.94;
+    const height = 3.9;
+    const wallThickness = 0.12;
     const back = new Mesh(new BoxGeometry(width, height, wallThickness), closetWoodMaterial);
     back.position.set(0, height / 2, -depth / 2 + wallThickness / 2);
     const leftSide = new Mesh(new BoxGeometry(wallThickness, height, depth), closetWoodMaterial);
@@ -1558,10 +1656,41 @@ export function createChapterSeven(): ChapterSevenData {
   house.add(leftWall);
   addCollider(colliders, CENTER_X - HOUSE_WIDTH / 2, HOUSE_CENTER_Z, HOUSE_WALL_THICKNESS, HOUSE_DEPTH);
 
-  const rightWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, HOUSE_DEPTH), houseWallMaterial);
-  rightWall.position.set(HOUSE_WIDTH / 2, HOUSE_HEIGHT / 2, 0);
-  house.add(rightWall);
-  addCollider(colliders, CENTER_X + HOUSE_WIDTH / 2, HOUSE_CENTER_Z, HOUSE_WALL_THICKNESS, HOUSE_DEPTH);
+  const sideGlassDoorZ = 83.16 - HOUSE_CENTER_Z;
+  const sideGlassDoorWidth = 6.8;
+  const sideGlassDoorHeight = 4.45;
+  const sideGlassDoorStartZ = sideGlassDoorZ - sideGlassDoorWidth / 2;
+  const sideGlassDoorEndZ = sideGlassDoorZ + sideGlassDoorWidth / 2;
+  const rightBackWallDepth = sideGlassDoorStartZ + HOUSE_DEPTH / 2;
+  const rightFrontWallDepth = HOUSE_DEPTH / 2 - sideGlassDoorEndZ;
+  const rightBackWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, rightBackWallDepth), houseWallMaterial);
+  rightBackWall.position.set(HOUSE_WIDTH / 2, HOUSE_HEIGHT / 2, -HOUSE_DEPTH / 2 + rightBackWallDepth / 2);
+  const rightFrontWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, rightFrontWallDepth), houseWallMaterial);
+  rightFrontWall.position.set(HOUSE_WIDTH / 2, HOUSE_HEIGHT / 2, sideGlassDoorEndZ + rightFrontWallDepth / 2);
+  const rightWallHeader = new Mesh(
+    new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT - sideGlassDoorHeight, sideGlassDoorWidth + HOUSE_WALL_THICKNESS),
+    houseWallMaterial,
+  );
+  rightWallHeader.position.set(
+    HOUSE_WIDTH / 2,
+    sideGlassDoorHeight + (HOUSE_HEIGHT - sideGlassDoorHeight) / 2,
+    sideGlassDoorZ,
+  );
+  house.add(rightBackWall, rightFrontWall, rightWallHeader);
+  addCollider(
+    colliders,
+    CENTER_X + HOUSE_WIDTH / 2,
+    HOUSE_CENTER_Z - HOUSE_DEPTH / 2 + rightBackWallDepth / 2,
+    HOUSE_WALL_THICKNESS,
+    rightBackWallDepth,
+  );
+  addCollider(
+    colliders,
+    CENTER_X + HOUSE_WIDTH / 2,
+    HOUSE_CENTER_Z + sideGlassDoorEndZ + rightFrontWallDepth / 2,
+    HOUSE_WALL_THICKNESS,
+    rightFrontWallDepth,
+  );
 
   const frontWallSegmentWidth = (HOUSE_WIDTH - HOUSE_DOOR_WIDTH) / 2;
   const frontLeftWall = new Mesh(new BoxGeometry(frontWallSegmentWidth, HOUSE_HEIGHT, HOUSE_WALL_THICKNESS), houseWallMaterial);
@@ -1700,7 +1829,7 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addDiningTable(leftRoomCenterX, 0);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
-  const oldWoodenCloset = addOldWoodenCloset(-24.2, -4.25, Math.PI / 2);
+  const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
     1187.12 - CENTER_X,
@@ -1802,6 +1931,13 @@ export function createChapterSeven(): ChapterSevenData {
     0,
     HOUSE_DEPTH / 2 + 2.2,
     -1,
+  );
+  const sideGlassDoor = createSlidingGlassDoor(
+    'Right-side sliding glass door',
+    HOUSE_WIDTH / 2 + 0.03,
+    sideGlassDoorZ,
+    sideGlassDoorWidth,
+    sideGlassDoorHeight,
   );
   const porchWidth = 23.6;
   const porchDepth = 11.2;
@@ -1938,7 +2074,7 @@ export function createChapterSeven(): ChapterSevenData {
   addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X - (porchGapWidth / 2 + frontRailSegmentWidth / 2), HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
   addCollider(colliders, CENTER_X + porchGapWidth / 2 + frontRailSegmentWidth / 2, HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
-  const houseDoors = [houseDoor, ...roomDoors];
+  const houseDoors = [houseDoor, sideGlassDoor, ...roomDoors];
 
   root.add(house);
 
@@ -2155,7 +2291,12 @@ export function createChapterSeven(): ChapterSevenData {
         } else {
           door.openAmount = door.targetOpenAmount;
         }
-        door.doorPivot.rotation.y = door.openDirection * door.openAmount * Math.PI * 0.58;
+        if (door.slidePanes) {
+          door.slidePanes.left.position.z = door.slidePanes.leftClosedZ - door.openAmount * door.slidePanes.slideDistance;
+          door.slidePanes.right.position.z = door.slidePanes.rightClosedZ + door.openAmount * door.slidePanes.slideDistance;
+        } else {
+          door.doorPivot.rotation.y = door.openDirection * door.openAmount * Math.PI * 0.58;
+        }
         door.open = door.targetOpenAmount > 0.5;
         door.collider.enabled = door.openAmount < 0.62;
       });
@@ -2235,6 +2376,10 @@ export function createChapterSeven(): ChapterSevenData {
         door.openAmount = 0;
         door.targetOpenAmount = 0;
         door.doorPivot.rotation.y = 0;
+        if (door.slidePanes) {
+          door.slidePanes.left.position.z = door.slidePanes.leftClosedZ;
+          door.slidePanes.right.position.z = door.slidePanes.rightClosedZ;
+        }
         door.collider.enabled = true;
       });
       houseDrawers.forEach((drawer) => {
