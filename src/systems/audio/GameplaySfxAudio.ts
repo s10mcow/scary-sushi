@@ -287,6 +287,58 @@ export class GameplaySfxAudio {
     this.playMetalThud(now + 0.32, 0.07, 118);
   }
 
+  playForcedSecurityDoorScreech(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.012;
+    const length = 1.85;
+    const screechGain = this.context.createGain();
+    screechGain.gain.setValueAtTime(0.0001, now);
+    screechGain.gain.exponentialRampToValueAtTime(0.32, now + 0.035);
+    screechGain.gain.linearRampToValueAtTime(0.22, now + 1.05);
+    screechGain.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    screechGain.connect(this.masterGain);
+
+    const screech = this.context.createOscillator();
+    screech.type = 'sawtooth';
+    screech.frequency.setValueAtTime(1860, now);
+    screech.frequency.exponentialRampToValueAtTime(620, now + length);
+
+    const scrapeBand = this.context.createBiquadFilter();
+    scrapeBand.type = 'bandpass';
+    scrapeBand.frequency.setValueAtTime(2480, now);
+    scrapeBand.frequency.linearRampToValueAtTime(960, now + length);
+    scrapeBand.Q.value = 5.8;
+    screech.connect(scrapeBand);
+    scrapeBand.connect(screechGain);
+    this.startSource(screech, now, now + length);
+
+    const grindGain = this.context.createGain();
+    grindGain.gain.setValueAtTime(0.0001, now);
+    grindGain.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
+    grindGain.gain.linearRampToValueAtTime(0.15, now + 1.2);
+    grindGain.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    grindGain.connect(this.masterGain);
+
+    const grind = this.context.createBufferSource();
+    grind.buffer = this.noiseBuffer;
+    grind.playbackRate.value = 1.35;
+    const grindFilter = this.context.createBiquadFilter();
+    grindFilter.type = 'highpass';
+    grindFilter.frequency.setValueAtTime(1320, now);
+    grindFilter.frequency.linearRampToValueAtTime(3600, now + 0.42);
+    grindFilter.frequency.linearRampToValueAtTime(920, now + length);
+    grind.connect(grindFilter);
+    grindFilter.connect(grindGain);
+    this.startSource(grind, now, now + length);
+
+    this.playMetalThud(now + 0.08, 0.16, 96);
+    this.playMetalThud(now + 0.72, 0.11, 132);
+    this.playMetalThud(now + 1.34, 0.08, 168);
+  }
+
   playAnimatronicDoorLaugh(): void {
     if (!this.context || !this.masterGain) {
       return;

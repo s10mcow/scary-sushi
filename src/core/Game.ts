@@ -6125,7 +6125,10 @@ export class Game {
 
     if (previousTimer < OFFICE_DOOR_BREACH_SECONDS * 0.38 && animatronic.doorBreachTimer >= OFFICE_DOOR_BREACH_SECONDS * 0.38) {
       this.playOfficeDoorToggleSound(doorId, true);
+      this.gameplaySfxAudio.playForcedSecurityDoorScreech();
       this.gameplaySfxAudio.playSecurityDoorCrash();
+      this.spawnOfficeDoorSparks(doorId, doorLift);
+      this.spawnOfficeDoorSparks(doorId, doorLift);
     }
 
     if (progress >= 0.34) {
