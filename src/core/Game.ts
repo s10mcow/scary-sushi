@@ -2119,6 +2119,8 @@ export class Game {
       && !chapterFourBoxHiding
       && !chapterFourLockerHiding
       && this.input.isSpaceHeld();
+    const chapterSevenUnderBed = this.chapterSevenActive
+      && this.chapterSeven.isPlayerUnderBed(this.player.getPosition());
     this.chapterSevenCrawling = this.chapterSevenActive
       && this.player.isLocked()
       && !jumpscareLocked
@@ -2126,7 +2128,7 @@ export class Game {
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen
       && !this.chapterSevenBoxHidden
-      && this.input.isCrawlHeld();
+      && (this.input.isCrawlHeld() || chapterSevenUnderBed);
     const jumpRequested = !this.doomModeActive
       && !this.chapterFourActive
       && !this.chapterFiveActive
@@ -2234,10 +2236,6 @@ export class Game {
       } else {
         this.handleUseItem();
       }
-    }
-
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeFaucetToggle()) {
-      this.handleChapterSevenFaucetToggle();
     }
 
     if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumePlacementMarkerDelete() && (this.placementToolActive || this.microphoneSoundToolActive || this.cameraToolActive)) {
@@ -10247,7 +10245,7 @@ export class Game {
       }
 
       if (interactable?.kind === 'kitchen-sink') {
-        this.pushStatus('Press G to turn the kitchen faucet on or off.', 2.2);
+        this.handleChapterSevenFaucetToggle();
         return;
       }
 
@@ -14188,8 +14186,8 @@ export class Game {
 
         if (interactable.kind === 'kitchen-sink') {
           return interactable.item.open
-            ? 'Press G to turn off the faucet.'
-            : 'Press G to turn on the faucet.';
+            ? 'Press E to turn off the faucet.'
+            : 'Press E to turn on the faucet.';
         }
 
         if (interactable.kind === 'old-wooden-closet') {
@@ -14211,7 +14209,7 @@ export class Game {
       }
 
       return locked
-        ? 'Chapter 7: The House controls: WASD moves, hold S to crawl, walk into push doors, press E for furniture or the sliding glass door, and press G for the sink faucet.'
+        ? 'Chapter 7: The House controls: WASD moves, hold S to crawl, walk into push doors, and press E for furniture, the sliding glass door, or the sink faucet.'
         : 'Click the play space to walk around Chapter 7: The House.';
     }
 
@@ -14836,6 +14834,10 @@ export class Game {
         return 'Inside the cardboard box. You cannot move while hidden. Press E to open it again.';
       }
 
+      if (this.chapterSevenCrawling && this.chapterSeven.isPlayerUnderBed(this.player.getPosition())) {
+        return 'Hidden under the raised bed. Crawl back out from under the frame to stand up again.';
+      }
+
       if (this.chapterSevenCrawling) {
         return 'Crawling. Movement is slower; jump into the open cardboard box, then press E to close it around you.';
       }
@@ -14872,8 +14874,8 @@ export class Game {
 
         if (interactable.kind === 'kitchen-sink') {
           return interactable.item.open
-            ? 'The kitchen faucet is running. Press G to turn it off.'
-            : 'The kitchen faucet is off. Press G to turn it on.';
+            ? 'The kitchen faucet is running. Press E to turn it off.'
+            : 'The kitchen faucet is off. Press E to turn it on.';
         }
 
         if (interactable.kind === 'old-wooden-closet') {
@@ -14900,7 +14902,7 @@ export class Game {
           : `${door.label} opens when you walk into it.`;
       }
 
-      return 'Chapter 7: The House starts inside. Hold S to crawl, press E for drawers, cupboards, the cardboard box, old closet, or the sliding glass door, and press G for the sink faucet.';
+      return 'Chapter 7: The House starts inside on the front bedroom bed. Hold S to crawl, and press E for drawers, cupboards, the cardboard box, old closet, sliding glass door, or sink faucet.';
     }
 
     if (this.officeChapterActive) {
@@ -15574,7 +15576,10 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
-      const chapterSevenFloorY = this.chapterSeven.getSupportedFloorY(this.player.getPosition());
+      const chapterSevenFloorY = this.chapterSeven.getSupportedFloorY(
+        this.player.getPosition(),
+        this.chapterSevenCrawling || this.chapterSevenBoxHidden,
+      );
       if (this.chapterSevenCrawling || this.chapterSevenBoxHidden) {
         return (chapterSevenFloorY ?? GAME_CONFIG.player.height) - CHAPTER_SEVEN_CRAWL_DROP;
       }
@@ -19646,7 +19651,7 @@ export class Game {
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter 7: The House';
     this.chapterCardBody =
-      'Start inside the forest clearing house, with a smaller fridge, counter cabinet, oven, longer back-wall cupboards, a bookcase, and table drawers.';
+      'Start on the front bedroom bed inside the forest clearing house, with raised beds, kitchen fixtures, cupboards, a bookcase, and table drawers.';
     this.activeJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
@@ -19744,7 +19749,7 @@ export class Game {
     this.player.teleport(this.chapterSeven.spawn);
     this.player.lookToward(this.chapterSeven.lookTarget, 1);
     this.pushStatus(
-      'Chapter 7: The House loaded. Look at the fridge, oven, cupboards, or a specific drawer and press E to open it.',
+      'Chapter 7: The House loaded. You spawn on the front bedroom bed. Hold S to crawl under raised beds, and press E to use furniture or the sink faucet.',
       3.2,
     );
     this.resize();

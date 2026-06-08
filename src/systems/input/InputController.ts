@@ -26,7 +26,6 @@ export class InputController {
   private fireQueued = false;
   private secondaryFireQueued = false;
   private fireHeld = false;
-  private faucetToggleQueued = false;
   private choiceYesQueued = false;
   private choiceNoQueued = false;
   private hotbarSlotQueued: number | null = null;
@@ -133,12 +132,6 @@ export class InputController {
     return value;
   }
 
-  consumeFaucetToggle(): boolean {
-    const value = this.faucetToggleQueued;
-    this.faucetToggleQueued = false;
-    return value;
-  }
-
   consumeSecondaryFire(): boolean {
     const value = this.secondaryFireQueued;
     this.secondaryFireQueued = false;
@@ -187,10 +180,6 @@ export class InputController {
 
     if (event.code === 'KeyF' && !event.repeat) {
       this.flashlightToggleQueued = true;
-    }
-
-    if (event.code === 'KeyG' && !event.repeat) {
-      this.faucetToggleQueued = true;
     }
 
     if (event.code === 'KeyE' && !event.repeat) {

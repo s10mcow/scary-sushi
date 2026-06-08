@@ -37,7 +37,8 @@ export interface ChapterSevenData {
   oldWoodenCloset: ChapterSevenOldWoodenCloset;
   cardboardBox: ChapterSevenCardboardBox;
   kitchenSink: ChapterSevenKitchenSink;
-  getSupportedFloorY(position: Vector3): number | null;
+  getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
+  isPlayerUnderBed(position: Vector3): boolean;
   update(deltaSeconds: number, playerPosition?: Vector3): void;
   reset(): void;
 }
@@ -88,6 +89,11 @@ interface ChapterSevenCounterSurface {
   halfDepth: number;
   floorY: number;
   collider?: CollisionBox;
+}
+
+interface ChapterSevenBedSurface extends ChapterSevenCounterSurface {
+  collider: CollisionBox;
+  label: string;
 }
 
 export interface ChapterSevenFridge {
@@ -260,7 +266,7 @@ export function createChapterSeven(): ChapterSevenData {
   root.name = 'Chapter 7: The House';
   const colliders: CollisionBox[] = [];
   const counterSurfaces: ChapterSevenCounterSurface[] = [];
-  const bedSurfaces: Array<ChapterSevenCounterSurface & { collider: CollisionBox }> = [];
+  const bedSurfaces: ChapterSevenBedSurface[] = [];
   let forestTime = 0;
 
   const random = createRandom(707);
@@ -745,20 +751,37 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
-  const addBed = (localX: number, localZ: number, headDirection: 1 | -1): void => {
+  const addBed = (localX: number, localZ: number, headDirection: 1 | -1, label: string): void => {
     const bed = new Group();
     bed.position.set(localX, 0, localZ);
 
-    const frame = new Mesh(new BoxGeometry(3.8, 0.42, 6.6), bedFrameMaterial);
-    frame.position.y = 0.32;
-    const mattress = new Mesh(new BoxGeometry(3.45, 0.42, 6.05), mattressMaterial);
-    mattress.position.y = 0.76;
-    const blanket = new Mesh(new BoxGeometry(3.5, 0.26, 3.5), blanketMaterial);
-    blanket.position.set(0, 1.04, -headDirection * 0.72);
+    const sideRailLeft = new Mesh(new BoxGeometry(0.24, 0.32, 6.52), bedFrameMaterial);
+    sideRailLeft.position.set(-1.92, 0.78, 0);
+    const sideRailRight = sideRailLeft.clone();
+    sideRailRight.position.x = 1.92;
+    const footRail = new Mesh(new BoxGeometry(3.9, 0.3, 0.24), bedFrameMaterial);
+    footRail.position.set(0, 0.78, -headDirection * 3.14);
+    const headboard = new Mesh(new BoxGeometry(4.1, 1.58, 0.28), bedFrameMaterial);
+    headboard.position.set(0, 0.86, headDirection * 3.24);
+    const footboard = new Mesh(new BoxGeometry(4.02, 0.82, 0.24), bedFrameMaterial);
+    footboard.position.set(0, 0.5, -headDirection * 3.24);
+    const headboardTop = new Mesh(new BoxGeometry(4.28, 0.18, 0.36), furnitureWoodMaterial);
+    headboardTop.position.set(0, 1.68, headDirection * 3.24);
+
+    const slats = [-2.34, -1.56, -0.78, 0, 0.78, 1.56, 2.34].map((slatZ) => {
+      const slat = new Mesh(new BoxGeometry(3.42, 0.08, 0.2), furnitureWoodMaterial);
+      slat.position.set(0, 0.93, slatZ);
+      return slat;
+    });
+
+    const mattress = new Mesh(new BoxGeometry(3.48, 0.38, 6.08), mattressMaterial);
+    mattress.position.y = 1.18;
+    const blanket = new Mesh(new BoxGeometry(3.52, 0.2, 3.46), blanketMaterial);
+    blanket.position.set(0, 1.42, -headDirection * 0.72);
     const pillowLeft = new Mesh(new BoxGeometry(1.35, 0.28, 0.92), pillowMaterial);
-    pillowLeft.position.set(-0.74, 1.14, headDirection * 2.42);
+    pillowLeft.position.set(-0.74, 1.56, headDirection * 2.42);
     const pillowRight = new Mesh(new BoxGeometry(1.35, 0.28, 0.92), pillowMaterial);
-    pillowRight.position.set(0.74, 1.14, headDirection * 2.42);
+    pillowRight.position.set(0.74, 1.56, headDirection * 2.42);
 
     const legOffsets: Array<[number, number]> = [
       [-1.58, -2.84],
@@ -767,12 +790,25 @@ export function createChapterSeven(): ChapterSevenData {
       [1.58, 2.84],
     ];
     const legs = legOffsets.map(([legX, legZ]) => {
-      const leg = new Mesh(new BoxGeometry(0.34, 0.62, 0.34), bedFrameMaterial);
-      leg.position.set(legX, 0.2, legZ);
+      const leg = new Mesh(new BoxGeometry(0.34, 0.86, 0.34), bedFrameMaterial);
+      leg.position.set(legX, 0.43, legZ);
       return leg;
     });
 
-    bed.add(frame, mattress, blanket, pillowLeft, pillowRight, ...legs);
+    bed.add(
+      sideRailLeft,
+      sideRailRight,
+      footRail,
+      headboard,
+      footboard,
+      headboardTop,
+      ...slats,
+      mattress,
+      blanket,
+      pillowLeft,
+      pillowRight,
+      ...legs,
+    );
     house.add(bed);
     const collider = {
       centerX: CENTER_X + localX,
@@ -782,11 +818,12 @@ export function createChapterSeven(): ChapterSevenData {
     };
     colliders.push(collider);
     bedSurfaces.push({
+      label,
       centerX: CENTER_X + localX,
       centerZ: HOUSE_CENTER_Z + localZ,
       halfWidth: 3.45 / 2,
       halfDepth: 6.05 / 2,
-      floorY: 1.04,
+      floorY: 1.38,
       collider,
     });
   };
@@ -1989,8 +2026,8 @@ export function createChapterSeven(): ChapterSevenData {
       1,
     ),
   );
-  addBed(-23.55, 10.6, 1);
-  addBed(-23.55, -10.6, -1);
+  addBed(-23.55, 10.6, 1, 'Front bedroom bed');
+  addBed(-23.55, -10.6, -1, 'Back bedroom bed');
   const rockingChairX = 1200.10 - CENTER_X;
   const rockingChairZ = 63.31 - HOUSE_CENTER_Z;
   const rockingChairCornerX = HOUSE_LEFT_ROOM_WALL_X;
@@ -2372,7 +2409,7 @@ export function createChapterSeven(): ChapterSevenData {
   addCollider(colliders, CENTER_X, CENTER_Z - HALF_SIZE - 1, FOREST_SIZE + 10, 2);
   addCollider(colliders, CENTER_X, CENTER_Z + HALF_SIZE + 1, FOREST_SIZE + 10, 2);
 
-  const spawn = new Vector3(CENTER_X + leftRoomCenterX, GAME_CONFIG.player.height + getForestFloorY(), HOUSE_CENTER_Z + 12.2);
+  const spawn = new Vector3(CENTER_X - 23.55, GAME_CONFIG.player.height + 1.38, HOUSE_CENTER_Z + 10.1);
   const lookTarget = new Vector3(CENTER_X + HOUSE_LEFT_ROOM_WALL_X, GAME_CONFIG.player.height * 0.86, HOUSE_CENTER_Z + HOUSE_FRONT_ROOM_DOOR_Z);
 
   return {
@@ -2392,7 +2429,7 @@ export function createChapterSeven(): ChapterSevenData {
     oldWoodenCloset,
     cardboardBox,
     kitchenSink,
-    getSupportedFloorY(position: Vector3): number | null {
+    getSupportedFloorY(position: Vector3, crawling = false): number | null {
       const insideForest = position.x >= CENTER_X - HALF_SIZE
         && position.x <= CENTER_X + HALF_SIZE
         && position.z >= CENTER_Z - HALF_SIZE
@@ -2442,10 +2479,11 @@ export function createChapterSeven(): ChapterSevenData {
         const nearSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth + GAME_CONFIG.player.radius + 0.28
           && Math.abs(position.z - surface.centerZ) <= surface.halfDepth + GAME_CONFIG.player.radius + 0.28;
         const highEnoughToClearFrame = position.y > GAME_CONFIG.player.height + 0.22;
-        surface.collider.enabled = !(nearSurface && highEnoughToClearFrame);
+        const lowEnoughToCrawlUnderBed = crawling || position.y < GAME_CONFIG.player.height - 0.25;
+        surface.collider.enabled = !(nearSurface && (highEnoughToClearFrame || lowEnoughToCrawlUnderBed));
         const onSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth
           && Math.abs(position.z - surface.centerZ) <= surface.halfDepth;
-        if (onSurface && highEnoughToClearFrame) {
+        if (onSurface && highEnoughToClearFrame && !crawling) {
           bedFloorY = GAME_CONFIG.player.height + surface.floorY;
         }
       });
@@ -2455,6 +2493,13 @@ export function createChapterSeven(): ChapterSevenData {
       }
 
       return GAME_CONFIG.player.height + getForestFloorY();
+    },
+    isPlayerUnderBed(position: Vector3): boolean {
+      return bedSurfaces.some((surface) => (
+        Math.abs(position.x - surface.centerX) <= surface.halfWidth - 0.18
+        && Math.abs(position.z - surface.centerZ) <= surface.halfDepth - 0.18
+        && position.y < GAME_CONFIG.player.height - 0.15
+      ));
     },
     update(deltaSeconds: number, playerPosition?: Vector3): void {
       forestTime += deltaSeconds;
