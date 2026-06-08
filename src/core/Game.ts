@@ -1093,7 +1093,7 @@ export class Game {
     this.chapterTwo = createChapterTwoLevel();
     this.chapterTwo.root.visible = false;
     this.mainOfficeChapter = createOfficeChapter();
-    this.officeSandboxChapter = createOfficeChapter();
+    this.officeSandboxChapter = createOfficeChapter({ abandonedStraightHalls: true });
     this.translateOfficeChapterCopy(this.officeSandboxChapter, OFFICE_CHAPTER_COPY_OFFSET_X, OFFICE_CHAPTER_COPY_OFFSET_Z);
     this.officeChapter = this.mainOfficeChapter;
     this.loadDeletedOfficeSecurityCameras(OFFICE_DELETED_CAMERA_STORAGE_KEY, this.deletedOfficeSecurityCameraIds);

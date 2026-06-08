@@ -362,6 +362,10 @@ export interface OfficeChapterData {
   reset(): void;
 }
 
+interface OfficeChapterOptions {
+  abandonedStraightHalls?: boolean;
+}
+
 const OFFICE_CENTER_X = -240;
 const OFFICE_CENTER_Z = 184;
 const OFFICE_WIDTH = 13;
@@ -372,6 +376,7 @@ const WALL_THICKNESS = 0.45;
 const DOOR_MOVE_SPEED = 8.4;
 const SIDE_HALL_WIDTH = 4.6;
 const SIDE_HALL_STRAIGHT_LENGTH = 5.8;
+const ABANDONED_SIDE_HALL_STRAIGHT_LENGTH = 11.2;
 const SIDE_HALL_TURN_LENGTH = 10.2;
 const DOOR_Z_SHIFT = 0.9;
 const OFFICE_WINDOW_DEPTH = 2.2;
@@ -4328,7 +4333,8 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
   };
 }
 
-export function createOfficeChapter(): OfficeChapterData {
+export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeChapterData {
+  const abandonedStraightHalls = options.abandonedStraightHalls ?? false;
   const materials = createLevelMaterials();
   materials.wall.color.setHex(0xbac1c8);
   materials.floor.color.setHex(0xcfd4d8);
@@ -4390,6 +4396,34 @@ export function createOfficeChapter(): OfficeChapterData {
 
   const root = new Group();
   const colliders: CollisionBox[] = [];
+  const vineMaterial = new MeshStandardMaterial({
+    color: 0x2f5932,
+    roughness: 0.92,
+    metalness: 0,
+  });
+  const vineLeafMaterial = new MeshStandardMaterial({
+    color: 0x466f35,
+    roughness: 0.88,
+    metalness: 0,
+    side: DoubleSide,
+  });
+  const addHallVine = (points: Vector3[], leafRotationY = 0): void => {
+    if (points.length < 2) {
+      return;
+    }
+
+    const vine = new Mesh(new TubeGeometry(new CatmullRomCurve3(points), 18, 0.035, 6, false), vineMaterial);
+    root.add(vine);
+
+    points.slice(1, -1).forEach((point, index) => {
+      const leaf = new Mesh(new PlaneGeometry(0.34, 0.2), vineLeafMaterial);
+      leaf.position.copy(point);
+      leaf.rotation.y = leafRotationY;
+      leaf.rotation.z = (index % 2 === 0 ? 0.55 : -0.48) + Math.sin(point.x + point.z) * 0.12;
+      leaf.scale.setScalar(0.82 + (index % 3) * 0.12);
+      root.add(leaf);
+    });
+  };
 
   const floor: FloorDefinition = {
     width: OFFICE_WIDTH,
@@ -4490,12 +4524,15 @@ export function createOfficeChapter(): OfficeChapterData {
   root.add(wallResult.root);
   colliders.push(...wallResult.colliders);
 
+  const sideHallStraightLength = abandonedStraightHalls
+    ? ABANDONED_SIDE_HALL_STRAIGHT_LENGTH
+    : SIDE_HALL_STRAIGHT_LENGTH;
   const northExtensionDepth = SIDE_HALL_TURN_LENGTH - SIDE_HALL_WIDTH;
-  const leftStraightCenterX = westWallX - SIDE_HALL_STRAIGHT_LENGTH / 2 + WALL_THICKNESS / 2;
-  const rightStraightCenterX = eastWallX + SIDE_HALL_STRAIGHT_LENGTH / 2 - WALL_THICKNESS / 2;
+  const leftStraightCenterX = westWallX - sideHallStraightLength / 2 + WALL_THICKNESS / 2;
+  const rightStraightCenterX = eastWallX + sideHallStraightLength / 2 - WALL_THICKNESS / 2;
   const northTurnCenterZ = shiftedDoorZ - northExtensionDepth / 2;
-  const leftTurnCenterX = westWallX - SIDE_HALL_STRAIGHT_LENGTH + SIDE_HALL_WIDTH / 2;
-  const rightTurnCenterX = eastWallX + SIDE_HALL_STRAIGHT_LENGTH - SIDE_HALL_WIDTH / 2;
+  const leftTurnCenterX = westWallX - sideHallStraightLength + SIDE_HALL_WIDTH / 2;
+  const rightTurnCenterX = eastWallX + sideHallStraightLength - SIDE_HALL_WIDTH / 2;
   const northTurnMinZ = northTurnCenterZ - SIDE_HALL_TURN_LENGTH / 2;
   const turnWallSouthZ = shiftedDoorZ - SIDE_HALL_WIDTH / 2;
   const innerHallWallNorthDepth = Math.max(0, hallWindowGapMinZ - northTurnMinZ);
@@ -4505,12 +4542,12 @@ export function createOfficeChapter(): OfficeChapterData {
 
   [
     {
-      width: SIDE_HALL_STRAIGHT_LENGTH,
+      width: sideHallStraightLength,
       depth: SIDE_HALL_WIDTH,
       center: [leftStraightCenterX, shiftedDoorZ] as [number, number],
     },
     {
-      width: SIDE_HALL_STRAIGHT_LENGTH,
+      width: sideHallStraightLength,
       depth: SIDE_HALL_WIDTH,
       center: [rightStraightCenterX, shiftedDoorZ] as [number, number],
     },
@@ -4535,24 +4572,24 @@ export function createOfficeChapter(): OfficeChapterData {
 
   const hallWalls: WallDefinition[] = [
     {
-      position: [westWallX - (SIDE_HALL_STRAIGHT_LENGTH - SIDE_HALL_WIDTH) / 2, WALL_HEIGHT / 2, shiftedDoorZ - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS / 2],
-      size: [SIDE_HALL_STRAIGHT_LENGTH - SIDE_HALL_WIDTH, WALL_HEIGHT, WALL_THICKNESS],
+      position: [westWallX - (sideHallStraightLength - SIDE_HALL_WIDTH) / 2, WALL_HEIGHT / 2, shiftedDoorZ - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS / 2],
+      size: [sideHallStraightLength - SIDE_HALL_WIDTH, WALL_HEIGHT, WALL_THICKNESS],
     },
     {
       position: [leftStraightCenterX, WALL_HEIGHT / 2, shiftedDoorZ + SIDE_HALL_WIDTH / 2 - WALL_THICKNESS / 2],
-      size: [SIDE_HALL_STRAIGHT_LENGTH, WALL_HEIGHT, WALL_THICKNESS],
+      size: [sideHallStraightLength, WALL_HEIGHT, WALL_THICKNESS],
     },
     {
       position: [leftTurnCenterX - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS / 2, WALL_HEIGHT / 2, northTurnCenterZ],
       size: [WALL_THICKNESS, WALL_HEIGHT, SIDE_HALL_TURN_LENGTH],
     },
     {
-      position: [eastWallX + (SIDE_HALL_STRAIGHT_LENGTH - SIDE_HALL_WIDTH) / 2, WALL_HEIGHT / 2, shiftedDoorZ - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS / 2],
-      size: [SIDE_HALL_STRAIGHT_LENGTH - SIDE_HALL_WIDTH, WALL_HEIGHT, WALL_THICKNESS],
+      position: [eastWallX + (sideHallStraightLength - SIDE_HALL_WIDTH) / 2, WALL_HEIGHT / 2, shiftedDoorZ - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS / 2],
+      size: [sideHallStraightLength - SIDE_HALL_WIDTH, WALL_HEIGHT, WALL_THICKNESS],
     },
     {
       position: [rightStraightCenterX, WALL_HEIGHT / 2, shiftedDoorZ + SIDE_HALL_WIDTH / 2 - WALL_THICKNESS / 2],
-      size: [SIDE_HALL_STRAIGHT_LENGTH, WALL_HEIGHT, WALL_THICKNESS],
+      size: [sideHallStraightLength, WALL_HEIGHT, WALL_THICKNESS],
     },
     {
       position: [rightTurnCenterX + SIDE_HALL_WIDTH / 2 - WALL_THICKNESS / 2, WALL_HEIGHT / 2, northTurnCenterZ],
@@ -4594,6 +4631,39 @@ export function createOfficeChapter(): OfficeChapterData {
   const hallWallResult = createWalls(hallWalls, materials);
   root.add(hallWallResult.root);
   colliders.push(...hallWallResult.colliders);
+
+  if (abandonedStraightHalls) {
+    const hallNorthWallZ = shiftedDoorZ - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS + 0.035;
+    const hallSouthWallZ = shiftedDoorZ + SIDE_HALL_WIDTH / 2 - WALL_THICKNESS - 0.035;
+    const leftHallStartX = westWallX - 1.15;
+    const leftHallEndX = leftTurnCenterX - 0.35;
+    const rightHallStartX = eastWallX + 1.15;
+    const rightHallEndX = rightTurnCenterX + 0.35;
+    addHallVine([
+      new Vector3(leftHallStartX, 3.46, hallNorthWallZ),
+      new Vector3(leftHallStartX - 1.8, 2.82, hallNorthWallZ),
+      new Vector3(leftHallStartX - 3.6, 3.12, hallNorthWallZ),
+      new Vector3(leftHallEndX, 2.18, hallNorthWallZ),
+    ]);
+    addHallVine([
+      new Vector3(leftHallStartX - 0.45, 1.1, hallSouthWallZ),
+      new Vector3(leftHallStartX - 2.15, 1.92, hallSouthWallZ),
+      new Vector3(leftHallStartX - 4.6, 1.42, hallSouthWallZ),
+      new Vector3(leftHallEndX + 0.2, 2.72, hallSouthWallZ),
+    ], Math.PI);
+    addHallVine([
+      new Vector3(rightHallStartX, 3.34, hallNorthWallZ),
+      new Vector3(rightHallStartX + 1.7, 2.42, hallNorthWallZ),
+      new Vector3(rightHallStartX + 3.55, 2.96, hallNorthWallZ),
+      new Vector3(rightHallEndX, 1.86, hallNorthWallZ),
+    ]);
+    addHallVine([
+      new Vector3(rightHallStartX + 0.4, 1.32, hallSouthWallZ),
+      new Vector3(rightHallStartX + 2.3, 2.08, hallSouthWallZ),
+      new Vector3(rightHallStartX + 4.7, 1.56, hallSouthWallZ),
+      new Vector3(rightHallEndX - 0.18, 2.68, hallSouthWallZ),
+    ], Math.PI);
+  }
 
   const partyRoomCenterX = OFFICE_CENTER_X;
   const partyRoomSouthZ = northTurnMinZ;
