@@ -4455,65 +4455,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       }
     });
   };
-  const addSlidingDoorVines = (door: OfficeChapterDoor): void => {
-    const doorVinePoints = [
-      new Vector3(-1.35, 0.72, 0.32),
-      new Vector3(-0.78, 1.22, 0.33),
-      new Vector3(-0.22, 1.72, 0.32),
-      new Vector3(0.64, 2.2, 0.33),
-      new Vector3(1.24, 2.72, 0.32),
-    ];
-    const vine = new Mesh(new TubeGeometry(new CatmullRomCurve3(doorVinePoints), 20, 0.026, 6, false), vineMaterial);
-    door.slab.add(vine);
-
-    doorVinePoints.slice(1, -1).forEach((point, index) => {
-      const leaf = new Mesh(new PlaneGeometry(0.26, 0.15), vineLeafMaterial);
-      leaf.position.copy(point).add(new Vector3(index % 2 === 0 ? 0.12 : -0.1, 0.02, 0.03));
-      leaf.rotation.z = index % 2 === 0 ? 0.72 : -0.58;
-      door.slab.add(leaf);
-
-      const flowerRoot = new Group();
-      flowerRoot.position.copy(point).add(new Vector3(index % 2 === 0 ? -0.1 : 0.1, 0.09, 0.04));
-      for (let petalIndex = 0; petalIndex < 5; petalIndex += 1) {
-        const petal = new Mesh(new PlaneGeometry(0.09, 0.045), vineFlowerMaterial);
-        petal.position.set(Math.cos(petalIndex / 5 * Math.PI * 2) * 0.045, Math.sin(petalIndex / 5 * Math.PI * 2) * 0.045, 0);
-        petal.rotation.z = petalIndex / 5 * Math.PI * 2;
-        flowerRoot.add(petal);
-      }
-      flowerRoot.add(new Mesh(new SphereGeometry(0.022, 8, 6), vineFlowerCenterMaterial));
-      door.slab.add(flowerRoot);
-    });
-  };
-  const addSwingDoorVines = (doorPivot: Group, panelWidth: number): void => {
-    const doorVinePoints = [
-      new Vector3(panelWidth * 0.18, 0.56, -0.14),
-      new Vector3(panelWidth * 0.34, 1.08, -0.15),
-      new Vector3(panelWidth * 0.54, 1.58, -0.14),
-      new Vector3(panelWidth * 0.72, 2.12, -0.15),
-      new Vector3(panelWidth * 0.88, 2.66, -0.14),
-    ];
-    const vine = new Mesh(new TubeGeometry(new CatmullRomCurve3(doorVinePoints), 20, 0.024, 6, false), vineMaterial);
-    doorPivot.add(vine);
-
-    doorVinePoints.slice(1, -1).forEach((point, index) => {
-      const leaf = new Mesh(new PlaneGeometry(0.24, 0.14), vineLeafMaterial);
-      leaf.position.copy(point).add(new Vector3(index % 2 === 0 ? 0.1 : -0.08, 0.02, -0.018));
-      leaf.rotation.z = index % 2 === 0 ? 0.68 : -0.62;
-      doorPivot.add(leaf);
-
-      const flowerRoot = new Group();
-      flowerRoot.position.copy(point).add(new Vector3(index % 2 === 0 ? -0.08 : 0.1, 0.08, -0.024));
-      for (let petalIndex = 0; petalIndex < 5; petalIndex += 1) {
-        const petal = new Mesh(new PlaneGeometry(0.085, 0.04), vineFlowerMaterial);
-        petal.position.set(Math.cos(petalIndex / 5 * Math.PI * 2) * 0.042, Math.sin(petalIndex / 5 * Math.PI * 2) * 0.042, 0);
-        petal.rotation.z = petalIndex / 5 * Math.PI * 2;
-        flowerRoot.add(petal);
-      }
-      flowerRoot.add(new Mesh(new SphereGeometry(0.02, 8, 6), vineFlowerCenterMaterial));
-      doorPivot.add(flowerRoot);
-    });
-  };
-
   const floor: FloorDefinition = {
     width: OFFICE_WIDTH,
     depth: OFFICE_DEPTH,
@@ -4805,9 +4746,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ]);
     addHallVine([
       new Vector3(leftHallStartX - 0.45, 1.1, hallSouthWallZ),
-      new Vector3(leftHallStartX - 5.35, 1.92, hallSouthWallZ),
-      new Vector3(leftHallStartX - 11.8, 1.42, hallSouthWallZ),
-      new Vector3(leftHallStartX - 20.3, 2.16, hallSouthWallZ),
+      new Vector3(storageClosetDoorMaxX + 0.82, 1.92, hallSouthWallZ),
+      new Vector3(storageClosetDoorMaxX + 0.28, 1.42, hallSouthWallZ),
+    ], Math.PI);
+    addHallVine([
+      new Vector3(storageClosetDoorMinX - 0.32, 2.16, hallSouthWallZ),
+      new Vector3(storageClosetDoorMinX - 4.6, 1.42, hallSouthWallZ),
       new Vector3(leftHallEndX + 0.2, 2.72, hallSouthWallZ),
     ], Math.PI);
     addHallVine([
@@ -5701,9 +5645,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   storageClosetDoorSign.rotation.y = Math.PI;
   storageClosetDoorSign.position.set(storageClosetDoorPanelWidth * 0.5, 1.86, -0.061);
   storageClosetDoorPivot.add(storageClosetDoorPanel, storageClosetDoorHandle, storageClosetDoorSign);
-  if (abandonedStraightHalls) {
-    addSwingDoorVines(storageClosetDoorPivot, storageClosetDoorPanelWidth);
-  }
   const storageClosetDoorNorthPost = new Mesh(new BoxGeometry(0.12, 2.86, 0.22), backstageFrameMaterial);
   storageClosetDoorNorthPost.position.set(storageClosetDoorMinX, 1.43, storageClosetNorthZ - 0.04);
   const storageClosetDoorSouthPost = new Mesh(new BoxGeometry(0.12, 2.86, 0.22), backstageFrameMaterial);
@@ -6093,6 +6034,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       new Vector3(backstageStorageCenterX, 3.45, backstageStorageMaxZ - 0.08),
       new Vector3(0, 0, -1),
     ),
+    ...(abandonedStraightHalls
+      ? [
+        createSwivelingSecurityCamera(
+          15,
+          'Camera 14 Abandoned Hall End',
+          new Vector3(-143.92, 3.5, 182.25),
+          new Vector3(0, 0, 1),
+        ),
+      ]
+      : []),
   ];
   securityCameras.forEach((securityCamera) => root.add(securityCamera.root));
   const markerSixSecurityCamera = securityCameras.find((securityCamera) => securityCamera.id === 1) ?? securityCameras[0];
@@ -6624,10 +6575,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     doorMaterial,
     materials.metal,
   );
-  if (abandonedStraightHalls) {
-    addSlidingDoorVines(leftDoor);
-    addSlidingDoorVines(rightDoor);
-  }
   root.add(leftDoor.root, rightDoor.root);
   colliders.push(leftDoor.collider, rightDoor.collider);
 
