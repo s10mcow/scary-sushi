@@ -608,6 +608,34 @@ export function createChapterSeven(): ChapterSevenData {
     addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width, depth);
   };
 
+  const addWallWindow = (
+    localX: number,
+    localZ: number,
+    centerY: number,
+    width: number,
+    height: number,
+  ): void => {
+    const window = new Group();
+    window.position.set(localX, centerY, localZ);
+
+    const glass = new Mesh(new BoxGeometry(width, height, 0.055), slidingGlassMaterial);
+    const trimTop = new Mesh(new BoxGeometry(width + 0.28, 0.16, 0.12), houseTrimMaterial);
+    trimTop.position.y = height / 2 + 0.08;
+    const trimBottom = trimTop.clone();
+    trimBottom.position.y = -height / 2 - 0.08;
+    const trimLeft = new Mesh(new BoxGeometry(0.16, height + 0.28, 0.12), houseTrimMaterial);
+    trimLeft.position.x = -width / 2 - 0.08;
+    const trimRight = trimLeft.clone();
+    trimRight.position.x = width / 2 + 0.08;
+    const centerMullion = new Mesh(new BoxGeometry(0.1, height * 0.92, 0.14), houseTrimMaterial);
+    const centerRail = new Mesh(new BoxGeometry(width * 0.9, 0.1, 0.14), houseTrimMaterial);
+    const sill = new Mesh(new BoxGeometry(width + 0.56, 0.18, 0.28), houseTrimMaterial);
+    sill.position.y = -height / 2 - 0.24;
+
+    window.add(glass, trimTop, trimBottom, trimLeft, trimRight, centerMullion, centerRail, sill);
+    house.add(window);
+  };
+
   const createHouseDoor = (
     label: string,
     orientation: 'front' | 'side',
@@ -1960,6 +1988,41 @@ export function createChapterSeven(): ChapterSevenData {
   );
   doorHeader.position.set(0, HOUSE_DOOR_HEIGHT + (HOUSE_HEIGHT - HOUSE_DOOR_HEIGHT) / 2, HOUSE_DEPTH / 2);
   house.add(doorHeader);
+
+  addHouseWall(
+    1218.25 - CENTER_X + 10,
+    98.69 - HOUSE_CENTER_Z,
+    20,
+    HOUSE_WALL_THICKNESS,
+  );
+  addWallWindow(
+    Math.min(1226.75 - CENTER_X, HOUSE_WIDTH / 2 - 1.45),
+    HOUSE_DEPTH / 2 - HOUSE_WALL_THICKNESS / 2 - 0.04,
+    2.38,
+    2.8,
+    1.9,
+  );
+  addWallWindow(
+    1191.26 - CENTER_X,
+    HOUSE_DEPTH / 2 - HOUSE_WALL_THICKNESS / 2 - 0.04,
+    2.1,
+    2.9,
+    1.9,
+  );
+  addWallWindow(
+    1224.76 - CENTER_X,
+    -HOUSE_DEPTH / 2 + HOUSE_WALL_THICKNESS / 2 + 0.04,
+    2.75,
+    1.7,
+    1.25,
+  );
+  addWallWindow(
+    1193.08 - CENTER_X,
+    -HOUSE_DEPTH / 2 + HOUSE_WALL_THICKNESS / 2 + 0.04,
+    2.2,
+    2.9,
+    1.9,
+  );
 
   const roomDoors: ChapterSevenHouseDoor[] = [];
   const roomDoorHalfWidth = HOUSE_ROOM_DOOR_WIDTH / 2;
