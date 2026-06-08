@@ -775,6 +775,7 @@ type ChapterSevenInteractable =
   | { kind: 'fridge'; item: ChapterSevenData['houseFridge']; score: number }
   | { kind: 'old-wooden-closet'; item: ChapterSevenData['oldWoodenCloset']; score: number }
   | { kind: 'cardboard-box'; item: ChapterSevenData['cardboardBox']; score: number }
+  | { kind: 'kitchen-sink'; item: ChapterSevenData['kitchenSink']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
 export class Game {
@@ -2106,7 +2107,9 @@ export class Game {
       this.flashlight.toggle();
     }
 
-    const movementState = this.input.getMovementState();
+    const movementState = this.input.getMovementState({
+      ignoreBackward: this.chapterSevenActive && this.input.isCrawlHeld(),
+    });
     this.chapterFourCrouching = this.chapterFourActive
       && this.player.isLocked()
       && !jumpscareLocked
@@ -2231,6 +2234,10 @@ export class Game {
       } else {
         this.handleUseItem();
       }
+    }
+
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeFaucetToggle()) {
+      this.handleChapterSevenFaucetToggle();
     }
 
     if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumePlacementMarkerDelete() && (this.placementToolActive || this.microphoneSoundToolActive || this.cameraToolActive)) {
@@ -10239,6 +10246,11 @@ export class Game {
         return;
       }
 
+      if (interactable?.kind === 'kitchen-sink') {
+        this.pushStatus('Press G to turn the kitchen faucet on or off.', 2.2);
+        return;
+      }
+
       if (interactable?.kind === 'drawer') {
         const drawer = interactable.item;
         drawer.targetOpenAmount = drawer.targetOpenAmount > 0.5 ? 0 : 1;
@@ -10270,7 +10282,7 @@ export class Game {
         this.gameplaySfxAudio.playClosetDoor(cardboardBox.open);
         this.pushStatus(
           cardboardBox.open
-            ? 'The cardboard box flaps fold open. Hold G to crawl, then jump inside it.'
+            ? 'The cardboard box flaps fold open. Hold S to crawl, then jump inside it.'
             : 'The cardboard box flaps fold shut.',
           2.4,
         );
@@ -14145,7 +14157,7 @@ export class Game {
 
     if (this.chapterSevenActive) {
       if (this.chapterSevenBoxHidden) {
-        return 'Inside the cardboard box. Press E to open it again, then hold G to crawl and jump out.';
+        return 'Inside the cardboard box. Press E to open it again, then hold S to crawl and jump out.';
       }
 
       const interactable = this.getLookedAtChapterSevenInteractable();
@@ -14170,8 +14182,14 @@ export class Game {
 
         if (interactable.kind === 'cardboard-box') {
           return interactable.item.open
-            ? 'Hold G to crawl and jump inside the open box. Press E inside it to close the flaps.'
+            ? 'Hold S to crawl and jump inside the open box. Press E inside it to close the flaps.'
             : 'Press E to open the cardboard box.';
+        }
+
+        if (interactable.kind === 'kitchen-sink') {
+          return interactable.item.open
+            ? 'Press G to turn off the faucet.'
+            : 'Press G to turn on the faucet.';
         }
 
         if (interactable.kind === 'old-wooden-closet') {
@@ -14193,7 +14211,7 @@ export class Game {
       }
 
       return locked
-        ? 'Chapter 7: The House controls: WASD moves, hold G to crawl, walk into push doors, and press E for furniture or the sliding glass door.'
+        ? 'Chapter 7: The House controls: WASD moves, hold S to crawl, walk into push doors, press E for furniture or the sliding glass door, and press G for the sink faucet.'
         : 'Click the play space to walk around Chapter 7: The House.';
     }
 
@@ -14852,6 +14870,12 @@ export class Game {
             : 'A cardboard box sits here. Press E to open the top flaps.';
         }
 
+        if (interactable.kind === 'kitchen-sink') {
+          return interactable.item.open
+            ? 'The kitchen faucet is running. Press G to turn it off.'
+            : 'The kitchen faucet is off. Press G to turn it on.';
+        }
+
         if (interactable.kind === 'old-wooden-closet') {
           return interactable.item.open
             ? 'The old wooden closet is open. You can walk inside, or press E to close it.'
@@ -14876,7 +14900,7 @@ export class Game {
           : `${door.label} opens when you walk into it.`;
       }
 
-      return 'Chapter 7: The House starts inside. Hold G to crawl, press E for drawers, cupboards, the cardboard box, old closet, or the sliding glass door.';
+      return 'Chapter 7: The House starts inside. Hold S to crawl, press E for drawers, cupboards, the cardboard box, old closet, or the sliding glass door, and press G for the sink faucet.';
     }
 
     if (this.officeChapterActive) {
@@ -17025,7 +17049,29 @@ export class Game {
     box.open = true;
     this.gameplaySfxAudio.playClosetDoor(true);
     this.chapterSevenBoxHideAnchor.visible = false;
-    this.pushStatus('The cardboard box opens. Hold G to crawl and jump out.', 2.6);
+    this.pushStatus('The cardboard box opens. Hold S to crawl and jump out.', 2.6);
+  }
+
+  private handleChapterSevenFaucetToggle(): void {
+    if (!this.chapterSevenActive || !this.player.isLocked() || this.chapterSevenBoxHidden) {
+      return;
+    }
+
+    const interactable = this.getLookedAtChapterSevenInteractable();
+    if (interactable?.kind !== 'kitchen-sink') {
+      return;
+    }
+
+    const sink = interactable.item;
+    sink.targetOpenAmount = sink.targetOpenAmount > 0.5 ? 0 : 1;
+    sink.open = sink.targetOpenAmount > 0.5;
+    this.gameplaySfxAudio.playSmallPanel(sink.open);
+    this.pushStatus(
+      sink.open
+        ? 'You turn the faucet handle. Water starts pouring into the sink.'
+        : 'You turn the faucet handle back. The water stops.',
+      2.4,
+    );
   }
 
   private getChapterSevenLookScore(
@@ -17088,6 +17134,11 @@ export class Game {
     const ovenScore = this.getChapterSevenLookScore(this.chapterSeven.houseOven, 0.5, 0.95);
     if (ovenScore !== null) {
       keepBest({ kind: 'oven', item: this.chapterSeven.houseOven, score: ovenScore });
+    }
+
+    const sinkScore = this.getChapterSevenLookScore(this.chapterSeven.kitchenSink, 0.55, 1.0);
+    if (sinkScore !== null) {
+      keepBest({ kind: 'kitchen-sink', item: this.chapterSeven.kitchenSink, score: sinkScore });
     }
 
     this.chapterSeven.houseDrawers.forEach((drawer) => {

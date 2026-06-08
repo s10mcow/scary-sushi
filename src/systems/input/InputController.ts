@@ -4,6 +4,10 @@ export interface MovementState {
   sprint: boolean;
 }
 
+export interface MovementStateOptions {
+  ignoreBackward?: boolean;
+}
+
 export type WeaponSelectId = 'pistol' | 'shotgun';
 
 export class InputController {
@@ -22,6 +26,7 @@ export class InputController {
   private fireQueued = false;
   private secondaryFireQueued = false;
   private fireHeld = false;
+  private faucetToggleQueued = false;
   private choiceYesQueued = false;
   private choiceNoQueued = false;
   private hotbarSlotQueued: number | null = null;
@@ -36,9 +41,9 @@ export class InputController {
     this.target.addEventListener('contextmenu', this.handleContextMenu);
   }
 
-  getMovementState(): MovementState {
+  getMovementState(options: MovementStateOptions = {}): MovementState {
     return {
-      forward: Number(this.pressed.has('KeyW')) - Number(this.pressed.has('KeyS')),
+      forward: Number(this.pressed.has('KeyW')) - Number(!options.ignoreBackward && this.pressed.has('KeyS')),
       strafe: Number(this.pressed.has('KeyD')) - Number(this.pressed.has('KeyA')),
       sprint: this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight'),
     };
@@ -49,7 +54,7 @@ export class InputController {
   }
 
   isCrawlHeld(): boolean {
-    return this.pressed.has('KeyG');
+    return this.pressed.has('KeyS');
   }
 
   isInteractHeld(): boolean {
@@ -128,6 +133,12 @@ export class InputController {
     return value;
   }
 
+  consumeFaucetToggle(): boolean {
+    const value = this.faucetToggleQueued;
+    this.faucetToggleQueued = false;
+    return value;
+  }
+
   consumeSecondaryFire(): boolean {
     const value = this.secondaryFireQueued;
     this.secondaryFireQueued = false;
@@ -176,6 +187,10 @@ export class InputController {
 
     if (event.code === 'KeyF' && !event.repeat) {
       this.flashlightToggleQueued = true;
+    }
+
+    if (event.code === 'KeyG' && !event.repeat) {
+      this.faucetToggleQueued = true;
     }
 
     if (event.code === 'KeyE' && !event.repeat) {

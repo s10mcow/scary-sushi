@@ -36,6 +36,7 @@ export interface ChapterSevenData {
   houseOven: ChapterSevenOven;
   oldWoodenCloset: ChapterSevenOldWoodenCloset;
   cardboardBox: ChapterSevenCardboardBox;
+  kitchenSink: ChapterSevenKitchenSink;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number, playerPosition?: Vector3): void;
   reset(): void;
@@ -114,6 +115,17 @@ export interface ChapterSevenOven {
   interactPosition: Vector3;
   aimPosition: Vector3;
   doorPivot: Group;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
+}
+
+export interface ChapterSevenKitchenSink {
+  label: string;
+  interactPosition: Vector3;
+  aimPosition: Vector3;
+  handlePivot: Group;
+  waterStream: Mesh;
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
@@ -519,6 +531,30 @@ export function createChapterSeven(): ChapterSevenData {
     emissiveIntensity: 0.04,
     roughness: 0.58,
     metalness: 0.08,
+  });
+  const sinkBasinMaterial = new MeshStandardMaterial({
+    color: 0xd3d8d5,
+    emissive: 0x101414,
+    emissiveIntensity: 0.05,
+    roughness: 0.36,
+    metalness: 0.22,
+  });
+  const faucetMaterial = new MeshStandardMaterial({
+    color: 0xc8d1d4,
+    emissive: 0x0c1112,
+    emissiveIntensity: 0.06,
+    roughness: 0.28,
+    metalness: 0.46,
+  });
+  const faucetWaterMaterial = new MeshStandardMaterial({
+    color: 0x89d6ff,
+    emissive: 0x1c8dcc,
+    emissiveIntensity: 0.3,
+    roughness: 0.18,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.62,
+    depthWrite: false,
   });
   const cabinetMaterial = new MeshStandardMaterial({
     color: 0x7a5336,
@@ -1574,6 +1610,99 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
+  const addKitchenSink = (localX: number, localZ: number, width = 2.05): ChapterSevenKitchenSink => {
+    const sink = new Group();
+    sink.position.set(localX, 0, localZ);
+
+    const depth = 1.18;
+    const baseHeight = 1.27;
+    const back = new Mesh(new BoxGeometry(width, baseHeight, 0.12), cabinetMaterial);
+    back.position.set(0, baseHeight / 2, -depth / 2 + 0.06);
+    const leftSide = new Mesh(new BoxGeometry(0.12, baseHeight, depth), cabinetMaterial);
+    leftSide.position.set(-width / 2 + 0.06, baseHeight / 2, 0);
+    const rightSide = leftSide.clone();
+    rightSide.position.x = width / 2 - 0.06;
+    const bottom = new Mesh(new BoxGeometry(width, 0.12, depth), cabinetMaterial);
+    bottom.position.set(0, 0.06, 0);
+    const top = new Mesh(new BoxGeometry(width + 0.18, 0.16, depth + 0.18), counterTopMaterial);
+    top.position.y = baseHeight + 0.1;
+    const toeKick = new Mesh(new BoxGeometry(width - 0.26, 0.18, 0.12), houseTrimMaterial);
+    toeKick.position.set(0, 0.14, depth / 2 + 0.035);
+
+    const basin = new Mesh(new CylinderGeometry(0.52, 0.6, 0.22, 32), sinkBasinMaterial);
+    basin.scale.z = 0.66;
+    basin.position.set(0, baseHeight + 0.22, 0.08);
+    const basinWater = new Mesh(new CylinderGeometry(0.44, 0.5, 0.025, 32), faucetWaterMaterial);
+    basinWater.scale.z = 0.62;
+    basinWater.position.set(0, baseHeight + 0.34, 0.08);
+    basinWater.visible = false;
+    const drain = new Mesh(new CylinderGeometry(0.08, 0.08, 0.025, 16), fridgeSealMaterial);
+    drain.position.set(0, baseHeight + 0.355, 0.08);
+
+    const faucetBase = new Mesh(new CylinderGeometry(0.12, 0.12, 0.16, 16), faucetMaterial);
+    faucetBase.position.set(0, baseHeight + 0.32, -0.34);
+    const faucetNeck = new Mesh(new CylinderGeometry(0.07, 0.07, 0.72, 14), faucetMaterial);
+    faucetNeck.position.set(0, baseHeight + 0.62, -0.34);
+    const faucetSpout = new Mesh(new CylinderGeometry(0.055, 0.055, 0.58, 14), faucetMaterial);
+    faucetSpout.rotation.x = Math.PI / 2;
+    faucetSpout.position.set(0, baseHeight + 0.94, -0.09);
+    const spoutTip = new Mesh(new CylinderGeometry(0.07, 0.07, 0.12, 14), faucetMaterial);
+    spoutTip.position.set(0, baseHeight + 0.82, 0.18);
+
+    const handlePivot = new Group();
+    handlePivot.position.set(0.34, baseHeight + 0.52, -0.32);
+    const handleStem = new Mesh(new CylinderGeometry(0.04, 0.04, 0.16, 12), faucetMaterial);
+    handleStem.position.y = 0.08;
+    const handleBar = new Mesh(new BoxGeometry(0.34, 0.055, 0.09), faucetMaterial);
+    handleBar.position.y = 0.18;
+    handlePivot.add(handleStem, handleBar);
+
+    const waterStream = new Mesh(new CylinderGeometry(0.035, 0.045, 0.74, 12), faucetWaterMaterial);
+    waterStream.position.set(0, baseHeight + 0.52, 0.18);
+    waterStream.visible = false;
+    waterStream.scale.y = 0.01;
+
+    sink.add(
+      back,
+      leftSide,
+      rightSide,
+      bottom,
+      top,
+      toeKick,
+      basin,
+      basinWater,
+      drain,
+      faucetBase,
+      faucetNeck,
+      faucetSpout,
+      spoutTip,
+      handlePivot,
+      waterStream,
+    );
+    house.add(sink);
+
+    const sinkCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.18, depth + 0.18);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: (width + 0.18) / 2,
+      halfDepth: (depth + 0.18) / 2,
+      floorY: baseHeight + 0.23,
+      collider: sinkCollider,
+    });
+
+    return {
+      label: 'Kitchen sink faucet',
+      interactPosition: new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + depth / 2 + 0.8),
+      aimPosition: new Vector3(CENTER_X + localX, baseHeight + 0.72, HOUSE_CENTER_Z + localZ + 0.06),
+      handlePivot,
+      waterStream,
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
+  };
+
   const addStove = (localX: number, localZ: number): ChapterSevenOven => {
     const stove = new Group();
     stove.position.set(localX, 0, localZ);
@@ -1901,6 +2030,7 @@ export function createChapterSeven(): ChapterSevenData {
     addKitchenCounter(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.28, 'Counter base cabinet'),
   ];
   const houseOven = addStove(HOUSE_FRIDGE_X + 4.7, HOUSE_FRIDGE_Z);
+  const kitchenSink = addKitchenSink(HOUSE_FRIDGE_X + 9.1, HOUSE_FRIDGE_Z, 2.05);
   const kitchenUpperCupboards = [
     addUpperCupboard(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z, 1.62, 'Upper cupboards over the fridge'),
     addUpperCupboard(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.1, 'Upper cupboards over the counter'),
@@ -1912,7 +2042,6 @@ export function createChapterSeven(): ChapterSevenData {
   const houseUpperCupboard = houseUpperCupboards[0];
   [
     { x: HOUSE_FRIDGE_X + 6.9, label: 'Right base cabinet' },
-    { x: HOUSE_FRIDGE_X + 9.1, label: 'Middle right base cabinet' },
     { x: HOUSE_FRIDGE_X + 11.3, label: 'End right base cabinet' },
   ].forEach((counter) => {
     houseBaseCabinets.push(addKitchenCounter(counter.x, HOUSE_FRIDGE_Z, 2.05, counter.label));
@@ -2262,6 +2391,7 @@ export function createChapterSeven(): ChapterSevenData {
     houseOven,
     oldWoodenCloset,
     cardboardBox,
+    kitchenSink,
     getSupportedFloorY(position: Vector3): number | null {
       const insideForest = position.x >= CENTER_X - HALF_SIZE
         && position.x <= CENTER_X + HALF_SIZE
@@ -2422,6 +2552,18 @@ export function createChapterSeven(): ChapterSevenData {
       cardboardBox.flapPivots.front.rotation.x = cardboardBox.openAmount * Math.PI * 0.72;
       cardboardBox.flapPivots.back.rotation.x = -cardboardBox.openAmount * Math.PI * 0.72;
       cardboardBox.open = cardboardBox.targetOpenAmount > 0.5;
+
+      const sinkDelta = kitchenSink.targetOpenAmount - kitchenSink.openAmount;
+      if (Math.abs(sinkDelta) > 0.001) {
+        const step = Math.min(Math.abs(sinkDelta), deltaSeconds * 4.4) * Math.sign(sinkDelta);
+        kitchenSink.openAmount += step;
+      } else {
+        kitchenSink.openAmount = kitchenSink.targetOpenAmount;
+      }
+      kitchenSink.handlePivot.rotation.z = -kitchenSink.openAmount * Math.PI * 0.52;
+      kitchenSink.waterStream.visible = kitchenSink.openAmount > 0.03;
+      kitchenSink.waterStream.scale.y = Math.max(0.01, kitchenSink.openAmount);
+      kitchenSink.open = kitchenSink.targetOpenAmount > 0.5;
     },
     reset(): void {
       root.visible = false;
@@ -2481,6 +2623,12 @@ export function createChapterSeven(): ChapterSevenData {
       cardboardBox.wallColliders.forEach((collider) => {
         collider.enabled = true;
       });
+      kitchenSink.open = false;
+      kitchenSink.openAmount = 0;
+      kitchenSink.targetOpenAmount = 0;
+      kitchenSink.handlePivot.rotation.z = 0;
+      kitchenSink.waterStream.visible = false;
+      kitchenSink.waterStream.scale.y = 0.01;
     },
   };
 }
