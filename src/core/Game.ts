@@ -754,6 +754,8 @@ const CHAPTER_FOUR_BOX_CAMERA_DISTANCE = 4.1;
 const CHAPTER_FOUR_BOX_CAMERA_HEIGHT = 2.35;
 const CHAPTER_FOUR_BOX_CAMERA_RADIUS = 0.22;
 const CHAPTER_FOUR_CROUCH_DROP = 0.52;
+const CHAPTER_SEVEN_CRAWL_DROP = 0.76;
+const CHAPTER_SEVEN_CRAWL_SPEED_MULTIPLIER = 0.42;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_DURATION = 2.35;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_COOLDOWN = 1.8;
 const CHAPTER_FOUR_BLUE_JUMPSCARE_DURATION = 2.6;
@@ -833,6 +835,7 @@ export class Game {
   private readonly chapterFourBoxHeldAnchor = new Group();
   private readonly chapterFourBoxHideAnchor = new Group();
   private readonly chapterFourBoxWideAnchor = new Group();
+  private readonly chapterSevenBoxHideAnchor = new Group();
   private readonly chapterFourBlueJumpscareAnchor = new Group();
   private readonly chapterFourBlueJumpscareHead = new Group();
   private readonly chapterFourBlueJumpscareMaw = new Group();
@@ -978,6 +981,8 @@ export class Game {
   private chapterFourBoxWideCameraReady = false;
   private chapterFourLockerId: string | null = null;
   private chapterFourCrouching = false;
+  private chapterSevenCrawling = false;
+  private chapterSevenBoxHidden = false;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -1230,6 +1235,10 @@ export class Game {
     this.chapterFourBoxWideAnchor.position.set(0, -0.08, -0.38);
     this.chapterFourBoxWideAnchor.visible = false;
     this.createChapterFourBoxModels();
+    this.camera.add(this.chapterSevenBoxHideAnchor);
+    this.chapterSevenBoxHideAnchor.position.set(0, -0.14, -0.34);
+    this.chapterSevenBoxHideAnchor.visible = false;
+    this.createChapterSevenBoxHideModel();
     this.camera.add(this.chapterFourBlueJumpscareAnchor);
     this.createChapterFourBlueJumpscareModel();
     this.camera.add(this.chapterFourGreenJumpscareAnchor);
@@ -2107,6 +2116,14 @@ export class Game {
       && !chapterFourBoxHiding
       && !chapterFourLockerHiding
       && this.input.isSpaceHeld();
+    this.chapterSevenCrawling = this.chapterSevenActive
+      && this.player.isLocked()
+      && !jumpscareLocked
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen
+      && !this.chapterSevenBoxHidden
+      && this.input.isCrawlHeld();
     const jumpRequested = !this.doomModeActive
       && !this.chapterFourActive
       && !this.chapterFiveActive
@@ -2124,6 +2141,7 @@ export class Game {
       && !officeVentDropping
       && !chapterFourBoxHiding
       && !chapterFourLockerHiding
+      && !this.chapterSevenBoxHidden
       && this.input.consumeJump();
     const isTryingToMove = movementState.forward !== 0 || movementState.strafe !== 0;
     const hasSprintStamina = this.officeChapterActive || this.stamina > 0.5;
@@ -2145,6 +2163,8 @@ export class Game {
         && !chapterFourBoxHiding
         && !chapterFourLockerHiding
         && !this.chapterFourCrouching
+        && !this.chapterSevenCrawling
+        && !this.chapterSevenBoxHidden
         && isTryingToMove
         && movementState.sprint
         && hasSprintStamina;
@@ -2178,6 +2198,10 @@ export class Game {
       : chapterFourLockerHiding
         ? { forward: 0, strafe: 0, sprint: false }
       : this.chapterFourCrouching
+        ? { ...movementState, sprint: false }
+      : this.chapterSevenBoxHidden
+        ? { forward: 0, strafe: 0, sprint: false }
+      : this.chapterSevenCrawling
         ? { ...movementState, sprint: false }
       : this.chapterFiveActive && !this.chapterFive.isInteriorMode() && !this.chapterFive.isSurfaceMode()
         ? {
@@ -2277,7 +2301,9 @@ export class Game {
     const officePrizeSpeedScale = this.officeChapterActive && this.officeLollipopBoostRemaining > 0
       ? OFFICE_LOLLIPOP_SPEED_MULTIPLIER
       : 1;
-    const movementSpeedScale = (officeVentActive ? 0.42 : 1) * officePrizeSpeedScale;
+    const movementSpeedScale = (officeVentActive ? 0.42 : 1)
+      * officePrizeSpeedScale
+      * (this.chapterSevenCrawling ? CHAPTER_SEVEN_CRAWL_SPEED_MULTIPLIER : 1);
     const playerMovementOptions = this.getOfficePlayerMovementOptions(effectiveMovement);
     if (this.chapterFiveActive && !this.chapterFive.isInteriorMode() && !this.chapterFive.isSurfaceMode()) {
       this.player.update(
@@ -2578,6 +2604,7 @@ export class Game {
     this.updateMicrophoneSoundToolDisplay();
     this.updateOfficeTabletDisplay();
     this.updateChapterFourBoxDisplay();
+    this.updateChapterSevenBoxDisplay();
     this.updateChapterFourBlueJumpscareModel();
     this.updateChapterFourGreenJumpscareModel();
     this.updateOfficeGlassDisplay();
@@ -3673,6 +3700,51 @@ export class Game {
       worldTape,
     );
     this.chapterFourBoxWorldAnchor.add(worldBoxRoot);
+  }
+
+  private createChapterSevenBoxHideModel(): void {
+    const cardboardInside = new MeshBasicMaterial({
+      color: 0xb8783f,
+      transparent: true,
+      opacity: 0.94,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const creaseMaterial = new MeshBasicMaterial({
+      color: 0x5a3319,
+      transparent: true,
+      opacity: 0.96,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+
+    const leftWall = new Mesh(new BoxGeometry(0.15, 1.35, 0.08), cardboardInside);
+    leftWall.position.set(-0.52, -0.03, 0);
+    const rightWall = leftWall.clone();
+    rightWall.position.x = 0.52;
+    const topWall = new Mesh(new BoxGeometry(1.16, 0.18, 0.08), cardboardInside);
+    topWall.position.set(0, 0.5, 0);
+    const bottomWall = new Mesh(new BoxGeometry(1.16, 0.18, 0.08), cardboardInside);
+    bottomWall.position.set(0, -0.54, 0);
+    const frontPanel = new Mesh(new BoxGeometry(0.78, 0.62, 0.075), cardboardInside);
+    frontPanel.position.set(0, 0, -0.08);
+    const centerCrease = new Mesh(new BoxGeometry(0.034, 1.08, 0.09), creaseMaterial);
+    centerCrease.position.set(0, -0.03, -0.035);
+    const topCrease = new Mesh(new BoxGeometry(1.02, 0.03, 0.09), creaseMaterial);
+    topCrease.position.set(0, 0.4, -0.035);
+    const bottomCrease = topCrease.clone();
+    bottomCrease.position.y = -0.44;
+
+    this.chapterSevenBoxHideAnchor.add(
+      leftWall,
+      rightWall,
+      topWall,
+      bottomWall,
+      frontPanel,
+      centerCrease,
+      topCrease,
+      bottomCrease,
+    );
   }
 
   private createPlacementToolModel(): void {
@@ -9142,6 +9214,15 @@ export class Game {
     }
   }
 
+  private updateChapterSevenBoxDisplay(): void {
+    this.chapterSevenBoxHideAnchor.visible = this.chapterSevenActive
+      && this.chapterSevenBoxHidden
+      && this.player.isLocked()
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen;
+  }
+
   private updateChapterFourBlueJumpscareModel(): void {
     if (this.chapterFourBlueJumpscareTimer <= 0) {
       this.chapterFourBlueJumpscareAnchor.visible = false;
@@ -10101,6 +10182,20 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
+      if (this.chapterSevenBoxHidden) {
+        this.openChapterSevenCardboardBoxFromInside();
+        return;
+      }
+
+      if (
+        this.chapterSeven.cardboardBox.open
+        && this.chapterSevenCrawling
+        && this.isPlayerInsideChapterSevenCardboardBox()
+      ) {
+        this.hideInsideChapterSevenCardboardBox();
+        return;
+      }
+
       const interactable = this.getLookedAtChapterSevenInteractable();
       if (interactable?.kind === 'cupboard') {
         const cupboard = interactable.item;
@@ -10151,12 +10246,17 @@ export class Game {
 
       if (interactable?.kind === 'cardboard-box') {
         const cardboardBox = interactable.item;
+        if (cardboardBox.open && this.chapterSevenCrawling && this.isPlayerInsideChapterSevenCardboardBox()) {
+          this.hideInsideChapterSevenCardboardBox();
+          return;
+        }
+
         cardboardBox.targetOpenAmount = cardboardBox.targetOpenAmount > 0.5 ? 0 : 1;
         cardboardBox.open = cardboardBox.targetOpenAmount > 0.5;
         this.gameplaySfxAudio.playClosetDoor(cardboardBox.open);
         this.pushStatus(
           cardboardBox.open
-            ? 'The cardboard box flaps fold open. Jump to climb inside.'
+            ? 'The cardboard box flaps fold open. Hold G to crawl, then jump inside it.'
             : 'The cardboard box flaps fold shut.',
           2.4,
         );
@@ -14030,6 +14130,10 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
+      if (this.chapterSevenBoxHidden) {
+        return 'Inside the cardboard box. Press E to open it again, then hold G to crawl and jump out.';
+      }
+
       const interactable = this.getLookedAtChapterSevenInteractable();
       if (interactable && locked) {
         if (interactable.kind === 'cupboard') {
@@ -14050,13 +14154,25 @@ export class Game {
             : `Press E to open ${interactable.item.label}.`;
         }
 
+        if (interactable.kind === 'cardboard-box') {
+          return interactable.item.open
+            ? 'Hold G to crawl and jump inside the open box. Press E inside it to close the flaps.'
+            : 'Press E to open the cardboard box.';
+        }
+
+        if (interactable.kind === 'old-wooden-closet') {
+          return interactable.item.open
+            ? 'Press E to close the old wooden closet.'
+            : 'Press E to open the old wooden closet.';
+        }
+
         return interactable.item.open
           ? 'Press E to close the oven.'
           : 'Press E to open the oven.';
       }
 
       return locked
-        ? 'Chapter 7: The House controls: WASD moves, walk into house doors to push them open, and look at a fridge, oven, cupboard, or drawer and press E.'
+        ? 'Chapter 7: The House controls: WASD moves, hold G to crawl, walk into house doors to push them open, and look at furniture then press E.'
         : 'Click the play space to walk around Chapter 7: The House.';
     }
 
@@ -14677,6 +14793,14 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
+      if (this.chapterSevenBoxHidden) {
+        return 'Inside the cardboard box. You cannot move while hidden. Press E to open it again.';
+      }
+
+      if (this.chapterSevenCrawling) {
+        return 'Crawling. Movement is slower; jump into the open cardboard box, then press E to close it around you.';
+      }
+
       const interactable = this.getLookedAtChapterSevenInteractable();
       if (interactable) {
         if (interactable.kind === 'cupboard') {
@@ -14725,7 +14849,7 @@ export class Game {
           : `${door.label} opens when you walk into it.`;
       }
 
-      return 'Chapter 7: The House starts inside, with a smaller fridge, counter cabinet, oven, extended cupboards, a bookshelf, and table drawers that open with E when you look at them.';
+      return 'Chapter 7: The House starts inside. Hold G to crawl, and press E while looking at drawers, cupboards, the cardboard box, or the old closet.';
     }
 
     if (this.officeChapterActive) {
@@ -15399,7 +15523,11 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
-      return this.chapterSeven.getSupportedFloorY(this.player.getPosition());
+      const chapterSevenFloorY = this.chapterSeven.getSupportedFloorY(this.player.getPosition());
+      if (this.chapterSevenCrawling || this.chapterSevenBoxHidden) {
+        return (chapterSevenFloorY ?? GAME_CONFIG.player.height) - CHAPTER_SEVEN_CRAWL_DROP;
+      }
+      return chapterSevenFloorY;
     }
 
     return null;
@@ -16813,6 +16941,38 @@ export class Game {
     return closestDoor;
   }
 
+  private isPlayerInsideChapterSevenCardboardBox(): boolean {
+    if (!this.chapterSevenActive) {
+      return false;
+    }
+
+    const box = this.chapterSeven.cardboardBox;
+    const position = this.player.getPosition();
+    return Math.abs(position.x - box.centerX) <= box.halfWidth + 0.18
+      && Math.abs(position.z - box.centerZ) <= box.halfDepth + 0.18;
+  }
+
+  private hideInsideChapterSevenCardboardBox(): void {
+    const box = this.chapterSeven.cardboardBox;
+    this.chapterSevenBoxHidden = true;
+    this.chapterSevenCrawling = false;
+    box.targetOpenAmount = 0;
+    box.open = false;
+    this.gameplaySfxAudio.playClosetDoor(false);
+    this.chapterSevenBoxHideAnchor.visible = true;
+    this.pushStatus('You close the cardboard box around yourself. Press E to open it again.', 2.6);
+  }
+
+  private openChapterSevenCardboardBoxFromInside(): void {
+    const box = this.chapterSeven.cardboardBox;
+    this.chapterSevenBoxHidden = false;
+    box.targetOpenAmount = 1;
+    box.open = true;
+    this.gameplaySfxAudio.playClosetDoor(true);
+    this.chapterSevenBoxHideAnchor.visible = false;
+    this.pushStatus('The cardboard box opens. Hold G to crawl and jump out.', 2.6);
+  }
+
   private getChapterSevenLookScore(
     target: { interactPosition: Vector3; aimPosition: Vector3 },
     aimRadius: number,
@@ -16901,7 +17061,7 @@ export class Game {
       keepBest({ kind: 'cardboard-box', item: this.chapterSeven.cardboardBox, score: cardboardBoxScore });
     }
 
-    const oldWoodenClosetScore = this.getChapterSevenLookScore(this.chapterSeven.oldWoodenCloset, 0.8, 1.1);
+    const oldWoodenClosetScore = this.getChapterSevenLookScore(this.chapterSeven.oldWoodenCloset, 1.2, 1.6);
     if (oldWoodenClosetScore !== null) {
       keepBest({ kind: 'old-wooden-closet', item: this.chapterSeven.oldWoodenCloset, score: oldWoodenClosetScore });
     }
@@ -19296,10 +19456,13 @@ export class Game {
     this.chapterFourBoxViewMode = 'normal';
     this.chapterFourLockerId = null;
     this.chapterFourCrouching = false;
+    this.chapterSevenCrawling = false;
+    this.chapterSevenBoxHidden = false;
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
     this.chapterFourBoxWideAnchor.visible = false;
     this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterSevenBoxHideAnchor.visible = false;
     this.chapterTwoKeycards.clear();
     this.chapterTwoPuzzlePiecesCollected = 0;
     this.chapterTwoRedPuzzleSolved = false;

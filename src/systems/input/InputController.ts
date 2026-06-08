@@ -48,6 +48,10 @@ export class InputController {
     return this.pressed.has('Space');
   }
 
+  isCrawlHeld(): boolean {
+    return this.pressed.has('KeyG');
+  }
+
   isInteractHeld(): boolean {
     return this.pressed.has('KeyE');
   }
