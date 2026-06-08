@@ -375,8 +375,8 @@ const BALL_PIT_ROOM_HEIGHT = WALL_HEIGHT;
 const WALL_THICKNESS = 0.45;
 const DOOR_MOVE_SPEED = 8.4;
 const SIDE_HALL_WIDTH = 4.6;
-const SIDE_HALL_STRAIGHT_LENGTH = 5.8;
-const ABANDONED_SIDE_HALL_STRAIGHT_LENGTH = 11.2;
+const SIDE_HALL_STRAIGHT_LENGTH = 11.4;
+const ABANDONED_SIDE_HALL_STRAIGHT_LENGTH = 13.2;
 const SIDE_HALL_TURN_LENGTH = 10.2;
 const DOOR_Z_SHIFT = 0.9;
 const OFFICE_WINDOW_DEPTH = 2.2;
@@ -4539,6 +4539,21 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const innerHallWallNorthCenterZ = northTurnMinZ + innerHallWallNorthDepth / 2;
   const innerHallWallSouthDepth = Math.max(0, turnWallSouthZ - hallWindowGapMaxZ);
   const innerHallWallSouthCenterZ = hallWindowGapMaxZ + innerHallWallSouthDepth / 2;
+  const storageClosetDepth = 5.1;
+  const storageClosetWidth = 4.8;
+  const storageClosetDoorWidth = 2.18;
+  const storageClosetDoorCenterX = westWallX - Math.min(5.45, sideHallStraightLength - 3.1);
+  const storageClosetDoorMinX = storageClosetDoorCenterX - storageClosetDoorWidth / 2;
+  const storageClosetDoorMaxX = storageClosetDoorCenterX + storageClosetDoorWidth / 2;
+  const storageClosetNorthZ = shiftedDoorZ + SIDE_HALL_WIDTH / 2;
+  const storageClosetSouthZ = storageClosetNorthZ + storageClosetDepth;
+  const storageClosetCenterZ = (storageClosetNorthZ + storageClosetSouthZ) / 2;
+  const storageClosetMinZ = storageClosetNorthZ;
+  const storageClosetMaxZ = storageClosetSouthZ;
+  const storageClosetMinX = storageClosetDoorCenterX - storageClosetWidth / 2;
+  const storageClosetMaxX = storageClosetDoorCenterX + storageClosetWidth / 2;
+  const storageClosetCenterX = storageClosetDoorCenterX;
+  const storageClosetWestX = storageClosetMinX;
 
   [
     {
@@ -4576,10 +4591,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [sideHallStraightLength - SIDE_HALL_WIDTH, WALL_HEIGHT, WALL_THICKNESS],
     },
     {
-      position: [leftStraightCenterX, WALL_HEIGHT / 2, shiftedDoorZ + SIDE_HALL_WIDTH / 2 - WALL_THICKNESS / 2],
-      size: [sideHallStraightLength, WALL_HEIGHT, WALL_THICKNESS],
-    },
-    {
       position: [leftTurnCenterX - SIDE_HALL_WIDTH / 2 + WALL_THICKNESS / 2, WALL_HEIGHT / 2, northTurnCenterZ],
       size: [WALL_THICKNESS, WALL_HEIGHT, SIDE_HALL_TURN_LENGTH],
     },
@@ -4596,6 +4607,34 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [WALL_THICKNESS, WALL_HEIGHT, SIDE_HALL_TURN_LENGTH],
     },
   ];
+  ([
+    [westWallX - sideHallStraightLength, storageClosetDoorMinX],
+    [storageClosetDoorMaxX, westWallX],
+  ] as Array<[number, number]>).forEach(([startX, endX]) => {
+    const width = endX - startX;
+    if (width <= 0.24) {
+      return;
+    }
+
+    hallWalls.push({
+      position: [startX + width / 2, WALL_HEIGHT / 2, shiftedDoorZ + SIDE_HALL_WIDTH / 2 - WALL_THICKNESS / 2],
+      size: [width, WALL_HEIGHT, WALL_THICKNESS],
+    });
+  });
+  hallWalls.push(
+    {
+      position: [storageClosetCenterX, WALL_HEIGHT / 2, storageClosetSouthZ - WALL_THICKNESS / 2],
+      size: [storageClosetWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [storageClosetMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, storageClosetCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, storageClosetDepth],
+    },
+    {
+      position: [storageClosetMaxX - WALL_THICKNESS / 2, WALL_HEIGHT / 2, storageClosetCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, storageClosetDepth],
+    },
+  );
 
   if (innerHallWallNorthDepth > 0.05) {
     hallWalls.push({
@@ -4701,18 +4740,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const backstageStorageDoorCenterZ = backstageStorageCenterZ;
   const backstageStorageDoorMinZ = backstageStorageDoorCenterZ - backstageStorageDoorWidth / 2;
   const backstageStorageDoorMaxZ = backstageStorageDoorCenterZ + backstageStorageDoorWidth / 2;
-  const storageClosetDoorCenterZ = 153.15;
-  const storageClosetDoorWidth = 2.18;
-  const storageClosetDoorMinZ = storageClosetDoorCenterZ - storageClosetDoorWidth / 2;
-  const storageClosetDoorMaxZ = storageClosetDoorCenterZ + storageClosetDoorWidth / 2;
-  const storageClosetDepth = 5.1;
-  const storageClosetWidth = 4.8;
-  const storageClosetEastX = backstageHallMinX;
-  const storageClosetWestX = storageClosetEastX - storageClosetDepth;
-  const storageClosetCenterX = (storageClosetWestX + storageClosetEastX) / 2;
-  const storageClosetMinZ = storageClosetDoorCenterZ - storageClosetWidth / 2;
-  const storageClosetMaxZ = storageClosetDoorCenterZ + storageClosetWidth / 2;
-  const storageClosetCenterZ = storageClosetDoorCenterZ;
   const bathroomHallWidth = 5.3;
   const bathroomHallLength = 5.8;
   const bathroomRoomWidth = 8.8;
@@ -4980,8 +5007,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       ceilingHeight: WALL_HEIGHT,
     }, materials),
     createFloor({
-      width: storageClosetDepth,
-      depth: storageClosetWidth,
+      width: storageClosetWidth,
+      depth: storageClosetDepth,
       center: [storageClosetCenterX, storageClosetCenterZ],
       ceilingHeight: WALL_HEIGHT,
     }, materials),
@@ -5023,34 +5050,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [backstageStorageWidth, WALL_HEIGHT, WALL_THICKNESS],
     },
   ];
-  ([
-    [backstageHallNorthZ, storageClosetDoorMinZ],
-    [storageClosetDoorMaxZ, backstageHallSouthZ],
-  ] as Array<[number, number]>).forEach(([startZ, endZ]) => {
-    const depth = endZ - startZ;
-    if (depth <= 0.24) {
-      return;
-    }
-
-    backstageWalls.push({
-      position: [backstageHallMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, startZ + depth / 2],
-      size: [WALL_THICKNESS, WALL_HEIGHT, depth],
-    });
+  backstageWalls.push({
+    position: [backstageHallMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, backstageHallCenterZ],
+    size: [WALL_THICKNESS, WALL_HEIGHT, backstageHallLength],
   });
-  backstageWalls.push(
-    {
-      position: [storageClosetWestX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, storageClosetCenterZ],
-      size: [WALL_THICKNESS, WALL_HEIGHT, storageClosetWidth],
-    },
-    {
-      position: [storageClosetCenterX, WALL_HEIGHT / 2, storageClosetMinZ + WALL_THICKNESS / 2],
-      size: [storageClosetDepth, WALL_HEIGHT, WALL_THICKNESS],
-    },
-    {
-      position: [storageClosetCenterX, WALL_HEIGHT / 2, storageClosetMaxZ - WALL_THICKNESS / 2],
-      size: [storageClosetDepth, WALL_HEIGHT, WALL_THICKNESS],
-    },
-  );
   const backstageStorageWestWallX = backstageHallMaxX - WALL_THICKNESS / 2;
   const backstageStorageNorthDoorWallDepth = backstageStorageDoorMinZ - backstageStorageMinZ;
   const backstageStorageSouthDoorWallDepth = backstageStorageMaxZ - backstageStorageDoorMaxZ;
@@ -5558,30 +5561,30 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const storageClosetDoorRoot = new Group();
   const storageClosetDoorPanelWidth = storageClosetDoorWidth - 0.22;
   const storageClosetDoorPivot = new Group();
-  storageClosetDoorPivot.position.set(backstageHallMinX + 0.04, 0, storageClosetDoorMinZ + 0.08);
+  storageClosetDoorPivot.position.set(storageClosetDoorMinX + 0.08, 0, storageClosetNorthZ - 0.04);
   const storageClosetDoorPanel = new Mesh(
-    new BoxGeometry(0.1, 2.58, storageClosetDoorPanelWidth),
+    new BoxGeometry(storageClosetDoorPanelWidth, 2.58, 0.1),
     backstageDoorMaterial,
   );
-  storageClosetDoorPanel.position.set(0, 1.34, storageClosetDoorPanelWidth / 2);
+  storageClosetDoorPanel.position.set(storageClosetDoorPanelWidth / 2, 1.34, 0);
   storageClosetDoorPanel.castShadow = true;
   storageClosetDoorPanel.receiveShadow = true;
   const storageClosetDoorHandle = new Mesh(new BoxGeometry(0.08, 0.18, 0.08), backstageFrameMaterial);
-  storageClosetDoorHandle.position.set(0.08, 1.2, storageClosetDoorPanelWidth - 0.2);
+  storageClosetDoorHandle.position.set(storageClosetDoorPanelWidth - 0.2, 1.2, -0.08);
   const storageClosetDoorSign = createWallSign('Storage', 'Cleaning');
   storageClosetDoorSign.scale.set(0.78, 0.78, 1);
-  storageClosetDoorSign.rotation.y = Math.PI / 2;
-  storageClosetDoorSign.position.set(0.061, 1.86, storageClosetDoorPanelWidth * 0.5);
+  storageClosetDoorSign.rotation.y = Math.PI;
+  storageClosetDoorSign.position.set(storageClosetDoorPanelWidth * 0.5, 1.86, -0.061);
   storageClosetDoorPivot.add(storageClosetDoorPanel, storageClosetDoorHandle, storageClosetDoorSign);
-  const storageClosetDoorNorthPost = new Mesh(new BoxGeometry(0.22, 2.86, 0.12), backstageFrameMaterial);
-  storageClosetDoorNorthPost.position.set(backstageHallMinX + 0.04, 1.43, storageClosetDoorMinZ);
-  const storageClosetDoorSouthPost = new Mesh(new BoxGeometry(0.22, 2.86, 0.12), backstageFrameMaterial);
-  storageClosetDoorSouthPost.position.set(backstageHallMinX + 0.04, 1.43, storageClosetDoorMaxZ);
+  const storageClosetDoorNorthPost = new Mesh(new BoxGeometry(0.12, 2.86, 0.22), backstageFrameMaterial);
+  storageClosetDoorNorthPost.position.set(storageClosetDoorMinX, 1.43, storageClosetNorthZ - 0.04);
+  const storageClosetDoorSouthPost = new Mesh(new BoxGeometry(0.12, 2.86, 0.22), backstageFrameMaterial);
+  storageClosetDoorSouthPost.position.set(storageClosetDoorMaxX, 1.43, storageClosetNorthZ - 0.04);
   const storageClosetDoorHeader = new Mesh(
-    new BoxGeometry(0.24, 0.22, storageClosetDoorWidth + 0.18),
+    new BoxGeometry(storageClosetDoorWidth + 0.18, 0.22, 0.24),
     backstageFrameMaterial,
   );
-  storageClosetDoorHeader.position.set(backstageHallMinX + 0.04, 2.82, storageClosetDoorCenterZ);
+  storageClosetDoorHeader.position.set(storageClosetDoorCenterX, 2.82, storageClosetNorthZ - 0.04);
   storageClosetDoorRoot.add(
     storageClosetDoorPivot,
     storageClosetDoorNorthPost,
@@ -5590,17 +5593,17 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   );
   root.add(storageClosetDoorRoot);
   const storageClosetDoorCollider: CollisionBox = {
-    centerX: backstageHallMinX + 0.04,
-    centerZ: storageClosetDoorCenterZ,
-    halfWidth: 0.16,
-    halfDepth: storageClosetDoorPanelWidth / 2,
+    centerX: storageClosetDoorCenterX,
+    centerZ: storageClosetNorthZ - 0.04,
+    halfWidth: storageClosetDoorPanelWidth / 2,
+    halfDepth: 0.16,
     enabled: true,
   };
   colliders.push(storageClosetDoorCollider);
   const storageClosetDoor: OfficeChapterStorageClosetDoor = {
     label: 'Cleaning Storage Closet Door',
     root: storageClosetDoorRoot,
-    interactPosition: new Vector3(backstageHallMinX + 0.58, 1.24, storageClosetDoorCenterZ),
+    interactPosition: new Vector3(storageClosetDoorCenterX, 1.24, storageClosetNorthZ - 0.58),
     doorPivot: storageClosetDoorPivot,
     collider: storageClosetDoorCollider,
     open: false,
@@ -5648,7 +5651,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const storageClosetShelfRoot = new Group();
   const storageShelfX = storageClosetWestX + 0.7;
   [0.72, 1.42, 2.12].forEach((shelfY) => {
-    const shelf = new Mesh(new BoxGeometry(0.55, 0.08, storageClosetWidth - 1.0), storageClosetShelfMaterial);
+    const shelf = new Mesh(new BoxGeometry(0.55, 0.08, storageClosetDepth - 1.0), storageClosetShelfMaterial);
     shelf.position.set(storageShelfX, shelfY, storageClosetCenterZ);
     storageClosetShelfRoot.add(shelf);
   });
@@ -5665,7 +5668,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     storageClosetShelfRoot.add(bottle, cap);
   });
   root.add(storageClosetShelfRoot);
-  addCollider(colliders, storageShelfX, storageClosetCenterZ, 0.84, storageClosetWidth - 0.74);
+  addCollider(colliders, storageShelfX, storageClosetCenterZ, 0.84, storageClosetDepth - 0.74);
 
   const storageBucket = new Group();
   storageBucket.position.set(storageClosetCenterX + 0.82, 0, storageClosetMinZ + 0.92);
@@ -5685,10 +5688,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   root.add(storageBucket);
   addCollider(colliders, storageBucket.position.x, storageBucket.position.z, 0.82, 0.82);
 
-  const storagePipeNorth = new Mesh(new CylinderGeometry(0.07, 0.07, storageClosetDepth - 0.82, 14), storageClosetPipeMaterial);
+  const storagePipeNorth = new Mesh(new CylinderGeometry(0.07, 0.07, storageClosetWidth - 0.82, 14), storageClosetPipeMaterial);
   storagePipeNorth.position.set(storageClosetCenterX, 2.9, storageClosetMinZ + 0.38);
   storagePipeNorth.rotation.z = Math.PI / 2;
-  const storagePipeBack = new Mesh(new CylinderGeometry(0.06, 0.06, storageClosetWidth - 0.7, 14), storageClosetPipeMaterial);
+  const storagePipeBack = new Mesh(new CylinderGeometry(0.06, 0.06, storageClosetDepth - 0.7, 14), storageClosetPipeMaterial);
   storagePipeBack.position.set(storageClosetWestX + 0.36, 2.42, storageClosetCenterZ);
   storagePipeBack.rotation.x = Math.PI / 2;
   const storagePipeVertical = new Mesh(new CylinderGeometry(0.065, 0.065, 2.25, 14), storageClosetPipeMaterial);
@@ -5940,9 +5943,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ),
     createSwivelingSecurityCamera(
       14,
-      'Camera 10 Storage Hall',
-      new Vector3(-255.42, 2.58, 151.20),
-      new Vector3(0, 0, 1),
+      'Camera 10 Storage Closet',
+      new Vector3(storageClosetCenterX, 2.72, storageClosetSouthZ - 0.08),
+      new Vector3(0, 0, -1),
     ),
     createSwivelingSecurityCamera(
       9,
