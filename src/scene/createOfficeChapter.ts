@@ -4484,6 +4484,35 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       door.slab.add(flowerRoot);
     });
   };
+  const addSwingDoorVines = (doorPivot: Group, panelWidth: number): void => {
+    const doorVinePoints = [
+      new Vector3(panelWidth * 0.18, 0.56, -0.14),
+      new Vector3(panelWidth * 0.34, 1.08, -0.15),
+      new Vector3(panelWidth * 0.54, 1.58, -0.14),
+      new Vector3(panelWidth * 0.72, 2.12, -0.15),
+      new Vector3(panelWidth * 0.88, 2.66, -0.14),
+    ];
+    const vine = new Mesh(new TubeGeometry(new CatmullRomCurve3(doorVinePoints), 20, 0.024, 6, false), vineMaterial);
+    doorPivot.add(vine);
+
+    doorVinePoints.slice(1, -1).forEach((point, index) => {
+      const leaf = new Mesh(new PlaneGeometry(0.24, 0.14), vineLeafMaterial);
+      leaf.position.copy(point).add(new Vector3(index % 2 === 0 ? 0.1 : -0.08, 0.02, -0.018));
+      leaf.rotation.z = index % 2 === 0 ? 0.68 : -0.62;
+      doorPivot.add(leaf);
+
+      const flowerRoot = new Group();
+      flowerRoot.position.copy(point).add(new Vector3(index % 2 === 0 ? -0.08 : 0.1, 0.08, -0.024));
+      for (let petalIndex = 0; petalIndex < 5; petalIndex += 1) {
+        const petal = new Mesh(new PlaneGeometry(0.085, 0.04), vineFlowerMaterial);
+        petal.position.set(Math.cos(petalIndex / 5 * Math.PI * 2) * 0.042, Math.sin(petalIndex / 5 * Math.PI * 2) * 0.042, 0);
+        petal.rotation.z = petalIndex / 5 * Math.PI * 2;
+        flowerRoot.add(petal);
+      }
+      flowerRoot.add(new Mesh(new SphereGeometry(0.02, 8, 6), vineFlowerCenterMaterial));
+      doorPivot.add(flowerRoot);
+    });
+  };
 
   const floor: FloorDefinition = {
     width: OFFICE_WIDTH,
@@ -5672,6 +5701,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   storageClosetDoorSign.rotation.y = Math.PI;
   storageClosetDoorSign.position.set(storageClosetDoorPanelWidth * 0.5, 1.86, -0.061);
   storageClosetDoorPivot.add(storageClosetDoorPanel, storageClosetDoorHandle, storageClosetDoorSign);
+  if (abandonedStraightHalls) {
+    addSwingDoorVines(storageClosetDoorPivot, storageClosetDoorPanelWidth);
+  }
   const storageClosetDoorNorthPost = new Mesh(new BoxGeometry(0.12, 2.86, 0.22), backstageFrameMaterial);
   storageClosetDoorNorthPost.position.set(storageClosetDoorMinX, 1.43, storageClosetNorthZ - 0.04);
   const storageClosetDoorSouthPost = new Mesh(new BoxGeometry(0.12, 2.86, 0.22), backstageFrameMaterial);
