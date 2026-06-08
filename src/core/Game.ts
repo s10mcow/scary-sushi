@@ -771,6 +771,7 @@ type ChapterSevenInteractable =
   | { kind: 'cupboard'; item: ChapterSevenData['houseUpperCupboards'][number]; score: number }
   | { kind: 'drawer'; item: ChapterSevenData['houseDrawers'][number]; score: number }
   | { kind: 'fridge'; item: ChapterSevenData['houseFridge']; score: number }
+  | { kind: 'cardboard-box'; item: ChapterSevenData['cardboardBox']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
 export class Game {
@@ -10147,6 +10148,20 @@ export class Game {
         return;
       }
 
+      if (interactable?.kind === 'cardboard-box') {
+        const cardboardBox = interactable.item;
+        cardboardBox.targetOpenAmount = cardboardBox.targetOpenAmount > 0.5 ? 0 : 1;
+        cardboardBox.open = cardboardBox.targetOpenAmount > 0.5;
+        this.gameplaySfxAudio.playClosetDoor(cardboardBox.open);
+        this.pushStatus(
+          cardboardBox.open
+            ? 'The cardboard box flaps fold open. Jump to climb inside.'
+            : 'The cardboard box flaps fold shut.',
+          2.4,
+        );
+        return;
+      }
+
       if (interactable?.kind === 'oven') {
         const oven = interactable.item;
         oven.targetOpenAmount = oven.targetOpenAmount > 0.5 ? 0 : 1;
@@ -10161,7 +10176,7 @@ export class Game {
         return;
       }
 
-      this.pushStatus('Look directly at the fridge, oven, cupboard, or drawer you want, then press E.', 2.6);
+      this.pushStatus('Look directly at the fridge, oven, cupboard, drawer, or cardboard box you want, then press E.', 2.6);
       return;
     }
 
@@ -14671,6 +14686,12 @@ export class Game {
             : `${interactable.item.label} is closed. Press E to open it.`;
         }
 
+        if (interactable.kind === 'cardboard-box') {
+          return interactable.item.open
+            ? 'The cardboard box top is open. You can jump inside it, or press E to close the flaps.'
+            : 'A cardboard box sits here. Press E to open the top flaps.';
+        }
+
         return interactable.item.open
           ? 'The oven is open. Press E to close it.'
           : 'The oven is closed. Press E to open it.';
@@ -16853,6 +16874,11 @@ export class Game {
         keepBest({ kind: 'cupboard', item: cabinet, score: cabinetScore });
       }
     });
+
+    const cardboardBoxScore = this.getChapterSevenLookScore(this.chapterSeven.cardboardBox, 0.55, 1.05);
+    if (cardboardBoxScore !== null) {
+      keepBest({ kind: 'cardboard-box', item: this.chapterSeven.cardboardBox, score: cardboardBoxScore });
+    }
 
     return best;
   }

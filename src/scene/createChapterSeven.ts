@@ -33,6 +33,7 @@ export interface ChapterSevenData {
   houseUpperCupboards: ChapterSevenCupboard[];
   houseBaseCabinets: ChapterSevenCupboard[];
   houseOven: ChapterSevenOven;
+  cardboardBox: ChapterSevenCardboardBox;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number, playerPosition?: Vector3): void;
   reset(): void;
@@ -102,6 +103,27 @@ export interface ChapterSevenOven {
   interactPosition: Vector3;
   aimPosition: Vector3;
   doorPivot: Group;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
+}
+
+export interface ChapterSevenCardboardBox {
+  label: string;
+  interactPosition: Vector3;
+  aimPosition: Vector3;
+  flapPivots: {
+    front: Group;
+    back: Group;
+    left: Group;
+    right: Group;
+  };
+  wallColliders: CollisionBox[];
+  centerX: number;
+  centerZ: number;
+  halfWidth: number;
+  halfDepth: number;
+  wallHeight: number;
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
@@ -282,6 +304,21 @@ export function createChapterSeven(): ChapterSevenData {
     emissiveIntensity: 0.04,
     roughness: 0.86,
     metalness: 0.02,
+  });
+  const cardboardMaterial = new MeshStandardMaterial({
+    color: 0xb98145,
+    emissive: 0x1b0e05,
+    emissiveIntensity: 0.04,
+    roughness: 0.92,
+    metalness: 0.01,
+    side: DoubleSide,
+  });
+  const cardboardEdgeMaterial = new MeshStandardMaterial({
+    color: 0x7a4d25,
+    emissive: 0x120804,
+    emissiveIntensity: 0.04,
+    roughness: 0.9,
+    metalness: 0.01,
   });
   const plantPotMaterial = new MeshStandardMaterial({
     color: 0x8b4a31,
@@ -712,6 +749,113 @@ export function createChapterSeven(): ChapterSevenData {
     );
     house.add(chair);
     addRotatedFurnitureCollider(localX, localZ, 1.58, 1.86, rotationY);
+  };
+
+  const addCardboardBox = (localX: number, localZ: number): ChapterSevenCardboardBox => {
+    const box = new Group();
+    box.position.set(localX, 0.22, localZ);
+
+    const width = 2;
+    const depth = 2;
+    const wallHeight = 1.05;
+    const wallThickness = 0.12;
+    const flapThickness = 0.055;
+    const bottom = new Mesh(new BoxGeometry(width, 0.1, depth), cardboardEdgeMaterial);
+    bottom.position.y = 0.05;
+    const frontWall = new Mesh(new BoxGeometry(width, wallHeight, wallThickness), cardboardMaterial);
+    frontWall.position.set(0, wallHeight / 2, depth / 2 - wallThickness / 2);
+    const backWall = frontWall.clone();
+    backWall.position.z = -depth / 2 + wallThickness / 2;
+    const leftWall = new Mesh(new BoxGeometry(wallThickness, wallHeight, depth), cardboardMaterial);
+    leftWall.position.set(-width / 2 + wallThickness / 2, wallHeight / 2, 0);
+    const rightWall = leftWall.clone();
+    rightWall.position.x = width / 2 - wallThickness / 2;
+
+    const createFlap = (sizeX: number, sizeZ: number, offsetX: number, offsetZ: number): Group => {
+      const pivot = new Group();
+      pivot.position.set(offsetX, wallHeight, offsetZ);
+      const flap = new Mesh(new BoxGeometry(sizeX, flapThickness, sizeZ), cardboardMaterial);
+      flap.position.set(
+        offsetX === 0 ? 0 : -Math.sign(offsetX) * sizeX / 2,
+        0,
+        offsetZ === 0 ? 0 : -Math.sign(offsetZ) * sizeZ / 2,
+      );
+      const crease = new Mesh(new BoxGeometry(
+        offsetX === 0 ? sizeX : 0.035,
+        flapThickness + 0.012,
+        offsetZ === 0 ? 0.035 : sizeZ,
+      ), cardboardEdgeMaterial);
+      crease.position.set(
+        offsetX === 0 ? 0 : -Math.sign(offsetX) * 0.02,
+        0.004,
+        offsetZ === 0 ? 0 : -Math.sign(offsetZ) * 0.02,
+      );
+      pivot.add(flap, crease);
+      return pivot;
+    };
+
+    const frontFlap = createFlap(width - 0.08, depth / 2, 0, depth / 2);
+    const backFlap = createFlap(width - 0.08, depth / 2, 0, -depth / 2);
+    const leftFlap = createFlap(width / 2, depth - 0.08, -width / 2, 0);
+    const rightFlap = createFlap(width / 2, depth - 0.08, width / 2, 0);
+    box.add(bottom, frontWall, backWall, leftWall, rightWall, frontFlap, backFlap, leftFlap, rightFlap);
+
+    const flapLabel = new Mesh(new BoxGeometry(1.02, 0.034, 0.12), cardboardEdgeMaterial);
+    flapLabel.position.set(0, wallHeight + 0.04, 0.18);
+    box.add(flapLabel);
+
+    house.add(box);
+
+    const centerX = CENTER_X + localX;
+    const centerZ = HOUSE_CENTER_Z + localZ;
+    const wallColliders: CollisionBox[] = [
+      {
+        centerX,
+        centerZ: centerZ + depth / 2 - wallThickness / 2,
+        halfWidth: width / 2,
+        halfDepth: wallThickness / 2,
+      },
+      {
+        centerX,
+        centerZ: centerZ - depth / 2 + wallThickness / 2,
+        halfWidth: width / 2,
+        halfDepth: wallThickness / 2,
+      },
+      {
+        centerX: centerX - width / 2 + wallThickness / 2,
+        centerZ,
+        halfWidth: wallThickness / 2,
+        halfDepth: depth / 2,
+      },
+      {
+        centerX: centerX + width / 2 - wallThickness / 2,
+        centerZ,
+        halfWidth: wallThickness / 2,
+        halfDepth: depth / 2,
+      },
+    ];
+    colliders.push(...wallColliders);
+
+    return {
+      label: 'Porch cardboard box',
+      interactPosition: new Vector3(centerX, GAME_CONFIG.player.height, centerZ + depth / 2 + 0.65),
+      aimPosition: new Vector3(centerX, wallHeight + 0.54, centerZ),
+      flapPivots: {
+        front: frontFlap,
+        back: backFlap,
+        left: leftFlap,
+        right: rightFlap,
+      },
+      wallColliders,
+      centerX,
+      centerZ,
+      halfWidth: width / 2,
+      halfDepth: depth / 2,
+      wallHeight,
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
   };
 
   const addDrawer = (localX: number, localZ: number, rotationY = 0, label = 'Small Drawer'): ChapterSevenDrawer => {
@@ -1535,6 +1679,7 @@ export function createChapterSeven(): ChapterSevenData {
   const rightPorchChairZ = 101.48 - HOUSE_CENTER_Z;
   addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
+  const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
   addCollider(colliders, CENTER_X - porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X - (porchGapWidth / 2 + frontRailSegmentWidth / 2), HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
@@ -1671,6 +1816,7 @@ export function createChapterSeven(): ChapterSevenData {
     houseUpperCupboards,
     houseBaseCabinets,
     houseOven,
+    cardboardBox,
     getSupportedFloorY(position: Vector3): number | null {
       const insideForest = position.x >= CENTER_X - HALF_SIZE
         && position.x <= CENTER_X + HALF_SIZE
@@ -1680,8 +1826,19 @@ export function createChapterSeven(): ChapterSevenData {
         bedSurfaces.forEach((surface) => {
           surface.collider.enabled = true;
         });
+        cardboardBox.wallColliders.forEach((collider) => {
+          collider.enabled = true;
+        });
         return null;
       }
+
+      const nearCardboardBox = Math.abs(position.x - cardboardBox.centerX) <= cardboardBox.halfWidth + GAME_CONFIG.player.radius + 0.34
+        && Math.abs(position.z - cardboardBox.centerZ) <= cardboardBox.halfDepth + GAME_CONFIG.player.radius + 0.34;
+      const highEnoughToClearCardboardBox = position.y > GAME_CONFIG.player.height + cardboardBox.wallHeight * 0.42;
+      const canClearCardboardBoxWalls = cardboardBox.openAmount > 0.72 && nearCardboardBox && highEnoughToClearCardboardBox;
+      cardboardBox.wallColliders.forEach((collider) => {
+        collider.enabled = !canClearCardboardBoxWalls;
+      });
 
       for (const surface of counterSurfaces) {
         const onSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth
@@ -1778,6 +1935,19 @@ export function createChapterSeven(): ChapterSevenData {
       }
       houseOven.doorPivot.rotation.x = houseOven.openAmount * Math.PI * 0.48;
       houseOven.open = houseOven.targetOpenAmount > 0.5;
+
+      const cardboardBoxDelta = cardboardBox.targetOpenAmount - cardboardBox.openAmount;
+      if (Math.abs(cardboardBoxDelta) > 0.001) {
+        const step = Math.min(Math.abs(cardboardBoxDelta), deltaSeconds * 4.6) * Math.sign(cardboardBoxDelta);
+        cardboardBox.openAmount += step;
+      } else {
+        cardboardBox.openAmount = cardboardBox.targetOpenAmount;
+      }
+      cardboardBox.flapPivots.front.rotation.x = cardboardBox.openAmount * Math.PI * 0.72;
+      cardboardBox.flapPivots.back.rotation.x = -cardboardBox.openAmount * Math.PI * 0.72;
+      cardboardBox.flapPivots.left.rotation.z = -cardboardBox.openAmount * Math.PI * 0.72;
+      cardboardBox.flapPivots.right.rotation.z = cardboardBox.openAmount * Math.PI * 0.72;
+      cardboardBox.open = cardboardBox.targetOpenAmount > 0.5;
     },
     reset(): void {
       root.visible = false;
@@ -1813,6 +1983,16 @@ export function createChapterSeven(): ChapterSevenData {
       houseOven.openAmount = 0;
       houseOven.targetOpenAmount = 0;
       houseOven.doorPivot.rotation.x = 0;
+      cardboardBox.open = false;
+      cardboardBox.openAmount = 0;
+      cardboardBox.targetOpenAmount = 0;
+      cardboardBox.flapPivots.front.rotation.x = 0;
+      cardboardBox.flapPivots.back.rotation.x = 0;
+      cardboardBox.flapPivots.left.rotation.z = 0;
+      cardboardBox.flapPivots.right.rotation.z = 0;
+      cardboardBox.wallColliders.forEach((collider) => {
+        collider.enabled = true;
+      });
     },
   };
 }
