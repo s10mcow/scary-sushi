@@ -1082,10 +1082,10 @@ export function createChapterSeven(): ChapterSevenData {
     const spacing = length / (picketCount - 1);
     for (let index = 0; index < picketCount; index += 1) {
       const offset = index * spacing;
-      const picket = new Mesh(new BoxGeometry(0.34, 1.92, 0.24), whiteFenceMaterial);
-      picket.position.set(axis === 'x' ? offset : 0, 0.96, axis === 'z' ? offset : 0);
-      const spike = new Mesh(new ConeGeometry(0.21, 0.42, 4), whiteFenceMaterial);
-      spike.position.set(axis === 'x' ? offset : 0, 2.17, axis === 'z' ? offset : 0);
+      const picket = new Mesh(new BoxGeometry(0.34, 2.72, 0.24), whiteFenceMaterial);
+      picket.position.set(axis === 'x' ? offset : 0, 1.36, axis === 'z' ? offset : 0);
+      const spike = new Mesh(new ConeGeometry(0.21, 0.48, 4), whiteFenceMaterial);
+      spike.position.set(axis === 'x' ? offset : 0, 2.96, axis === 'z' ? offset : 0);
       spike.rotation.y = Math.PI / 4;
       fence.add(picket, spike);
     }
@@ -1094,11 +1094,11 @@ export function createChapterSeven(): ChapterSevenData {
       ? new BoxGeometry(length + 0.42, 0.16, 0.18)
       : new BoxGeometry(0.18, 0.16, length + 0.42);
     const topRail = new Mesh(railGeometry, whiteFenceMaterial);
-    topRail.position.set(axis === 'x' ? length / 2 : 0, 1.54, axis === 'z' ? length / 2 : 0);
+    topRail.position.set(axis === 'x' ? length / 2 : 0, 2.22, axis === 'z' ? length / 2 : 0);
     const middleRail = topRail.clone();
-    middleRail.position.y = 0.94;
+    middleRail.position.y = 1.38;
     const bottomRail = topRail.clone();
-    bottomRail.position.y = 0.38;
+    bottomRail.position.y = 0.58;
 
     fence.add(topRail, middleRail, bottomRail);
     house.add(fence);

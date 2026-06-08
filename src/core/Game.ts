@@ -16985,7 +16985,7 @@ export class Game {
         playerPosition.x - door.interactPosition.x,
         playerPosition.z - door.interactPosition.z,
       );
-      if (distance > GAME_CONFIG.player.interactionRange + 1.45 || distance >= closestDistance) {
+      if (distance > GAME_CONFIG.player.interactionRange + 3.0 || distance >= closestDistance) {
         continue;
       }
 
