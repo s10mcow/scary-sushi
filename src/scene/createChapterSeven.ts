@@ -1,5 +1,6 @@
 import {
   BoxGeometry,
+  CanvasTexture,
   ConeGeometry,
   CylinderGeometry,
   DoubleSide,
@@ -33,6 +34,7 @@ export interface ChapterSevenData {
   houseUpperCupboards: ChapterSevenCupboard[];
   houseBaseCabinets: ChapterSevenCupboard[];
   houseOven: ChapterSevenOven;
+  oldWoodenCloset: ChapterSevenOldWoodenCloset;
   cardboardBox: ChapterSevenCardboardBox;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number, playerPosition?: Vector3): void;
@@ -109,6 +111,17 @@ export interface ChapterSevenOven {
   targetOpenAmount: number;
 }
 
+export interface ChapterSevenOldWoodenCloset {
+  label: string;
+  interactPosition: Vector3;
+  aimPosition: Vector3;
+  doorPivots: Group[];
+  doorCollider: CollisionBox;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
+}
+
 export interface ChapterSevenCardboardBox {
   label: string;
   interactPosition: Vector3;
@@ -175,6 +188,31 @@ function addCollider(colliders: CollisionBox[], x: number, z: number, width: num
   };
   colliders.push(collider);
   return collider;
+}
+
+function getRotatedLocalPoint(localX: number, localZ: number, rotationY: number, offsetX: number, offsetZ: number): { x: number; z: number } {
+  const cos = Math.cos(rotationY);
+  const sin = Math.sin(rotationY);
+  return {
+    x: localX + cos * offsetX + sin * offsetZ,
+    z: localZ - sin * offsetX + cos * offsetZ,
+  };
+}
+
+function addRotatedCollider(
+  colliders: CollisionBox[],
+  localX: number,
+  localZ: number,
+  rotationY: number,
+  offsetX: number,
+  offsetZ: number,
+  width: number,
+  depth: number,
+): CollisionBox {
+  const center = getRotatedLocalPoint(localX, localZ, rotationY, offsetX, offsetZ);
+  const colliderWidth = Math.abs(Math.cos(rotationY)) * width + Math.abs(Math.sin(rotationY)) * depth;
+  const colliderDepth = Math.abs(Math.sin(rotationY)) * width + Math.abs(Math.cos(rotationY)) * depth;
+  return addCollider(colliders, CENTER_X + center.x, HOUSE_CENTER_Z + center.z, colliderWidth, colliderDepth);
 }
 
 function createRandom(seedStart: number): () => number {
@@ -308,6 +346,27 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.86,
     metalness: 0.02,
   });
+  const closetWoodMaterial = new MeshStandardMaterial({
+    color: 0x3b2116,
+    emissive: 0x080302,
+    emissiveIntensity: 0.05,
+    roughness: 0.82,
+    metalness: 0.02,
+  });
+  const closetTrimMaterial = new MeshStandardMaterial({
+    color: 0x6a452b,
+    emissive: 0x100604,
+    emissiveIntensity: 0.05,
+    roughness: 0.78,
+    metalness: 0.03,
+  });
+  const closetHandleMaterial = new MeshStandardMaterial({
+    color: 0xb48a4b,
+    emissive: 0x211408,
+    emissiveIntensity: 0.12,
+    roughness: 0.42,
+    metalness: 0.32,
+  });
   const cardboardMaterial = new MeshStandardMaterial({
     color: 0xc8955c,
     emissive: 0x1a1007,
@@ -324,12 +383,55 @@ export function createChapterSeven(): ChapterSevenData {
     metalness: 0.01,
   });
   const cardboardTapeMaterial = new MeshStandardMaterial({
-    color: 0xe3bd72,
-    emissive: 0x1a1206,
+    color: 0x10100f,
+    emissive: 0x020202,
     emissiveIntensity: 0.035,
-    roughness: 0.76,
+    roughness: 0.58,
     metalness: 0.01,
   });
+  const createAmazonTapeLabelMaterial = (): MeshStandardMaterial => {
+    if (typeof document === 'undefined') {
+      return new MeshStandardMaterial({
+        color: 0x0d1012,
+        roughness: 0.58,
+        metalness: 0.01,
+      });
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#10100f';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#35a9ff';
+      context.font = 'bold 38px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('Amazon', 128, 44);
+      context.strokeStyle = '#35a9ff';
+      context.lineWidth = 8;
+      context.beginPath();
+      context.moveTo(66, 86);
+      context.quadraticCurveTo(128, 116, 194, 86);
+      context.stroke();
+      context.beginPath();
+      context.moveTo(194, 86);
+      context.lineTo(174, 78);
+      context.lineTo(181, 100);
+      context.closePath();
+      context.fill();
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.62,
+      metalness: 0.01,
+    });
+  };
+  const amazonTapeLabelMaterial = createAmazonTapeLabelMaterial();
   const plantPotMaterial = new MeshStandardMaterial({
     color: 0x8b4a31,
     emissive: 0x160705,
@@ -610,10 +712,11 @@ export function createChapterSeven(): ChapterSevenData {
     addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, colliderWidth, colliderDepth);
   };
 
-  const addBookshelf = (localX: number, localZ: number, rotationY = 0): void => {
+  const addBookshelf = (localX: number, localZ: number, rotationY = 0, widthScale = 1, heightScale = 1): void => {
     const shelf = new Group();
     shelf.position.set(localX, 0, localZ);
     shelf.rotation.y = rotationY;
+    shelf.scale.set(widthScale, heightScale, 1);
 
     const back = new Mesh(new BoxGeometry(4.25, 4.2, 0.18), furnitureWoodMaterial);
     back.position.set(0, 2.1, -0.38);
@@ -665,7 +768,76 @@ export function createChapterSeven(): ChapterSevenData {
     });
 
     house.add(shelf);
-    addRotatedFurnitureCollider(localX, localZ, 4.5, 1.15, rotationY);
+    addRotatedFurnitureCollider(localX, localZ, 4.5 * widthScale, 1.15, rotationY);
+  };
+
+  const addOldWoodenCloset = (localX: number, localZ: number, rotationY = 0): ChapterSevenOldWoodenCloset => {
+    const closet = new Group();
+    closet.position.set(localX, 0, localZ);
+    closet.rotation.y = rotationY;
+
+    const width = 3.2;
+    const depth = 1.34;
+    const height = 4.55;
+    const wallThickness = 0.16;
+    const back = new Mesh(new BoxGeometry(width, height, wallThickness), closetWoodMaterial);
+    back.position.set(0, height / 2, -depth / 2 + wallThickness / 2);
+    const leftSide = new Mesh(new BoxGeometry(wallThickness, height, depth), closetWoodMaterial);
+    leftSide.position.set(-width / 2 + wallThickness / 2, height / 2, 0);
+    const rightSide = leftSide.clone();
+    rightSide.position.x = width / 2 - wallThickness / 2;
+    const top = new Mesh(new BoxGeometry(width + 0.22, 0.18, depth + 0.16), closetTrimMaterial);
+    top.position.set(0, height + 0.02, 0);
+    const base = new Mesh(new BoxGeometry(width + 0.18, 0.22, depth + 0.12), closetTrimMaterial);
+    base.position.set(0, 0.11, 0);
+    const crown = new Mesh(new BoxGeometry(width + 0.44, 0.26, depth + 0.28), closetTrimMaterial);
+    crown.position.set(0, height + 0.26, 0.02);
+
+    const leftDoorPivot = new Group();
+    leftDoorPivot.position.set(-width / 2 + 0.08, 0, depth / 2 + 0.04);
+    const rightDoorPivot = new Group();
+    rightDoorPivot.position.set(width / 2 - 0.08, 0, depth / 2 + 0.04);
+    const makeDoor = (side: -1 | 1): Group => {
+      const doorRoot = side < 0 ? leftDoorPivot : rightDoorPivot;
+      const panelWidth = width / 2 - 0.08;
+      const door = new Mesh(new BoxGeometry(panelWidth, height - 0.58, 0.1), closetWoodMaterial);
+      door.position.set(side < 0 ? panelWidth / 2 : -panelWidth / 2, height / 2, 0);
+      const upperPanel = new Mesh(new BoxGeometry(panelWidth - 0.44, 1.18, 0.035), closetTrimMaterial);
+      upperPanel.position.set(door.position.x, height * 0.68, 0.065);
+      const lowerPanel = upperPanel.clone();
+      lowerPanel.position.y = height * 0.34;
+      const centerLine = new Mesh(new BoxGeometry(0.055, height - 1.02, 0.04), closetTrimMaterial);
+      centerLine.position.set(door.position.x, height / 2, 0.08);
+      const handle = new Mesh(new CylinderGeometry(0.055, 0.055, 0.22, 10), closetHandleMaterial);
+      handle.rotation.x = Math.PI / 2;
+      handle.position.set(side < 0 ? panelWidth - 0.34 : -(panelWidth - 0.34), height * 0.52, 0.12);
+      doorRoot.add(door, upperPanel, lowerPanel, centerLine, handle);
+      return doorRoot;
+    };
+    makeDoor(-1);
+    makeDoor(1);
+
+    const insideFloor = new Mesh(new BoxGeometry(width - 0.32, 0.08, depth - 0.28), closetTrimMaterial);
+    insideFloor.position.set(0, 0.16, -0.05);
+    closet.add(back, leftSide, rightSide, top, base, crown, insideFloor, leftDoorPivot, rightDoorPivot);
+    house.add(closet);
+
+    addRotatedCollider(colliders, localX, localZ, rotationY, 0, -depth / 2 + wallThickness / 2, width, wallThickness);
+    addRotatedCollider(colliders, localX, localZ, rotationY, -width / 2 + wallThickness / 2, 0, wallThickness, depth);
+    addRotatedCollider(colliders, localX, localZ, rotationY, width / 2 - wallThickness / 2, 0, wallThickness, depth);
+    const doorCollider = addRotatedCollider(colliders, localX, localZ, rotationY, 0, depth / 2 + 0.05, width, 0.18);
+    const frontPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.82);
+    const aimPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.18);
+    return {
+      label: 'Old wooden closet',
+      interactPosition: new Vector3(CENTER_X + frontPoint.x, GAME_CONFIG.player.height, HOUSE_CENTER_Z + frontPoint.z),
+      aimPosition: new Vector3(CENTER_X + aimPoint.x, 2.25, HOUSE_CENTER_Z + aimPoint.z),
+      doorPivots: [leftDoorPivot, rightDoorPivot],
+      doorCollider,
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
   };
 
   const addRockingChair = (localX: number, localZ: number, rotationY = 0): void => {
@@ -806,28 +978,27 @@ export function createChapterSeven(): ChapterSevenData {
 
     const frontFlap = createFlap(width - 0.08, depth / 2, 0, depth / 2);
     const backFlap = createFlap(width - 0.08, depth / 2, 0, -depth / 2);
-    const leftFlap = createFlap(width / 2, depth - 0.08, -width / 2, 0);
-    const rightFlap = createFlap(width / 2, depth - 0.08, width / 2, 0);
-    const frontTape = new Mesh(new BoxGeometry(0.18, wallHeight * 0.72, 0.032), cardboardTapeMaterial);
+    const leftFlap = new Group();
+    const rightFlap = new Group();
+    const frontTape = new Mesh(new BoxGeometry(0.44, wallHeight * 0.72, 0.032), cardboardTapeMaterial);
     frontTape.position.set(0, wallHeight * 0.52, depth / 2 + 0.018);
     const backTape = frontTape.clone();
     backTape.position.z = -depth / 2 - 0.018;
-    const leftTape = new Mesh(new BoxGeometry(0.032, wallHeight * 0.72, 0.18), cardboardTapeMaterial);
+    const leftTape = new Mesh(new BoxGeometry(0.032, wallHeight * 0.72, 0.44), cardboardTapeMaterial);
     leftTape.position.set(-width / 2 - 0.018, wallHeight * 0.52, 0);
     const rightTape = leftTape.clone();
     rightTape.position.x = width / 2 + 0.018;
-    const topTapeFront = new Mesh(new BoxGeometry(0.18, 0.035, depth / 2 - 0.08), cardboardTapeMaterial);
-    topTapeFront.position.set(0, 0.036, -depth / 4);
-    frontFlap.add(topTapeFront);
-    const topTapeBack = topTapeFront.clone();
-    topTapeBack.position.z = depth / 4;
-    backFlap.add(topTapeBack);
-    const topTapeLeft = new Mesh(new BoxGeometry(width / 2 - 0.08, 0.035, 0.18), cardboardTapeMaterial);
-    topTapeLeft.position.set(width / 4, 0.036, 0);
-    leftFlap.add(topTapeLeft);
-    const topTapeRight = topTapeLeft.clone();
-    topTapeRight.position.x = -width / 4;
-    rightFlap.add(topTapeRight);
+    const frontTapeLabel = new Mesh(new PlaneGeometry(0.54, 0.28), amazonTapeLabelMaterial);
+    frontTapeLabel.position.set(0, wallHeight * 0.58, depth / 2 + 0.036);
+    const backTapeLabel = frontTapeLabel.clone();
+    backTapeLabel.position.z = -depth / 2 - 0.036;
+    backTapeLabel.rotation.y = Math.PI;
+    const leftTapeLabel = new Mesh(new PlaneGeometry(0.54, 0.28), amazonTapeLabelMaterial);
+    leftTapeLabel.position.set(-width / 2 - 0.036, wallHeight * 0.58, 0);
+    leftTapeLabel.rotation.y = -Math.PI / 2;
+    const rightTapeLabel = leftTapeLabel.clone();
+    rightTapeLabel.position.x = width / 2 + 0.036;
+    rightTapeLabel.rotation.y = Math.PI / 2;
 
     box.add(
       bottom,
@@ -839,6 +1010,10 @@ export function createChapterSeven(): ChapterSevenData {
       backTape,
       leftTape,
       rightTape,
+      frontTapeLabel,
+      backTapeLabel,
+      leftTapeLabel,
+      rightTapeLabel,
       frontFlap,
       backFlap,
       leftFlap,
@@ -1491,7 +1666,8 @@ export function createChapterSeven(): ChapterSevenData {
     ),
   );
   addDiningTable(leftRoomCenterX, 0);
-  addBookshelf(-25.05, -1.25, Math.PI / 2);
+  addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
+  const oldWoodenCloset = addOldWoodenCloset(-25.05, -4.25, Math.PI / 2);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
     1187.12 - CENTER_X,
@@ -1861,6 +2037,7 @@ export function createChapterSeven(): ChapterSevenData {
     houseUpperCupboards,
     houseBaseCabinets,
     houseOven,
+    oldWoodenCloset,
     cardboardBox,
     getSupportedFloorY(position: Vector3): number | null {
       const insideForest = position.x >= CENTER_X - HALF_SIZE
@@ -1992,6 +2169,18 @@ export function createChapterSeven(): ChapterSevenData {
       houseOven.doorPivot.rotation.x = houseOven.openAmount * Math.PI * 0.48;
       houseOven.open = houseOven.targetOpenAmount > 0.5;
 
+      const closetDelta = oldWoodenCloset.targetOpenAmount - oldWoodenCloset.openAmount;
+      if (Math.abs(closetDelta) > 0.001) {
+        const step = Math.min(Math.abs(closetDelta), deltaSeconds * 4.2) * Math.sign(closetDelta);
+        oldWoodenCloset.openAmount += step;
+      } else {
+        oldWoodenCloset.openAmount = oldWoodenCloset.targetOpenAmount;
+      }
+      oldWoodenCloset.doorPivots[0].rotation.y = -oldWoodenCloset.openAmount * Math.PI * 0.62;
+      oldWoodenCloset.doorPivots[1].rotation.y = oldWoodenCloset.openAmount * Math.PI * 0.62;
+      oldWoodenCloset.open = oldWoodenCloset.targetOpenAmount > 0.5;
+      oldWoodenCloset.doorCollider.enabled = oldWoodenCloset.openAmount < 0.58;
+
       const cardboardBoxDelta = cardboardBox.targetOpenAmount - cardboardBox.openAmount;
       if (Math.abs(cardboardBoxDelta) > 0.001) {
         const step = Math.min(Math.abs(cardboardBoxDelta), deltaSeconds * 4.6) * Math.sign(cardboardBoxDelta);
@@ -2001,8 +2190,6 @@ export function createChapterSeven(): ChapterSevenData {
       }
       cardboardBox.flapPivots.front.rotation.x = cardboardBox.openAmount * Math.PI * 0.72;
       cardboardBox.flapPivots.back.rotation.x = -cardboardBox.openAmount * Math.PI * 0.72;
-      cardboardBox.flapPivots.left.rotation.z = -cardboardBox.openAmount * Math.PI * 0.72;
-      cardboardBox.flapPivots.right.rotation.z = cardboardBox.openAmount * Math.PI * 0.72;
       cardboardBox.open = cardboardBox.targetOpenAmount > 0.5;
     },
     reset(): void {
@@ -2044,13 +2231,18 @@ export function createChapterSeven(): ChapterSevenData {
       houseOven.openAmount = 0;
       houseOven.targetOpenAmount = 0;
       houseOven.doorPivot.rotation.x = 0;
+      oldWoodenCloset.open = false;
+      oldWoodenCloset.openAmount = 0;
+      oldWoodenCloset.targetOpenAmount = 0;
+      oldWoodenCloset.doorPivots.forEach((doorPivot) => {
+        doorPivot.rotation.y = 0;
+      });
+      oldWoodenCloset.doorCollider.enabled = true;
       cardboardBox.open = false;
       cardboardBox.openAmount = 0;
       cardboardBox.targetOpenAmount = 0;
       cardboardBox.flapPivots.front.rotation.x = 0;
       cardboardBox.flapPivots.back.rotation.x = 0;
-      cardboardBox.flapPivots.left.rotation.z = 0;
-      cardboardBox.flapPivots.right.rotation.z = 0;
       cardboardBox.wallColliders.forEach((collider) => {
         collider.enabled = true;
       });

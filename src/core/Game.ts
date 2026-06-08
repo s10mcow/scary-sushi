@@ -771,6 +771,7 @@ type ChapterSevenInteractable =
   | { kind: 'cupboard'; item: ChapterSevenData['houseUpperCupboards'][number]; score: number }
   | { kind: 'drawer'; item: ChapterSevenData['houseDrawers'][number]; score: number }
   | { kind: 'fridge'; item: ChapterSevenData['houseFridge']; score: number }
+  | { kind: 'old-wooden-closet'; item: ChapterSevenData['oldWoodenCloset']; score: number }
   | { kind: 'cardboard-box'; item: ChapterSevenData['cardboardBox']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
@@ -10162,6 +10163,20 @@ export class Game {
         return;
       }
 
+      if (interactable?.kind === 'old-wooden-closet') {
+        const closet = interactable.item;
+        closet.targetOpenAmount = closet.targetOpenAmount > 0.5 ? 0 : 1;
+        closet.open = closet.targetOpenAmount > 0.5;
+        this.gameplaySfxAudio.playClosetDoor(closet.open);
+        this.pushStatus(
+          closet.open
+            ? 'The old wooden closet doors swing open. It is empty inside.'
+            : 'The old wooden closet doors close around the empty space.',
+          2.4,
+        );
+        return;
+      }
+
       if (interactable?.kind === 'oven') {
         const oven = interactable.item;
         oven.targetOpenAmount = oven.targetOpenAmount > 0.5 ? 0 : 1;
@@ -10176,7 +10191,7 @@ export class Game {
         return;
       }
 
-      this.pushStatus('Look directly at the fridge, oven, cupboard, drawer, or cardboard box you want, then press E.', 2.6);
+      this.pushStatus('Look directly at the fridge, oven, cupboard, drawer, cardboard box, or wooden closet you want, then press E.', 2.6);
       return;
     }
 
@@ -14692,6 +14707,12 @@ export class Game {
             : 'A cardboard box sits here. Press E to open the top flaps.';
         }
 
+        if (interactable.kind === 'old-wooden-closet') {
+          return interactable.item.open
+            ? 'The old wooden closet is open. You can walk inside, or press E to close it.'
+            : 'The old wooden closet is closed. Press E to open it.';
+        }
+
         return interactable.item.open
           ? 'The oven is open. Press E to close it.'
           : 'The oven is closed. Press E to open it.';
@@ -16878,6 +16899,11 @@ export class Game {
     const cardboardBoxScore = this.getChapterSevenLookScore(this.chapterSeven.cardboardBox, 0.55, 1.05);
     if (cardboardBoxScore !== null) {
       keepBest({ kind: 'cardboard-box', item: this.chapterSeven.cardboardBox, score: cardboardBoxScore });
+    }
+
+    const oldWoodenClosetScore = this.getChapterSevenLookScore(this.chapterSeven.oldWoodenCloset, 0.8, 1.1);
+    if (oldWoodenClosetScore !== null) {
+      keepBest({ kind: 'old-wooden-closet', item: this.chapterSeven.oldWoodenCloset, score: oldWoodenClosetScore });
     }
 
     return best;
