@@ -171,7 +171,7 @@ export interface ChapterSevenCardboardBox {
 
 const CENTER_X = 1210;
 const CENTER_Z = 80;
-const FOREST_SIZE = 620;
+const FOREST_SIZE = 540;
 const HALF_SIZE = FOREST_SIZE / 2;
 const CLEARING_RADIUS = 42;
 const GRASS_COLOR = 0x3f6f36;
@@ -200,10 +200,10 @@ const HOUSE_FRIDGE_Z = -17.35;
 const HOUSE_ROOF_RISE = 6.2;
 const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
-const TREE_COUNT = 760;
-const GRASS_PATCH_COUNT = 1400;
-const ROCK_COUNT = 46;
-const FALLEN_LOG_COUNT = 28;
+const TREE_COUNT = 660;
+const GRASS_PATCH_COUNT = 1180;
+const ROCK_COUNT = 38;
+const FALLEN_LOG_COUNT = 22;
 
 function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
   const collider = {
@@ -1663,6 +1663,18 @@ export function createChapterSeven(): ChapterSevenData {
     bottom.position.set(0, 0.06, 0);
     const top = new Mesh(new BoxGeometry(width + 0.18, 0.16, depth + 0.18), counterTopMaterial);
     top.position.y = baseHeight + 0.1;
+    const frontPanelLeft = new Mesh(new BoxGeometry(width / 2 - 0.08, 1.02, 0.08), furnitureWoodMaterial);
+    frontPanelLeft.position.set(-width / 4 - 0.025, 0.68, depth / 2 + 0.04);
+    const frontPanelRight = frontPanelLeft.clone();
+    frontPanelRight.position.x = width / 4 + 0.025;
+    const centerSeam = new Mesh(new BoxGeometry(0.045, 1.02, 0.095), houseTrimMaterial);
+    centerSeam.position.set(0, 0.68, depth / 2 + 0.065);
+    const leftHandle = new Mesh(new BoxGeometry(0.06, 0.32, 0.07), fridgeSealMaterial);
+    leftHandle.position.set(-0.18, 0.72, depth / 2 + 0.105);
+    const rightHandle = leftHandle.clone();
+    rightHandle.position.x = 0.18;
+    const underSinkKick = new Mesh(new BoxGeometry(width - 0.36, 0.16, 0.08), houseTrimMaterial);
+    underSinkKick.position.set(0, 0.18, depth / 2 + 0.08);
     const toeKick = new Mesh(new BoxGeometry(width - 0.26, 0.18, 0.12), houseTrimMaterial);
     toeKick.position.set(0, 0.14, depth / 2 + 0.035);
 
@@ -1705,6 +1717,12 @@ export function createChapterSeven(): ChapterSevenData {
       rightSide,
       bottom,
       top,
+      frontPanelLeft,
+      frontPanelRight,
+      centerSeam,
+      leftHandle,
+      rightHandle,
+      underSinkKick,
       toeKick,
       basin,
       basinWater,
