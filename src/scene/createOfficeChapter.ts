@@ -441,6 +441,17 @@ interface StageCollisionRefs {
   drumKit?: CollisionBox;
 }
 
+type SandboxLayoutRoomKind = 'room' | 'hall' | 'office' | 'planned' | 'camera';
+
+interface SandboxLayoutRoom {
+  label: string;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  kind?: SandboxLayoutRoomKind;
+}
+
 export interface OfficeJumpscareStageModel {
   root: Group;
   head: Group;
@@ -2727,6 +2738,155 @@ function createWallSign(label: string, subtitle = ''): Mesh {
   return sign;
 }
 
+function drawSandboxLayoutText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+): void {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  words.forEach((word) => {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+    if (context.measureText(nextLine).width > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+      return;
+    }
+    currentLine = nextLine;
+  });
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  const visibleLines = lines.slice(0, maxLines);
+  const startY = y - ((visibleLines.length - 1) * lineHeight) / 2;
+  visibleLines.forEach((line, index) => {
+    context.fillText(line, x, startY + index * lineHeight);
+  });
+}
+
+function createSandboxLayoutMapBoard(rooms: SandboxLayoutRoom[]): Group {
+  const root = new Group();
+  const boardWidth = 6.8;
+  const boardHeight = 4.7;
+  const canvas = document.createElement('canvas');
+  canvas.width = 1400;
+  canvas.height = 980;
+  const context = canvas.getContext('2d');
+
+  if (context) {
+    const padding = 94;
+    const titleHeight = 104;
+    const mapMinX = Math.min(...rooms.map((room) => room.x - room.width / 2));
+    const mapMaxX = Math.max(...rooms.map((room) => room.x + room.width / 2));
+    const mapMinZ = Math.min(...rooms.map((room) => room.z - room.depth / 2));
+    const mapMaxZ = Math.max(...rooms.map((room) => room.z + room.depth / 2));
+    const drawableWidth = canvas.width - padding * 2;
+    const drawableHeight = canvas.height - padding * 2 - titleHeight;
+    const scale = Math.min(drawableWidth / (mapMaxX - mapMinX), drawableHeight / (mapMaxZ - mapMinZ));
+    const offsetX = (canvas.width - (mapMaxX - mapMinX) * scale) / 2;
+    const offsetY = titleHeight + (drawableHeight - (mapMaxZ - mapMinZ) * scale) / 2;
+    const toCanvasX = (worldX: number): number => offsetX + (worldX - mapMinX) * scale;
+    const toCanvasY = (worldZ: number): number => offsetY + (worldZ - mapMinZ) * scale;
+    const styleByKind: Record<SandboxLayoutRoomKind, { fill: string; stroke: string; text: string }> = {
+      room: { fill: '#d8e2d5', stroke: '#26362b', text: '#102016' },
+      hall: { fill: '#c2c7bf', stroke: '#3c4039', text: '#141814' },
+      office: { fill: '#f2d08c', stroke: '#4b2e12', text: '#261506' },
+      planned: { fill: 'rgba(116, 168, 189, 0.28)', stroke: '#4aa0bd', text: '#10384a' },
+      camera: { fill: '#253243', stroke: '#74d7ff', text: '#e4fbff' },
+    };
+
+    context.fillStyle = '#101316';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#151d20';
+    context.fillRect(36, 36, canvas.width - 72, canvas.height - 72);
+    context.strokeStyle = '#d4b36a';
+    context.lineWidth = 8;
+    context.strokeRect(44, 44, canvas.width - 88, canvas.height - 88);
+    context.strokeStyle = '#506069';
+    context.lineWidth = 3;
+    context.strokeRect(64, 64, canvas.width - 128, canvas.height - 128);
+
+    context.fillStyle = '#f4e4b6';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.font = 'bold 48px Trebuchet MS, sans-serif';
+    context.fillText("BORI'S PIZZERIA SANDBOX MAP", canvas.width / 2, 76);
+    context.font = '24px Trebuchet MS, sans-serif';
+    context.fillStyle = '#b9cbd2';
+    context.fillText('Top-down room order with new straight abandoned halls', canvas.width / 2, 122);
+
+    rooms.forEach((room) => {
+      const kind = room.kind ?? 'room';
+      const style = styleByKind[kind];
+      const x = toCanvasX(room.x - room.width / 2);
+      const y = toCanvasY(room.z - room.depth / 2);
+      const width = room.width * scale;
+      const height = room.depth * scale;
+
+      context.save();
+      context.fillStyle = style.fill;
+      context.strokeStyle = style.stroke;
+      context.lineWidth = kind === 'camera' ? 4 : 5;
+      if (kind === 'planned') {
+        context.setLineDash([16, 10]);
+      }
+      context.fillRect(x, y, width, height);
+      context.strokeRect(x, y, width, height);
+      context.restore();
+
+      context.fillStyle = style.text;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.font = kind === 'camera' ? 'bold 22px Trebuchet MS, sans-serif' : 'bold 24px Trebuchet MS, sans-serif';
+      drawSandboxLayoutText(context, room.label, x + width / 2, y + height / 2, Math.max(48, width - 12), 25, 3);
+    });
+
+    context.fillStyle = '#e9f2ef';
+    context.textAlign = 'left';
+    context.font = '22px Trebuchet MS, sans-serif';
+    context.fillText('Dashed blue rooms are added layout spaces for the sandbox version.', 84, canvas.height - 72);
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  const mapMaterial = new MeshBasicMaterial({ map: texture, side: DoubleSide });
+  const frameMaterial = new MeshStandardMaterial({
+    color: 0x2b1b12,
+    emissive: 0x080302,
+    emissiveIntensity: 0.2,
+    roughness: 0.56,
+    metalness: 0.12,
+  });
+  const backMaterial = new MeshStandardMaterial({
+    color: 0x050708,
+    emissive: 0x010202,
+    emissiveIntensity: 0.18,
+    roughness: 0.62,
+    metalness: 0.18,
+  });
+  const back = new Mesh(new BoxGeometry(boardWidth + 0.22, boardHeight + 0.22, 0.12), backMaterial);
+  const panel = new Mesh(new PlaneGeometry(boardWidth, boardHeight), mapMaterial);
+  panel.position.z = 0.071;
+  const topFrame = new Mesh(new BoxGeometry(boardWidth + 0.36, 0.18, 0.16), frameMaterial);
+  topFrame.position.set(0, boardHeight / 2 + 0.12, 0.08);
+  const bottomFrame = topFrame.clone();
+  bottomFrame.position.y = -boardHeight / 2 - 0.12;
+  const leftFrame = new Mesh(new BoxGeometry(0.18, boardHeight + 0.36, 0.16), frameMaterial);
+  leftFrame.position.set(-boardWidth / 2 - 0.12, 0, 0.08);
+  const rightFrame = leftFrame.clone();
+  rightFrame.position.x = boardWidth / 2 + 0.12;
+  root.add(back, panel, topFrame, bottomFrame, leftFrame, rightFrame);
+  return root;
+}
+
 function createToiletFixture(): Group {
   const root = new Group();
   const porcelainMaterial = new MeshStandardMaterial({
@@ -4853,6 +5013,31 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const northPartySideRoomCenterZ = northPartySideRoomDoorCenterZ;
   const northPartySideRoomMinZ = northPartySideRoomCenterZ - northPartySideRoomDepth / 2;
   const northPartySideRoomMaxZ = northPartySideRoomCenterZ + northPartySideRoomDepth / 2;
+  if (abandonedStraightHalls) {
+    const sandboxLayoutBoard = createSandboxLayoutMapBoard([
+      { label: 'Office', x: OFFICE_CENTER_X, z: OFFICE_CENTER_Z, width: OFFICE_WIDTH, depth: OFFICE_DEPTH, kind: 'office' },
+      { label: 'Left Straight Hall', x: leftStraightCenterX, z: shiftedDoorZ, width: sideHallStraightLength, depth: sideHallWidth, kind: 'hall' },
+      { label: 'Right Straight Hall', x: rightStraightCenterX, z: shiftedDoorZ, width: sideHallStraightLength, depth: sideHallWidth, kind: 'hall' },
+      { label: 'Cleaning Storage Closet', x: storageClosetCenterX, z: storageClosetCenterZ, width: storageClosetWidth, depth: storageClosetDepth, kind: 'room' },
+      { label: 'Main Party Room / Stage', x: partyRoomCenterX, z: partyRoomCenterZ, width: PARTY_ROOM_WIDTH, depth: PARTY_ROOM_DEPTH, kind: 'room' },
+      { label: 'Backstage Hall', x: backstageHallCenterX, z: backstageHallCenterZ, width: backstageHallWidth, depth: backstageHallLength, kind: 'hall' },
+      { label: 'Suit Storage', x: backstageStorageCenterX, z: backstageStorageCenterZ, width: backstageStorageWidth, depth: backstageStorageDepth, kind: 'room' },
+      { label: 'Kitchen', x: kitchenCenterX, z: kitchenCenterZ, width: kitchenDepth, depth: kitchenWidth, kind: 'room' },
+      { label: 'North Party Hall', x: northPartyHallCenterX, z: northPartyHallCenterZ, width: northPartyHallWidth, depth: northPartyHallLength, kind: 'hall' },
+      { label: 'Ball Pit Room', x: northPartySideRoomCenterX, z: northPartySideRoomCenterZ, width: northPartySideRoomWidth, depth: northPartySideRoomDepth, kind: 'room' },
+      { label: 'Bathroom Hall', x: bathroomHallCenterX, z: bathroomEntryCenterZ, width: bathroomHallLength, depth: bathroomHallWidth, kind: 'hall' },
+      { label: 'Men Restroom', x: bathroomRoomCenterX, z: menBathroomCenterZ, width: bathroomRoomWidth, depth: bathroomRoomDepth, kind: 'room' },
+      { label: 'Women Restroom', x: bathroomRoomCenterX, z: womenBathroomCenterZ, width: bathroomRoomWidth, depth: bathroomRoomDepth, kind: 'room' },
+      { label: 'Second Party Hall', x: secondHallCenterX, z: secondHallCenterZ, width: SECOND_PARTY_HALL_LENGTH, depth: SECOND_PARTY_HALL_WIDTH, kind: 'hall' },
+      { label: 'Second Party Room', x: secondRoomCenterX, z: secondRoomCenterZ, width: SECOND_PARTY_ROOM_WIDTH, depth: SECOND_PARTY_ROOM_DEPTH, kind: 'room' },
+      { label: 'Planned Arcade Room', x: westWallX - sideHallStraightLength - 5.3, z: shiftedDoorZ - 4.85, width: 9.6, depth: 7.2, kind: 'planned' },
+      { label: 'Planned Parts Room', x: eastWallX + sideHallStraightLength + 5.3, z: shiftedDoorZ + 4.85, width: 9.6, depth: 7.2, kind: 'planned' },
+      { label: 'CAM 14', x: -143.92, z: 182.25, width: 1.8, depth: 1.8, kind: 'camera' },
+    ]);
+    sandboxLayoutBoard.position.set(OFFICE_CENTER_X, 2.35, roomMaxZ - WALL_THICKNESS - 0.07);
+    sandboxLayoutBoard.rotation.y = Math.PI;
+    root.add(sandboxLayoutBoard);
+  }
   root.add(createFloor({
     width: PARTY_ROOM_WIDTH,
     depth: PARTY_ROOM_DEPTH,
