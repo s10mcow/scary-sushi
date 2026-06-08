@@ -171,7 +171,7 @@ export interface ChapterSevenCardboardBox {
 
 const CENTER_X = 1210;
 const CENTER_Z = 80;
-const FOREST_SIZE = 500;
+const FOREST_SIZE = 460;
 const HALF_SIZE = FOREST_SIZE / 2;
 const CLEARING_RADIUS = 42;
 const GRASS_COLOR = 0x3f6f36;
@@ -200,10 +200,10 @@ const HOUSE_FRIDGE_Z = -17.35;
 const HOUSE_ROOF_RISE = 6.2;
 const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
-const TREE_COUNT = 600;
-const GRASS_PATCH_COUNT = 1050;
-const ROCK_COUNT = 34;
-const FALLEN_LOG_COUNT = 19;
+const TREE_COUNT = 540;
+const GRASS_PATCH_COUNT = 920;
+const ROCK_COUNT = 30;
+const FALLEN_LOG_COUNT = 16;
 
 function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
   const collider = {
@@ -503,6 +503,33 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.86,
     metalness: 0.01,
   });
+  const colorfulRugMaterial = (() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 160;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#b64242';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      ['#e4b83c', '#3f8f70', '#315fa8', '#d76fa2'].forEach((color, index) => {
+        context.fillStyle = color;
+        context.fillRect(18 + index * 58, 18, 34, canvas.height - 36);
+      });
+      context.strokeStyle = '#f0d67a';
+      context.lineWidth = 10;
+      context.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+      context.strokeStyle = '#2e405c';
+      context.lineWidth = 5;
+      context.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.78,
+      metalness: 0.01,
+    });
+  })();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -739,18 +766,23 @@ export function createChapterSeven(): ChapterSevenData {
       height / 2,
       orientation === 'front' ? 0 : width / 2,
     );
-    const doorHandle = new Mesh(new CylinderGeometry(0.09, 0.09, 0.24, 10), houseTrimMaterial);
-    doorHandle.position.set(
+    const frontHandle = new Mesh(new CylinderGeometry(0.09, 0.09, 0.24, 10), houseTrimMaterial);
+    frontHandle.position.set(
       orientation === 'front' ? width - 0.55 : 0.18,
       height * 0.52,
       orientation === 'front' ? 0.18 : width - 0.55,
     );
+    const backHandle = frontHandle.clone();
     if (orientation === 'front') {
-      doorHandle.rotation.x = Math.PI / 2;
+      frontHandle.rotation.x = Math.PI / 2;
+      backHandle.rotation.x = Math.PI / 2;
+      backHandle.position.z = -0.18;
     } else {
-      doorHandle.rotation.z = Math.PI / 2;
+      frontHandle.rotation.z = Math.PI / 2;
+      backHandle.rotation.z = Math.PI / 2;
+      backHandle.position.x = -0.18;
     }
-    doorPivot.add(doorPanel, doorHandle);
+    doorPivot.add(doorPanel, frontHandle, backHandle);
     house.add(doorPivot);
 
     const collider: CollisionBox = {
@@ -967,41 +999,100 @@ export function createChapterSeven(): ChapterSevenData {
     const length = 6.8;
     const depth = 1.82;
     const base = new Mesh(new BoxGeometry(length, 0.34, depth), yellowCouchMaterial);
-    base.position.y = 0.44;
+    base.position.y = 0.82;
     const seatOffsets = [-2.18, 0, 2.18];
     const seats = seatOffsets.map((seatX) => {
       const cushion = new Mesh(new BoxGeometry(2.04, 0.24, 1.2), yellowCouchMaterial);
-      cushion.position.set(seatX, 0.72, -0.2);
+      cushion.position.set(seatX, 1.1, -0.2);
       return cushion;
     });
     const back = new Mesh(new BoxGeometry(length + 0.18, 1.18, 0.32), yellowCouchMaterial);
-    back.position.set(0, 1.05, 0.88);
+    back.position.set(0, 1.43, 0.88);
     const backCushions = seatOffsets.map((seatX) => {
       const cushion = new Mesh(new BoxGeometry(1.98, 0.78, 0.18), yellowCouchMaterial);
-      cushion.position.set(seatX, 1.08, 0.68);
+      cushion.position.set(seatX, 1.46, 0.68);
       cushion.rotation.x = -0.1;
       return cushion;
     });
     const leftArm = new Mesh(new BoxGeometry(0.42, 1.06, depth + 0.08), yellowCouchMaterial);
-    leftArm.position.set(-length / 2 - 0.2, 0.82, 0);
+    leftArm.position.set(-length / 2 - 0.2, 1.2, 0);
     const rightArm = leftArm.clone();
     rightArm.position.x = length / 2 + 0.2;
     const frontLip = new Mesh(new BoxGeometry(length, 0.18, 0.22), furnitureWoodMaterial);
-    frontLip.position.set(0, 0.54, -depth / 2 - 0.04);
+    frontLip.position.set(0, 0.92, -depth / 2 - 0.04);
     const legs = [
       [-2.95, -0.72],
       [2.95, -0.72],
       [-2.95, 0.64],
       [2.95, 0.64],
     ].map(([legX, legZ]) => {
-      const leg = new Mesh(new BoxGeometry(0.22, 0.36, 0.22), furnitureWoodMaterial);
-      leg.position.set(legX, 0.18, legZ);
+      const leg = new Mesh(new BoxGeometry(0.22, 0.72, 0.22), furnitureWoodMaterial);
+      leg.position.set(legX, 0.36, legZ);
       return leg;
     });
 
     couch.add(base, ...seats, back, ...backCushions, leftArm, rightArm, frontLip, ...legs);
     house.add(couch);
-    addRotatedFurnitureCollider(localX, localZ, length + 0.84, depth + 0.18, rotationY);
+    const couchCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, length + 0.84, depth + 0.18);
+    bedSurfaces.push({
+      label: 'Yellow couch',
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: (length + 0.84) / 2,
+      halfDepth: (depth + 0.18) / 2,
+      floorY: 1.2,
+      collider: couchCollider,
+    });
+  };
+
+  const addColorfulRug = (localX: number, localZ: number, rotationY = 0): void => {
+    const rug = new Mesh(new PlaneGeometry(5.2, 3.4), colorfulRugMaterial);
+    rug.rotation.x = -Math.PI / 2;
+    rug.rotation.z = rotationY;
+    rug.position.set(localX, 0.19, localZ);
+    house.add(rug);
+  };
+
+  const addSmallPlantTable = (localX: number, localZ: number): void => {
+    const table = new Group();
+    table.position.set(localX, 0, localZ);
+
+    const top = new Mesh(new BoxGeometry(2, 0.16, 2), furnitureWoodMaterial);
+    top.position.y = 1;
+    const lowerShelf = new Mesh(new BoxGeometry(1.72, 0.09, 1.72), houseTrimMaterial);
+    lowerShelf.position.y = 0.46;
+    const legs = [
+      [-0.78, -0.78],
+      [0.78, -0.78],
+      [-0.78, 0.78],
+      [0.78, 0.78],
+    ].map(([legX, legZ]) => {
+      const leg = new Mesh(new BoxGeometry(0.16, 0.92, 0.16), furnitureWoodMaterial);
+      leg.position.set(legX, 0.5, legZ);
+      return leg;
+    });
+    const pot = new Mesh(new CylinderGeometry(0.24, 0.32, 0.42, 14), plantPotMaterial);
+    pot.position.set(0, 1.29, 0);
+    const potLip = new Mesh(new CylinderGeometry(0.34, 0.34, 0.08, 14), plantPotMaterial);
+    potLip.position.set(0, 1.52, 0);
+    const stem = new Mesh(new CylinderGeometry(0.025, 0.035, 0.5, 8), plantLeafMaterial);
+    stem.position.set(0, 1.77, 0);
+    const leaves = [
+      [-0.18, 1.78, 0.03],
+      [0.16, 1.88, -0.02],
+      [0.02, 1.96, 0.18],
+      [0.22, 1.72, 0.16],
+      [-0.22, 1.9, -0.14],
+    ].map(([leafX, leafY, leafZ]) => {
+      const leaf = new Mesh(new SphereGeometry(0.16, 10, 8), plantLeafMaterial);
+      leaf.scale.set(1.35, 0.72, 1);
+      leaf.position.set(leafX, leafY, leafZ);
+      return leaf;
+    });
+
+    table.add(top, lowerShelf, ...legs, pot, potLip, stem, ...leaves);
+    house.add(table);
+    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 2.08, 2.08);
   };
 
   const addDiningTable = (localX: number, localZ: number): void => {
@@ -2261,6 +2352,8 @@ export function createChapterSeven(): ChapterSevenData {
     97.63 - HOUSE_CENTER_Z,
     0,
   );
+  addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
+  addSmallPlantTable(1225.65 - CENTER_X, 97.60 - HOUSE_CENTER_Z);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
   const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');

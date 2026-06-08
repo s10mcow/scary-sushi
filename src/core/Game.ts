@@ -9220,12 +9220,7 @@ export class Game {
   }
 
   private updateChapterSevenBoxDisplay(): void {
-    this.chapterSevenBoxHideAnchor.visible = this.chapterSevenActive
-      && this.chapterSevenBoxHidden
-      && this.player.isLocked()
-      && !this.chapterMenuOpen
-      && !this.officeJumpscareMenuOpen
-      && !this.officeModeMenuOpen;
+    this.chapterSevenBoxHideAnchor.visible = false;
   }
 
   private updateChapterFourBlueJumpscareModel(): void {
@@ -14835,7 +14830,7 @@ export class Game {
       }
 
       if (this.chapterSevenCrawling && this.chapterSeven.isPlayerUnderBed(this.player.getPosition())) {
-        return 'Hidden under the raised bed. Crawl back out from under the frame to stand up again.';
+        return 'Hidden under raised furniture. Crawl back out from under the frame to stand up again.';
       }
 
       if (this.chapterSevenCrawling) {
@@ -17043,7 +17038,7 @@ export class Game {
     box.targetOpenAmount = 0;
     box.open = false;
     this.gameplaySfxAudio.playClosetDoor(false);
-    this.chapterSevenBoxHideAnchor.visible = true;
+    this.chapterSevenBoxHideAnchor.visible = false;
     this.pushStatus('You close the cardboard box around yourself. Press E to open it again.', 2.6);
   }
 
