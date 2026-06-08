@@ -150,6 +150,7 @@ export interface ChapterSevenOldWoodenCloset {
 
 export interface ChapterSevenCardboardBox {
   label: string;
+  root: Group;
   interactPosition: Vector3;
   aimPosition: Vector3;
   flapPivots: {
@@ -171,7 +172,7 @@ export interface ChapterSevenCardboardBox {
 
 const CENTER_X = 1210;
 const CENTER_Z = 80;
-const FOREST_SIZE = 460;
+const FOREST_SIZE = 420;
 const HALF_SIZE = FOREST_SIZE / 2;
 const CLEARING_RADIUS = 42;
 const GRASS_COLOR = 0x3f6f36;
@@ -200,10 +201,10 @@ const HOUSE_FRIDGE_Z = -17.35;
 const HOUSE_ROOF_RISE = 6.2;
 const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
-const TREE_COUNT = 540;
-const GRASS_PATCH_COUNT = 920;
-const ROCK_COUNT = 30;
-const FALLEN_LOG_COUNT = 16;
+const TREE_COUNT = 490;
+const GRASS_PATCH_COUNT = 820;
+const ROCK_COUNT = 26;
+const FALLEN_LOG_COUNT = 14;
 
 function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
   const collider = {
@@ -1547,6 +1548,7 @@ export function createChapterSeven(): ChapterSevenData {
 
     return {
       label: 'Porch cardboard box',
+      root: box,
       interactPosition: new Vector3(centerX, GAME_CONFIG.player.height, centerZ + depth / 2 + 0.65),
       aimPosition: new Vector3(centerX, wallHeight + 0.54, centerZ),
       flapPivots: {
@@ -2353,7 +2355,7 @@ export function createChapterSeven(): ChapterSevenData {
     0,
   );
   addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
-  addSmallPlantTable(1225.65 - CENTER_X, 97.60 - HOUSE_CENTER_Z);
+  addSmallPlantTable(1225.65 - CENTER_X, 95.78 - HOUSE_CENTER_Z);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
   const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
@@ -2976,6 +2978,7 @@ export function createChapterSeven(): ChapterSevenData {
       cardboardBox.open = false;
       cardboardBox.openAmount = 0;
       cardboardBox.targetOpenAmount = 0;
+      cardboardBox.root.visible = true;
       cardboardBox.flapPivots.front.rotation.x = 0;
       cardboardBox.flapPivots.back.rotation.x = 0;
       cardboardBox.wallColliders.forEach((collider) => {
