@@ -10197,6 +10197,20 @@ export class Game {
       }
 
       const interactable = this.getLookedAtChapterSevenInteractable();
+      const manualDoor = this.getNearestChapterSevenManualDoor();
+      if (manualDoor && !interactable) {
+        manualDoor.targetOpenAmount = manualDoor.targetOpenAmount > 0.5 ? 0 : 1;
+        manualDoor.open = manualDoor.targetOpenAmount > 0.5;
+        this.gameplaySfxAudio.playClosetDoor(manualDoor.open);
+        this.pushStatus(
+          manualDoor.open
+            ? `${manualDoor.label} slides open.`
+            : `${manualDoor.label} slides closed.`,
+          2.4,
+        );
+        return;
+      }
+
       if (interactable?.kind === 'cupboard') {
         const cupboard = interactable.item;
         cupboard.targetOpenAmount = cupboard.targetOpenAmount > 0.5 ? 0 : 1;
@@ -14171,8 +14185,15 @@ export class Game {
           : 'Press E to open the oven.';
       }
 
+      const manualDoor = this.getNearestChapterSevenManualDoor();
+      if (manualDoor && locked) {
+        return manualDoor.open
+          ? `Press E to close ${manualDoor.label}.`
+          : `Press E to open ${manualDoor.label}.`;
+      }
+
       return locked
-        ? 'Chapter 7: The House controls: WASD moves, hold G to crawl, walk into house doors to push them open, and look at furniture then press E.'
+        ? 'Chapter 7: The House controls: WASD moves, hold G to crawl, walk into push doors, and press E for furniture or the sliding glass door.'
         : 'Click the play space to walk around Chapter 7: The House.';
     }
 
@@ -14844,12 +14865,18 @@ export class Game {
 
       const door = this.getNearestChapterSevenHouseDoor();
       if (door) {
+        if (door.interactionMode === 'manual') {
+          return door.open
+            ? `${door.label} is open. Press E to close it.`
+            : `${door.label} is closed. Press E to slide it open.`;
+        }
+
         return door.open
           ? `${door.label} is open.`
           : `${door.label} opens when you walk into it.`;
       }
 
-      return 'Chapter 7: The House starts inside. Hold G to crawl, and press E while looking at drawers, cupboards, the cardboard box, or the old closet.';
+      return 'Chapter 7: The House starts inside. Hold G to crawl, press E for drawers, cupboards, the cardboard box, old closet, or the sliding glass door.';
     }
 
     if (this.officeChapterActive) {
@@ -16931,6 +16958,34 @@ export class Game {
         playerPosition.z - door.interactPosition.z,
       );
       if (distance > GAME_CONFIG.player.interactionRange + 1.2 || distance >= closestDistance) {
+        continue;
+      }
+
+      closestDoor = door;
+      closestDistance = distance;
+    }
+
+    return closestDoor;
+  }
+
+  private getNearestChapterSevenManualDoor(): ChapterSevenData['houseDoor'] | null {
+    if (!this.chapterSevenActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    let closestDoor: ChapterSevenData['houseDoor'] | null = null;
+    let closestDistance = Infinity;
+    for (const door of this.chapterSeven.houseDoors) {
+      if (door.interactionMode !== 'manual') {
+        continue;
+      }
+
+      const distance = Math.hypot(
+        playerPosition.x - door.interactPosition.x,
+        playerPosition.z - door.interactPosition.z,
+      );
+      if (distance > GAME_CONFIG.player.interactionRange + 1.45 || distance >= closestDistance) {
         continue;
       }
 

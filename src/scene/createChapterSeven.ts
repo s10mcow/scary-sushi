@@ -58,6 +58,7 @@ export interface ChapterSevenHouseDoor {
   targetOpenAmount: number;
   openDirection: number;
   pushRadius: number;
+  interactionMode?: 'push' | 'manual';
 }
 
 export interface ChapterSevenDrawer {
@@ -615,6 +616,7 @@ export function createChapterSeven(): ChapterSevenData {
       targetOpenAmount: 0,
       openDirection,
       pushRadius: orientation === 'front' ? 4.9 : 3.7,
+      interactionMode: 'push',
     };
   };
 
@@ -696,6 +698,7 @@ export function createChapterSeven(): ChapterSevenData {
       targetOpenAmount: 0,
       openDirection: 1,
       pushRadius: 4.6,
+      interactionMode: 'manual',
     };
   };
 
@@ -1062,6 +1065,38 @@ export function createChapterSeven(): ChapterSevenData {
     );
     house.add(chair);
     addRotatedFurnitureCollider(localX, localZ, 1.58, 1.86, rotationY);
+  };
+
+  const addYardFenceRun = (startLocalX: number, localZ: number, length = 10): void => {
+    const fence = new Group();
+    fence.position.set(startLocalX, 0, localZ);
+
+    const postCount = 6;
+    for (let index = 0; index < postCount; index += 1) {
+      const x = index * (length / (postCount - 1));
+      const post = new Mesh(new BoxGeometry(0.2, 2.15, 0.24), houseTrimMaterial);
+      post.position.set(x, 1.08, 0);
+      const cap = new Mesh(new BoxGeometry(0.3, 0.14, 0.32), furnitureWoodMaterial);
+      cap.position.set(x, 2.22, 0);
+      fence.add(post, cap);
+    }
+
+    const topRail = new Mesh(new BoxGeometry(length, 0.16, 0.16), furnitureWoodMaterial);
+    topRail.position.set(length / 2, 1.68, 0);
+    const middleRail = topRail.clone();
+    middleRail.position.y = 1.1;
+    const bottomRail = topRail.clone();
+    bottomRail.position.y = 0.52;
+
+    const slats = Array.from({ length: 10 }, (_, index) => {
+      const slat = new Mesh(new BoxGeometry(0.12, 1.62, 0.14), furnitureWoodMaterial);
+      slat.position.set(0.58 + index * 0.94, 1.1, 0);
+      return slat;
+    });
+
+    fence.add(topRail, middleRail, bottomRail, ...slats);
+    house.add(fence);
+    addCollider(colliders, CENTER_X + startLocalX + length / 2, HOUSE_CENTER_Z + localZ, length, 0.34);
   };
 
   const addCardboardBox = (localX: number, localZ: number): ChapterSevenCardboardBox => {
@@ -2070,6 +2105,8 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
+  addYardFenceRun(1237.89 - CENTER_X, 98.57 - HOUSE_CENTER_Z, 10);
+  addYardFenceRun(1237.68 - CENTER_X, 61.62 - HOUSE_CENTER_Z, 10);
   addCollider(colliders, CENTER_X - porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X - (porchGapWidth / 2 + frontRailSegmentWidth / 2), HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
@@ -2276,7 +2313,7 @@ export function createChapterSeven(): ChapterSevenData {
       forestTime += deltaSeconds;
       light.intensity = 2.85 + Math.sin(forestTime * 0.7) * 0.16;
       houseDoors.forEach((door) => {
-        if (playerPosition) {
+        if (playerPosition && door.interactionMode !== 'manual') {
           const distanceToDoor = Math.hypot(
             playerPosition.x - door.collider.centerX,
             playerPosition.z - door.collider.centerZ,
