@@ -76,6 +76,7 @@ interface ChapterSevenCounterSurface {
   halfWidth: number;
   halfDepth: number;
   floorY: number;
+  collider?: CollisionBox;
 }
 
 export interface ChapterSevenFridge {
@@ -165,13 +166,15 @@ const GRASS_PATCH_COUNT = 1400;
 const ROCK_COUNT = 46;
 const FALLEN_LOG_COUNT = 28;
 
-function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): void {
-  colliders.push({
+function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
+  const collider = {
     centerX: x,
     centerZ: z,
     halfWidth: width / 2,
     halfDepth: depth / 2,
-  });
+  };
+  colliders.push(collider);
+  return collider;
 }
 
 function createRandom(seedStart: number): () => number {
@@ -306,18 +309,25 @@ export function createChapterSeven(): ChapterSevenData {
     metalness: 0.02,
   });
   const cardboardMaterial = new MeshStandardMaterial({
-    color: 0xb98145,
-    emissive: 0x1b0e05,
+    color: 0xc8955c,
+    emissive: 0x1a1007,
     emissiveIntensity: 0.04,
     roughness: 0.92,
     metalness: 0.01,
     side: DoubleSide,
   });
   const cardboardEdgeMaterial = new MeshStandardMaterial({
-    color: 0x7a4d25,
-    emissive: 0x120804,
-    emissiveIntensity: 0.04,
+    color: 0xb9824f,
+    emissive: 0x160b04,
+    emissiveIntensity: 0.035,
     roughness: 0.9,
+    metalness: 0.01,
+  });
+  const cardboardTapeMaterial = new MeshStandardMaterial({
+    color: 0xe3bd72,
+    emissive: 0x1a1206,
+    emissiveIntensity: 0.035,
+    roughness: 0.76,
     metalness: 0.01,
   });
   const plantPotMaterial = new MeshStandardMaterial({
@@ -760,7 +770,7 @@ export function createChapterSeven(): ChapterSevenData {
     const wallHeight = 1.05;
     const wallThickness = 0.12;
     const flapThickness = 0.055;
-    const bottom = new Mesh(new BoxGeometry(width, 0.1, depth), cardboardEdgeMaterial);
+    const bottom = new Mesh(new BoxGeometry(width, 0.1, depth), cardboardMaterial);
     bottom.position.y = 0.05;
     const frontWall = new Mesh(new BoxGeometry(width, wallHeight, wallThickness), cardboardMaterial);
     frontWall.position.set(0, wallHeight / 2, depth / 2 - wallThickness / 2);
@@ -798,11 +808,42 @@ export function createChapterSeven(): ChapterSevenData {
     const backFlap = createFlap(width - 0.08, depth / 2, 0, -depth / 2);
     const leftFlap = createFlap(width / 2, depth - 0.08, -width / 2, 0);
     const rightFlap = createFlap(width / 2, depth - 0.08, width / 2, 0);
-    box.add(bottom, frontWall, backWall, leftWall, rightWall, frontFlap, backFlap, leftFlap, rightFlap);
+    const frontTape = new Mesh(new BoxGeometry(0.18, wallHeight * 0.72, 0.032), cardboardTapeMaterial);
+    frontTape.position.set(0, wallHeight * 0.52, depth / 2 + 0.018);
+    const backTape = frontTape.clone();
+    backTape.position.z = -depth / 2 - 0.018;
+    const leftTape = new Mesh(new BoxGeometry(0.032, wallHeight * 0.72, 0.18), cardboardTapeMaterial);
+    leftTape.position.set(-width / 2 - 0.018, wallHeight * 0.52, 0);
+    const rightTape = leftTape.clone();
+    rightTape.position.x = width / 2 + 0.018;
+    const topTapeFront = new Mesh(new BoxGeometry(0.18, 0.035, depth / 2 - 0.08), cardboardTapeMaterial);
+    topTapeFront.position.set(0, 0.036, -depth / 4);
+    frontFlap.add(topTapeFront);
+    const topTapeBack = topTapeFront.clone();
+    topTapeBack.position.z = depth / 4;
+    backFlap.add(topTapeBack);
+    const topTapeLeft = new Mesh(new BoxGeometry(width / 2 - 0.08, 0.035, 0.18), cardboardTapeMaterial);
+    topTapeLeft.position.set(width / 4, 0.036, 0);
+    leftFlap.add(topTapeLeft);
+    const topTapeRight = topTapeLeft.clone();
+    topTapeRight.position.x = -width / 4;
+    rightFlap.add(topTapeRight);
 
-    const flapLabel = new Mesh(new BoxGeometry(1.02, 0.034, 0.12), cardboardEdgeMaterial);
-    flapLabel.position.set(0, wallHeight + 0.04, 0.18);
-    box.add(flapLabel);
+    box.add(
+      bottom,
+      frontWall,
+      backWall,
+      leftWall,
+      rightWall,
+      frontTape,
+      backTape,
+      leftTape,
+      rightTape,
+      frontFlap,
+      backFlap,
+      leftFlap,
+      rightFlap,
+    );
 
     house.add(box);
 
@@ -1159,12 +1200,14 @@ export function createChapterSeven(): ChapterSevenData {
     }
     counter.add(back, leftSide, rightSide, bottom, top, lowerShelf, upperShelf, leftDoorPivot, rightDoorPivot, toeKick);
     house.add(counter);
+    const counterCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.18, depth + 0.18);
     counterSurfaces.push({
       centerX: CENTER_X + localX,
       centerZ: HOUSE_CENTER_Z + localZ,
       halfWidth: (width + 0.18) / 2,
       halfDepth: (depth + 0.18) / 2,
       floorY: baseHeight + 0.23,
+      collider: counterCollider,
     });
 
     return {
@@ -1217,12 +1260,14 @@ export function createChapterSeven(): ChapterSevenData {
     ovenDoorPivot.add(ovenDoor, ovenWindow, ovenHandle);
     stove.add(body, cooktop, ovenCavity, ovenOpening, ovenDoorPivot, knobRow, ...burners);
     house.add(stove);
+    const stoveCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.08, depth + 0.08);
     counterSurfaces.push({
       centerX: CENTER_X + localX,
       centerZ: HOUSE_CENTER_Z + localZ,
       halfWidth: (width + 0.08) / 2,
       halfDepth: (depth + 0.08) / 2,
       floorY: height + 0.2,
+      collider: stoveCollider,
     });
 
     return {
@@ -1823,6 +1868,11 @@ export function createChapterSeven(): ChapterSevenData {
         && position.z >= CENTER_Z - HALF_SIZE
         && position.z <= CENTER_Z + HALF_SIZE;
       if (!insideForest) {
+        counterSurfaces.forEach((surface) => {
+          if (surface.collider) {
+            surface.collider.enabled = true;
+          }
+        });
         bedSurfaces.forEach((surface) => {
           surface.collider.enabled = true;
         });
@@ -1841,6 +1891,12 @@ export function createChapterSeven(): ChapterSevenData {
       });
 
       for (const surface of counterSurfaces) {
+        if (surface.collider) {
+          const nearSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth + GAME_CONFIG.player.radius + 0.28
+            && Math.abs(position.z - surface.centerZ) <= surface.halfDepth + GAME_CONFIG.player.radius + 0.28;
+          const highEnoughToClearSurface = position.y > GAME_CONFIG.player.height + 0.24;
+          surface.collider.enabled = !(nearSurface && highEnoughToClearSurface);
+        }
         const onSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth
           && Math.abs(position.z - surface.centerZ) <= surface.halfDepth;
         if (onSurface && position.y > GAME_CONFIG.player.height + 0.18) {
@@ -1966,6 +2022,11 @@ export function createChapterSeven(): ChapterSevenData {
       });
       bedSurfaces.forEach((surface) => {
         surface.collider.enabled = true;
+      });
+      counterSurfaces.forEach((surface) => {
+        if (surface.collider) {
+          surface.collider.enabled = true;
+        }
       });
       houseFridge.open = false;
       houseFridge.openAmount = 0;
