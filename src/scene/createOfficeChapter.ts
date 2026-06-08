@@ -2821,7 +2821,7 @@ function createSandboxLayoutMapBoard(rooms: SandboxLayoutRoom[]): Group {
     context.fillText("BORI'S PIZZERIA SANDBOX MAP", canvas.width / 2, 76);
     context.font = '24px Trebuchet MS, sans-serif';
     context.fillStyle = '#b9cbd2';
-    context.fillText('Top-down room order with new straight abandoned halls', canvas.width / 2, 122);
+    context.fillText('Top-down FNAF-style room order for the sandbox copy', canvas.width / 2, 122);
 
     rooms.forEach((room) => {
       const kind = room.kind ?? 'room';
@@ -2852,7 +2852,7 @@ function createSandboxLayoutMapBoard(rooms: SandboxLayoutRoom[]): Group {
     context.fillStyle = '#e9f2ef';
     context.textAlign = 'left';
     context.font = '22px Trebuchet MS, sans-serif';
-    context.fillText('Dashed blue rooms are added layout spaces for the sandbox version.', 84, canvas.height - 72);
+    context.fillText('Dashed blue spaces are custom sandbox additions kept outside the classic room order.', 84, canvas.height - 72);
   }
 
   const texture = new CanvasTexture(canvas);
@@ -4496,6 +4496,8 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
 
 export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeChapterData {
   const abandonedStraightHalls = options.abandonedStraightHalls ?? false;
+  const sandboxFnafLayout = abandonedStraightHalls;
+  const useStraightDeadEndSideHalls = abandonedStraightHalls && !sandboxFnafLayout;
   const materials = createLevelMaterials();
   materials.wall.color.setHex(0xbac1c8);
   materials.floor.color.setHex(0xcfd4d8);
@@ -4714,10 +4716,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   root.add(wallResult.root);
   colliders.push(...wallResult.colliders);
 
-  const sideHallStraightLength = abandonedStraightHalls
+  const sideHallStraightLength = useStraightDeadEndSideHalls
     ? ABANDONED_SIDE_HALL_STRAIGHT_LENGTH
     : SIDE_HALL_STRAIGHT_LENGTH;
-  const sideHallWidth = abandonedStraightHalls ? ABANDONED_SIDE_HALL_WIDTH : SIDE_HALL_WIDTH;
+  const sideHallWidth = useStraightDeadEndSideHalls ? ABANDONED_SIDE_HALL_WIDTH : SIDE_HALL_WIDTH;
   const northExtensionDepth = SIDE_HALL_TURN_LENGTH - sideHallWidth;
   const leftStraightCenterX = westWallX - sideHallStraightLength / 2 + WALL_THICKNESS / 2;
   const rightStraightCenterX = eastWallX + sideHallStraightLength / 2 - WALL_THICKNESS / 2;
@@ -4758,7 +4760,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       center: [rightStraightCenterX, shiftedDoorZ] as [number, number],
     },
   ];
-  if (!abandonedStraightHalls) {
+  if (!useStraightDeadEndSideHalls) {
     hallFloors.push(
       {
         width: sideHallWidth,
@@ -4781,7 +4783,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }, materials));
   });
 
-  const hallWalls: WallDefinition[] = abandonedStraightHalls
+  const hallWalls: WallDefinition[] = useStraightDeadEndSideHalls
     ? [
       {
         position: [leftStraightCenterX, WALL_HEIGHT / 2, shiftedDoorZ - sideHallWidth / 2 + WALL_THICKNESS / 2],
@@ -4855,7 +4857,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     },
   );
 
-  if (!abandonedStraightHalls && innerHallWallNorthDepth > 0.05) {
+  if (!useStraightDeadEndSideHalls && innerHallWallNorthDepth > 0.05) {
     hallWalls.push({
       position: [leftTurnCenterX + sideHallWidth / 2 - WALL_THICKNESS / 2, WALL_HEIGHT / 2, innerHallWallNorthCenterZ],
       size: [WALL_THICKNESS, WALL_HEIGHT, innerHallWallNorthDepth],
@@ -4866,7 +4868,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     });
   }
 
-  if (!abandonedStraightHalls && innerHallWallSouthDepth > 0.05) {
+  if (!useStraightDeadEndSideHalls && innerHallWallSouthDepth > 0.05) {
     hallWalls.push({
       position: [leftTurnCenterX + sideHallWidth / 2 - WALL_THICKNESS / 2, WALL_HEIGHT / 2, innerHallWallSouthCenterZ],
       size: [WALL_THICKNESS, WALL_HEIGHT, innerHallWallSouthDepth],
@@ -4876,7 +4878,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [WALL_THICKNESS, WALL_HEIGHT, innerHallWallSouthDepth],
     });
   }
-  if (!abandonedStraightHalls && !OFFICE_SIDE_WINDOWS_VISIBLE) {
+  if (!useStraightDeadEndSideHalls && !OFFICE_SIDE_WINDOWS_VISIBLE) {
     hallWalls.push({
       position: [leftTurnCenterX + sideHallWidth / 2 - WALL_THICKNESS / 2, WALL_HEIGHT / 2, hallWindowGapCenterZ],
       size: [WALL_THICKNESS, WALL_HEIGHT, hallWindowGapDepth],
@@ -5016,27 +5018,44 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   if (abandonedStraightHalls) {
     const sandboxLayoutBoard = createSandboxLayoutMapBoard([
       { label: 'Office', x: OFFICE_CENTER_X, z: OFFICE_CENTER_Z, width: OFFICE_WIDTH, depth: OFFICE_DEPTH, kind: 'office' },
-      { label: 'Left Straight Hall', x: leftStraightCenterX, z: shiftedDoorZ, width: sideHallStraightLength, depth: sideHallWidth, kind: 'hall' },
-      { label: 'Right Straight Hall', x: rightStraightCenterX, z: shiftedDoorZ, width: sideHallStraightLength, depth: sideHallWidth, kind: 'hall' },
-      { label: 'Cleaning Storage Closet', x: storageClosetCenterX, z: storageClosetCenterZ, width: storageClosetWidth, depth: storageClosetDepth, kind: 'room' },
-      { label: 'Main Party Room / Stage', x: partyRoomCenterX, z: partyRoomCenterZ, width: PARTY_ROOM_WIDTH, depth: PARTY_ROOM_DEPTH, kind: 'room' },
-      { label: 'Backstage Hall', x: backstageHallCenterX, z: backstageHallCenterZ, width: backstageHallWidth, depth: backstageHallLength, kind: 'hall' },
-      { label: 'Suit Storage', x: backstageStorageCenterX, z: backstageStorageCenterZ, width: backstageStorageWidth, depth: backstageStorageDepth, kind: 'room' },
+      { label: 'West Hall', x: leftStraightCenterX, z: shiftedDoorZ, width: sideHallStraightLength, depth: sideHallWidth, kind: 'hall' },
+      { label: 'East Hall', x: rightStraightCenterX, z: shiftedDoorZ, width: sideHallStraightLength, depth: sideHallWidth, kind: 'hall' },
+      { label: 'Supply Closet / Your Storage', x: storageClosetCenterX, z: storageClosetCenterZ, width: storageClosetWidth, depth: storageClosetDepth, kind: 'room' },
+      { label: 'Dining Area / Show Stage', x: partyRoomCenterX, z: partyRoomCenterZ, width: PARTY_ROOM_WIDTH, depth: PARTY_ROOM_DEPTH, kind: 'room' },
+      { label: 'Backstage Connector', x: backstageHallCenterX, z: backstageHallCenterZ, width: backstageHallWidth, depth: backstageHallLength, kind: 'hall' },
+      { label: 'Backstage', x: backstageStorageCenterX, z: backstageStorageCenterZ, width: backstageStorageWidth, depth: backstageStorageDepth, kind: 'room' },
       { label: 'Kitchen', x: kitchenCenterX, z: kitchenCenterZ, width: kitchenDepth, depth: kitchenWidth, kind: 'room' },
-      { label: 'North Party Hall', x: northPartyHallCenterX, z: northPartyHallCenterZ, width: northPartyHallWidth, depth: northPartyHallLength, kind: 'hall' },
-      { label: 'Ball Pit Room', x: northPartySideRoomCenterX, z: northPartySideRoomCenterZ, width: northPartySideRoomWidth, depth: northPartySideRoomDepth, kind: 'room' },
-      { label: 'Bathroom Hall', x: bathroomHallCenterX, z: bathroomEntryCenterZ, width: bathroomHallLength, depth: bathroomHallWidth, kind: 'hall' },
+      { label: 'Kitchen Hall', x: northPartyHallCenterX, z: northPartyHallCenterZ, width: northPartyHallWidth, depth: northPartyHallLength, kind: 'hall' },
+      { label: 'East Hall Extension', x: northPartySideRoomCenterX, z: northPartySideRoomCenterZ, width: northPartySideRoomWidth, depth: northPartySideRoomDepth, kind: 'hall' },
+      { label: 'Restroom Hall', x: bathroomHallCenterX, z: bathroomEntryCenterZ, width: bathroomHallLength, depth: bathroomHallWidth, kind: 'hall' },
       { label: 'Men Restroom', x: bathroomRoomCenterX, z: menBathroomCenterZ, width: bathroomRoomWidth, depth: bathroomRoomDepth, kind: 'room' },
       { label: 'Women Restroom', x: bathroomRoomCenterX, z: womenBathroomCenterZ, width: bathroomRoomWidth, depth: bathroomRoomDepth, kind: 'room' },
-      { label: 'Second Party Hall', x: secondHallCenterX, z: secondHallCenterZ, width: SECOND_PARTY_HALL_LENGTH, depth: SECOND_PARTY_HALL_WIDTH, kind: 'hall' },
-      { label: 'Second Party Room', x: secondRoomCenterX, z: secondRoomCenterZ, width: SECOND_PARTY_ROOM_WIDTH, depth: SECOND_PARTY_ROOM_DEPTH, kind: 'room' },
-      { label: 'Planned Arcade Room', x: westWallX - sideHallStraightLength - 5.3, z: shiftedDoorZ - 4.85, width: 9.6, depth: 7.2, kind: 'planned' },
-      { label: 'Planned Parts Room', x: eastWallX + sideHallStraightLength + 5.3, z: shiftedDoorZ + 4.85, width: 9.6, depth: 7.2, kind: 'planned' },
+      { label: 'East Hall Branch', x: secondHallCenterX, z: secondHallCenterZ, width: SECOND_PARTY_HALL_LENGTH, depth: SECOND_PARTY_HALL_WIDTH, kind: 'hall' },
+      { label: 'Extra Hall Shell', x: secondRoomCenterX, z: secondRoomCenterZ, width: SECOND_PARTY_ROOM_WIDTH, depth: SECOND_PARTY_ROOM_DEPTH, kind: 'hall' },
+      { label: 'Pirate Cove / Foxy Area', x: westWallX - sideHallStraightLength - 5.3, z: shiftedDoorZ - 4.85, width: 9.6, depth: 7.2, kind: 'planned' },
+      { label: 'Your Added Room Space', x: eastWallX + sideHallStraightLength + 5.3, z: shiftedDoorZ + 4.85, width: 9.6, depth: 7.2, kind: 'planned' },
       { label: 'CAM 14', x: -143.92, z: 182.25, width: 1.8, depth: 1.8, kind: 'camera' },
     ]);
     sandboxLayoutBoard.position.set(OFFICE_CENTER_X, 2.35, roomMaxZ - WALL_THICKNESS - 0.07);
     sandboxLayoutBoard.rotation.y = Math.PI;
     root.add(sandboxLayoutBoard);
+
+    const diningLayoutSign = createWallSign('Dining Area', 'Show Stage');
+    diningLayoutSign.scale.set(1.12, 1.12, 1);
+    diningLayoutSign.position.set(partyRoomCenterX, 2.32, partyRoomSouthZ - 0.18);
+    diningLayoutSign.rotation.y = Math.PI;
+
+    const eastHallExtensionSign = createWallSign('East Hall', 'Extension');
+    eastHallExtensionSign.scale.set(1.08, 1.08, 1);
+    eastHallExtensionSign.position.set(northPartySideRoomMinX + 0.12, 2.32, northPartySideRoomCenterZ);
+    eastHallExtensionSign.rotation.y = Math.PI / 2;
+
+    const extraHallShellSign = createWallSign('Hall Shell', 'Sandbox Room');
+    extraHallShellSign.scale.set(1.08, 1.08, 1);
+    extraHallShellSign.position.set(secondRoomMinX + 0.12, 2.32, secondRoomCenterZ);
+    extraHallShellSign.rotation.y = Math.PI / 2;
+
+    root.add(diningLayoutSign, eastHallExtensionSign, extraHallShellSign);
   }
   root.add(createFloor({
     width: PARTY_ROOM_WIDTH,
@@ -5093,7 +5112,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [WALL_THICKNESS, WALL_HEIGHT, depth],
     });
   });
-  const partySouthWallSegments: Array<[number, number]> = abandonedStraightHalls
+  const partySouthWallSegments: Array<[number, number]> = useStraightDeadEndSideHalls
     ? [[partyRoomMinX, partyRoomMaxX]]
     : [
       [partyRoomMinX, leftHallOpeningMinX],
@@ -5243,9 +5262,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     );
     root.add(highDoorwayCover);
   }
-  const ballPit = createBallPit(-207.85, 141.2, 11.1, 15.7);
-  root.add(ballPit.root);
+  const ballPit = sandboxFnafLayout
+    ? createBallPit(9999, 9999, 0.1, 0.1)
+    : createBallPit(-207.85, 141.2, 11.1, 15.7);
   const ballPitSlide = createBallPitHalfPipeSlide(-220.31, 136.33, ballPit);
+  if (!sandboxFnafLayout) {
+    root.add(ballPit.root, ballPitSlide.root);
+  }
 
   root.add(
     createFloor({
