@@ -35,6 +35,7 @@ export interface ChapterSevenData {
   houseBaseCabinets: ChapterSevenCupboard[];
   houseOven: ChapterSevenOven;
   oldWoodenCloset: ChapterSevenOldWoodenCloset;
+  oldWoodenClosets: ChapterSevenOldWoodenCloset[];
   cardboardBox: ChapterSevenCardboardBox;
   kitchenSink: ChapterSevenKitchenSink;
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
@@ -531,6 +532,78 @@ export function createChapterSeven(): ChapterSevenData {
       metalness: 0.01,
     });
   })();
+  const createPortraitMaterial = (subject: 'dog' | 'cat'): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 192;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = subject === 'dog' ? '#7fb2d8' : '#a58bd2';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = subject === 'dog' ? '#d6b07a' : '#ece4d7';
+      context.beginPath();
+      context.ellipse(128, 104, 56, 48, 0, 0, Math.PI * 2);
+      context.fill();
+      if (subject === 'dog') {
+        context.fillStyle = '#8a5c33';
+        context.beginPath();
+        context.ellipse(82, 94, 22, 38, -0.34, 0, Math.PI * 2);
+        context.ellipse(174, 94, 22, 38, 0.34, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#5c3924';
+        context.beginPath();
+        context.ellipse(128, 124, 18, 12, 0, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = '#5c3924';
+        context.lineWidth = 5;
+        context.beginPath();
+        context.moveTo(128, 132);
+        context.quadraticCurveTo(116, 144, 102, 134);
+        context.moveTo(128, 132);
+        context.quadraticCurveTo(140, 144, 154, 134);
+        context.stroke();
+      } else {
+        context.fillStyle = '#ece4d7';
+        context.beginPath();
+        context.moveTo(83, 76);
+        context.lineTo(103, 38);
+        context.lineTo(119, 78);
+        context.moveTo(137, 78);
+        context.lineTo(157, 38);
+        context.lineTo(177, 76);
+        context.fill();
+        context.fillStyle = '#8c6f54';
+        context.beginPath();
+        context.ellipse(128, 126, 15, 10, 0, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = '#8c6f54';
+        context.lineWidth = 4;
+        context.beginPath();
+        context.moveTo(128, 134);
+        context.quadraticCurveTo(117, 143, 105, 136);
+        context.moveTo(128, 134);
+        context.quadraticCurveTo(139, 143, 151, 136);
+        context.stroke();
+      }
+      context.fillStyle = '#1e1a16';
+      context.beginPath();
+      context.arc(108, 104, 6, 0, Math.PI * 2);
+      context.arc(148, 104, 6, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = 'rgba(255,255,255,0.4)';
+      context.lineWidth = 8;
+      context.strokeRect(18, 16, canvas.width - 36, canvas.height - 32);
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+    });
+  };
+  const dogPortraitMaterial = createPortraitMaterial('dog');
+  const catPortraitMaterial = createPortraitMaterial('cat');
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -740,6 +813,44 @@ export function createChapterSeven(): ChapterSevenData {
 
     window.add(glass, trimTop, trimBottom, trimLeft, trimRight, centerMullion, centerRail, sill);
     house.add(window);
+  };
+
+  const addPictureFrame = (
+    localX: number,
+    localY: number,
+    localZ: number,
+    normalZ: 1 | -1,
+    portraitMaterial: MeshStandardMaterial,
+  ): void => {
+    const frame = new Group();
+    frame.position.set(localX, localY, localZ + normalZ * 0.045);
+    if (normalZ < 0) {
+      frame.rotation.y = Math.PI;
+    }
+
+    const backing = new Mesh(new BoxGeometry(1.72, 1.18, 0.06), houseTrimMaterial);
+    const portrait = new Mesh(new PlaneGeometry(1.38, 0.9), portraitMaterial);
+    portrait.position.z = 0.038;
+    const top = new Mesh(new BoxGeometry(1.86, 0.12, 0.1), houseTrimMaterial);
+    top.position.y = 0.62;
+    const bottom = top.clone();
+    bottom.position.y = -0.62;
+    const left = new Mesh(new BoxGeometry(0.12, 1.2, 0.1), houseTrimMaterial);
+    left.position.x = -0.9;
+    const right = left.clone();
+    right.position.x = 0.9;
+    const innerTop = new Mesh(new BoxGeometry(1.42, 0.055, 0.12), closetHandleMaterial);
+    innerTop.position.y = 0.48;
+    innerTop.position.z = 0.06;
+    const innerBottom = innerTop.clone();
+    innerBottom.position.y = -0.48;
+    const innerLeft = new Mesh(new BoxGeometry(0.055, 0.94, 0.12), closetHandleMaterial);
+    innerLeft.position.set(-0.72, 0, 0.06);
+    const innerRight = innerLeft.clone();
+    innerRight.position.x = 0.72;
+
+    frame.add(backing, portrait, top, bottom, left, right, innerTop, innerBottom, innerLeft, innerRight);
+    house.add(frame);
   };
 
   const createHouseDoor = (
@@ -2336,6 +2447,14 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addBed(-23.55, 10.6, 1, 'Front bedroom bed');
   addBed(-23.55, -10.6, -1, 'Back bedroom bed');
+  addRockingChair(
+    1213.08 - CENTER_X,
+    63.85 - HOUSE_CENTER_Z,
+    Math.atan2(
+      -(HOUSE_LEFT_ROOM_WALL_X - (1213.08 - CENTER_X)),
+      -(-HOUSE_DEPTH / 2 - (63.85 - HOUSE_CENTER_Z)),
+    ),
+  );
   const rockingChairX = 1200.10 - CENTER_X;
   const rockingChairZ = 63.31 - HOUSE_CENTER_Z;
   const rockingChairCornerX = HOUSE_LEFT_ROOM_WALL_X;
@@ -2358,6 +2477,14 @@ export function createChapterSeven(): ChapterSevenData {
   addSmallPlantTable(1225.65 - CENTER_X, 95.78 - HOUSE_CENTER_Z);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
   const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
+  const frontBedroomOldWoodenCloset = addOldWoodenCloset(
+    1187.70 - CENTER_X,
+    96.31 - HOUSE_CENTER_Z,
+    Math.PI / 2,
+  );
+  const oldWoodenClosets = [oldWoodenCloset, frontBedroomOldWoodenCloset];
+  addPictureFrame(1193.33 - CENTER_X, 2.4, 84.23 - HOUSE_CENTER_Z, 1, dogPortraitMaterial);
+  addPictureFrame(1197.89 - CENTER_X, 2.46, 83.77 - HOUSE_CENTER_Z, -1, catPortraitMaterial);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
     1187.12 - CENTER_X,
@@ -2742,6 +2869,7 @@ export function createChapterSeven(): ChapterSevenData {
     houseBaseCabinets,
     houseOven,
     oldWoodenCloset,
+    oldWoodenClosets,
     cardboardBox,
     kitchenSink,
     getSupportedFloorY(position: Vector3, crawling = false): number | null {
@@ -2890,17 +3018,19 @@ export function createChapterSeven(): ChapterSevenData {
       houseOven.doorPivot.rotation.x = houseOven.openAmount * Math.PI * 0.48;
       houseOven.open = houseOven.targetOpenAmount > 0.5;
 
-      const closetDelta = oldWoodenCloset.targetOpenAmount - oldWoodenCloset.openAmount;
-      if (Math.abs(closetDelta) > 0.001) {
-        const step = Math.min(Math.abs(closetDelta), deltaSeconds * 4.2) * Math.sign(closetDelta);
-        oldWoodenCloset.openAmount += step;
-      } else {
-        oldWoodenCloset.openAmount = oldWoodenCloset.targetOpenAmount;
-      }
-      oldWoodenCloset.doorPivots[0].rotation.y = -oldWoodenCloset.openAmount * Math.PI * 0.62;
-      oldWoodenCloset.doorPivots[1].rotation.y = oldWoodenCloset.openAmount * Math.PI * 0.62;
-      oldWoodenCloset.open = oldWoodenCloset.targetOpenAmount > 0.5;
-      oldWoodenCloset.doorCollider.enabled = oldWoodenCloset.openAmount < 0.58;
+      oldWoodenClosets.forEach((closet) => {
+        const closetDelta = closet.targetOpenAmount - closet.openAmount;
+        if (Math.abs(closetDelta) > 0.001) {
+          const step = Math.min(Math.abs(closetDelta), deltaSeconds * 4.2) * Math.sign(closetDelta);
+          closet.openAmount += step;
+        } else {
+          closet.openAmount = closet.targetOpenAmount;
+        }
+        closet.doorPivots[0].rotation.y = -closet.openAmount * Math.PI * 0.62;
+        closet.doorPivots[1].rotation.y = closet.openAmount * Math.PI * 0.62;
+        closet.open = closet.targetOpenAmount > 0.5;
+        closet.doorCollider.enabled = closet.openAmount < 0.58;
+      });
 
       const cardboardBoxDelta = cardboardBox.targetOpenAmount - cardboardBox.openAmount;
       if (Math.abs(cardboardBoxDelta) > 0.001) {
@@ -2968,13 +3098,15 @@ export function createChapterSeven(): ChapterSevenData {
       houseOven.openAmount = 0;
       houseOven.targetOpenAmount = 0;
       houseOven.doorPivot.rotation.x = 0;
-      oldWoodenCloset.open = false;
-      oldWoodenCloset.openAmount = 0;
-      oldWoodenCloset.targetOpenAmount = 0;
-      oldWoodenCloset.doorPivots.forEach((doorPivot) => {
-        doorPivot.rotation.y = 0;
+      oldWoodenClosets.forEach((closet) => {
+        closet.open = false;
+        closet.openAmount = 0;
+        closet.targetOpenAmount = 0;
+        closet.doorPivots.forEach((doorPivot) => {
+          doorPivot.rotation.y = 0;
+        });
+        closet.doorCollider.enabled = true;
       });
-      oldWoodenCloset.doorCollider.enabled = true;
       cardboardBox.open = false;
       cardboardBox.openAmount = 0;
       cardboardBox.targetOpenAmount = 0;

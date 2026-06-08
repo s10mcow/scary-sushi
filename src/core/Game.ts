@@ -775,7 +775,7 @@ type ChapterSevenInteractable =
   | { kind: 'cupboard'; item: ChapterSevenData['houseUpperCupboards'][number]; score: number }
   | { kind: 'drawer'; item: ChapterSevenData['houseDrawers'][number]; score: number }
   | { kind: 'fridge'; item: ChapterSevenData['houseFridge']; score: number }
-  | { kind: 'old-wooden-closet'; item: ChapterSevenData['oldWoodenCloset']; score: number }
+  | { kind: 'old-wooden-closet'; item: ChapterSevenData['oldWoodenClosets'][number]; score: number }
   | { kind: 'cardboard-box'; item: ChapterSevenData['cardboardBox']; score: number }
   | { kind: 'kitchen-sink'; item: ChapterSevenData['kitchenSink']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
@@ -17277,10 +17277,12 @@ export class Game {
       keepBest({ kind: 'cardboard-box', item: this.chapterSeven.cardboardBox, score: cardboardBoxScore });
     }
 
-    const oldWoodenClosetScore = this.getChapterSevenLookScore(this.chapterSeven.oldWoodenCloset, 1.2, 1.6);
-    if (oldWoodenClosetScore !== null) {
-      keepBest({ kind: 'old-wooden-closet', item: this.chapterSeven.oldWoodenCloset, score: oldWoodenClosetScore });
-    }
+    this.chapterSeven.oldWoodenClosets.forEach((closet) => {
+      const oldWoodenClosetScore = this.getChapterSevenLookScore(closet, 1.2, 1.6);
+      if (oldWoodenClosetScore !== null) {
+        keepBest({ kind: 'old-wooden-closet', item: closet, score: oldWoodenClosetScore });
+      }
+    });
 
     return best;
   }
