@@ -305,6 +305,13 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.9,
     metalness: 0.02,
   });
+  const whiteFenceMaterial = new MeshStandardMaterial({
+    color: 0xf3f3ee,
+    emissive: 0x181814,
+    emissiveIntensity: 0.04,
+    roughness: 0.72,
+    metalness: 0.01,
+  });
   const houseDoorMaterial = new MeshStandardMaterial({
     color: 0x6e4227,
     emissive: 0x140704,
@@ -1067,34 +1074,30 @@ export function createChapterSeven(): ChapterSevenData {
     addRotatedFurnitureCollider(localX, localZ, 1.58, 1.86, rotationY);
   };
 
-  const addYardFenceRun = (startLocalX: number, localZ: number, length = 10): void => {
+  const addYardFenceRun = (startLocalX: number, localZ: number, length = 20): void => {
     const fence = new Group();
     fence.position.set(startLocalX, 0, localZ);
 
-    const postCount = 6;
-    for (let index = 0; index < postCount; index += 1) {
-      const x = index * (length / (postCount - 1));
-      const post = new Mesh(new BoxGeometry(0.2, 2.15, 0.24), houseTrimMaterial);
-      post.position.set(x, 1.08, 0);
-      const cap = new Mesh(new BoxGeometry(0.3, 0.14, 0.32), furnitureWoodMaterial);
-      cap.position.set(x, 2.22, 0);
-      fence.add(post, cap);
+    const picketCount = 42;
+    const spacing = length / (picketCount - 1);
+    for (let index = 0; index < picketCount; index += 1) {
+      const x = index * spacing;
+      const picket = new Mesh(new BoxGeometry(0.34, 1.92, 0.24), whiteFenceMaterial);
+      picket.position.set(x, 0.96, 0);
+      const spike = new Mesh(new ConeGeometry(0.21, 0.42, 4), whiteFenceMaterial);
+      spike.position.set(x, 2.17, 0);
+      spike.rotation.y = Math.PI / 4;
+      fence.add(picket, spike);
     }
 
-    const topRail = new Mesh(new BoxGeometry(length, 0.16, 0.16), furnitureWoodMaterial);
-    topRail.position.set(length / 2, 1.68, 0);
+    const topRail = new Mesh(new BoxGeometry(length + 0.42, 0.16, 0.18), whiteFenceMaterial);
+    topRail.position.set(length / 2, 1.54, 0);
     const middleRail = topRail.clone();
-    middleRail.position.y = 1.1;
+    middleRail.position.y = 0.94;
     const bottomRail = topRail.clone();
-    bottomRail.position.y = 0.52;
+    bottomRail.position.y = 0.38;
 
-    const slats = Array.from({ length: 10 }, (_, index) => {
-      const slat = new Mesh(new BoxGeometry(0.12, 1.62, 0.14), furnitureWoodMaterial);
-      slat.position.set(0.58 + index * 0.94, 1.1, 0);
-      return slat;
-    });
-
-    fence.add(topRail, middleRail, bottomRail, ...slats);
+    fence.add(topRail, middleRail, bottomRail);
     house.add(fence);
     addCollider(colliders, CENTER_X + startLocalX + length / 2, HOUSE_CENTER_Z + localZ, length, 0.34);
   };
@@ -2105,8 +2108,8 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
-  addYardFenceRun(1237.89 - CENTER_X, 98.57 - HOUSE_CENTER_Z, 10);
-  addYardFenceRun(1237.68 - CENTER_X, 61.62 - HOUSE_CENTER_Z, 10);
+  addYardFenceRun(HOUSE_WIDTH / 2 + HOUSE_WALL_THICKNESS / 2, 98.57 - HOUSE_CENTER_Z, 20);
+  addYardFenceRun(HOUSE_WIDTH / 2 + HOUSE_WALL_THICKNESS / 2, 61.62 - HOUSE_CENTER_Z, 20);
   addCollider(colliders, CENTER_X - porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X - (porchGapWidth / 2 + frontRailSegmentWidth / 2), HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
