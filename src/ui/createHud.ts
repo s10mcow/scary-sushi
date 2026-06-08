@@ -1319,15 +1319,15 @@ export function createHud(host: HTMLElement): HudController {
   const featuredChapterButton = document.createElement('button');
   featuredChapterButton.className = 'hud__chapter-feature';
   featuredChapterButton.type = 'button';
-  featuredChapterButton.dataset.chapter = 'chapter-7';
+  featuredChapterButton.dataset.chapter = 'chapter-8';
 
   const featuredChapterLabel = document.createElement('span');
   featuredChapterLabel.className = 'hud__chapter-feature-title';
-  featuredChapterLabel.textContent = 'Chapter 7: The House';
+  featuredChapterLabel.textContent = 'Chapter 8: The Woods';
 
   const featuredChapterBody = document.createElement('span');
   featuredChapterBody.className = 'hud__chapter-feature-body';
-  featuredChapterBody.textContent = 'Start inside the house with smaller kitchen pieces, longer cupboards, bookshelf, oven, and E drawers.';
+  featuredChapterBody.textContent = 'Enter the semi-realistic forest camp with the fire pit, lighter clearing grass, crafting bench, and grinding bench.';
 
   featuredChapterButton.append(featuredChapterLabel, featuredChapterBody);
 
@@ -2338,7 +2338,7 @@ export function createHud(host: HTMLElement): HudController {
       button.addEventListener('click', handler);
     },
     onChapterSelect(handler): void {
-      featuredChapterButton.addEventListener('click', () => handler('chapter-7'));
+      featuredChapterButton.addEventListener('click', () => handler('chapter-8'));
       chapterButtons.forEach((entry) => {
         entry.button.addEventListener('click', () => handler(entry.id));
       });
@@ -2454,7 +2454,7 @@ export function createHud(host: HTMLElement): HudController {
       chapterButtons.forEach((entry) => {
         entry.button.dataset.active = String(entry.id === currentChapter);
       });
-      featuredChapterButton.dataset.active = String(currentChapter === 'chapter-7');
+      featuredChapterButton.dataset.active = String(currentChapter === 'chapter-8');
       if (active) {
         chapterMenu.scrollTop = 0;
       }
