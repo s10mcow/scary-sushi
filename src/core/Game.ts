@@ -611,6 +611,7 @@ const MICROPHONE_SOUND_LEGACY_STORAGE_KEY = 'scary-sushi:microphone-sound-tool:l
 const MICROPHONE_SOUND_MAX_RECORDINGS = 999;
 const MICROPHONE_JUMPSCARE_RECORDING_ID: string | null = '010';
 const OFFICE_THROW_SOUND_RECORDING_ID = '004';
+const OFFICE_STUFFIE_SOUND_RECORDING_ID = '004';
 const OFFICE_DOOR_OPEN_SOUND_RECORDING_ID = '012';
 const OFFICE_DOOR_CLOSE_SOUND_RECORDING_ID = '013';
 const CAMERA_TOOL_CAPTURES_STORAGE_KEY = 'scary-sushi:camera-tool:captures';
@@ -10627,7 +10628,9 @@ export class Game {
 
   private playOfficePrizeToySound(): void {
     this.gameplaySfxAudio.resume();
-    this.gameplaySfxAudio.playStuffiePeep();
+    if (!this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playStuffiePeep(), OFFICE_STUFFIE_SOUND_RECORDING_ID)) {
+      this.gameplaySfxAudio.playStuffiePeep();
+    }
   }
 
   private useOfficeLollipop(): void {
