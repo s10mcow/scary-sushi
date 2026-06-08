@@ -17035,12 +17035,12 @@ export class Game {
     const box = this.chapterSeven.cardboardBox;
     this.chapterSevenBoxHidden = true;
     this.chapterSevenCrawling = false;
-    box.targetOpenAmount = 1;
-    box.open = true;
-    box.root.visible = false;
+    box.root.visible = true;
+    box.targetOpenAmount = 0;
+    box.open = false;
     this.gameplaySfxAudio.playClosetDoor(false);
     this.chapterSevenBoxHideAnchor.visible = false;
-    this.pushStatus('You hide inside the Amazon cardboard box. Press E to open it again.', 2.6);
+    this.pushStatus('You close the Amazon cardboard box around yourself. Press E to open it again.', 2.6);
   }
 
   private openChapterSevenCardboardBoxFromInside(): void {
