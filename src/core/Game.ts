@@ -13399,7 +13399,8 @@ export class Game {
         'Chapter 8: The Woods',
         '',
         'You are in a semi-realistic forest camp.',
-        'A stone-ring fire pit sits in the middle of a lighter green clearing.',
+        'An unlit stone-ring fire pit sits in the middle of a lighter green clearing.',
+        'Starting gear: axe and sack.',
         'The crafting bench and grinding bench are placed near the fire pit for later item systems.',
         'Use the Coordinate Tool if you want to mark more spots in the woods.',
       ].join('\n');
@@ -13622,10 +13623,11 @@ export class Game {
 
     if (this.chapterEightActive) {
       return [
-        'Inventory: Coordinate Tool',
+        'Inventory: Coordinate Tool, Axe, Sack',
         this.getCoordinateToolInventoryLine(),
         'Chapter 8: The Woods',
-        'Camp props: fire pit, stone ring, crafting bench, grinding bench.',
+        'Starting Gear: Axe x1, Sack x1',
+        'Camp props: unlit fire pit, stone ring, crafting bench, grinding bench.',
         'Crafting and grinding interactions will be added later.',
       ].join('\n');
     }
@@ -13968,12 +13970,22 @@ export class Game {
     if (this.chapterEightActive) {
       return [
         coordinateToolSlot,
+        {
+          label: 'Axe',
+          count: 1,
+          filled: true,
+        },
+        {
+          label: 'Sack',
+          count: 1,
+          filled: true,
+        },
         ...Array.from({ length: 8 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
         })),
-      ];
+      ].slice(0, 9);
     }
 
     const filledSlots = HOTBAR_ORDER
@@ -14300,7 +14312,7 @@ export class Game {
 
     if (this.chapterEightActive) {
       return locked
-        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, and the benches are ready for later crafting and grinding.'
+        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight. You start with an axe and sack.'
         : 'Click the play space to walk around Chapter 8: The Woods.';
     }
 
@@ -15001,7 +15013,7 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
-      return 'Chapter 8: The Woods loaded. Explore the trees, fire pit, light-green clearing, crafting bench, and grinding bench.';
+      return 'Chapter 8: The Woods loaded. You have an axe and sack. The stone-ring fire pit is unlit.';
     }
 
     if (this.officeChapterActive) {
@@ -20007,7 +20019,7 @@ export class Game {
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);
     this.pushStatus(
-      'Chapter 8: The Woods loaded. A fire pit, stone ring, lighter clearing grass, crafting bench, and grinding bench are set up for later systems.',
+      'Chapter 8: The Woods loaded. You start with an axe and sack. The fire pit is not lit yet.',
       3.2,
     );
     this.resize();

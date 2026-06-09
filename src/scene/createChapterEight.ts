@@ -360,10 +360,12 @@ export function createChapterEight(): ChapterEightData {
   flameB.position.set(0.2, 0.9, -0.12);
   flameB.rotation.z = -0.16;
   flame.add(flameA, flameB);
+  flame.visible = false;
   firePit.add(flame);
 
-  const fireLight = new PointLight(0xff9a35, 1.8, 34, 1.65);
+  const fireLight = new PointLight(0xff9a35, 0, 34, 1.65);
   fireLight.position.set(CENTER_X, 2.4, CENTER_Z);
+  fireLight.visible = false;
   root.add(fireLight);
 
   const craftingBenchRoot = createCraftingBench(benchMaterials);
@@ -404,6 +406,10 @@ export function createChapterEight(): ChapterEightData {
     },
     update(deltaSeconds) {
       elapsed += deltaSeconds;
+      if (!flame.visible) {
+        fireLight.intensity = 0;
+        return;
+      }
       const flicker = 0.82 + Math.sin(elapsed * 8.8) * 0.12 + Math.sin(elapsed * 19.5) * 0.06;
       fireLight.intensity = 1.65 + flicker * 0.45;
       flame.scale.set(0.92 + flicker * 0.08, 0.92 + flicker * 0.14, 0.92 + flicker * 0.08);
@@ -413,7 +419,9 @@ export function createChapterEight(): ChapterEightData {
     },
     reset() {
       elapsed = 0;
-      fireLight.intensity = 1.8;
+      fireLight.intensity = 0;
+      fireLight.visible = false;
+      flame.visible = false;
       flame.scale.setScalar(1);
       flame.rotation.set(0, 0, 0);
       root.visible = false;
