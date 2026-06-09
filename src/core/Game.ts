@@ -780,6 +780,15 @@ type ChapterSevenInteractable =
   | { kind: 'kitchen-sink'; item: ChapterSevenData['kitchenSink']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
+type ChapterEightHeldItem = 'coordinate-tool' | 'axe' | 'sack' | 'empty';
+
+const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
+  'coordinate-tool',
+  'axe',
+  'sack',
+  'empty',
+];
+
 export class Game {
   private readonly scene;
   private readonly camera;
@@ -863,6 +872,7 @@ export class Game {
   private readonly zombieWeaponAnchor = new Group();
   private readonly chapterSixHeldItemAnchor = new Group();
   private readonly chapterSixPettingArmAnchor = new Group();
+  private readonly chapterEightHeldItemAnchor = new Group();
   private readonly placementToolAnchor = new Group();
   private readonly microphoneSoundToolAnchor = new Group();
   private readonly placementMarkerRoot = new Group();
@@ -916,6 +926,9 @@ export class Game {
   private chapterSixHeldItemModel: Group | null = null;
   private chapterSixHeldItemType: ChapterSixItemType | null = null;
   private chapterSixPossumPickupTimer = 0;
+  private chapterEightHeldItem: ChapterEightHeldItem = 'coordinate-tool';
+  private chapterEightHeldItemModel: Group | null = null;
+  private chapterEightHeldItemModelType: ChapterEightHeldItem | null = null;
   private holdingPlate = false;
   private plateRecipeId: string | null = null;
   private platedRecipeId: string | null = null;
@@ -1264,6 +1277,10 @@ export class Game {
     this.camera.add(this.chapterSixPettingArmAnchor);
     this.chapterSixPettingArmAnchor.visible = false;
     this.createChapterSixPettingArmModel();
+    this.camera.add(this.chapterEightHeldItemAnchor);
+    this.chapterEightHeldItemAnchor.position.set(0.42, -0.38, -0.66);
+    this.chapterEightHeldItemAnchor.rotation.set(-0.12, -0.28, 0.08);
+    this.chapterEightHeldItemAnchor.visible = false;
     this.camera.add(this.placementToolAnchor);
     this.placementToolAnchor.position.set(0.42, -0.38, -0.62);
     this.placementToolAnchor.rotation.set(-0.12, -0.28, 0.08);
@@ -2079,6 +2096,8 @@ export class Game {
     if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && modeOrToolToggle) {
       if (this.officeChapterActive) {
         this.setOfficeModeMenuOpen(!this.officeModeMenuOpen);
+      } else if (this.chapterEightActive && !this.chapterMenuOpen) {
+        this.selectChapterEightHeldItem(this.chapterEightHeldItem === 'coordinate-tool' ? 'empty' : 'coordinate-tool');
       } else if (!this.chapterMenuOpen) {
         this.setPlacementToolActive(!this.placementToolActive);
       }
@@ -2093,7 +2112,7 @@ export class Game {
     }
 
     const hotbarSlot = this.input.consumeHotbarSlot();
-    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive) && hotbarSlot) {
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterEightActive) && hotbarSlot) {
       if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.selectOfficeTabletCameraBySlot(hotbarSlot);
       } else if (this.microphoneSoundToolActive) {
@@ -2103,9 +2122,16 @@ export class Game {
       } else if (this.chapterSixActive) {
         this.chapterSix.selectHotbarSlot(hotbarSlot);
         this.syncHud();
+      } else if (this.chapterEightActive) {
+        this.selectChapterEightHotbarSlot(hotbarSlot);
       } else {
         this.handleOfficeHotbarSlot(hotbarSlot);
       }
+    }
+
+    const itemCycle = this.input.consumeItemCycle();
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && this.chapterEightActive && itemCycle !== 0) {
+      this.cycleChapterEightHeldItem(itemCycle);
     }
 
     const weaponSelect = this.input.consumeWeaponSelect();
@@ -2620,6 +2646,7 @@ export class Game {
     }
     this.updateChapterSixHeldItemDisplay(deltaSeconds);
     this.updateChapterSixPettingArmDisplay(deltaSeconds);
+    this.updateChapterEightHeldItemDisplay(deltaSeconds);
     this.updateMicrophoneSoundToolDisplay();
     this.updateOfficeTabletDisplay();
     this.updateChapterFourBoxDisplay();
@@ -5180,6 +5207,66 @@ export class Game {
 
     if (slot === 3) {
       this.setMicrophoneSoundToolActive(true);
+    }
+  }
+
+  private selectChapterEightHotbarSlot(slot: number): void {
+    const item: ChapterEightHeldItem = slot === 1
+      ? 'coordinate-tool'
+      : slot === 2
+        ? 'axe'
+        : slot === 3
+          ? 'sack'
+          : 'empty';
+
+    this.selectChapterEightHeldItem(this.chapterEightHeldItem === item ? 'empty' : item);
+  }
+
+  private cycleChapterEightHeldItem(direction: number): void {
+    const currentIndex = Math.max(0, CHAPTER_EIGHT_HELD_ITEM_ORDER.indexOf(this.chapterEightHeldItem));
+    const nextIndex = (currentIndex + Math.sign(direction) + CHAPTER_EIGHT_HELD_ITEM_ORDER.length)
+      % CHAPTER_EIGHT_HELD_ITEM_ORDER.length;
+    this.selectChapterEightHeldItem(CHAPTER_EIGHT_HELD_ITEM_ORDER[nextIndex]);
+  }
+
+  private selectChapterEightHeldItem(item: ChapterEightHeldItem): void {
+    if (this.chapterEightHeldItem === item && (item !== 'coordinate-tool' || this.placementToolActive)) {
+      return;
+    }
+
+    this.chapterEightHeldItem = item;
+    if (item === 'coordinate-tool') {
+      this.chapterEightHeldItemAnchor.visible = false;
+      this.setPlacementToolActive(true);
+      this.syncHud();
+      return;
+    }
+
+    if (this.placementToolActive) {
+      this.placementToolActive = false;
+      this.placementToolAnchor.visible = false;
+      this.placementPreview.visible = false;
+    }
+
+    if (item === 'empty') {
+      this.chapterEightHeldItemAnchor.visible = false;
+      this.pushStatus('Hands empty. Spin the mouse wheel or press 1, 2, or 3 to hold gear.', 1.9);
+    } else {
+      this.pushStatus(`${this.getChapterEightHeldItemLabel(item)} equipped. Spin the mouse wheel to switch items.`, 2.2);
+    }
+    this.syncHud();
+  }
+
+  private getChapterEightHeldItemLabel(item: ChapterEightHeldItem): string {
+    switch (item) {
+      case 'coordinate-tool':
+        return 'Coordinate Tool';
+      case 'axe':
+        return 'Axe';
+      case 'sack':
+        return 'Sack';
+      case 'empty':
+        return 'Empty hands';
     }
   }
 
@@ -13624,9 +13711,11 @@ export class Game {
     if (this.chapterEightActive) {
       return [
         'Inventory: Coordinate Tool, Axe, Sack',
+        `Held: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 8: The Woods',
         'Starting Gear: Axe x1, Sack x1',
+        'Spin the mouse wheel to switch Coordinate Tool, Axe, Sack, and empty hands.',
         'Camp props: unlit fire pit, stone ring, crafting bench, grinding bench.',
         'Crafting and grinding interactions will be added later.',
       ].join('\n');
@@ -13688,7 +13777,7 @@ export class Game {
 
   private getCoordinateToolInventoryLine(): string {
     const markerCount = this.placementMarkers.filter((marker) => marker.chapter === this.getCurrentHudChapterId()).length;
-    const keyHint = this.officeChapterActive || this.chapterFourActive ? 'press 1' : 'press M';
+    const keyHint = this.officeChapterActive || this.chapterFourActive || this.chapterEightActive ? 'press 1' : 'press M';
     return `Coordinate Tool: ${this.placementToolActive ? 'equipped' : 'in inventory'} / ${keyHint} / markers here: ${markerCount}`;
   }
 
@@ -13968,24 +14057,31 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
+      const emptySlotSelected = this.chapterEightHeldItem === 'empty';
       return [
-        coordinateToolSlot,
         {
-          label: 'Axe',
-          count: 1,
-          filled: true,
+          ...coordinateToolSlot,
+          selected: this.chapterEightHeldItem === 'coordinate-tool',
         },
         {
-          label: 'Sack',
+          label: `Axe ${this.chapterEightHeldItem === 'axe' ? '[Held]' : '[2]'}`,
           count: 1,
           filled: true,
+          selected: this.chapterEightHeldItem === 'axe',
         },
-        ...Array.from({ length: 8 }, () => ({
+        {
+          label: `Sack ${this.chapterEightHeldItem === 'sack' ? '[Held]' : '[3]'}`,
+          count: 1,
+          filled: true,
+          selected: this.chapterEightHeldItem === 'sack',
+        },
+        ...Array.from({ length: 6 }, (_, index) => ({
           label: 'Empty',
           count: 0,
           filled: false,
+          selected: emptySlotSelected && index === 0,
         })),
-      ].slice(0, 9);
+      ];
     }
 
     const filledSlots = HOTBAR_ORDER
@@ -14312,7 +14408,7 @@ export class Game {
 
     if (this.chapterEightActive) {
       return locked
-        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight. You start with an axe and sack.'
+        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, and mouse wheel switches Coordinate Tool, Axe, Sack, and empty hands.'
         : 'Click the play space to walk around Chapter 8: The Woods.';
     }
 
@@ -15013,7 +15109,7 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
-      return 'Chapter 8: The Woods loaded. You have an axe and sack. The stone-ring fire pit is unlit.';
+      return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. The stone-ring fire pit is unlit.`;
     }
 
     if (this.officeChapterActive) {
@@ -17688,6 +17784,111 @@ export class Game {
     );
   }
 
+  private createChapterEightHeldItemModel(type: ChapterEightHeldItem): Group {
+    const root = new Group();
+    const skinMaterial = new MeshStandardMaterial({ color: 0xd49b73, roughness: 0.84 });
+    const sleeveMaterial = new MeshStandardMaterial({ color: 0x4b6842, roughness: 0.86 });
+    const hand = new Mesh(new BoxGeometry(0.18, 0.13, 0.22), skinMaterial);
+    hand.position.set(0.12, -0.24, 0.06);
+    const sleeve = new Mesh(new BoxGeometry(0.16, 0.34, 0.18), sleeveMaterial);
+    sleeve.position.set(0.2, -0.44, 0.1);
+    root.add(hand, sleeve);
+
+    if (type === 'axe') {
+      const handleMaterial = new MeshStandardMaterial({ color: 0x7a4b2a, roughness: 0.9 });
+      const gripMaterial = new MeshStandardMaterial({ color: 0x3b2516, roughness: 0.92 });
+      const headMaterial = new MeshStandardMaterial({ color: 0xb8c0c4, roughness: 0.48, metalness: 0.52 });
+      const bladeMaterial = new MeshStandardMaterial({ color: 0xd9e2e6, roughness: 0.38, metalness: 0.62 });
+      const handle = new Mesh(new CylinderGeometry(0.034, 0.043, 0.82, 12), handleMaterial);
+      handle.position.set(0.02, 0.02, 0);
+      handle.rotation.z = -0.38;
+      const lowerGrip = new Mesh(new CylinderGeometry(0.042, 0.046, 0.18, 10), gripMaterial);
+      lowerGrip.position.set(0.15, -0.3, 0.001);
+      lowerGrip.rotation.z = -0.38;
+      const head = new Mesh(new BoxGeometry(0.34, 0.13, 0.07), headMaterial);
+      head.position.set(-0.12, 0.34, -0.01);
+      head.rotation.z = -0.38;
+      const blade = new Mesh(new BoxGeometry(0.18, 0.27, 0.06), bladeMaterial);
+      blade.position.set(-0.28, 0.29, -0.01);
+      blade.rotation.z = -0.38;
+      const backPoll = new Mesh(new BoxGeometry(0.11, 0.12, 0.06), headMaterial);
+      backPoll.position.set(0.08, 0.39, -0.01);
+      backPoll.rotation.z = -0.38;
+      root.add(handle, lowerGrip, head, blade, backPoll);
+      root.rotation.set(0.14, 0.28, -0.08);
+      root.scale.setScalar(1.08);
+      return root;
+    }
+
+    if (type === 'sack') {
+      const sackMaterial = new MeshStandardMaterial({ color: 0x9a6638, roughness: 0.94 });
+      const darkerSackMaterial = new MeshStandardMaterial({ color: 0x6d4528, roughness: 0.95 });
+      const cordMaterial = new MeshStandardMaterial({ color: 0x352316, roughness: 0.9 });
+      const body = new Mesh(new SphereGeometry(0.22, 18, 14), sackMaterial);
+      body.position.set(-0.02, -0.04, -0.02);
+      body.scale.set(1.1, 1.3, 0.86);
+      const bottomFold = new Mesh(new SphereGeometry(0.08, 12, 8), darkerSackMaterial);
+      bottomFold.position.set(-0.13, -0.22, -0.01);
+      bottomFold.scale.set(1.1, 0.45, 0.7);
+      const neck = new Mesh(new CylinderGeometry(0.075, 0.12, 0.16, 12), sackMaterial);
+      neck.position.set(0, 0.25, -0.01);
+      const tie = new Mesh(new TorusGeometry(0.09, 0.011, 8, 18), cordMaterial);
+      tie.position.set(0, 0.18, -0.01);
+      tie.rotation.x = Math.PI / 2;
+      const knot = new Mesh(new BoxGeometry(0.055, 0.035, 0.03), cordMaterial);
+      knot.position.set(0.1, 0.18, -0.01);
+      const creaseMaterial = new MeshStandardMaterial({ color: 0x7d512f, roughness: 0.96 });
+      [-0.09, 0.08].forEach((offset) => {
+        const crease = new Mesh(new BoxGeometry(0.012, 0.32, 0.012), creaseMaterial);
+        crease.position.set(offset, -0.02, -0.2);
+        crease.rotation.z = offset < 0 ? -0.14 : 0.12;
+        root.add(crease);
+      });
+      root.add(body, bottomFold, neck, tie, knot);
+      root.rotation.set(0.16, 0.2, 0.04);
+      root.scale.setScalar(1.18);
+    }
+
+    return root;
+  }
+
+  private updateChapterEightHeldItemDisplay(deltaSeconds: number): void {
+    if (
+      !this.chapterEightActive
+      || !this.player.isLocked()
+      || this.chapterMenuOpen
+      || this.placementToolActive
+      || this.chapterEightHeldItem === 'coordinate-tool'
+      || this.chapterEightHeldItem === 'empty'
+    ) {
+      this.chapterEightHeldItemAnchor.visible = false;
+      return;
+    }
+
+    if (this.chapterEightHeldItemModelType !== this.chapterEightHeldItem || !this.chapterEightHeldItemModel) {
+      if (this.chapterEightHeldItemModel) {
+        this.chapterEightHeldItemAnchor.remove(this.chapterEightHeldItemModel);
+      }
+      this.chapterEightHeldItemModelType = this.chapterEightHeldItem;
+      this.chapterEightHeldItemModel = this.createChapterEightHeldItemModel(this.chapterEightHeldItem);
+      this.chapterEightHeldItemAnchor.add(this.chapterEightHeldItemModel);
+    }
+
+    const bob = Math.sin((this.elapsed + deltaSeconds) * 6.8) * 0.015;
+    const holdingAxe = this.chapterEightHeldItem === 'axe';
+    this.chapterEightHeldItemAnchor.visible = true;
+    this.chapterEightHeldItemAnchor.position.set(
+      holdingAxe ? 0.48 : 0.4,
+      holdingAxe ? -0.35 + bob : -0.42 + bob,
+      holdingAxe ? -0.72 : -0.66,
+    );
+    this.chapterEightHeldItemAnchor.rotation.set(
+      holdingAxe ? -0.2 + bob * 0.6 : -0.1 + bob * 0.5,
+      holdingAxe ? -0.42 : -0.26,
+      holdingAxe ? 0.2 : 0.08,
+    );
+  }
+
   private createChapterSixPettingArmModel(): void {
     this.chapterSixPettingArmAnchor.clear();
     const skinMaterial = new MeshStandardMaterial({ color: 0xd49b73, roughness: 0.86 });
@@ -20016,10 +20217,13 @@ export class Game {
       enemy.applyDamage(9999);
       enemy.root.visible = false;
     });
+    this.chapterEightHeldItem = 'coordinate-tool';
+    this.chapterEightHeldItemAnchor.visible = false;
+    this.setPlacementToolActive(true);
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);
     this.pushStatus(
-      'Chapter 8: The Woods loaded. You start with an axe and sack. The fire pit is not lit yet.',
+      'Chapter 8: The Woods loaded. You start with an axe and sack. Spin the mouse wheel to switch gear. The fire pit is not lit yet.',
       3.2,
     );
     this.resize();

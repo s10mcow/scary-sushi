@@ -30,12 +30,14 @@ export class InputController {
   private choiceNoQueued = false;
   private hotbarSlotQueued: number | null = null;
   private weaponSelectQueued: WeaponSelectId | null = null;
+  private itemCycleQueued = 0;
 
   constructor(private readonly target: Window = window) {
     this.target.addEventListener('keydown', this.handleKeyDown);
     this.target.addEventListener('keyup', this.handleKeyUp);
     this.target.addEventListener('mousedown', this.handleMouseDown);
     this.target.addEventListener('mouseup', this.handleMouseUp);
+    this.target.addEventListener('wheel', this.handleWheel, { passive: false });
     this.target.addEventListener('blur', this.handleBlur);
     this.target.addEventListener('contextmenu', this.handleContextMenu);
   }
@@ -166,11 +168,18 @@ export class InputController {
     return value;
   }
 
+  consumeItemCycle(): number {
+    const value = Math.sign(this.itemCycleQueued);
+    this.itemCycleQueued = 0;
+    return value;
+  }
+
   destroy(): void {
     this.target.removeEventListener('keydown', this.handleKeyDown);
     this.target.removeEventListener('keyup', this.handleKeyUp);
     this.target.removeEventListener('mousedown', this.handleMouseDown);
     this.target.removeEventListener('mouseup', this.handleMouseUp);
+    this.target.removeEventListener('wheel', this.handleWheel);
     this.target.removeEventListener('blur', this.handleBlur);
     this.target.removeEventListener('contextmenu', this.handleContextMenu);
   }
@@ -276,6 +285,15 @@ export class InputController {
     if (event.button === 0) {
       this.fireHeld = false;
     }
+  };
+
+  private readonly handleWheel = (event: WheelEvent): void => {
+    if (!this.target.document.pointerLockElement || event.deltaY === 0) {
+      return;
+    }
+
+    this.itemCycleQueued += event.deltaY > 0 ? 1 : -1;
+    event.preventDefault();
   };
 
   private readonly handleBlur = (): void => {
