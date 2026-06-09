@@ -18068,17 +18068,26 @@ export class Game {
     const swingProgress = holdingAxe && this.chapterEightAxeSwingTimer > 0
       ? 1 - this.chapterEightAxeSwingTimer / CHAPTER_EIGHT_AXE_SWING_SECONDS
       : 0;
-    const swing = Math.sin(MathUtils.clamp(swingProgress, 0, 1) * Math.PI);
+    const clampedSwingProgress = MathUtils.clamp(swingProgress, 0, 1);
+    const windUp = clampedSwingProgress < 0.36
+      ? MathUtils.smoothstep(clampedSwingProgress, 0, 0.36)
+      : 1 - MathUtils.smoothstep(clampedSwingProgress, 0.36, 0.78);
+    const chopDown = clampedSwingProgress < 0.36
+      ? 0
+      : clampedSwingProgress < 0.78
+        ? MathUtils.smoothstep(clampedSwingProgress, 0.36, 0.78)
+        : 1 - MathUtils.smoothstep(clampedSwingProgress, 0.78, 1);
+    const verticalChop = windUp * 0.34 - chopDown * 0.24;
     this.chapterEightHeldItemAnchor.visible = true;
     this.chapterEightHeldItemAnchor.position.set(
       holdingAxe ? 0.48 : 0.4,
-      holdingAxe ? -0.35 + bob + swing * 0.11 : -0.42 + bob,
-      holdingAxe ? -0.72 + swing * 0.16 : -0.66,
+      holdingAxe ? -0.35 + bob + verticalChop : -0.42 + bob,
+      holdingAxe ? -0.72 + chopDown * 0.06 : -0.66,
     );
     this.chapterEightHeldItemAnchor.rotation.set(
-      holdingAxe ? -0.2 + bob * 0.6 - swing * 0.82 : -0.1 + bob * 0.5,
-      holdingAxe ? -0.42 + swing * 0.12 : -0.26,
-      holdingAxe ? 0.2 - swing * 0.38 : 0.08,
+      holdingAxe ? -0.2 + bob * 0.6 + windUp * 0.48 - chopDown * 0.72 : -0.1 + bob * 0.5,
+      holdingAxe ? -0.42 : -0.26,
+      holdingAxe ? 0.2 : 0.08,
     );
   }
 
