@@ -54,7 +54,7 @@ import { createChapterFour, type ChapterFourData } from '../scene/createChapterF
 import { createChapterFive, type ChapterFiveData } from '../scene/createChapterFive';
 import { createChapterSix, type ChapterSixData, type ChapterSixItemType } from '../scene/createChapterSix';
 import { createChapterSeven, type ChapterSevenData } from '../scene/createChapterSeven';
-import { createChapterEight, type ChapterEightData } from '../scene/createChapterEight';
+import { createChapterEight, type ChapterEightData, type ChapterEightDrop, type ChapterEightTree } from '../scene/createChapterEight';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -788,6 +788,10 @@ const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'sack',
   'empty',
 ];
+const CHAPTER_EIGHT_AXE_RANGE = 4.2;
+const CHAPTER_EIGHT_PICKUP_RANGE = 5.2;
+const CHAPTER_EIGHT_FIRE_DROP_RANGE = 5.4;
+const CHAPTER_EIGHT_AXE_SWING_SECONDS = 0.5;
 
 export class Game {
   private readonly scene;
@@ -929,6 +933,9 @@ export class Game {
   private chapterEightHeldItem: ChapterEightHeldItem = 'coordinate-tool';
   private chapterEightHeldItemModel: Group | null = null;
   private chapterEightHeldItemModelType: ChapterEightHeldItem | null = null;
+  private chapterEightAxeSwingTimer = 0;
+  private chapterEightSackWood = 0;
+  private chapterEightSackSaplings = 0;
   private holdingPlate = false;
   private plateRecipeId: string | null = null;
   private platedRecipeId: string | null = null;
@@ -2141,8 +2148,11 @@ export class Game {
       this.selectDoomWeapon(weaponSelect);
     }
 
-    if (!chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !chapterFourLockerHiding && this.input.consumeFlashlightToggle()) {
-      this.flashlight.toggle();
+    const flashlightToggle = this.input.consumeFlashlightToggle();
+    if (!chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !chapterFourLockerHiding && flashlightToggle) {
+      if (!this.handleChapterEightSackDrop()) {
+        this.flashlight.toggle();
+      }
     }
 
     const movementState = this.input.getMovementState({
@@ -10657,6 +10667,11 @@ export class Game {
       return;
     }
 
+    if (this.chapterEightActive) {
+      this.handleChapterEightFire();
+      return;
+    }
+
     if (!this.zombieModeActive) {
       return;
     }
@@ -10688,6 +10703,165 @@ export class Game {
         1.4,
       );
     }
+  }
+
+  private handleChapterEightFire(): void {
+    if (!this.player.isLocked() || this.chapterMenuOpen) {
+      return;
+    }
+
+    if (this.chapterEightHeldItem === 'axe') {
+      const tree = this.getLookedAtChapterEightTree();
+      this.chapterEightAxeSwingTimer = CHAPTER_EIGHT_AXE_SWING_SECONDS;
+      if (!tree) {
+        this.pushStatus('Swing the axe while the crosshair is on a nearby tree trunk.', 1.6);
+        return;
+      }
+
+      const result = this.chapterEight.chopTree(tree);
+      if (result.felled) {
+        this.pushStatus(
+          `The tree breaks apart. ${result.woodCount} wood pieces dropped${result.saplingDropped ? ', and a sapling popped out.' : '.'}`,
+          2.5,
+        );
+      } else {
+        this.pushStatus(`The axe bites into the tree. ${result.hitsRemaining} more strong chops should fell it.`, 1.5);
+      }
+      this.syncHud();
+      return;
+    }
+
+    if (this.chapterEightHeldItem === 'sack') {
+      const drop = this.getLookedAtChapterEightDrop();
+      if (!drop) {
+        this.pushStatus('Hold the sack out and aim the center crosshair at wood or a sapling to pick it up.', 1.8);
+        return;
+      }
+
+      if (!this.chapterEight.collectDrop(drop)) {
+        return;
+      }
+      if (drop.kind === 'wood') {
+        this.chapterEightSackWood += 1;
+        this.pushStatus(`Wood picked up in the sack. Wood: ${this.chapterEightSackWood}.`, 1.6);
+      } else {
+        this.chapterEightSackSaplings += 1;
+        this.pushStatus(`Sapling picked up in the sack. Saplings: ${this.chapterEightSackSaplings}.`, 1.6);
+      }
+      this.syncHud();
+      return;
+    }
+
+    this.pushStatus('Switch to the axe to chop trees, or the sack to pick up wood.', 1.7);
+  }
+
+  private handleChapterEightSackDrop(): boolean {
+    if (!this.chapterEightActive || this.chapterEightHeldItem !== 'sack') {
+      return false;
+    }
+
+    if (this.chapterEightSackWood <= 0) {
+      this.pushStatus('The sack has no wood to drop yet. Chop a tree and pick up the wood first.', 1.8);
+      return true;
+    }
+
+    this.chapterEightSackWood -= 1;
+    const playerPosition = this.player.getPosition();
+    const nearFire = playerPosition.distanceTo(this.chapterEight.firePitPosition) <= CHAPTER_EIGHT_FIRE_DROP_RANGE;
+    if (nearFire) {
+      const wasLit = this.chapterEight.isFireLit();
+      this.chapterEight.lightFire();
+      this.pushStatus(
+        wasLit
+          ? `You feed one wood piece into the fire. Wood left in sack: ${this.chapterEightSackWood}.`
+          : `The wood lands in the fire pit and the fire lights. Wood left in sack: ${this.chapterEightSackWood}.`,
+        2.4,
+      );
+    } else {
+      const direction = new Vector3();
+      this.camera.getWorldDirection(direction);
+      direction.y = 0;
+      if (direction.lengthSq() < 0.001) {
+        direction.set(0, 0, -1);
+      }
+      direction.normalize();
+      const dropPosition = playerPosition.clone().addScaledVector(direction, 1.35);
+      dropPosition.y = 0;
+      this.chapterEight.dropWood(dropPosition);
+      this.pushStatus(`You drop one wood piece from the sack. Wood left in sack: ${this.chapterEightSackWood}.`, 1.8);
+    }
+    this.syncHud();
+    return true;
+  }
+
+  private getLookedAtChapterEightTree(): ChapterEightTree | null {
+    const origin = this.camera.getWorldPosition(this.placementRayOrigin);
+    const direction = this.camera.getWorldDirection(this.placementRayDirection).normalize();
+    let bestTree: ChapterEightTree | null = null;
+    let bestScore = Infinity;
+
+    this.chapterEight.trees.forEach((tree) => {
+      if (!tree.active) {
+        return;
+      }
+      const toTree = tree.position.clone().sub(origin);
+      const distance = toTree.length();
+      if (distance <= 0.01 || distance > CHAPTER_EIGHT_AXE_RANGE) {
+        return;
+      }
+      const alignment = toTree.dot(direction) / distance;
+      if (alignment < 0.82) {
+        return;
+      }
+      const perpendicular = Math.sqrt(Math.max(0, distance * distance - (alignment * distance) ** 2));
+      const targetRadius = Math.max(0.62, tree.trunkRadius * 2.2);
+      if (perpendicular > targetRadius) {
+        return;
+      }
+      const score = perpendicular * 3.2 + distance * 0.08 - alignment;
+      if (score < bestScore) {
+        bestScore = score;
+        bestTree = tree;
+      }
+    });
+
+    return bestTree;
+  }
+
+  private getLookedAtChapterEightDrop(): ChapterEightDrop | null {
+    const origin = this.camera.getWorldPosition(this.placementRayOrigin);
+    const direction = this.camera.getWorldDirection(this.placementRayDirection).normalize();
+    let bestDrop: ChapterEightDrop | null = null;
+    let bestScore = Infinity;
+
+    this.chapterEight.drops.forEach((drop) => {
+      if (!drop.active) {
+        return;
+      }
+      const target = drop.position.clone();
+      target.y += drop.kind === 'wood' ? 0.28 : 0.54;
+      const toDrop = target.sub(origin);
+      const distance = toDrop.length();
+      if (distance <= 0.01 || distance > CHAPTER_EIGHT_PICKUP_RANGE) {
+        return;
+      }
+      const alignment = toDrop.dot(direction) / distance;
+      if (alignment < 0.9) {
+        return;
+      }
+      const perpendicular = Math.sqrt(Math.max(0, distance * distance - (alignment * distance) ** 2));
+      const targetRadius = drop.kind === 'wood' ? 0.62 : 0.48;
+      if (perpendicular > targetRadius) {
+        return;
+      }
+      const score = perpendicular * 3 + distance * 0.05 - alignment;
+      if (score < bestScore) {
+        bestScore = score;
+        bestDrop = drop;
+      }
+    });
+
+    return bestDrop;
   }
 
   private handleOfficePrizeFire(): boolean {
@@ -13712,10 +13886,11 @@ export class Game {
       return [
         'Inventory: Coordinate Tool, Axe, Sack',
         `Held: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}`,
+        `Sack: Wood x${this.chapterEightSackWood}, Saplings x${this.chapterEightSackSaplings}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 8: The Woods',
         'Starting Gear: Axe x1, Sack x1',
-        'Spin the mouse wheel to switch Coordinate Tool, Axe, Sack, and empty hands.',
+        'Spin the mouse wheel to switch Coordinate Tool, Axe, Sack, and empty hands. Left click uses the held item.',
         'Camp props: unlit fire pit, stone ring, crafting bench, grinding bench.',
         'Crafting and grinding interactions will be added later.',
       ].join('\n');
@@ -14071,7 +14246,7 @@ export class Game {
         },
         {
           label: `Sack ${this.chapterEightHeldItem === 'sack' ? '[Held]' : '[3]'}`,
-          count: 1,
+          count: this.chapterEightSackWood + this.chapterEightSackSaplings,
           filled: true,
           selected: this.chapterEightHeldItem === 'sack',
         },
@@ -14407,6 +14582,18 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
+      if (this.chapterEightHeldItem === 'axe') {
+        return locked
+          ? 'Axe held. Aim the center crosshair at a nearby tree and left click to chop it.'
+          : 'Click the play space to walk around Chapter 8: The Woods.';
+      }
+
+      if (this.chapterEightHeldItem === 'sack') {
+        return locked
+          ? 'Sack held. Aim the center crosshair at wood or saplings and left click to pick them up. Press F to drop wood, or feed the fire if you are near it.'
+          : 'Click the play space to walk around Chapter 8: The Woods.';
+      }
+
       return locked
         ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, and mouse wheel switches Coordinate Tool, Axe, Sack, and empty hands.'
         : 'Click the play space to walk around Chapter 8: The Woods.';
@@ -15109,7 +15296,8 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
-      return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. The stone-ring fire pit is unlit.`;
+      const fireState = this.chapterEight.isFireLit() ? 'lit' : 'unlit';
+      return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. Sack wood: ${this.chapterEightSackWood}. The stone-ring fire pit is ${fireState}.`;
     }
 
     if (this.officeChapterActive) {
@@ -17853,6 +18041,7 @@ export class Game {
   }
 
   private updateChapterEightHeldItemDisplay(deltaSeconds: number): void {
+    this.chapterEightAxeSwingTimer = Math.max(0, this.chapterEightAxeSwingTimer - deltaSeconds);
     if (
       !this.chapterEightActive
       || !this.player.isLocked()
@@ -17876,16 +18065,20 @@ export class Game {
 
     const bob = Math.sin((this.elapsed + deltaSeconds) * 6.8) * 0.015;
     const holdingAxe = this.chapterEightHeldItem === 'axe';
+    const swingProgress = holdingAxe && this.chapterEightAxeSwingTimer > 0
+      ? 1 - this.chapterEightAxeSwingTimer / CHAPTER_EIGHT_AXE_SWING_SECONDS
+      : 0;
+    const swing = Math.sin(MathUtils.clamp(swingProgress, 0, 1) * Math.PI);
     this.chapterEightHeldItemAnchor.visible = true;
     this.chapterEightHeldItemAnchor.position.set(
       holdingAxe ? 0.48 : 0.4,
-      holdingAxe ? -0.35 + bob : -0.42 + bob,
-      holdingAxe ? -0.72 : -0.66,
+      holdingAxe ? -0.35 + bob + swing * 0.11 : -0.42 + bob,
+      holdingAxe ? -0.72 + swing * 0.16 : -0.66,
     );
     this.chapterEightHeldItemAnchor.rotation.set(
-      holdingAxe ? -0.2 + bob * 0.6 : -0.1 + bob * 0.5,
-      holdingAxe ? -0.42 : -0.26,
-      holdingAxe ? 0.2 : 0.08,
+      holdingAxe ? -0.2 + bob * 0.6 - swing * 0.82 : -0.1 + bob * 0.5,
+      holdingAxe ? -0.42 + swing * 0.12 : -0.26,
+      holdingAxe ? 0.2 - swing * 0.38 : 0.08,
     );
   }
 
@@ -20219,6 +20412,9 @@ export class Game {
     });
     this.chapterEightHeldItem = 'coordinate-tool';
     this.chapterEightHeldItemAnchor.visible = false;
+    this.chapterEightAxeSwingTimer = 0;
+    this.chapterEightSackWood = 0;
+    this.chapterEightSackSaplings = 0;
     this.setPlacementToolActive(true);
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);

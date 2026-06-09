@@ -22,6 +22,14 @@ export interface ChapterEightData {
   lookTarget: Vector3;
   craftingBench: ChapterEightBench;
   grindingBench: ChapterEightBench;
+  firePitPosition: Vector3;
+  trees: ChapterEightTree[];
+  drops: ChapterEightDrop[];
+  isFireLit(): boolean;
+  chopTree(tree: ChapterEightTree): ChapterEightChopResult;
+  collectDrop(drop: ChapterEightDrop): boolean;
+  dropWood(position: Vector3): ChapterEightDrop;
+  lightFire(): void;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number): void;
   reset(): void;
@@ -33,6 +41,31 @@ export interface ChapterEightBench {
   collider: CollisionBox;
 }
 
+export interface ChapterEightTree {
+  root: Group;
+  position: Vector3;
+  collider: CollisionBox;
+  trunkRadius: number;
+  hits: number;
+  hitsToFell: number;
+  active: boolean;
+  shakeTimer: number;
+}
+
+export interface ChapterEightDrop {
+  kind: 'wood' | 'sapling';
+  root: Group;
+  position: Vector3;
+  active: boolean;
+}
+
+export interface ChapterEightChopResult {
+  felled: boolean;
+  hitsRemaining: number;
+  woodCount: number;
+  saplingDropped: boolean;
+}
+
 const CENTER_X = 1540;
 const CENTER_Z = 80;
 const FOREST_SIZE = 210;
@@ -41,6 +74,7 @@ const CLEARING_RADIUS = 27;
 const TREE_COUNT = 96;
 const GRASS_TUFT_COUNT = 280;
 const GROUND_Y = 0;
+const TREE_HITS_TO_FELL = 7;
 
 function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
   const collider = {
@@ -189,7 +223,7 @@ function createGrindingBench(materials: ReturnType<typeof createBenchMaterials>)
   return bench;
 }
 
-function createTree(index: number, colliders: CollisionBox[]): Group {
+function createTree(index: number, colliders: CollisionBox[]): ChapterEightTree {
   const tree = new Group();
   const angle = seededRandom(index * 4 + 1) * Math.PI * 2;
   const radius = CLEARING_RADIUS + 9 + seededRandom(index * 4 + 2) * (HALF_FOREST_SIZE - CLEARING_RADIUS - 15);
@@ -234,14 +268,59 @@ function createTree(index: number, colliders: CollisionBox[]): Group {
 
   tree.position.set(x, GROUND_Y, z);
   tree.rotation.y = seededRandom(index * 4 + 10) * Math.PI * 2;
-  addCollider(colliders, x, z, trunkRadius * 3.2, trunkRadius * 3.2);
-  return tree;
+  const collider = addCollider(colliders, x, z, trunkRadius * 3.2, trunkRadius * 3.2);
+  return {
+    root: tree,
+    position: new Vector3(x, GROUND_Y + trunkHeight * 0.48, z),
+    collider,
+    trunkRadius,
+    hits: 0,
+    hitsToFell: TREE_HITS_TO_FELL,
+    active: true,
+    shakeTimer: 0,
+  };
+}
+
+function createWoodDropModel(): Group {
+  const root = new Group();
+  root.name = 'Chapter 8 Wood Drop';
+  const bark = new MeshStandardMaterial({ color: 0x6a4328, roughness: 0.92 });
+  const ring = new MeshStandardMaterial({ color: 0xd0a06a, roughness: 0.88 });
+  const log = new Mesh(new CylinderGeometry(0.18, 0.2, 0.88, 10), bark);
+  log.rotation.z = Math.PI / 2;
+  log.position.y = 0.24;
+  const leftRing = new Mesh(new CylinderGeometry(0.19, 0.19, 0.025, 10), ring);
+  leftRing.rotation.z = Math.PI / 2;
+  leftRing.position.set(-0.44, 0.24, 0);
+  const rightRing = leftRing.clone();
+  rightRing.position.x = 0.44;
+  root.add(log, leftRing, rightRing);
+  return root;
+}
+
+function createSaplingDropModel(): Group {
+  const root = new Group();
+  root.name = 'Chapter 8 Sapling Drop';
+  const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a22, roughness: 0.9 });
+  const leafMaterial = new MeshStandardMaterial({ color: 0x2e8a3c, roughness: 0.86 });
+  const stem = new Mesh(new CylinderGeometry(0.035, 0.045, 0.74, 7), stemMaterial);
+  stem.position.y = 0.38;
+  const leftLeaf = new Mesh(new SphereGeometry(0.16, 8, 6), leafMaterial);
+  leftLeaf.position.set(-0.14, 0.62, 0);
+  leftLeaf.scale.set(1.35, 0.58, 0.82);
+  const rightLeaf = leftLeaf.clone();
+  rightLeaf.position.x = 0.16;
+  rightLeaf.position.y = 0.72;
+  root.add(stem, leftLeaf, rightLeaf);
+  return root;
 }
 
 export function createChapterEight(): ChapterEightData {
   const root = new Group();
   root.name = 'Chapter 8: The Woods';
   const colliders: CollisionBox[] = [];
+  const trees: ChapterEightTree[] = [];
+  const drops: ChapterEightDrop[] = [];
 
   const grassMaterial = new MeshStandardMaterial({
     color: 0x2f5a2f,
@@ -313,7 +392,9 @@ export function createChapterEight(): ChapterEightData {
   }
 
   for (let index = 0; index < TREE_COUNT; index += 1) {
-    root.add(createTree(index, colliders));
+    const tree = createTree(index, colliders);
+    trees.push(tree);
+    root.add(tree.root);
   }
 
   const firePit = new Group();
@@ -390,7 +471,39 @@ export function createChapterEight(): ChapterEightData {
 
   const spawn = new Vector3(CENTER_X, GAME_CONFIG.player.height, CENTER_Z + 13);
   const lookTarget = new Vector3(CENTER_X, 1.1, CENTER_Z);
+  const firePitPosition = new Vector3(CENTER_X, GROUND_Y, CENTER_Z);
   let elapsed = 0;
+  let fireLit = false;
+
+  const removeTreeCollider = (tree: ChapterEightTree): void => {
+    tree.collider.enabled = false;
+    const index = colliders.indexOf(tree.collider);
+    if (index >= 0) {
+      colliders.splice(index, 1);
+    }
+  };
+
+  const spawnDrop = (kind: ChapterEightDrop['kind'], position: Vector3): ChapterEightDrop => {
+    const dropRoot = kind === 'wood' ? createWoodDropModel() : createSaplingDropModel();
+    const offsetSeed = drops.length + (kind === 'wood' ? 1200 : 2400);
+    const angle = seededRandom(offsetSeed) * Math.PI * 2;
+    const radius = kind === 'wood' ? 0.28 + seededRandom(offsetSeed + 1) * 0.58 : 0.35;
+    dropRoot.position.set(
+      position.x + Math.cos(angle) * radius,
+      GROUND_Y + 0.03,
+      position.z + Math.sin(angle) * radius,
+    );
+    dropRoot.rotation.y = seededRandom(offsetSeed + 2) * Math.PI * 2;
+    root.add(dropRoot);
+    const drop = {
+      kind,
+      root: dropRoot,
+      position: dropRoot.position.clone(),
+      active: true,
+    };
+    drops.push(drop);
+    return drop;
+  };
 
   return {
     root,
@@ -399,6 +512,69 @@ export function createChapterEight(): ChapterEightData {
     lookTarget,
     craftingBench,
     grindingBench,
+    firePitPosition,
+    trees,
+    drops,
+    isFireLit() {
+      return fireLit;
+    },
+    chopTree(tree) {
+      if (!tree.active) {
+        return {
+          felled: false,
+          hitsRemaining: 0,
+          woodCount: 0,
+          saplingDropped: false,
+        };
+      }
+
+      tree.hits += 1;
+      tree.shakeTimer = 0.32;
+      const hitsRemaining = Math.max(0, tree.hitsToFell - tree.hits);
+      if (hitsRemaining > 0) {
+        return {
+          felled: false,
+          hitsRemaining,
+          woodCount: 0,
+          saplingDropped: false,
+        };
+      }
+
+      tree.active = false;
+      tree.root.visible = false;
+      removeTreeCollider(tree);
+      const woodCount = 2 + Math.floor(seededRandom(3400 + tree.position.x * 0.13 + tree.position.z * 0.19) * 2);
+      for (let index = 0; index < woodCount; index += 1) {
+        spawnDrop('wood', tree.position);
+      }
+      const saplingDropped = seededRandom(4600 + tree.position.x * 0.07 + tree.position.z * 0.11) >= 0.5;
+      if (saplingDropped) {
+        spawnDrop('sapling', tree.position);
+      }
+      return {
+        felled: true,
+        hitsRemaining: 0,
+        woodCount,
+        saplingDropped,
+      };
+    },
+    collectDrop(drop) {
+      if (!drop.active) {
+        return false;
+      }
+      drop.active = false;
+      drop.root.visible = false;
+      root.remove(drop.root);
+      return true;
+    },
+    dropWood(position) {
+      return spawnDrop('wood', position);
+    },
+    lightFire() {
+      fireLit = true;
+      fireLight.visible = true;
+      flame.visible = true;
+    },
     getSupportedFloorY(position) {
       const insideX = position.x >= CENTER_X - HALF_FOREST_SIZE && position.x <= CENTER_X + HALF_FOREST_SIZE;
       const insideZ = position.z >= CENTER_Z - HALF_FOREST_SIZE && position.z <= CENTER_Z + HALF_FOREST_SIZE;
@@ -406,6 +582,18 @@ export function createChapterEight(): ChapterEightData {
     },
     update(deltaSeconds) {
       elapsed += deltaSeconds;
+      trees.forEach((tree) => {
+        if (!tree.active) {
+          return;
+        }
+        if (tree.shakeTimer <= 0) {
+          tree.root.rotation.z = 0;
+          return;
+        }
+        tree.shakeTimer = Math.max(0, tree.shakeTimer - deltaSeconds);
+        const shake = Math.sin(tree.shakeTimer * 52) * tree.shakeTimer * 0.18;
+        tree.root.rotation.z = shake;
+      });
       if (!flame.visible) {
         fireLight.intensity = 0;
         return;
@@ -419,6 +607,23 @@ export function createChapterEight(): ChapterEightData {
     },
     reset() {
       elapsed = 0;
+      fireLit = false;
+      drops.forEach((drop) => {
+        drop.active = false;
+        root.remove(drop.root);
+      });
+      drops.length = 0;
+      trees.forEach((tree) => {
+        tree.active = true;
+        tree.hits = 0;
+        tree.shakeTimer = 0;
+        tree.root.visible = true;
+        tree.root.rotation.z = 0;
+        tree.collider.enabled = true;
+        if (!colliders.includes(tree.collider)) {
+          colliders.push(tree.collider);
+        }
+      });
       fireLight.intensity = 0;
       fireLight.visible = false;
       flame.visible = false;
