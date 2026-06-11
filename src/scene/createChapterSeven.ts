@@ -2070,22 +2070,35 @@ export function createChapterSeven(): ChapterSevenData {
     bags.position.set(localX, 0.2, localZ);
 
     const bagSpecs: Array<[number, number, number, number, number]> = [
-      [-0.42, 0, 0.06, 0.68, -0.12],
-      [0.3, 0.02, -0.1, 0.58, 0.18],
-      [0.02, 0.52, 0.2, 0.46, 0.08],
+      [-0.42, 0, 0.06, 0.72, -0.12],
+      [0.34, 0.02, -0.12, 0.62, 0.18],
+      [0.02, 0.42, 0.18, 0.48, 0.08],
     ];
     bagSpecs.forEach(([x, y, z, scale, tilt], index) => {
-      const bag = new Mesh(new SphereGeometry(0.58, 18, 12), trashBagMaterial);
-      bag.position.set(x, 0.48 + y, z);
-      bag.scale.set(scale * 1.08, scale * 0.82, scale);
-      bag.rotation.set(0.05, index * 0.7, tilt);
-      const tie = new Mesh(new ConeGeometry(0.16 * scale, 0.42 * scale, 8), trashBagCreaseMaterial);
-      tie.position.set(x + 0.08, 0.98 + y, z - 0.03);
-      tie.rotation.set(0.22, index * 0.44, -0.18);
+      const body = new Mesh(new SphereGeometry(0.62, 22, 14), trashBagMaterial);
+      body.position.set(x, 0.44 + y, z);
+      body.scale.set(scale * 1.12, scale * 0.86, scale * 1.02);
+      body.rotation.set(0.04, index * 0.7, tilt);
+
+      const shoulder = new Mesh(new SphereGeometry(0.42, 18, 10), trashBagMaterial);
+      shoulder.position.set(x + 0.04 * scale, 0.92 + y, z - 0.02 * scale);
+      shoulder.scale.set(scale * 0.82, scale * 0.46, scale * 0.72);
+      shoulder.rotation.set(0.08, index * 0.62, tilt * 0.55);
+
+      const neck = new Mesh(new CylinderGeometry(0.08 * scale, 0.22 * scale, 0.5 * scale, 10), trashBagMaterial);
+      neck.position.set(x + 0.08 * scale, 1.16 + y, z - 0.04 * scale);
+      neck.rotation.set(0.18, index * 0.44, -0.1 + tilt * 0.4);
+
+      const tiedTop = new Mesh(new SphereGeometry(0.14 * scale, 10, 8), trashBagCreaseMaterial);
+      tiedTop.position.set(x + 0.1 * scale, 1.34 + y, z - 0.06 * scale);
+      tiedTop.scale.set(0.8, 1.18, 0.78);
       const crease = new Mesh(new BoxGeometry(0.045, 0.62 * scale, 0.035), trashBagCreaseMaterial);
       crease.position.set(x - 0.16 * scale, 0.5 + y, z + 0.42 * scale);
       crease.rotation.z = -0.36 + index * 0.18;
-      bags.add(bag, tie, crease);
+      const cinchBand = new Mesh(new CylinderGeometry(0.17 * scale, 0.18 * scale, 0.055, 10), trashBagCreaseMaterial);
+      cinchBand.position.set(x + 0.08 * scale, 1.16 + y, z - 0.04 * scale);
+
+      bags.add(body, shoulder, neck, tiedTop, cinchBand, crease);
     });
 
     house.add(bags);
@@ -3118,7 +3131,7 @@ export function createChapterSeven(): ChapterSevenData {
     ),
   );
   const rearBedroomOldWoodenCloset = addOldWoodenCloset(
-    1187.67 - CENTER_X,
+    1188.85 - CENTER_X,
     63.76 - HOUSE_CENTER_Z,
     Math.PI / 2,
   );
