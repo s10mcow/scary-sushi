@@ -797,7 +797,12 @@ type AIPlayOfficeAction =
   | 'prize-wheel'
   | 'basketball'
   | 'ticket'
-  | 'stage-tease';
+  | 'stage-tease'
+  | 'lure-stage'
+  | 'lure-ball-pit'
+  | 'lure-foxy-room'
+  | 'lure-kitchen'
+  | 'lure-bathroom';
 
 const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'coordinate-tool',
@@ -806,12 +811,20 @@ const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'empty',
 ];
 const AI_PLAY_OFFICE_ACTIONS: AIPlayOfficeAction[] = [
-  'left-flash',
-  'right-flash',
+  'lure-stage',
+  'seat',
+  'lure-ball-pit',
+  'seat',
+  'lure-foxy-room',
+  'seat',
+  'lure-kitchen',
+  'seat',
+  'lure-bathroom',
+  'seat',
   'party-play',
   'seat',
-  'left-door',
-  'right-door',
+  'left-flash',
+  'right-flash',
   'prize-wheel',
   'basketball',
   'foxy-play',
@@ -826,6 +839,8 @@ const AI_PLAY_CHAPTER_ONE_WAYPOINT_REACHED_DISTANCE = 0.72;
 const AI_PLAY_CHAPTER_ONE_MONSTER_PANIC_DISTANCE = 7.2;
 const AI_PLAY_OFFICE_ACTION_REACHED_DISTANCE = 1.45;
 const AI_PLAY_OFFICE_THREAT_DISTANCE = 8.4;
+const AI_PLAY_OFFICE_LURE_NOISE_LEVEL = 0.92;
+const AI_PLAY_OFFICE_RETREAT_DOOR_SECONDS = 2.35;
 
 export class Game {
   private readonly scene;
@@ -11146,12 +11161,16 @@ export class Game {
 
     const position = this.player.getPosition();
     const threatenedDoors = this.getOfficeAIPlayThreatenedDoors(position);
+    const action = this.getCurrentOfficeAIPlayAction();
     const emergency = this.officeGameModeActive
       && this.officeGameModeNightPhase
       && (this.officeGameModePowerOut || threatenedDoors.size > 0 || this.getClosestOfficeAIPlayAnimatronicDistance(position) <= AI_PLAY_OFFICE_THREAT_DISTANCE);
 
     if (this.officeGameModeActive && !this.officeGameModePowerOut) {
-      this.updateOfficeAIPlayDoors(threatenedDoors);
+      this.updateOfficeAIPlayDoors(
+        threatenedDoors,
+        action === 'seat' && this.aiPlayOfficeActionTimer > 0,
+      );
     }
 
     if (emergency) {
@@ -11165,7 +11184,6 @@ export class Game {
       return { forward: 0, strafe: 0, sprint: false };
     }
 
-    const action = this.getCurrentOfficeAIPlayAction();
     if (this.officeChapterSeated) {
       this.player.lookToward(this.officeChapter.seat.lookTarget, 0.12);
       if (action === 'seat' || (this.officeGameModeActive && this.officeGameModeNightPhase && this.aiPlayOfficeActionTimer > 0)) {
@@ -11219,7 +11237,12 @@ export class Game {
     const position = this.player.getPosition();
     if (position.distanceTo(this.officeChapter.seat.position) <= GAME_CONFIG.player.interactionRange + 0.35) {
       this.enterOfficeChapterSeat();
-      this.aiPlayOfficeActionTimer = this.officeGameModeActive && this.officeGameModeNightPhase ? 2.2 : 1.15;
+      this.aiPlayOfficeActionTimer = this.officeGameModeActive && this.officeGameModeNightPhase ? AI_PLAY_OFFICE_RETREAT_DOOR_SECONDS : 1.15;
+      if (this.officeGameModeActive && this.officeGameModeNightPhase && !this.officeGameModePowerOut) {
+        this.setOfficeAIPlayDoorOpen('left', false);
+        this.setOfficeAIPlayDoorOpen('right', false);
+        this.pushStatus('AI Play retreats to the office and slams both doors shut for a moment.', 2.3);
+      }
       return { forward: 0, strafe: 0, sprint: false };
     }
 
@@ -11261,6 +11284,16 @@ export class Game {
         return this.officeChapter.ticketPickups.find((ticket) => !ticket.collected)?.position ?? null;
       case 'stage-tease':
         return this.getOfficeGameModePoint(new Vector3(-240, GAME_CONFIG.player.height, 160.8));
+      case 'lure-stage':
+        return this.getOfficeGameModePoint(new Vector3(-240.2, GAME_CONFIG.player.height, 160.8));
+      case 'lure-ball-pit':
+        return this.getOfficeGameModePoint(OFFICE_GAME_MODE_BALL_PIT_CENTER);
+      case 'lure-foxy-room':
+        return this.getOfficeGameModePoint(new Vector3(-203.8, GAME_CONFIG.player.height, 159.2));
+      case 'lure-kitchen':
+        return this.getOfficeGameModePoint(new Vector3(-237.2, GAME_CONFIG.player.height, 148.35));
+      case 'lure-bathroom':
+        return this.getOfficeGameModePoint(new Vector3(-260.1, GAME_CONFIG.player.height, 164.8));
     }
   }
 
@@ -11306,6 +11339,13 @@ export class Game {
       case 'stage-tease':
         this.performOfficeAIPlayStageTease();
         return true;
+      case 'lure-stage':
+      case 'lure-ball-pit':
+      case 'lure-foxy-room':
+      case 'lure-kitchen':
+      case 'lure-bathroom':
+        this.performOfficeAIPlayLure(action);
+        return false;
       case 'seat':
         return true;
     }
@@ -11391,6 +11431,47 @@ export class Game {
 
     this.player.lookToward(this.officeChapter.partyPlay.interactPosition, 0.5);
     this.pushStatus('AI Play stares at the stage like it is daring the animatronics to move.', 2.2);
+  }
+
+  private performOfficeAIPlayLure(action: Extract<AIPlayOfficeAction, `lure-${string}`>): void {
+    const position = this.player.getPosition();
+    this.makeOfficeAIPlayNoise(position, AI_PLAY_OFFICE_LURE_NOISE_LEVEL);
+
+    switch (action) {
+      case 'lure-stage':
+        this.officeChapter.startPartyShow(position);
+        this.partyShowAudio.start();
+        this.gameplaySfxAudio.playSmallPanel(false);
+        this.pushStatus('AI Play runs out to the stage, hits the party show, and makes noise to lure animatronics.', 2.8);
+        break;
+      case 'lure-ball-pit':
+        this.gameplaySfxAudio.playBallPitDive();
+        this.pushStatus('AI Play stomps around by the ball pit to make the animatronics investigate.', 2.6);
+        break;
+      case 'lure-foxy-room':
+        this.officeChapter.startFoxyPlay();
+        this.foxyPlayAudio.play();
+        this.gameplaySfxAudio.playSmallPanel(false);
+        this.pushStatus('AI Play runs near Foxy, starts the pirate button, then gets ready to retreat.', 2.8);
+        break;
+      case 'lure-kitchen':
+        this.gameplaySfxAudio.playClosetDoor(true);
+        this.pushStatus('AI Play bangs around in the kitchen hallway to bait the animatronics.', 2.6);
+        break;
+      case 'lure-bathroom':
+        this.gameplaySfxAudio.playSmallPanel(true);
+        this.pushStatus('AI Play makes noise near the bathrooms, then plans to sprint back to the office.', 2.6);
+        break;
+    }
+
+    const nextSeatIndex = AI_PLAY_OFFICE_ACTIONS.indexOf('seat', this.aiPlayOfficeActionIndex + 1);
+    this.aiPlayOfficeActionIndex = nextSeatIndex >= 0 ? nextSeatIndex : 0;
+    this.aiPlayOfficeActionTimer = 0;
+  }
+
+  private makeOfficeAIPlayNoise(position: Vector3, level: number): void {
+    this.officePlayerNoisePosition.copy(position);
+    this.officePlayerNoiseLevel = Math.max(this.officePlayerNoiseLevel, MathUtils.clamp(level, 0, 1));
   }
 
   private getChapterOneStationById(id: StationInteractableId): StationInteractable | null {
@@ -11548,10 +11629,16 @@ export class Game {
     this.aiPlayInteractCooldown = 1.15;
   }
 
-  private updateOfficeAIPlayDoors(threatenedDoors: Set<'left' | 'right'>): void {
+  private updateOfficeAIPlayDoors(threatenedDoors: Set<'left' | 'right'>, holdingRetreatDoors = false): void {
     if (!this.officeGameModeNightPhase) {
       this.setOfficeAIPlayDoorOpen('left', true);
       this.setOfficeAIPlayDoorOpen('right', true);
+      return;
+    }
+
+    if (holdingRetreatDoors) {
+      this.setOfficeAIPlayDoorOpen('left', false);
+      this.setOfficeAIPlayDoorOpen('right', false);
       return;
     }
 
