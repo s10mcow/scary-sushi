@@ -14,7 +14,6 @@ import {
   Shape,
   ShapeGeometry,
   SphereGeometry,
-  TorusGeometry,
   Vector3,
 } from 'three';
 
@@ -2760,25 +2759,6 @@ export function createChapterSeven(): ChapterSevenData {
       return drop;
     });
 
-    const megaphone = new Group();
-    megaphone.name = 'Bathtub megaphone';
-    megaphone.position.set(-width / 2 - 0.55, 0.34, depth / 2 - 0.82);
-    megaphone.rotation.set(0, -0.45, Math.PI / 2);
-    const megaphoneBody = new Mesh(new ConeGeometry(0.38, 0.9, 24, 1, true), applianceWhiteMaterial);
-    megaphoneBody.rotation.z = Math.PI / 2;
-    const megaphoneRim = new Mesh(new TorusGeometry(0.38, 0.035, 8, 24), faucetMaterial);
-    megaphoneRim.position.x = 0.45;
-    megaphoneRim.rotation.y = Math.PI / 2;
-    const megaphoneBack = new Mesh(new CylinderGeometry(0.19, 0.19, 0.2, 18), fridgeSealMaterial);
-    megaphoneBack.position.x = -0.5;
-    megaphoneBack.rotation.z = Math.PI / 2;
-    const megaphoneHandle = new Mesh(new BoxGeometry(0.12, 0.44, 0.12), faucetMaterial);
-    megaphoneHandle.position.set(-0.1, -0.36, 0);
-    const megaphoneButton = new Mesh(new CylinderGeometry(0.045, 0.045, 0.025, 12), faucetMaterial);
-    megaphoneButton.position.set(-0.22, 0.16, 0.17);
-    megaphoneButton.rotation.x = Math.PI / 2;
-    megaphone.add(megaphoneBody, megaphoneRim, megaphoneBack, megaphoneHandle, megaphoneButton);
-
     bathtub.add(
       bottom,
       leftWall,
@@ -2795,7 +2775,6 @@ export function createChapterSeven(): ChapterSevenData {
       handlePivot,
       waterStream,
       ...waterSplash,
-      megaphone,
     );
     house.add(bathtub);
 
@@ -2954,8 +2933,6 @@ export function createChapterSeven(): ChapterSevenData {
     cooktop.position.y = height + 0.08;
     const ovenCavity = new Mesh(new BoxGeometry(width - 0.28, 0.76, depth - 0.22), stoveGlassMaterial);
     ovenCavity.position.set(0, 0.75, 0.05);
-    const ovenOpening = new Mesh(new BoxGeometry(width - 0.26, 0.78, 0.05), stoveGlassMaterial);
-    ovenOpening.position.set(0, 0.75, depth / 2 + 0.032);
     const ovenDoorPivot = new Group();
     ovenDoorPivot.position.set(0, 0.36, depth / 2 + 0.055);
     const ovenDoor = new Mesh(new BoxGeometry(width - 0.2, 0.78, 0.08), stoveMaterial);
@@ -2978,7 +2955,7 @@ export function createChapterSeven(): ChapterSevenData {
     });
 
     ovenDoorPivot.add(ovenDoor, ovenWindow, ovenHandle);
-    stove.add(body, cooktop, ovenCavity, ovenOpening, ovenDoorPivot, knobRow, ...burners);
+    stove.add(body, cooktop, ovenCavity, ovenDoorPivot, knobRow, ...burners);
     house.add(stove);
     const stoveCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.08, depth + 0.08);
     counterSurfaces.push({
@@ -4077,7 +4054,10 @@ export function createChapterSeven(): ChapterSevenData {
           });
           fixture.waterFillAmount = Math.min(
             0.92,
-            (fixture.waterFillAmount ?? 0) + (fixture.targetOpenAmount > 0.5 ? deltaSeconds * 0.075 : 0),
+            Math.max(
+              0,
+              (fixture.waterFillAmount ?? 0) + (fixture.targetOpenAmount > 0.5 ? deltaSeconds * 0.075 : -deltaSeconds * 0.035),
+            ),
           );
           if (fixture.waterSurface) {
             fixture.waterSurface.visible = fixture.waterFillAmount > 0.015;

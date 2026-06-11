@@ -855,6 +855,7 @@ export class Game {
   private readonly chapterFourBoxHideAnchor = new Group();
   private readonly chapterFourBoxWideAnchor = new Group();
   private readonly chapterSevenBoxHideAnchor = new Group();
+  private readonly chapterSevenOvenHideAnchor = new Group();
   private readonly chapterFourBlueJumpscareAnchor = new Group();
   private readonly chapterFourBlueJumpscareHead = new Group();
   private readonly chapterFourBlueJumpscareMaw = new Group();
@@ -1270,6 +1271,10 @@ export class Game {
     this.chapterSevenBoxHideAnchor.position.set(0, -0.14, -0.34);
     this.chapterSevenBoxHideAnchor.visible = false;
     this.createChapterSevenBoxHideModel();
+    this.camera.add(this.chapterSevenOvenHideAnchor);
+    this.chapterSevenOvenHideAnchor.position.set(0, -0.08, -0.34);
+    this.chapterSevenOvenHideAnchor.visible = false;
+    this.createChapterSevenOvenHideModel();
     this.camera.add(this.chapterFourBlueJumpscareAnchor);
     this.createChapterFourBlueJumpscareModel();
     this.camera.add(this.chapterFourGreenJumpscareAnchor);
@@ -3809,6 +3814,65 @@ export class Game {
       centerCrease,
       topCrease,
       bottomCrease,
+    );
+  }
+
+  private createChapterSevenOvenHideModel(): void {
+    const ovenWallMaterial = new MeshBasicMaterial({
+      color: 0x050505,
+      transparent: true,
+      opacity: 0.98,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const glassMaterial = new MeshBasicMaterial({
+      color: 0x8fb6c4,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const metalEdgeMaterial = new MeshBasicMaterial({
+      color: 0x141414,
+      transparent: true,
+      opacity: 0.98,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+
+    const backWall = new Mesh(new BoxGeometry(1.28, 1.02, 0.08), ovenWallMaterial);
+    backWall.position.set(0, -0.02, 0.16);
+    const leftWall = new Mesh(new BoxGeometry(0.16, 1.1, 0.82), ovenWallMaterial);
+    leftWall.position.set(-0.62, -0.02, -0.16);
+    const rightWall = leftWall.clone();
+    rightWall.position.x = 0.62;
+    const topWall = new Mesh(new BoxGeometry(1.28, 0.16, 0.82), ovenWallMaterial);
+    topWall.position.set(0, 0.5, -0.16);
+    const bottomWall = topWall.clone();
+    bottomWall.position.y = -0.56;
+
+    const doorFrameTop = new Mesh(new BoxGeometry(1.16, 0.13, 0.08), metalEdgeMaterial);
+    doorFrameTop.position.set(0, 0.34, -0.48);
+    const doorFrameBottom = doorFrameTop.clone();
+    doorFrameBottom.position.y = -0.42;
+    const doorFrameLeft = new Mesh(new BoxGeometry(0.13, 0.82, 0.08), metalEdgeMaterial);
+    doorFrameLeft.position.set(-0.51, -0.04, -0.48);
+    const doorFrameRight = doorFrameLeft.clone();
+    doorFrameRight.position.x = 0.51;
+    const glassWindow = new Mesh(new PlaneGeometry(0.82, 0.52), glassMaterial);
+    glassWindow.position.set(0, -0.04, -0.525);
+
+    this.chapterSevenOvenHideAnchor.add(
+      backWall,
+      leftWall,
+      rightWall,
+      topWall,
+      bottomWall,
+      doorFrameTop,
+      doorFrameBottom,
+      doorFrameLeft,
+      doorFrameRight,
+      glassWindow,
     );
   }
 
@@ -9353,6 +9417,12 @@ export class Game {
 
   private updateChapterSevenBoxDisplay(): void {
     this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = this.chapterSevenActive
+      && this.player.isLocked()
+      && this.chapterSevenOvenHidden
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen;
   }
 
   private updateChapterFourBlueJumpscareModel(): void {
@@ -17617,6 +17687,7 @@ export class Game {
     box.open = false;
     this.gameplaySfxAudio.playClosetDoor(false);
     this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
     this.pushStatus('You close the Amazon cardboard box around yourself. Press E to open it again.', 2.6);
   }
 
@@ -17628,6 +17699,7 @@ export class Game {
     box.open = true;
     this.gameplaySfxAudio.playClosetDoor(true);
     this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
     this.pushStatus('The cardboard box opens. Hold S to crawl and jump out.', 2.6);
   }
 
@@ -17646,6 +17718,7 @@ export class Game {
     oven.targetOpenAmount = 0;
     oven.open = false;
     oven.collider.enabled = false;
+    this.chapterSevenOvenHideAnchor.visible = true;
     this.gameplaySfxAudio.playClosetDoor(false);
     this.pushStatus('You pull the oven door closed. You can look out through the glass. Press E to open it again.', 2.8);
   }
@@ -17656,6 +17729,7 @@ export class Game {
     oven.targetOpenAmount = 1;
     oven.open = true;
     oven.collider.enabled = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
     this.gameplaySfxAudio.playClosetDoor(true);
     this.pushStatus('The oven door folds open. Hold S to crawl back out.', 2.6);
   }
@@ -20365,6 +20439,7 @@ export class Game {
     this.chapterFourBoxWideAnchor.visible = false;
     this.chapterFourBoxWorldAnchor.visible = false;
     this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterTwoKeycards.clear();
     this.chapterTwoPuzzlePiecesCollected = 0;
     this.chapterTwoRedPuzzleSolved = false;
@@ -20615,6 +20690,7 @@ export class Game {
     this.chapterFourBoxWideAnchor.visible = false;
     this.chapterFourBoxWorldAnchor.visible = false;
     this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterTwoKeycards.clear();
     this.chapterTwoPuzzlePiecesCollected = 0;
     this.chapterTwoRedPuzzleSolved = false;
