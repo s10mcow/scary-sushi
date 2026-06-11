@@ -17,8 +17,6 @@ import {
   PerspectiveCamera,
   Quaternion,
   Raycaster,
-  Shape,
-  ShapeGeometry,
   SphereGeometry,
   Texture,
   TorusGeometry,
@@ -56,7 +54,7 @@ import { createChapterFour, type ChapterFourData } from '../scene/createChapterF
 import { createChapterFive, type ChapterFiveData } from '../scene/createChapterFive';
 import { createChapterSix, type ChapterSixData, type ChapterSixItemType } from '../scene/createChapterSix';
 import { createChapterSeven, type ChapterSevenData } from '../scene/createChapterSeven';
-import { createChapterEight, type ChapterEightData, type ChapterEightDrop, type ChapterEightTree } from '../scene/createChapterEight';
+import { createChapterEight, type ChapterEightData } from '../scene/createChapterEight';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -783,18 +781,12 @@ type ChapterSevenInteractable =
   | { kind: 'rear-fixture'; item: ChapterSevenData['rearFixtures'][number]; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
-type ChapterEightHeldItem = 'coordinate-tool' | 'axe' | 'sack' | 'empty';
+type ChapterEightHeldItem = 'coordinate-tool' | 'empty';
 
 const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'coordinate-tool',
-  'axe',
-  'sack',
   'empty',
 ];
-const CHAPTER_EIGHT_AXE_RANGE = 4.2;
-const CHAPTER_EIGHT_PICKUP_RANGE = 5.2;
-const CHAPTER_EIGHT_FIRE_DROP_RANGE = 5.4;
-const CHAPTER_EIGHT_AXE_SWING_SECONDS = 0.5;
 
 export class Game {
   private readonly scene;
@@ -934,11 +926,6 @@ export class Game {
   private chapterSixHeldItemType: ChapterSixItemType | null = null;
   private chapterSixPossumPickupTimer = 0;
   private chapterEightHeldItem: ChapterEightHeldItem = 'coordinate-tool';
-  private chapterEightHeldItemModel: Group | null = null;
-  private chapterEightHeldItemModelType: ChapterEightHeldItem | null = null;
-  private chapterEightAxeSwingTimer = 0;
-  private chapterEightSackWood = 0;
-  private chapterEightSackSaplings = 0;
   private holdingPlate = false;
   private plateRecipeId: string | null = null;
   private platedRecipeId: string | null = null;
@@ -2153,9 +2140,7 @@ export class Game {
 
     const flashlightToggle = this.input.consumeFlashlightToggle();
     if (!chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !chapterFourLockerHiding && flashlightToggle) {
-      if (!this.handleChapterEightSackDrop()) {
-        this.flashlight.toggle();
-      }
+      this.flashlight.toggle();
     }
 
     const movementState = this.input.getMovementState({
@@ -2659,7 +2644,7 @@ export class Game {
     }
     this.updateChapterSixHeldItemDisplay(deltaSeconds);
     this.updateChapterSixPettingArmDisplay(deltaSeconds);
-    this.updateChapterEightHeldItemDisplay(deltaSeconds);
+    this.updateChapterEightHeldItemDisplay();
     this.updateMicrophoneSoundToolDisplay();
     this.updateOfficeTabletDisplay();
     this.updateChapterFourBoxDisplay();
@@ -5224,13 +5209,7 @@ export class Game {
   }
 
   private selectChapterEightHotbarSlot(slot: number): void {
-    const item: ChapterEightHeldItem = slot === 1
-      ? 'coordinate-tool'
-      : slot === 2
-        ? 'axe'
-        : slot === 3
-          ? 'sack'
-          : 'empty';
+    const item: ChapterEightHeldItem = slot === 1 ? 'coordinate-tool' : 'empty';
 
     this.selectChapterEightHeldItem(this.chapterEightHeldItem === item ? 'empty' : item);
   }
@@ -5263,7 +5242,7 @@ export class Game {
 
     if (item === 'empty') {
       this.chapterEightHeldItemAnchor.visible = false;
-      this.pushStatus('Hands empty. Spin the mouse wheel or press 1, 2, or 3 to hold gear.', 1.9);
+      this.pushStatus('Hands empty. Spin the mouse wheel or press 1 to switch back to the Coordinate Tool.', 1.9);
     } else {
       this.pushStatus(`${this.getChapterEightHeldItemLabel(item)} equipped. Spin the mouse wheel to switch items.`, 2.2);
     }
@@ -5274,10 +5253,6 @@ export class Game {
     switch (item) {
       case 'coordinate-tool':
         return 'Coordinate Tool';
-      case 'axe':
-        return 'Axe';
-      case 'sack':
-        return 'Sack';
       case 'empty':
         return 'Empty hands';
     }
@@ -10737,158 +10712,7 @@ export class Game {
       return;
     }
 
-    if (this.chapterEightHeldItem === 'axe') {
-      const tree = this.getLookedAtChapterEightTree();
-      this.chapterEightAxeSwingTimer = CHAPTER_EIGHT_AXE_SWING_SECONDS;
-      if (!tree) {
-        this.pushStatus('Swing the axe while the crosshair is on a nearby tree trunk.', 1.6);
-        return;
-      }
-
-      const result = this.chapterEight.chopTree(tree);
-      if (result.felled) {
-        this.pushStatus(
-          `The tree breaks apart. ${result.woodCount} wood pieces dropped${result.saplingDropped ? ', and a sapling popped out.' : '.'}`,
-          2.5,
-        );
-      } else {
-        this.pushStatus(`The axe bites into the tree. ${result.hitsRemaining} more strong chops should fell it.`, 1.5);
-      }
-      this.syncHud();
-      return;
-    }
-
-    if (this.chapterEightHeldItem === 'sack') {
-      const drop = this.getLookedAtChapterEightDrop();
-      if (!drop) {
-        this.pushStatus('Hold the sack out and aim the center crosshair at wood or a sapling to pick it up.', 1.8);
-        return;
-      }
-
-      if (!this.chapterEight.collectDrop(drop)) {
-        return;
-      }
-      if (drop.kind === 'wood') {
-        this.chapterEightSackWood += 1;
-        this.pushStatus(`Wood picked up in the sack. Wood: ${this.chapterEightSackWood}.`, 1.6);
-      } else {
-        this.chapterEightSackSaplings += 1;
-        this.pushStatus(`Sapling picked up in the sack. Saplings: ${this.chapterEightSackSaplings}.`, 1.6);
-      }
-      this.syncHud();
-      return;
-    }
-
-    this.pushStatus('Switch to the axe to chop trees, or the sack to pick up wood.', 1.7);
-  }
-
-  private handleChapterEightSackDrop(): boolean {
-    if (!this.chapterEightActive || this.chapterEightHeldItem !== 'sack') {
-      return false;
-    }
-
-    if (this.chapterEightSackWood <= 0) {
-      this.pushStatus('The sack has no wood to drop yet. Chop a tree and pick up the wood first.', 1.8);
-      return true;
-    }
-
-    this.chapterEightSackWood -= 1;
-    const playerPosition = this.player.getPosition();
-    const nearFire = playerPosition.distanceTo(this.chapterEight.firePitPosition) <= CHAPTER_EIGHT_FIRE_DROP_RANGE;
-    if (nearFire) {
-      const wasLit = this.chapterEight.isFireLit();
-      this.chapterEight.lightFire();
-      this.pushStatus(
-        wasLit
-          ? `You feed one wood piece into the fire. Wood left in sack: ${this.chapterEightSackWood}.`
-          : `The wood lands in the fire pit and the fire lights. Wood left in sack: ${this.chapterEightSackWood}.`,
-        2.4,
-      );
-    } else {
-      const direction = new Vector3();
-      this.camera.getWorldDirection(direction);
-      direction.y = 0;
-      if (direction.lengthSq() < 0.001) {
-        direction.set(0, 0, -1);
-      }
-      direction.normalize();
-      const dropPosition = playerPosition.clone().addScaledVector(direction, 1.35);
-      dropPosition.y = 0;
-      this.chapterEight.dropWood(dropPosition);
-      this.pushStatus(`You drop one wood piece from the sack. Wood left in sack: ${this.chapterEightSackWood}.`, 1.8);
-    }
-    this.syncHud();
-    return true;
-  }
-
-  private getLookedAtChapterEightTree(): ChapterEightTree | null {
-    const origin = this.camera.getWorldPosition(this.placementRayOrigin);
-    const direction = this.camera.getWorldDirection(this.placementRayDirection).normalize();
-    let bestTree: ChapterEightTree | null = null;
-    let bestScore = Infinity;
-
-    this.chapterEight.trees.forEach((tree) => {
-      if (!tree.active) {
-        return;
-      }
-      const toTree = tree.position.clone().sub(origin);
-      const distance = toTree.length();
-      if (distance <= 0.01 || distance > CHAPTER_EIGHT_AXE_RANGE) {
-        return;
-      }
-      const alignment = toTree.dot(direction) / distance;
-      if (alignment < 0.82) {
-        return;
-      }
-      const perpendicular = Math.sqrt(Math.max(0, distance * distance - (alignment * distance) ** 2));
-      const targetRadius = Math.max(0.62, tree.trunkRadius * 2.2);
-      if (perpendicular > targetRadius) {
-        return;
-      }
-      const score = perpendicular * 3.2 + distance * 0.08 - alignment;
-      if (score < bestScore) {
-        bestScore = score;
-        bestTree = tree;
-      }
-    });
-
-    return bestTree;
-  }
-
-  private getLookedAtChapterEightDrop(): ChapterEightDrop | null {
-    const origin = this.camera.getWorldPosition(this.placementRayOrigin);
-    const direction = this.camera.getWorldDirection(this.placementRayDirection).normalize();
-    let bestDrop: ChapterEightDrop | null = null;
-    let bestScore = Infinity;
-
-    this.chapterEight.drops.forEach((drop) => {
-      if (!drop.active) {
-        return;
-      }
-      const target = drop.position.clone();
-      target.y += drop.kind === 'wood' ? 0.28 : 0.54;
-      const toDrop = target.sub(origin);
-      const distance = toDrop.length();
-      if (distance <= 0.01 || distance > CHAPTER_EIGHT_PICKUP_RANGE) {
-        return;
-      }
-      const alignment = toDrop.dot(direction) / distance;
-      if (alignment < 0.9) {
-        return;
-      }
-      const perpendicular = Math.sqrt(Math.max(0, distance * distance - (alignment * distance) ** 2));
-      const targetRadius = drop.kind === 'wood' ? 0.62 : 0.48;
-      if (perpendicular > targetRadius) {
-        return;
-      }
-      const score = perpendicular * 3 + distance * 0.05 - alignment;
-      if (score < bestScore) {
-        bestScore = score;
-        bestDrop = drop;
-      }
-    });
-
-    return bestDrop;
+    this.pushStatus('No woods tool is equipped right now.', 1.6);
   }
 
   private handleOfficePrizeFire(): boolean {
@@ -13688,7 +13512,7 @@ export class Game {
         '',
         'You are in a semi-realistic forest camp.',
         'An unlit stone-ring fire pit sits in the middle of a lighter green clearing.',
-        'Starting gear: axe and sack.',
+        'Starting gear: Coordinate Tool.',
         'The crafting bench and grinding bench are placed near the fire pit for later item systems.',
         'Use the Coordinate Tool if you want to mark more spots in the woods.',
       ].join('\n');
@@ -13911,13 +13735,12 @@ export class Game {
 
     if (this.chapterEightActive) {
       return [
-        'Inventory: Coordinate Tool, Axe, Sack',
+        'Inventory: Coordinate Tool',
         `Held: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}`,
-        `Sack: Wood x${this.chapterEightSackWood}, Saplings x${this.chapterEightSackSaplings}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 8: The Woods',
-        'Starting Gear: Axe x1, Sack x1',
-        'Spin the mouse wheel to switch Coordinate Tool, Axe, Sack, and empty hands. Left click uses the held item.',
+        'Starting Gear: Coordinate Tool',
+        'Spin the mouse wheel to switch between the Coordinate Tool and empty hands.',
         'Camp props: unlit fire pit, stone ring, crafting bench, grinding bench.',
         'Crafting and grinding interactions will be added later.',
       ].join('\n');
@@ -14265,19 +14088,7 @@ export class Game {
           ...coordinateToolSlot,
           selected: this.chapterEightHeldItem === 'coordinate-tool',
         },
-        {
-          label: `Axe ${this.chapterEightHeldItem === 'axe' ? '[Held]' : '[2]'}`,
-          count: 1,
-          filled: true,
-          selected: this.chapterEightHeldItem === 'axe',
-        },
-        {
-          label: `Sack ${this.chapterEightHeldItem === 'sack' ? '[Held]' : '[3]'}`,
-          count: this.chapterEightSackWood + this.chapterEightSackSaplings,
-          filled: true,
-          selected: this.chapterEightHeldItem === 'sack',
-        },
-        ...Array.from({ length: 6 }, (_, index) => ({
+        ...Array.from({ length: 8 }, (_, index) => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -14621,20 +14432,8 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
-      if (this.chapterEightHeldItem === 'axe') {
-        return locked
-          ? 'Axe held. Aim the center crosshair at a nearby tree and left click to chop it.'
-          : 'Click the play space to walk around Chapter 8: The Woods.';
-      }
-
-      if (this.chapterEightHeldItem === 'sack') {
-        return locked
-          ? 'Sack held. Aim the center crosshair at wood or saplings and left click to pick them up. Press F to drop wood, or feed the fire if you are near it.'
-          : 'Click the play space to walk around Chapter 8: The Woods.';
-      }
-
       return locked
-        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, and mouse wheel switches Coordinate Tool, Axe, Sack, and empty hands.'
+        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, and mouse wheel switches Coordinate Tool and empty hands.'
         : 'Click the play space to walk around Chapter 8: The Woods.';
     }
 
@@ -15348,7 +15147,7 @@ export class Game {
 
     if (this.chapterEightActive) {
       const fireState = this.chapterEight.isFireLit() ? 'lit' : 'unlit';
-      return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. Sack wood: ${this.chapterEightSackWood}. The stone-ring fire pit is ${fireState}.`;
+      return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. The stone-ring fire pit is ${fireState}.`;
     }
 
     if (this.officeChapterActive) {
@@ -18030,157 +17829,8 @@ export class Game {
     );
   }
 
-  private createChapterEightHeldItemModel(type: ChapterEightHeldItem): Group {
-    const root = new Group();
-    const skinMaterial = new MeshStandardMaterial({ color: 0xd49b73, roughness: 0.84 });
-    const sleeveMaterial = new MeshStandardMaterial({ color: 0x4b6842, roughness: 0.86 });
-    const hand = new Mesh(new BoxGeometry(0.18, 0.13, 0.22), skinMaterial);
-    hand.position.set(0.12, -0.24, 0.06);
-    const sleeve = new Mesh(new BoxGeometry(0.16, 0.34, 0.18), sleeveMaterial);
-    sleeve.position.set(0.2, -0.44, 0.1);
-    root.add(hand, sleeve);
-
-    if (type === 'axe') {
-      const handleMaterial = new MeshStandardMaterial({ color: 0x7a4b2a, roughness: 0.9 });
-      const gripMaterial = new MeshStandardMaterial({ color: 0x3b2516, roughness: 0.92 });
-      const headMaterial = new MeshStandardMaterial({ color: 0xb8c0c4, roughness: 0.48, metalness: 0.52 });
-      const bladeMaterial = new MeshStandardMaterial({ color: 0xd9e2e6, roughness: 0.38, metalness: 0.62 });
-      const handle = new Mesh(new CylinderGeometry(0.034, 0.046, 0.88, 14), handleMaterial);
-      handle.position.set(0.02, 0.02, 0);
-      handle.rotation.z = -0.38;
-      const handleHighlight = new Mesh(new CylinderGeometry(0.012, 0.014, 0.82, 8), new MeshStandardMaterial({ color: 0xa36a3d, roughness: 0.86 }));
-      handleHighlight.position.set(-0.01, 0.04, 0.032);
-      handleHighlight.rotation.z = -0.38;
-      const lowerGrip = new Mesh(new CylinderGeometry(0.043, 0.049, 0.2, 10), gripMaterial);
-      lowerGrip.position.set(0.16, -0.33, 0.001);
-      lowerGrip.rotation.z = -0.38;
-
-      const headShape = new Shape();
-      headShape.moveTo(-0.1, -0.11);
-      headShape.quadraticCurveTo(-0.38, -0.16, -0.52, 0.02);
-      headShape.quadraticCurveTo(-0.42, 0.22, -0.16, 0.3);
-      headShape.quadraticCurveTo(0.02, 0.36, 0.18, 0.19);
-      headShape.quadraticCurveTo(0.25, 0.1, 0.22, -0.02);
-      headShape.quadraticCurveTo(0.12, -0.13, -0.1, -0.11);
-      const axeHead = new Mesh(new ShapeGeometry(headShape, 20), headMaterial);
-      axeHead.position.set(-0.05, 0.34, -0.02);
-      axeHead.rotation.z = -0.38;
-
-      const edgeShape = new Shape();
-      edgeShape.moveTo(-0.47, -0.03);
-      edgeShape.quadraticCurveTo(-0.55, 0.04, -0.46, 0.15);
-      edgeShape.quadraticCurveTo(-0.34, 0.22, -0.2, 0.26);
-      edgeShape.quadraticCurveTo(-0.32, 0.12, -0.23, -0.07);
-      edgeShape.quadraticCurveTo(-0.34, -0.08, -0.47, -0.03);
-      const bladeEdge = new Mesh(new ShapeGeometry(edgeShape, 12), bladeMaterial);
-      bladeEdge.position.copy(axeHead.position);
-      bladeEdge.position.z -= 0.004;
-      bladeEdge.rotation.z = axeHead.rotation.z;
-
-      const socket = new Mesh(new CylinderGeometry(0.078, 0.09, 0.14, 16), headMaterial);
-      socket.position.set(-0.01, 0.35, 0.006);
-      socket.rotation.set(Math.PI / 2, 0, -0.38);
-      const socketBand = new Mesh(new CylinderGeometry(0.092, 0.104, 0.034, 16), bladeMaterial);
-      socketBand.position.set(-0.01, 0.35, 0.01);
-      socketBand.rotation.set(Math.PI / 2, 0, -0.38);
-
-      const backPollShape = new Shape();
-      backPollShape.moveTo(0.14, 0.02);
-      backPollShape.quadraticCurveTo(0.29, 0.04, 0.32, 0.15);
-      backPollShape.quadraticCurveTo(0.28, 0.25, 0.14, 0.25);
-      backPollShape.quadraticCurveTo(0.19, 0.14, 0.14, 0.02);
-      const backPoll = new Mesh(new ShapeGeometry(backPollShape, 10), headMaterial);
-      backPoll.position.copy(axeHead.position);
-      backPoll.position.z += 0.002;
-      backPoll.rotation.z = axeHead.rotation.z;
-
-      root.add(handle, handleHighlight, lowerGrip, axeHead, bladeEdge, socket, socketBand, backPoll);
-      root.rotation.set(0.14, 0.28, -0.08);
-      root.scale.setScalar(1.08);
-      return root;
-    }
-
-    if (type === 'sack') {
-      const sackMaterial = new MeshStandardMaterial({ color: 0x9a6638, roughness: 0.94 });
-      const darkerSackMaterial = new MeshStandardMaterial({ color: 0x6d4528, roughness: 0.95 });
-      const cordMaterial = new MeshStandardMaterial({ color: 0x352316, roughness: 0.9 });
-      const body = new Mesh(new SphereGeometry(0.22, 18, 14), sackMaterial);
-      body.position.set(-0.02, -0.04, -0.02);
-      body.scale.set(1.1, 1.3, 0.86);
-      const bottomFold = new Mesh(new SphereGeometry(0.08, 12, 8), darkerSackMaterial);
-      bottomFold.position.set(-0.13, -0.22, -0.01);
-      bottomFold.scale.set(1.1, 0.45, 0.7);
-      const neck = new Mesh(new CylinderGeometry(0.075, 0.12, 0.16, 12), sackMaterial);
-      neck.position.set(0, 0.25, -0.01);
-      const tie = new Mesh(new TorusGeometry(0.09, 0.011, 8, 18), cordMaterial);
-      tie.position.set(0, 0.18, -0.01);
-      tie.rotation.x = Math.PI / 2;
-      const knot = new Mesh(new BoxGeometry(0.055, 0.035, 0.03), cordMaterial);
-      knot.position.set(0.1, 0.18, -0.01);
-      const creaseMaterial = new MeshStandardMaterial({ color: 0x7d512f, roughness: 0.96 });
-      [-0.09, 0.08].forEach((offset) => {
-        const crease = new Mesh(new BoxGeometry(0.012, 0.32, 0.012), creaseMaterial);
-        crease.position.set(offset, -0.02, -0.2);
-        crease.rotation.z = offset < 0 ? -0.14 : 0.12;
-        root.add(crease);
-      });
-      root.add(body, bottomFold, neck, tie, knot);
-      root.rotation.set(0.16, 0.2, 0.04);
-      root.scale.setScalar(1.18);
-    }
-
-    return root;
-  }
-
-  private updateChapterEightHeldItemDisplay(deltaSeconds: number): void {
-    this.chapterEightAxeSwingTimer = Math.max(0, this.chapterEightAxeSwingTimer - deltaSeconds);
-    if (
-      !this.chapterEightActive
-      || !this.player.isLocked()
-      || this.chapterMenuOpen
-      || this.placementToolActive
-      || this.chapterEightHeldItem === 'coordinate-tool'
-      || this.chapterEightHeldItem === 'empty'
-    ) {
-      this.chapterEightHeldItemAnchor.visible = false;
-      return;
-    }
-
-    if (this.chapterEightHeldItemModelType !== this.chapterEightHeldItem || !this.chapterEightHeldItemModel) {
-      if (this.chapterEightHeldItemModel) {
-        this.chapterEightHeldItemAnchor.remove(this.chapterEightHeldItemModel);
-      }
-      this.chapterEightHeldItemModelType = this.chapterEightHeldItem;
-      this.chapterEightHeldItemModel = this.createChapterEightHeldItemModel(this.chapterEightHeldItem);
-      this.chapterEightHeldItemAnchor.add(this.chapterEightHeldItemModel);
-    }
-
-    const bob = Math.sin((this.elapsed + deltaSeconds) * 6.8) * 0.015;
-    const holdingAxe = this.chapterEightHeldItem === 'axe';
-    const swingProgress = holdingAxe && this.chapterEightAxeSwingTimer > 0
-      ? 1 - this.chapterEightAxeSwingTimer / CHAPTER_EIGHT_AXE_SWING_SECONDS
-      : 0;
-    const clampedSwingProgress = MathUtils.clamp(swingProgress, 0, 1);
-    const windUp = clampedSwingProgress < 0.36
-      ? MathUtils.smoothstep(clampedSwingProgress, 0, 0.36)
-      : 1 - MathUtils.smoothstep(clampedSwingProgress, 0.36, 0.78);
-    const chopDown = clampedSwingProgress < 0.36
-      ? 0
-      : clampedSwingProgress < 0.78
-        ? MathUtils.smoothstep(clampedSwingProgress, 0.36, 0.78)
-        : 1 - MathUtils.smoothstep(clampedSwingProgress, 0.78, 1);
-    const verticalChop = windUp * 0.34 - chopDown * 0.24;
-    this.chapterEightHeldItemAnchor.visible = true;
-    this.chapterEightHeldItemAnchor.position.set(
-      holdingAxe ? 0.48 : 0.4,
-      holdingAxe ? -0.35 + bob + verticalChop : -0.42 + bob,
-      holdingAxe ? -0.72 + chopDown * 0.06 : -0.66,
-    );
-    this.chapterEightHeldItemAnchor.rotation.set(
-      holdingAxe ? -0.2 + bob * 0.6 + windUp * 0.48 - chopDown * 0.72 : -0.1 + bob * 0.5,
-      holdingAxe ? -0.42 : -0.26,
-      holdingAxe ? 0.2 : 0.08,
-    );
+  private updateChapterEightHeldItemDisplay(): void {
+    this.chapterEightHeldItemAnchor.visible = false;
   }
 
   private createChapterSixPettingArmModel(): void {
@@ -20513,14 +20163,11 @@ export class Game {
     });
     this.chapterEightHeldItem = 'coordinate-tool';
     this.chapterEightHeldItemAnchor.visible = false;
-    this.chapterEightAxeSwingTimer = 0;
-    this.chapterEightSackWood = 0;
-    this.chapterEightSackSaplings = 0;
     this.setPlacementToolActive(true);
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);
     this.pushStatus(
-      'Chapter 8: The Woods loaded. You start with an axe and sack. Spin the mouse wheel to switch gear. The fire pit is not lit yet.',
+      'Chapter 8: The Woods loaded. You start with the Coordinate Tool. Spin the mouse wheel to switch to empty hands. The fire pit is not lit yet.',
       3.2,
     );
     this.resize();
