@@ -796,6 +796,7 @@ const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
 const CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS = 0.38;
 const AI_PLAY_INTERACT_COOLDOWN_SECONDS = 0.65;
 const AI_PLAY_TARGET_REACHED_DISTANCE = 1.05;
+const AI_PLAY_CHAPTER_ONE_WAYPOINT_REACHED_DISTANCE = 0.72;
 
 export class Game {
   private readonly scene;
@@ -1626,9 +1627,14 @@ export class Game {
   }
 
   private readonly handleChapterSelection = (chapterId: HudChapterId): void => {
-    if (chapterId !== 'ai-play') {
-      this.stopAIPlay();
+    if (chapterId === 'ai-play') {
+      this.toggleAIPlay();
+      this.setChapterMenuOpen(false);
+      this.syncHud();
+      return;
     }
+
+    this.stopAIPlay();
 
     if (chapterId === 'chapter-1') {
       this.beginChapterOne();
@@ -1648,9 +1654,6 @@ export class Game {
       this.beginChapterSeven();
     } else if (chapterId === 'chapter-8') {
       this.beginChapterEight();
-    } else if (chapterId === 'ai-play') {
-      this.beginChapterEight();
-      this.startAIPlay();
     } else if (chapterId === 'doom-fps') {
       this.beginDoomMode();
     } else {
@@ -2285,6 +2288,18 @@ export class Game {
       : sprinting
         ? movementState
         : { ...movementState, sprint: false };
+
+    if (this.aiPlayActive) {
+      if (!this.isAIPlaySupportedInCurrentChapter()) {
+        this.stopAIPlay('AI Play stopped because this chapter is not supported.');
+      } else if (this.isChapterOneActive()) {
+        effectiveMovement = this.getChapterOneAIInput(deltaSeconds);
+        jumpRequested = false;
+      } else if (this.officeChapterActive) {
+        effectiveMovement = this.getOfficeChapterAIInput(deltaSeconds);
+        jumpRequested = false;
+      }
+    }
 
     if (this.aiPlayActive && this.chapterEightActive) {
       effectiveMovement = this.getChapterEightAIInput(deltaSeconds);
@@ -10095,7 +10110,9 @@ export class Game {
       this.chapterCardBody,
     );
     this.hud.setChapterLabel(
-      this.zombieModeActive
+      this.aiPlayActive
+        ? `Mode: AI Play (${this.getAIPlayChapterLabel()})`
+        : this.zombieModeActive
         ? 'Chapter: Zombie FPS'
         : this.doomModeActive
           ? 'Mode: Doom Run'
@@ -10110,9 +10127,7 @@ export class Game {
                   : this.chapterSevenActive
                     ? 'Chapter: Chapter 7: The House'
                     : this.chapterEightActive
-                      ? this.aiPlayActive
-                        ? 'Mode: AI Play'
-                        : 'Chapter: Chapter 8: The Woods'
+                      ? 'Chapter: Chapter 8: The Woods'
                       : this.chapterTwoActive
                     ? 'Chapter: daycare horror'
                     : 'Chapter: scary-sushi',
@@ -10279,7 +10294,7 @@ export class Game {
       this.hud.setStatus(
         this.transientStatusTime > 0
           ? `${this.transientStatus} Press Escape to stop AI Play.`
-          : 'AI Play is controlling Chapter 8 survival. Press Escape to stop AI Play immediately.',
+          : `${this.getAIPlayChapterLabel()} is under AI Play control. Press Escape or the AI Play button to stop immediately.`,
       );
       return;
     }
@@ -10955,7 +10970,21 @@ export class Game {
     }
   }
 
+  private toggleAIPlay(): void {
+    if (this.aiPlayActive) {
+      this.stopAIPlay('AI Play stopped. You have control again.');
+      return;
+    }
+
+    this.startAIPlay();
+  }
+
   private startAIPlay(): void {
+    if (!this.isAIPlaySupportedInCurrentChapter()) {
+      this.pushStatus("AI Play only works in Chapter 1 scary-sushi and Chapter 3 five nights at Bori's right now.", 3.2);
+      return;
+    }
+
     this.aiPlayActive = true;
     this.aiPlayInteractCooldown = 0;
     this.chapterMenuOpen = false;
@@ -10964,7 +10993,7 @@ export class Game {
     this.officeModeMenuOpen = false;
     this.setPlacementToolActive(false);
     this.player.lock();
-    this.pushStatus('AI Play started. I am controlling Chapter 8 survival. Press Escape to stop AI Play immediately.', 3.4);
+    this.pushStatus(`AI Play started for ${this.getAIPlayChapterLabel()}. Press Escape or AI Play again to stop immediately.`, 3.4);
   }
 
   private stopAIPlay(message?: string): void {
@@ -10978,6 +11007,243 @@ export class Game {
       this.player.controls.unlock();
       this.pushStatus(message, 2.6);
       this.syncHud();
+    }
+  }
+
+  private isChapterOneActive(): boolean {
+    return !this.chapterTwoActive
+      && !this.officeChapterActive
+      && !this.chapterFourActive
+      && !this.chapterFiveActive
+      && !this.chapterSixActive
+      && !this.chapterSevenActive
+      && !this.chapterEightActive
+      && !this.zombieModeActive
+      && !this.doomModeActive;
+  }
+
+  private isAIPlaySupportedInCurrentChapter(): boolean {
+    return this.isChapterOneActive() || this.officeChapterActive;
+  }
+
+  private getAIPlayChapterLabel(): string {
+    if (this.officeChapterActive) {
+      return this.officeSandboxChapterActive ? "Chapter 3 Copy: Bori's map sandbox" : "Chapter 3: five nights at Bori's";
+    }
+
+    return 'Chapter 1: scary-sushi';
+  }
+
+  private getChapterOneAIInput(deltaSeconds: number): MovementState {
+    this.aiPlayInteractCooldown = Math.max(0, this.aiPlayInteractCooldown - deltaSeconds);
+
+    if (!this.player.isLocked() || this.activeJumpscare) {
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    const canInteract = this.aiPlayInteractCooldown <= 0;
+    const interact = (): void => {
+      this.aiPlayInteractCooldown = AI_PLAY_INTERACT_COOLDOWN_SECONDS;
+    };
+    const position = this.player.getPosition();
+
+    if (this.submittedRecipes.size >= RECIPES.length) {
+      this.stopAIPlay('AI Play finished the Chapter 1 dishes. You have control again.');
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    if (this.holdingPlate && this.platedRecipeId) {
+      const submission = this.getChapterOneStationById('submission');
+      if (submission) {
+        if (position.distanceTo(submission.position) <= GAME_CONFIG.player.interactionRange + 0.55 && canInteract) {
+          this.handleDrop();
+          interact();
+          return { forward: 0, strafe: 0, sprint: false };
+        }
+
+        return this.getChapterOneAIMoveInput(submission.position, true);
+      }
+    }
+
+    const station = this.getChapterOneAIStationTarget();
+    if (station) {
+      if (position.distanceTo(station.position) <= GAME_CONFIG.player.interactionRange + 0.55 && canInteract) {
+        this.handleStationInteract(station);
+        interact();
+        return { forward: 0, strafe: 0, sprint: false };
+      }
+
+      return this.getChapterOneAIMoveInput(station.position, true);
+    }
+
+    const ingredient = this.getChapterOneAIIngredientTarget();
+    if (ingredient) {
+      if (position.distanceTo(ingredient.position) <= GAME_CONFIG.player.interactionRange && canInteract) {
+        this.collectIngredient(ingredient);
+        interact();
+        return { forward: 0, strafe: 0, sprint: false };
+      }
+
+      return this.getChapterOneAIMoveInput(ingredient.position, true);
+    }
+
+    return this.getChapterOneAIMoveInput(this.level.spawn, false);
+  }
+
+  private getOfficeChapterAIInput(deltaSeconds: number): MovementState {
+    this.aiPlayInteractCooldown = Math.max(0, this.aiPlayInteractCooldown - deltaSeconds);
+
+    if (!this.player.isLocked() || this.activeOfficeJumpscare || this.officeDeathNoticePhase) {
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    const position = this.player.getPosition();
+    if (!this.officeChapterSeated) {
+      if (position.distanceTo(this.officeChapter.seat.position) <= GAME_CONFIG.player.interactionRange + 0.35) {
+        this.enterOfficeChapterSeat();
+        return { forward: 0, strafe: 0, sprint: false };
+      }
+
+      return this.getAIPlayMoveInput(this.officeChapter.seat.position, false);
+    }
+
+    this.player.lookToward(this.officeChapter.seat.lookTarget, 0.12);
+
+    if (this.officeGameModeActive && !this.officeGameModePowerOut) {
+      this.updateOfficeAIPlayDoors(deltaSeconds);
+    }
+
+    return { forward: 0, strafe: 0, sprint: false };
+  }
+
+  private getChapterOneStationById(id: StationInteractableId): StationInteractable | null {
+    return this.level.stationInteractables.find((station) => station.id === id) ?? null;
+  }
+
+  private getChapterOneAIStationTarget(): StationInteractable | null {
+    if (this.platedRecipeId || this.plateIngredients.length > 0 || this.getAssemblableRecipe()) {
+      return this.getChapterOneStationById('assembly');
+    }
+
+    if (this.hasItem('raw-rice')) {
+      return this.getChapterOneStationById('boiler');
+    }
+
+    if (this.hasItem('rice-stalk')) {
+      return this.getChapterOneStationById('grainer');
+    }
+
+    if (this.hasItem('dried-seaweed')) {
+      return this.getChapterOneStationById('slicer');
+    }
+
+    if (this.hasItem('seaweed')) {
+      return this.getChapterOneStationById('dryer');
+    }
+
+    if (this.hasItem('salmon-fish') || this.hasItem('tuna-fish')) {
+      return this.getChapterOneStationById('skinner');
+    }
+
+    return null;
+  }
+
+  private getChapterOneAIIngredientTarget(): IngredientPickup | null {
+    const wantedIds = this.getChapterOneWantedRawIngredients();
+    const wanted = this.level.ingredients.find((ingredient) => (
+      !ingredient.collected && wantedIds.includes(ingredient.id)
+    ));
+
+    return wanted ?? this.level.ingredients.find((ingredient) => !ingredient.collected) ?? null;
+  }
+
+  private getChapterOneWantedRawIngredients(): IngredientId[] {
+    const wanted: IngredientId[] = [];
+    const countAvailable = (id: IngredientId): number => (
+      this.countItem(id)
+      + this.level.ingredients.filter((ingredient) => !ingredient.collected && ingredient.id === id).length
+    );
+
+    RECIPES
+      .filter((recipe) => !this.submittedRecipes.has(recipe.id))
+      .forEach((recipe) => {
+        const recipeIngredients: readonly IngredientId[] = recipe.ingredients;
+
+        if (recipeIngredients.includes('cooked-rice') && this.countItem('cooked-rice') === 0 && this.countItem('raw-rice') === 0 && this.countItem('rice-stalk') === 0 && countAvailable('rice-stalk') > 0) {
+          wanted.push('rice-stalk');
+        }
+
+        if (recipeIngredients.includes('sliced-seaweed') && this.countItem('sliced-seaweed') === 0 && this.countItem('dried-seaweed') === 0 && this.countItem('seaweed') === 0 && countAvailable('seaweed') > 0) {
+          wanted.push('seaweed');
+        }
+
+        if (recipeIngredients.includes('salmon') && this.countItem('salmon') === 0 && this.countItem('salmon-fish') === 0 && countAvailable('salmon-fish') > 0) {
+          wanted.push('salmon-fish');
+        }
+
+        if (recipeIngredients.includes('tuna') && this.countItem('tuna') === 0 && this.countItem('tuna-fish') === 0 && countAvailable('tuna-fish') > 0) {
+          wanted.push('tuna-fish');
+        }
+      });
+
+    return wanted;
+  }
+
+  private getChapterOneAIMoveInput(target: Vector3, sprint: boolean): MovementState {
+    const position = this.player.getPosition();
+    const path = this.level.mazeNavigator.findPath(position, target);
+    const waypoint = path.find((point) => (
+      Math.hypot(point.x - position.x, point.z - position.z) > AI_PLAY_CHAPTER_ONE_WAYPOINT_REACHED_DISTANCE
+    )) ?? target;
+
+    return this.getAIPlayMoveInput(waypoint, sprint);
+  }
+
+  private updateOfficeAIPlayDoors(deltaSeconds: number): void {
+    if (!this.officeGameModeNightPhase) {
+      this.setOfficeAIPlayDoorOpen('left', true);
+      this.setOfficeAIPlayDoorOpen('right', true);
+      return;
+    }
+
+    const threatenedDoors = new Set<'left' | 'right'>();
+    this.officeGameModeAnimatronics.forEach((animatronic) => {
+      const doorId = animatronic.doorBreachDoorId ?? animatronic.cachedBlockedDoorId;
+      if (doorId && (
+        animatronic.state === 'door'
+        || animatronic.state === 'door-breach'
+        || animatronic.state === 'creep'
+        || animatronic.state === 'chase'
+        || animatronic.state === 'rush'
+      )) {
+        threatenedDoors.add(doorId);
+      }
+    });
+
+    (['left', 'right'] as const).forEach((doorId) => {
+      this.setOfficeAIPlayDoorOpen(doorId, !threatenedDoors.has(doorId));
+    });
+
+    if (threatenedDoors.size > 0) {
+      this.aiPlayInteractCooldown = Math.max(this.aiPlayInteractCooldown, Math.min(0.25, deltaSeconds * 2));
+    }
+  }
+
+  private setOfficeAIPlayDoorOpen(doorId: 'left' | 'right', open: boolean): void {
+    const door = this.getOfficeDoorById(doorId);
+    if (!door || (open ? door.targetOpenAmount > 0.5 : door.targetOpenAmount < 0.5)) {
+      return;
+    }
+
+    door.targetOpenAmount = open ? 1 : 0;
+    door.open = open;
+    this.playOfficeDoorToggleSound(doorId, open);
+    if (!open) {
+      door.closeBounceTimer = door.closeBounceDuration;
+      this.gameplaySfxAudio.playSecurityDoorCrash();
+      this.tryOfficeDoorCloseHallwayBreach(doorId);
+    } else {
+      door.closeBounceTimer = 0;
     }
   }
 

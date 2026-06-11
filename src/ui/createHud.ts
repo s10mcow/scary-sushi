@@ -1297,7 +1297,7 @@ export function createHud(host: HTMLElement): HudController {
     {
       id: 'ai-play' as const,
       label: 'AI Play',
-      body: 'Watch the assistant take over Chapter 8 and survive the woods until you press Escape.',
+      body: "Toggle AI control for Chapter 1 scary-sushi or Chapter 3 five nights at Bori's. Press Escape to stop.",
     },
     {
       id: 'zombie-fps' as const,
