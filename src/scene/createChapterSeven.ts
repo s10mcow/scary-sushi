@@ -173,9 +173,9 @@ export interface ChapterSevenCardboardBox {
 
 const CENTER_X = 1210;
 const CENTER_Z = 80;
-const FOREST_SIZE = 188;
+const FOREST_SIZE = 170;
 const HALF_SIZE = FOREST_SIZE / 2;
-const CLEARING_RADIUS = 32;
+const CLEARING_RADIUS = 30;
 const GRASS_COLOR = 0x3f6f36;
 const HOUSE_WIDTH = 52;
 const HOUSE_DEPTH = 38;
@@ -206,10 +206,10 @@ const HOUSE_REAR_ROOM_DEPTH = 10.2;
 const HOUSE_ROOF_RISE = 6.2;
 const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
-const TREE_COUNT = 185;
-const GRASS_PATCH_COUNT = 315;
-const ROCK_COUNT = 15;
-const FALLEN_LOG_COUNT = 5;
+const TREE_COUNT = 160;
+const GRASS_PATCH_COUNT = 280;
+const ROCK_COUNT = 13;
+const FALLEN_LOG_COUNT = 4;
 
 function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
   const collider = {
