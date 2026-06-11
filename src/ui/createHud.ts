@@ -10,7 +10,6 @@ export type HudChapterId =
   | 'chapter-6'
   | 'chapter-7'
   | 'chapter-8'
-  | 'ai-play'
   | 'zombie-fps'
   | 'doom-fps';
 export type HudJumpScareVariant = MonsterVariant | 'bear' | 'quacky' | 'fluffle' | 'bori' | 'foxy' | 'purple' | 'blue' | 'green';
@@ -1098,12 +1097,6 @@ export function createHud(host: HTMLElement): HudController {
 
   hotbar.append(hotbarLabel, ...hotbarSlots.map((slot) => slot.root));
 
-  const aiPlayButton = document.createElement('button');
-  aiPlayButton.className = 'hud__ai-play-button';
-  aiPlayButton.type = 'button';
-  aiPlayButton.textContent = 'AI Play';
-  aiPlayButton.dataset.active = 'false';
-
   let minecraftInventoryActionHandler: ((action: MinecraftInventoryAction) => void) | null = null;
   const minecraftInventory = document.createElement('section');
   minecraftInventory.className = 'hud__minecraft-inventory';
@@ -1293,11 +1286,6 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-8' as const,
       label: 'Chapter 8: The Woods',
       body: 'A semi-realistic forest camp with a fire pit, stone ring, crafting bench, and grinding bench.',
-    },
-    {
-      id: 'ai-play' as const,
-      label: 'AI Play',
-      body: "Toggle AI control for Chapter 1 scary-sushi or Chapter 3 five nights at Bori's. Press Escape to stop.",
     },
     {
       id: 'zombie-fps' as const,
@@ -1798,7 +1786,6 @@ export function createHud(host: HTMLElement): HudController {
     meterPanel,
     statusPanel,
     crouchInstructions,
-    aiPlayButton,
     hotbar,
     minecraftInventory,
     placementTool,
@@ -2352,10 +2339,6 @@ export function createHud(host: HTMLElement): HudController {
     },
     onChapterSelect(handler): void {
       featuredChapterButton.addEventListener('click', () => handler('chapter-8'));
-      aiPlayButton.addEventListener('click', (event) => {
-        event.stopPropagation();
-        handler('ai-play');
-      });
       chapterButtons.forEach((entry) => {
         entry.button.addEventListener('click', () => handler(entry.id));
       });
@@ -2468,8 +2451,6 @@ export function createHud(host: HTMLElement): HudController {
     },
     setChapterMenu(active, currentChapter): void {
       chapterMenu.dataset.active = String(active);
-      aiPlayButton.dataset.active = String(currentChapter === 'ai-play');
-      aiPlayButton.textContent = currentChapter === 'ai-play' ? 'AI Playing' : 'AI Play';
       chapterButtons.forEach((entry) => {
         entry.button.dataset.active = String(entry.id === currentChapter);
       });
