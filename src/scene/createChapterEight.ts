@@ -21,6 +21,7 @@ export interface ChapterEightData {
   spawn: Vector3;
   lookTarget: Vector3;
   waterPump: ChapterEightWaterPump;
+  stove: ChapterEightStove;
   trees: ChapterEightTree[];
   drops: ChapterEightDrop[];
   isFireLit(): boolean;
@@ -40,6 +41,19 @@ export interface ChapterEightWaterPump {
   handlePivot: Group;
   waterStream: Mesh;
   pumping: boolean;
+}
+
+export interface ChapterEightStove {
+  label: string;
+  interactPosition: Vector3;
+  doorPivot: Group;
+  open: boolean;
+}
+
+interface ChapterEightFireplaceVisuals {
+  flames: Group;
+  fireLight: PointLight;
+  smokePuffs: Mesh[];
 }
 
 export interface ChapterEightTree {
@@ -259,6 +273,8 @@ function createCabin(colliders: CollisionBox[]): {
   bedSurface: ChapterEightBedSurface;
   fireplacePosition: Vector3;
   waterPump: ChapterEightWaterPump;
+  stove: ChapterEightStove;
+  fireplaceVisuals: ChapterEightFireplaceVisuals;
 } {
   const cabin = new Group();
   cabin.name = 'Chapter 8 Woods Cabin';
@@ -291,6 +307,50 @@ function createCabin(colliders: CollisionBox[]): {
   const darkStoneMaterial = new MeshStandardMaterial({ color: 0x2b2925, roughness: 0.98, metalness: 0.01 });
   const ironMaterial = new MeshStandardMaterial({ color: 0x1f2324, roughness: 0.5, metalness: 0.46 });
   const wornIronMaterial = new MeshStandardMaterial({ color: 0x3b4545, roughness: 0.58, metalness: 0.42 });
+  const stoveInteriorMaterial = new MeshStandardMaterial({
+    color: 0x6c3f24,
+    emissive: 0x241006,
+    emissiveIntensity: 0.24,
+    roughness: 0.86,
+    metalness: 0.02,
+  });
+  const emberMaterial = new MeshStandardMaterial({
+    color: 0xff6a22,
+    emissive: 0xff3f0f,
+    emissiveIntensity: 1.45,
+    roughness: 0.48,
+    metalness: 0,
+  });
+  const innerFlameMaterial = new MeshStandardMaterial({
+    color: 0xffd35a,
+    emissive: 0xffa51f,
+    emissiveIntensity: 1.8,
+    roughness: 0.36,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.84,
+  });
+  const outerFlameMaterial = new MeshStandardMaterial({
+    color: 0xff6426,
+    emissive: 0xff4218,
+    emissiveIntensity: 1.4,
+    roughness: 0.4,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.68,
+  });
+  const smokeMaterial = new MeshStandardMaterial({
+    color: 0x8f8d86,
+    emissive: 0x171715,
+    emissiveIntensity: 0.06,
+    roughness: 1,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
+  });
+  const tableMaterial = new MeshStandardMaterial({ color: 0x4f321e, roughness: 0.9, metalness: 0.02 });
+  const chairMaterial = new MeshStandardMaterial({ color: 0x3a2416, roughness: 0.88, metalness: 0.02 });
   const pumpWaterMaterial = new MeshStandardMaterial({
     color: 0x8ed4ef,
     emissive: 0x1b6a85,
@@ -450,10 +510,48 @@ function createCabin(colliders: CollisionBox[]): {
   darkOpening.position.set(0, 1.1, 0.34);
   const mantle = new Mesh(new BoxGeometry(3.0, 0.28, 0.85), stoneMaterial);
   mantle.position.set(0, 2.6, 0.12);
-  fireplace.add(hearth, firebox, darkOpening, mantle);
+  const fireLogs = [
+    { x: -0.34, z: 0.46, rotationY: 0.28 },
+    { x: 0.34, z: 0.46, rotationY: -0.34 },
+    { x: 0, z: 0.38, rotationY: Math.PI / 2 },
+  ].map((logData) => {
+    const log = new Mesh(new CylinderGeometry(0.08, 0.11, 1.02, 10), tableMaterial);
+    log.position.set(logData.x, 0.62, logData.z);
+    log.rotation.z = Math.PI / 2;
+    log.rotation.y = logData.rotationY;
+    return log;
+  });
+  const emberBed = new Mesh(new CylinderGeometry(0.56, 0.72, 0.08, 20), emberMaterial);
+  emberBed.position.set(0, 0.57, 0.44);
+  emberBed.scale.z = 0.48;
+  const flames = new Group();
+  flames.position.set(0, 0.68, 0.45);
+  const flameBack = new Mesh(new ConeGeometry(0.38, 1.16, 9), outerFlameMaterial);
+  flameBack.position.set(-0.14, 0.54, -0.03);
+  flameBack.rotation.z = -0.12;
+  const flameFront = new Mesh(new ConeGeometry(0.3, 0.94, 9), innerFlameMaterial);
+  flameFront.position.set(0.16, 0.45, 0.06);
+  flameFront.rotation.z = 0.1;
+  const flameTip = new Mesh(new ConeGeometry(0.2, 0.72, 8), innerFlameMaterial);
+  flameTip.position.set(0.02, 0.72, -0.02);
+  flames.add(flameBack, flameFront, flameTip);
+  const fireLight = new PointLight(0xff8b32, 2.8, 8.5, 2.1);
+  fireLight.position.set(0, 1.16, 0.88);
+  fireplace.add(hearth, firebox, darkOpening, mantle, ...fireLogs, emberBed, flames, fireLight);
   cabin.add(fireplace);
   const chimney = addCabinBox(1.38, height + roofRise + 1.8, 1.05, 0, (height + roofRise + 1.8) / 2, -halfDepth - 0.38, stoneMaterial);
   chimney.name = 'Cabin stone chimney';
+  const smokePuffs = [0, 1, 2, 3, 4].map((index) => {
+    const puff = new Mesh(new SphereGeometry(0.38, 14, 8), smokeMaterial);
+    puff.position.set(
+      (index % 2 === 0 ? -0.08 : 0.1),
+      height + roofRise + 1.9 + index * 0.42,
+      -halfDepth - 0.38 + (index % 2 === 0 ? -0.05 : 0.08),
+    );
+    puff.scale.set(1.15 + index * 0.18, 0.58 + index * 0.06, 0.82 + index * 0.12);
+    cabin.add(puff);
+    return puff;
+  });
   addCollider(colliders, CENTER_X, CENTER_Z - halfDepth + 0.42, 3.45, 1.5);
 
   const bed = new Group();
@@ -485,11 +583,17 @@ function createCabin(colliders: CollisionBox[]): {
   const stoveBody = new Mesh(new SphereGeometry(0.76, 24, 16), ironMaterial);
   stoveBody.scale.set(1.15, 0.88, 0.78);
   stoveBody.position.y = 1.02;
+  const stoveInterior = new Mesh(new CylinderGeometry(0.29, 0.29, 0.05, 20), stoveInteriorMaterial);
+  stoveInterior.position.set(-0.7, 1.02, 0);
+  stoveInterior.rotation.z = Math.PI / 2;
+  const stoveDoorPivot = new Group();
+  stoveDoorPivot.position.set(-0.72, 1.02, -0.32);
   const stoveDoor = new Mesh(new CylinderGeometry(0.32, 0.32, 0.06, 20), darkStoneMaterial);
-  stoveDoor.position.set(-0.68, 1.02, 0);
+  stoveDoor.position.set(0.04, 0, 0.32);
   stoveDoor.rotation.z = Math.PI / 2;
   const stoveDoorHandle = new Mesh(new BoxGeometry(0.06, 0.18, 0.08), ironMaterial);
-  stoveDoorHandle.position.set(-0.73, 1.02, 0.23);
+  stoveDoorHandle.position.set(-0.02, 0, 0.55);
+  stoveDoorPivot.add(stoveDoor, stoveDoorHandle);
   const stoveTop = new Mesh(new CylinderGeometry(0.42, 0.48, 0.12, 22), ironMaterial);
   stoveTop.position.y = 1.72;
   const stoveLegs = [
@@ -507,10 +611,54 @@ function createCabin(colliders: CollisionBox[]): {
   const wallPipe = new Mesh(new CylinderGeometry(0.13, 0.13, 3.02, 16), ironMaterial);
   wallPipe.rotation.x = Math.PI / 2;
   wallPipe.position.set(0, 4.7, 1.18);
-  stove.add(stoveBody, stoveDoor, stoveDoorHandle, stoveTop, ...stoveLegs, verticalPipe, wallPipe);
+  stove.add(stoveBody, stoveInterior, stoveDoorPivot, stoveTop, ...stoveLegs, verticalPipe, wallPipe);
   cabin.add(stove);
   addCabinBox(0.72, height + roofRise + 0.9, 0.72, halfWidth - 2.45, (height + roofRise + 0.9) / 2, halfDepth + 0.44, ironMaterial);
   addCollider(colliders, CENTER_X + halfWidth - 2.45, CENTER_Z + halfDepth - 3.1, 1.85, 1.7);
+
+  const dinnerTable = new Group();
+  dinnerTable.position.set(-5.2, 0, -0.9);
+  const dinnerTop = new Mesh(new BoxGeometry(3.15, 0.2, 1.72), tableMaterial);
+  dinnerTop.position.y = 0.82;
+  const dinnerLegs = [
+    [-1.32, -0.64],
+    [1.32, -0.64],
+    [-1.32, 0.64],
+    [1.32, 0.64],
+  ].map(([legX, legZ]) => {
+    const leg = new Mesh(new BoxGeometry(0.12, 0.78, 0.12), tableMaterial);
+    leg.position.set(legX, 0.4, legZ);
+    return leg;
+  });
+  dinnerTable.add(dinnerTop, ...dinnerLegs);
+  cabin.add(dinnerTable);
+  addCollider(colliders, CENTER_X - 5.2, CENTER_Z - 0.9, 3.35, 1.95);
+
+  const addDiningChair = (localX: number, localZ: number, rotationY: number): void => {
+    const chair = new Group();
+    chair.position.set(localX, 0, localZ);
+    chair.rotation.y = rotationY;
+    const seat = new Mesh(new BoxGeometry(0.78, 0.16, 0.72), chairMaterial);
+    seat.position.y = 0.58;
+    const back = new Mesh(new BoxGeometry(0.78, 1.0, 0.14), chairMaterial);
+    back.position.set(0, 1.04, 0.34);
+    const legs = [
+      [-0.28, -0.24],
+      [0.28, -0.24],
+      [-0.28, 0.24],
+      [0.28, 0.24],
+    ].map(([legX, legZ]) => {
+      const leg = new Mesh(new BoxGeometry(0.09, 0.58, 0.09), chairMaterial);
+      leg.position.set(legX, 0.29, legZ);
+      return leg;
+    });
+    chair.add(seat, back, ...legs);
+    cabin.add(chair);
+    addCollider(colliders, CENTER_X + localX, CENTER_Z + localZ, 0.9, 0.86);
+  };
+  addDiningChair(-5.2, -2.08, 0);
+  addDiningChair(-6.95, -0.9, Math.PI / 2);
+  addDiningChair(-3.45, -0.9, -Math.PI / 2);
 
   const pump = new Group();
   pump.name = 'Cabin outdoor hand water pump';
@@ -565,6 +713,17 @@ function createCabin(colliders: CollisionBox[]): {
       handlePivot: pumpHandle,
       waterStream,
       pumping: false,
+    },
+    stove: {
+      label: 'Cast iron stove',
+      interactPosition: new Vector3(CENTER_X + halfWidth - 2.9, GAME_CONFIG.player.height, CENTER_Z + halfDepth - 3.1),
+      doorPivot: stoveDoorPivot,
+      open: false,
+    },
+    fireplaceVisuals: {
+      flames,
+      fireLight,
+      smokePuffs,
     },
   };
 }
@@ -665,7 +824,7 @@ export function createChapterEight(): ChapterEightData {
   const spawn = new Vector3(CENTER_X, GAME_CONFIG.player.height, CENTER_Z + 17);
   const lookTarget = new Vector3(CENTER_X, 1.8, CENTER_Z + 4.6);
   let elapsed = 0;
-  let fireplaceLit = false;
+  let fireplaceLit = true;
   let waterPumpTimer = 0;
 
   const removeTreeCollider = (tree: ChapterEightTree): void => {
@@ -704,6 +863,7 @@ export function createChapterEight(): ChapterEightData {
     spawn,
     lookTarget,
     waterPump: cabin.waterPump,
+    stove: cabin.stove,
     trees,
     drops,
     isFireLit() {
@@ -810,10 +970,25 @@ export function createChapterEight(): ChapterEightData {
       } else {
         cabin.waterPump.handlePivot.rotation.x += (-0.34 - cabin.waterPump.handlePivot.rotation.x) * Math.min(1, deltaSeconds * 8);
       }
+      const fireFlicker = fireplaceLit ? 1 + Math.sin(elapsed * 15.5) * 0.08 + Math.sin(elapsed * 27.0) * 0.04 : 0;
+      cabin.fireplaceVisuals.flames.visible = fireplaceLit;
+      cabin.fireplaceVisuals.fireLight.visible = fireplaceLit;
+      cabin.fireplaceVisuals.flames.scale.set(1.0 + fireFlicker * 0.04, 0.9 + fireFlicker * 0.12, 1.0 + fireFlicker * 0.03);
+      cabin.fireplaceVisuals.fireLight.intensity = fireplaceLit ? 2.15 + fireFlicker * 0.7 : 0;
+      cabin.fireplaceVisuals.smokePuffs.forEach((puff, index) => {
+        const travel = (elapsed * 0.16 + index * 0.22) % 1;
+        puff.visible = fireplaceLit;
+        puff.position.y = 8.95 + travel * 2.1;
+        puff.position.x = Math.sin(elapsed * 0.8 + index) * 0.22;
+        puff.position.z = -7.38 + Math.cos(elapsed * 0.62 + index * 0.7) * 0.18;
+        const puffScale = 0.82 + travel * 1.45;
+        puff.scale.set(puffScale * 1.25, puffScale * 0.58, puffScale);
+      });
+      cabin.stove.doorPivot.rotation.y += ((cabin.stove.open ? -1.25 : 0) - cabin.stove.doorPivot.rotation.y) * Math.min(1, deltaSeconds * 8);
     },
     reset() {
       elapsed = 0;
-      fireplaceLit = false;
+      fireplaceLit = true;
       waterPumpTimer = 0;
       drops.forEach((drop) => {
         drop.active = false;
@@ -836,6 +1011,8 @@ export function createChapterEight(): ChapterEightData {
       cabin.waterPump.handlePivot.rotation.x = -0.34;
       cabin.waterPump.waterStream.visible = false;
       cabin.waterPump.waterStream.scale.setScalar(1);
+      cabin.stove.open = false;
+      cabin.stove.doorPivot.rotation.y = 0;
       root.visible = false;
     },
   };

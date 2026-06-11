@@ -10760,6 +10760,17 @@ export class Game {
   }
 
   private handleChapterEightInteract(): void {
+    if (this.isNearChapterEightStove()) {
+      this.chapterEight.stove.open = !this.chapterEight.stove.open;
+      this.pushStatus(
+        this.chapterEight.stove.open
+          ? 'You open the cast iron stove and see the brown firebox inside.'
+          : 'You close the cast iron stove.',
+        2.0,
+      );
+      return;
+    }
+
     if (this.isNearChapterEightWaterPump()) {
       this.chapterEight.activateWaterPump();
       this.pushStatus('You pump the handle. Water starts pouring from the spout.', 2.2);
@@ -10771,6 +10782,10 @@ export class Game {
 
   private isNearChapterEightWaterPump(): boolean {
     return this.player.getPosition().distanceTo(this.chapterEight.waterPump.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.8;
+  }
+
+  private isNearChapterEightStove(): boolean {
+    return this.player.getPosition().distanceTo(this.chapterEight.stove.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.55;
   }
 
   private handleOfficePrizeFire(): boolean {
@@ -14495,6 +14510,12 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
+      if (locked && this.isNearChapterEightStove()) {
+        return this.chapterEight.stove.open
+          ? 'Press E to close the cast iron stove.'
+          : 'Press E to open the cast iron stove.';
+      }
+
       if (locked && this.isNearChapterEightWaterPump()) {
         return this.chapterEight.waterPump.pumping
           ? 'The pump handle is moving and water is pouring from the spout.'
@@ -20354,7 +20375,7 @@ export class Game {
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);
     this.pushStatus(
-      'Chapter 8: The Woods loaded. You start with the Coordinate Tool and Military Knife. Left click slashes; right click stabs. The cabin fireplace is unlit.',
+      'Chapter 8: The Woods loaded. You start with the Coordinate Tool and Military Knife. Left click slashes; right click stabs. The cabin fireplace is burning.',
       3.2,
     );
     this.resize();
