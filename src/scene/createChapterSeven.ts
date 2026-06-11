@@ -199,6 +199,10 @@ const HOUSE_MARKER_SHORT_WALL_START_Z = -18.69;
 const HOUSE_MARKER_SHORT_WALL_LENGTH = 8;
 const HOUSE_FRIDGE_X = 7.94;
 const HOUSE_FRIDGE_Z = -17.35;
+const HOUSE_REAR_ROOM_DOOR_X = 1209.28 - CENTER_X;
+const HOUSE_REAR_ROOM_DOOR_Z = 61.31 - HOUSE_CENTER_Z;
+const HOUSE_REAR_ROOM_WIDTH = 12.4;
+const HOUSE_REAR_ROOM_DEPTH = 10.2;
 const HOUSE_ROOF_RISE = 6.2;
 const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
@@ -2228,6 +2232,8 @@ export function createChapterSeven(): ChapterSevenData {
   };
 
   const frontRightWindowX = Math.min(1226.75 - CENTER_X, HOUSE_WIDTH / 2 - 1.45);
+  const rearRoomDoorWidth = HOUSE_ROOM_DOOR_WIDTH;
+  const rearRoomDoorHalfWidth = rearRoomDoorWidth / 2;
   addExteriorWallWithOpenings(-HOUSE_DEPTH / 2, [
     {
       centerX: 1224.76 - CENTER_X,
@@ -2241,13 +2247,72 @@ export function createChapterSeven(): ChapterSevenData {
       width: 2.9,
       height: 1.9,
     },
+    {
+      centerX: HOUSE_REAR_ROOM_DOOR_X,
+      centerY: HOUSE_ROOM_DOOR_HEIGHT / 2,
+      width: rearRoomDoorWidth,
+      height: HOUSE_ROOM_DOOR_HEIGHT,
+    },
   ]);
-  addCollider(colliders, CENTER_X, HOUSE_BACK_Z, HOUSE_WIDTH, HOUSE_WALL_THICKNESS);
+  const rearDoorLeftX = HOUSE_REAR_ROOM_DOOR_X - rearRoomDoorHalfWidth;
+  const rearDoorRightX = HOUSE_REAR_ROOM_DOOR_X + rearRoomDoorHalfWidth;
+  const backWallLeftSegmentWidth = rearDoorLeftX + HOUSE_WIDTH / 2;
+  const backWallRightSegmentWidth = HOUSE_WIDTH / 2 - rearDoorRightX;
+  if (backWallLeftSegmentWidth > 0.05) {
+    addCollider(
+      colliders,
+      CENTER_X - HOUSE_WIDTH / 2 + backWallLeftSegmentWidth / 2,
+      HOUSE_BACK_Z,
+      backWallLeftSegmentWidth,
+      HOUSE_WALL_THICKNESS,
+    );
+  }
+  if (backWallRightSegmentWidth > 0.05) {
+    addCollider(
+      colliders,
+      CENTER_X + rearDoorRightX + backWallRightSegmentWidth / 2,
+      HOUSE_BACK_Z,
+      backWallRightSegmentWidth,
+      HOUSE_WALL_THICKNESS,
+    );
+  }
   addHouseWall(
     HOUSE_MARKER_SHORT_WALL_X,
     HOUSE_MARKER_SHORT_WALL_START_Z + HOUSE_MARKER_SHORT_WALL_LENGTH / 2,
     HOUSE_INTERIOR_WALL_THICKNESS,
     HOUSE_MARKER_SHORT_WALL_LENGTH,
+  );
+  const rearRoomCenterZ = HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH / 2;
+  const rearRoomBackZ = HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH;
+  const rearRoomFloor = new Mesh(
+    new BoxGeometry(HOUSE_REAR_ROOM_WIDTH + 0.8, 0.16, HOUSE_REAR_ROOM_DEPTH + 0.8),
+    houseTrimMaterial,
+  );
+  rearRoomFloor.position.set(HOUSE_REAR_ROOM_DOOR_X, 0.08, rearRoomCenterZ);
+  house.add(rearRoomFloor);
+  const rearRoomCeiling = new Mesh(
+    new BoxGeometry(HOUSE_REAR_ROOM_WIDTH + HOUSE_WALL_THICKNESS, 0.22, HOUSE_REAR_ROOM_DEPTH + HOUSE_WALL_THICKNESS),
+    houseTrimMaterial,
+  );
+  rearRoomCeiling.position.set(HOUSE_REAR_ROOM_DOOR_X, HOUSE_HEIGHT + 0.02, rearRoomCenterZ);
+  house.add(rearRoomCeiling);
+  addHouseWall(
+    HOUSE_REAR_ROOM_DOOR_X - HOUSE_REAR_ROOM_WIDTH / 2,
+    rearRoomCenterZ,
+    HOUSE_WALL_THICKNESS,
+    HOUSE_REAR_ROOM_DEPTH + HOUSE_WALL_THICKNESS,
+  );
+  addHouseWall(
+    HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2,
+    rearRoomCenterZ,
+    HOUSE_WALL_THICKNESS,
+    HOUSE_REAR_ROOM_DEPTH + HOUSE_WALL_THICKNESS,
+  );
+  addHouseWall(
+    HOUSE_REAR_ROOM_DOOR_X,
+    rearRoomBackZ,
+    HOUSE_REAR_ROOM_WIDTH + HOUSE_WALL_THICKNESS,
+    HOUSE_WALL_THICKNESS,
   );
 
   const leftWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, HOUSE_DEPTH), houseWallMaterial);
@@ -2443,6 +2508,21 @@ export function createChapterSeven(): ChapterSevenData {
       HOUSE_ROOM_DOOR_WIDTH,
       HOUSE_LEFT_ROOM_WALL_X + 2.25,
       HOUSE_BACK_ROOM_DOOR_Z,
+      1,
+    ),
+    createHouseDoor(
+      'Rear Connected Room Door',
+      'front',
+      HOUSE_REAR_ROOM_DOOR_X - rearRoomDoorHalfWidth,
+      HOUSE_REAR_ROOM_DOOR_Z - 0.06,
+      rearRoomDoorWidth,
+      HOUSE_ROOM_DOOR_HEIGHT,
+      HOUSE_REAR_ROOM_DOOR_X,
+      HOUSE_REAR_ROOM_DOOR_Z,
+      rearRoomDoorWidth,
+      HOUSE_WALL_THICKNESS,
+      HOUSE_REAR_ROOM_DOOR_X,
+      HOUSE_REAR_ROOM_DOOR_Z - 2.1,
       1,
     ),
   );
