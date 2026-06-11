@@ -856,6 +856,7 @@ export class Game {
   private readonly chapterFourBoxWideAnchor = new Group();
   private readonly chapterSevenBoxHideAnchor = new Group();
   private readonly chapterSevenOvenHideAnchor = new Group();
+  private readonly chapterSevenOvenDoorOverlay = new Group();
   private readonly chapterFourBlueJumpscareAnchor = new Group();
   private readonly chapterFourBlueJumpscareHead = new Group();
   private readonly chapterFourBlueJumpscareMaw = new Group();
@@ -1274,6 +1275,7 @@ export class Game {
     this.camera.add(this.chapterSevenOvenHideAnchor);
     this.chapterSevenOvenHideAnchor.position.set(0, -0.08, -0.34);
     this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
     this.createChapterSevenOvenHideModel();
     this.camera.add(this.chapterFourBlueJumpscareAnchor);
     this.createChapterFourBlueJumpscareModel();
@@ -3861,6 +3863,14 @@ export class Game {
     doorFrameRight.position.x = 0.48;
     const glassWindow = new Mesh(new PlaneGeometry(0.82, 0.52), glassMaterial);
     glassWindow.position.set(0, -0.04, -0.525);
+    this.chapterSevenOvenDoorOverlay.visible = false;
+    this.chapterSevenOvenDoorOverlay.add(
+      doorFrameTop,
+      doorFrameBottom,
+      doorFrameLeft,
+      doorFrameRight,
+      glassWindow,
+    );
 
     this.chapterSevenOvenHideAnchor.add(
       backWall,
@@ -3868,11 +3878,7 @@ export class Game {
       rightWall,
       topWall,
       bottomWall,
-      doorFrameTop,
-      doorFrameBottom,
-      doorFrameLeft,
-      doorFrameRight,
-      glassWindow,
+      this.chapterSevenOvenDoorOverlay,
     );
   }
 
@@ -9426,6 +9432,8 @@ export class Game {
       && !this.chapterMenuOpen
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen;
+    this.chapterSevenOvenDoorOverlay.visible = this.chapterSevenOvenHideAnchor.visible
+      && this.chapterSevenOvenHidden;
   }
 
   private updateChapterFourBlueJumpscareModel(): void {
@@ -17728,6 +17736,7 @@ export class Game {
     this.gameplaySfxAudio.playClosetDoor(false);
     this.chapterSevenBoxHideAnchor.visible = false;
     this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
     this.pushStatus('You close the Amazon cardboard box around yourself. Press E to open it again.', 2.6);
   }
 
@@ -17740,6 +17749,7 @@ export class Game {
     this.gameplaySfxAudio.playClosetDoor(true);
     this.chapterSevenBoxHideAnchor.visible = false;
     this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
     this.pushStatus('The cardboard box opens. Hold S to crawl and jump out.', 2.6);
   }
 
@@ -17759,6 +17769,7 @@ export class Game {
     oven.open = false;
     oven.collider.enabled = false;
     this.chapterSevenOvenHideAnchor.visible = true;
+    this.chapterSevenOvenDoorOverlay.visible = true;
     this.gameplaySfxAudio.playClosetDoor(false);
     this.pushStatus('You pull the oven door closed. You can look out through the glass. Press E to open it again.', 2.8);
   }
@@ -17770,6 +17781,7 @@ export class Game {
     oven.open = true;
     oven.collider.enabled = false;
     this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
     this.gameplaySfxAudio.playClosetDoor(true);
     this.pushStatus('The oven door folds open. Hold S to crawl back out.', 2.6);
   }
@@ -20494,6 +20506,7 @@ export class Game {
     this.chapterFourBoxWorldAnchor.visible = false;
     this.chapterSevenBoxHideAnchor.visible = false;
     this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
     this.chapterTwoKeycards.clear();
     this.chapterTwoPuzzlePiecesCollected = 0;
     this.chapterTwoRedPuzzleSolved = false;
@@ -20745,6 +20758,7 @@ export class Game {
     this.chapterFourBoxWorldAnchor.visible = false;
     this.chapterSevenBoxHideAnchor.visible = false;
     this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
     this.chapterTwoKeycards.clear();
     this.chapterTwoPuzzlePiecesCollected = 0;
     this.chapterTwoRedPuzzleSolved = false;
