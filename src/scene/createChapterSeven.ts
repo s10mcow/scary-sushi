@@ -675,6 +675,81 @@ export function createChapterSeven(): ChapterSevenData {
       side: DoubleSide,
     });
   })();
+  const createFamilyPictureMaterial = (subject: 'baby' | 'swing'): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = subject === 'baby' ? '#f3d7df' : '#b7d8ef';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      if (subject === 'baby') {
+        context.fillStyle = '#f6cfae';
+        context.beginPath();
+        context.ellipse(128, 74, 40, 34, 0, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#6d4b36';
+        context.beginPath();
+        context.arc(114, 70, 4, 0, Math.PI * 2);
+        context.arc(142, 70, 4, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = '#6d4b36';
+        context.lineWidth = 3;
+        context.beginPath();
+        context.moveTo(118, 88);
+        context.quadraticCurveTo(128, 96, 140, 88);
+        context.stroke();
+        context.fillStyle = '#fff7ed';
+        context.beginPath();
+        context.ellipse(128, 130, 54, 34, 0, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#86a8d8';
+        context.beginPath();
+        context.ellipse(128, 125, 42, 24, 0, 0, Math.PI * 2);
+        context.fill();
+      } else {
+        context.fillStyle = '#79b65f';
+        context.fillRect(0, 128, canvas.width, 48);
+        context.strokeStyle = '#6b4a2f';
+        context.lineWidth = 7;
+        context.beginPath();
+        context.moveTo(84, 18);
+        context.lineTo(84, 96);
+        context.moveTo(172, 18);
+        context.lineTo(172, 96);
+        context.stroke();
+        context.fillStyle = '#6b4a2f';
+        context.fillRect(96, 96, 64, 10);
+        context.fillStyle = '#f0bc8f';
+        context.beginPath();
+        context.arc(128, 70, 18, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#3f5fb5';
+        context.fillRect(112, 88, 32, 34);
+        context.strokeStyle = '#3a2b25';
+        context.lineWidth = 5;
+        context.beginPath();
+        context.moveTo(116, 122);
+        context.lineTo(106, 144);
+        context.moveTo(140, 122);
+        context.lineTo(152, 144);
+        context.stroke();
+      }
+      context.strokeStyle = 'rgba(255,255,255,0.45)';
+      context.lineWidth = 8;
+      context.strokeRect(18, 14, canvas.width - 36, canvas.height - 28);
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  };
+  const babyPortraitMaterial = createFamilyPictureMaterial('baby');
+  const swingPortraitMaterial = createFamilyPictureMaterial('swing');
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -3138,6 +3213,8 @@ export function createChapterSeven(): ChapterSevenData {
   const oldWoodenClosets = [oldWoodenCloset, frontBedroomOldWoodenCloset, rearBedroomOldWoodenCloset];
   addPictureFrame(1193.33 - CENTER_X, 2.4, 84.23 - HOUSE_CENTER_Z, 1, dogPortraitMaterial);
   addPictureFrame(1197.89 - CENTER_X, 2.46, 83.77 - HOUSE_CENTER_Z, -1, catPortraitMaterial);
+  addSidePictureFrame(1217.94 - CENTER_X, 2.03, 92.24 - HOUSE_CENTER_Z, -1, babyPortraitMaterial);
+  addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
     1187.12 - CENTER_X,
