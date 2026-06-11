@@ -670,13 +670,25 @@ export function createChapterSeven(): ChapterSevenData {
         context.beginPath();
         context.moveTo(68, 125);
         context.lineTo(38, 151);
-        context.moveTo(108, 128);
-        context.lineTo(136, 154);
         context.moveTo(157, 116);
         context.lineTo(200, 139);
         context.moveTo(184, 111);
         context.lineTo(224, 92);
         context.stroke();
+
+        context.strokeStyle = '#edbc98';
+        context.lineWidth = 16;
+        context.beginPath();
+        context.moveTo(94, 128);
+        context.quadraticCurveTo(108, 148, 126, 135);
+        context.moveTo(135, 126);
+        context.quadraticCurveTo(151, 151, 169, 137);
+        context.stroke();
+        context.fillStyle = '#f6cfae';
+        context.beginPath();
+        context.ellipse(126, 136, 13, 9, -0.28, 0, Math.PI * 2);
+        context.ellipse(169, 137, 13, 9, -0.2, 0, Math.PI * 2);
+        context.fill();
 
         context.fillStyle = '#fff7ed';
         context.beginPath();
@@ -699,6 +711,13 @@ export function createChapterSeven(): ChapterSevenData {
         context.beginPath();
         context.ellipse(192, 58, 23, 8, -0.18, Math.PI, Math.PI * 2);
         context.fill();
+        context.strokeStyle = '#6d4b36';
+        context.lineWidth = 4;
+        context.beginPath();
+        context.moveTo(194, 51);
+        context.bezierCurveTo(207, 39, 219, 50, 210, 60);
+        context.bezierCurveTo(204, 67, 194, 61, 201, 55);
+        context.stroke();
         context.fillStyle = '#6d4b36';
         context.beginPath();
         context.arc(181, 79, 4.5, 0, Math.PI * 2);
@@ -709,19 +728,6 @@ export function createChapterSeven(): ChapterSevenData {
         context.beginPath();
         context.moveTo(183, 98);
         context.quadraticCurveTo(194, 106, 207, 96);
-        context.stroke();
-        context.fillStyle = '#d62828';
-        context.beginPath();
-        context.ellipse(204, 53, 11, 8, -0.22, 0, Math.PI * 2);
-        context.fill();
-        context.fillStyle = '#ffb3a8';
-        context.beginPath();
-        context.ellipse(207, 51, 4, 2.2, -0.22, 0, Math.PI * 2);
-        context.fill();
-        context.strokeStyle = 'rgba(116, 15, 15, 0.55)';
-        context.lineWidth = 1.5;
-        context.beginPath();
-        context.arc(204, 53, 11, 0, Math.PI * 2);
         context.stroke();
       } else {
         context.fillStyle = '#79b65f';
