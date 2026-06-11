@@ -778,6 +778,7 @@ type ChapterSevenInteractable =
   | { kind: 'old-wooden-closet'; item: ChapterSevenData['oldWoodenClosets'][number]; score: number }
   | { kind: 'cardboard-box'; item: ChapterSevenData['cardboardBox']; score: number }
   | { kind: 'kitchen-sink'; item: ChapterSevenData['kitchenSink']; score: number }
+  | { kind: 'rear-fixture'; item: ChapterSevenData['rearFixtures'][number]; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
 type ChapterEightHeldItem = 'coordinate-tool' | 'axe' | 'sack' | 'empty';
@@ -10449,6 +10450,20 @@ export class Game {
         return;
       }
 
+      if (interactable?.kind === 'rear-fixture') {
+        const fixture = interactable.item;
+        fixture.targetOpenAmount = fixture.targetOpenAmount > 0.5 ? 0 : 1;
+        fixture.open = fixture.targetOpenAmount > 0.5;
+        this.gameplaySfxAudio.playClosetDoor(fixture.open);
+        this.pushStatus(
+          fixture.open
+            ? `${fixture.label} opens.`
+            : `${fixture.label} closes.`,
+          2.2,
+        );
+        return;
+      }
+
       if (interactable?.kind === 'oven') {
         const oven = interactable.item;
         oven.targetOpenAmount = oven.targetOpenAmount > 0.5 ? 0 : 1;
@@ -10463,7 +10478,7 @@ export class Game {
         return;
       }
 
-      this.pushStatus('Look directly at the fridge, oven, cupboard, drawer, cardboard box, or wooden closet you want, then press E.', 2.6);
+      this.pushStatus('Look directly at the fridge, oven, cupboard, drawer, cardboard box, wooden closet, or rear-room fixture you want, then press E.', 2.6);
       return;
     }
 
@@ -14564,6 +14579,12 @@ export class Game {
             : 'Press E to open the old wooden closet.';
         }
 
+        if (interactable.kind === 'rear-fixture') {
+          return interactable.item.open
+            ? `Press E to close ${interactable.item.label}.`
+            : `Press E to open ${interactable.item.label}.`;
+        }
+
         return interactable.item.open
           ? 'Press E to close the oven.'
           : 'Press E to open the oven.';
@@ -15272,6 +15293,12 @@ export class Game {
           return interactable.item.open
             ? 'The old wooden closet is open. You can walk inside, or press E to close it.'
             : 'The old wooden closet is closed. Press E to open it.';
+        }
+
+        if (interactable.kind === 'rear-fixture') {
+          return interactable.item.open
+            ? `${interactable.item.label} is open. Press E to close it.`
+            : `${interactable.item.label} is closed. Press E to open it.`;
         }
 
         return interactable.item.open
@@ -17546,6 +17573,13 @@ export class Game {
     if (sinkScore !== null) {
       keepBest({ kind: 'kitchen-sink', item: this.chapterSeven.kitchenSink, score: sinkScore });
     }
+
+    this.chapterSeven.rearFixtures.forEach((fixture) => {
+      const fixtureScore = this.getChapterSevenLookScore(fixture, 0.62, 1.15);
+      if (fixtureScore !== null) {
+        keepBest({ kind: 'rear-fixture', item: fixture, score: fixtureScore });
+      }
+    });
 
     this.chapterSeven.houseDrawers.forEach((drawer) => {
       const drawerScore = this.getChapterSevenLookScore(drawer, 0.23, 0.85);

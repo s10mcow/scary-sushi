@@ -38,6 +38,7 @@ export interface ChapterSevenData {
   oldWoodenClosets: ChapterSevenOldWoodenCloset[];
   cardboardBox: ChapterSevenCardboardBox;
   kitchenSink: ChapterSevenKitchenSink;
+  rearFixtures: ChapterSevenRearFixture[];
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
   isPlayerUnderBed(position: Vector3): boolean;
   update(deltaSeconds: number, playerPosition?: Vector3): void;
@@ -133,6 +134,19 @@ export interface ChapterSevenKitchenSink {
   aimPosition: Vector3;
   handlePivot: Group;
   waterStream: Mesh;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
+}
+
+export interface ChapterSevenRearFixture {
+  label: string;
+  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer';
+  interactPosition: Vector3;
+  aimPosition: Vector3;
+  doorPivots: Group[];
+  collider: CollisionBox;
+  animation: 'toilet-lid' | 'double-door' | 'front-door';
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
@@ -657,6 +671,29 @@ export function createChapterSeven(): ChapterSevenData {
     emissiveIntensity: 0.05,
     roughness: 0.36,
     metalness: 0.22,
+  });
+  const porcelainMaterial = new MeshStandardMaterial({
+    color: 0xf4f3ec,
+    emissive: 0x161612,
+    emissiveIntensity: 0.035,
+    roughness: 0.42,
+    metalness: 0.02,
+  });
+  const applianceWhiteMaterial = new MeshStandardMaterial({
+    color: 0xe9ece7,
+    emissive: 0x111310,
+    emissiveIntensity: 0.04,
+    roughness: 0.58,
+    metalness: 0.04,
+  });
+  const applianceGlassMaterial = new MeshStandardMaterial({
+    color: 0x6d8792,
+    emissive: 0x0b1518,
+    emissiveIntensity: 0.08,
+    roughness: 0.16,
+    metalness: 0.16,
+    transparent: true,
+    opacity: 0.72,
   });
   const faucetMaterial = new MeshStandardMaterial({
     color: 0xc8d1d4,
@@ -2118,6 +2155,198 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
+  const addToilet = (localX: number, localZ: number): ChapterSevenRearFixture => {
+    const toilet = new Group();
+    toilet.position.set(localX, 0, localZ);
+
+    const tank = new Mesh(new BoxGeometry(1.42, 1.18, 0.44), porcelainMaterial);
+    tank.position.set(0, 1.08, -0.54);
+    const tankLid = new Mesh(new BoxGeometry(1.52, 0.12, 0.52), porcelainMaterial);
+    tankLid.position.set(0, 1.72, -0.54);
+    const base = new Mesh(new CylinderGeometry(0.44, 0.58, 0.5, 22), porcelainMaterial);
+    base.position.set(0, 0.25, 0.18);
+    base.scale.z = 0.72;
+    const bowl = new Mesh(new CylinderGeometry(0.58, 0.5, 0.38, 28), porcelainMaterial);
+    bowl.position.set(0, 0.72, 0.18);
+    bowl.scale.z = 0.78;
+    const water = new Mesh(new CylinderGeometry(0.38, 0.34, 0.035, 24), faucetWaterMaterial);
+    water.position.set(0, 0.94, 0.18);
+    water.scale.z = 0.7;
+    const lidPivot = new Group();
+    lidPivot.position.set(0, 1.02, -0.18);
+    const lid = new Mesh(new BoxGeometry(1.06, 0.08, 0.9), porcelainMaterial);
+    lid.position.set(0, 0.03, 0.42);
+    const seat = new Mesh(new CylinderGeometry(0.56, 0.56, 0.055, 28), porcelainMaterial);
+    seat.scale.z = 0.72;
+    seat.rotation.x = Math.PI / 2;
+    seat.position.set(0, 0.07, 0.42);
+    lidPivot.add(lid, seat);
+    toilet.add(tank, tankLid, base, bowl, water, lidPivot);
+    house.add(toilet);
+
+    const collider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.55, 1.72);
+    return {
+      label: 'Toilet lid',
+      kind: 'toilet',
+      interactPosition: new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + 1.1),
+      aimPosition: new Vector3(CENTER_X + localX, 1.05, HOUSE_CENTER_Z + localZ + 0.14),
+      doorPivots: [lidPivot],
+      collider,
+      animation: 'toilet-lid',
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
+  };
+
+  const addBathroomSinkFixture = (localX: number, localZ: number): ChapterSevenRearFixture => {
+    const sink = new Group();
+    sink.position.set(localX, 0, localZ);
+
+    const width = 2.16;
+    const depth = 1.18;
+    const baseHeight = 1.18;
+    const cabinetBack = new Mesh(new BoxGeometry(width, baseHeight, 0.12), porcelainMaterial);
+    cabinetBack.position.set(0, baseHeight / 2, -depth / 2 + 0.06);
+    const cabinetLeft = new Mesh(new BoxGeometry(0.12, baseHeight, depth), porcelainMaterial);
+    cabinetLeft.position.set(-width / 2 + 0.06, baseHeight / 2, 0);
+    const cabinetRight = cabinetLeft.clone();
+    cabinetRight.position.x = width / 2 - 0.06;
+    const cabinetBottom = new Mesh(new BoxGeometry(width, 0.12, depth), porcelainMaterial);
+    cabinetBottom.position.set(0, 0.06, 0);
+    const counter = new Mesh(new BoxGeometry(width + 0.18, 0.16, depth + 0.18), counterTopMaterial);
+    counter.position.y = baseHeight + 0.1;
+    const basin = new Mesh(new CylinderGeometry(0.45, 0.52, 0.18, 28), sinkBasinMaterial);
+    basin.scale.z = 0.66;
+    basin.position.set(0, baseHeight + 0.24, 0.08);
+    const drain = new Mesh(new CylinderGeometry(0.07, 0.07, 0.02, 14), fridgeSealMaterial);
+    drain.position.set(0, baseHeight + 0.34, 0.08);
+    const faucetBase = new Mesh(new CylinderGeometry(0.09, 0.09, 0.12, 14), faucetMaterial);
+    faucetBase.position.set(0, baseHeight + 0.29, -0.28);
+    const faucetNeck = new Mesh(new CylinderGeometry(0.055, 0.055, 0.44, 12), faucetMaterial);
+    faucetNeck.position.set(0, baseHeight + 0.52, -0.24);
+    const faucetSpout = new Mesh(new CylinderGeometry(0.045, 0.045, 0.38, 12), faucetMaterial);
+    faucetSpout.rotation.x = Math.PI / 2;
+    faucetSpout.position.set(0, baseHeight + 0.72, -0.04);
+
+    const leftDoorPivot = new Group();
+    leftDoorPivot.position.set(-width / 2, 0, depth / 2 + 0.06);
+    const leftDoor = new Mesh(new BoxGeometry(width / 2, 0.96, 0.07), porcelainMaterial);
+    leftDoor.position.set(width / 4, 0.62, 0);
+    const leftHandle = new Mesh(new BoxGeometry(0.055, 0.28, 0.065), faucetMaterial);
+    leftHandle.position.set(width / 2 - 0.18, 0.64, 0.07);
+    leftDoorPivot.add(leftDoor, leftHandle);
+    const rightDoorPivot = new Group();
+    rightDoorPivot.position.set(width / 2, 0, depth / 2 + 0.06);
+    const rightDoor = new Mesh(new BoxGeometry(width / 2, 0.96, 0.07), porcelainMaterial);
+    rightDoor.position.set(-width / 4, 0.62, 0);
+    const rightHandle = leftHandle.clone();
+    rightHandle.position.x = -(width / 2 - 0.18);
+    rightDoorPivot.add(rightDoor, rightHandle);
+
+    sink.add(
+      cabinetBack,
+      cabinetLeft,
+      cabinetRight,
+      cabinetBottom,
+      counter,
+      basin,
+      drain,
+      faucetBase,
+      faucetNeck,
+      faucetSpout,
+      leftDoorPivot,
+      rightDoorPivot,
+    );
+    house.add(sink);
+
+    const collider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.18, depth + 0.18);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: (width + 0.18) / 2,
+      halfDepth: (depth + 0.18) / 2,
+      floorY: baseHeight + 0.23,
+      collider,
+    });
+    return {
+      label: 'Bathroom sink cabinet',
+      kind: 'bathroom-sink',
+      interactPosition: new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + depth / 2 + 0.85),
+      aimPosition: new Vector3(CENTER_X + localX, 0.8, HOUSE_CENTER_Z + localZ + depth / 2 + 0.08),
+      doorPivots: [leftDoorPivot, rightDoorPivot],
+      collider,
+      animation: 'double-door',
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
+  };
+
+  const addLaundryAppliance = (
+    localX: number,
+    localZ: number,
+    kind: 'washing-machine' | 'dryer',
+  ): ChapterSevenRearFixture => {
+    const appliance = new Group();
+    appliance.position.set(localX, 0, localZ);
+
+    const width = 1.82;
+    const depth = 1.34;
+    const height = 1.88;
+    const body = new Mesh(new BoxGeometry(width, height, depth), applianceWhiteMaterial);
+    body.position.y = height / 2;
+    const top = new Mesh(new BoxGeometry(width + 0.08, 0.1, depth + 0.08), porcelainMaterial);
+    top.position.y = height + 0.05;
+    const controlPanel = new Mesh(new BoxGeometry(width - 0.16, 0.24, 0.08), fridgeSealMaterial);
+    controlPanel.position.set(0, height - 0.18, depth / 2 + 0.045);
+    const knob = new Mesh(new CylinderGeometry(0.12, 0.12, 0.045, 16), faucetMaterial);
+    knob.rotation.x = Math.PI / 2;
+    knob.position.set(0.52, height - 0.18, depth / 2 + 0.1);
+    const display = new Mesh(new BoxGeometry(0.48, 0.11, 0.045), kind === 'dryer' ? applianceGlassMaterial : faucetWaterMaterial);
+    display.position.set(-0.38, height - 0.18, depth / 2 + 0.1);
+
+    const doorPivot = new Group();
+    doorPivot.position.set(-0.52, 0.82, depth / 2 + 0.07);
+    const doorPanel = new Mesh(new CylinderGeometry(0.52, 0.52, 0.1, 28), applianceWhiteMaterial);
+    doorPanel.rotation.x = Math.PI / 2;
+    doorPanel.position.x = 0.52;
+    const doorWindow = new Mesh(new CylinderGeometry(0.34, 0.34, 0.11, 24), applianceGlassMaterial);
+    doorWindow.rotation.x = Math.PI / 2;
+    doorWindow.position.set(0.52, 0, 0.012);
+    const handle = new Mesh(new BoxGeometry(0.08, 0.34, 0.07), fridgeSealMaterial);
+    handle.position.set(0.94, 0, 0.08);
+    doorPivot.add(doorPanel, doorWindow, handle);
+
+    const lowerPanel = new Mesh(new BoxGeometry(width - 0.18, 0.18, 0.05), fridgeSealMaterial);
+    lowerPanel.position.set(0, 0.22, depth / 2 + 0.045);
+    if (kind === 'dryer') {
+      const ventRows = [-0.18, 0, 0.18].map((rowY) => {
+        const vent = new Mesh(new BoxGeometry(0.72, 0.035, 0.05), fridgeSealMaterial);
+        vent.position.set(0, 0.44 + rowY, depth / 2 + 0.08);
+        return vent;
+      });
+      appliance.add(...ventRows);
+    }
+
+    appliance.add(body, top, controlPanel, knob, display, doorPivot, lowerPanel);
+    house.add(appliance);
+
+    const collider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.12, depth + 0.12);
+    return {
+      label: kind === 'washing-machine' ? 'Washing machine' : 'Dryer',
+      kind,
+      interactPosition: new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + depth / 2 + 0.82),
+      aimPosition: new Vector3(CENTER_X + localX, 0.92, HOUSE_CENTER_Z + localZ + depth / 2 + 0.08),
+      doorPivots: [doorPivot],
+      collider,
+      animation: 'front-door',
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
+  };
+
   const addStove = (localX: number, localZ: number): ChapterSevenOven => {
     const stove = new Group();
     stove.position.set(localX, 0, localZ);
@@ -2594,6 +2823,12 @@ export function createChapterSeven(): ChapterSevenData {
   ];
   const houseOven = addStove(HOUSE_FRIDGE_X + 4.7, HOUSE_FRIDGE_Z);
   const kitchenSink = addKitchenSink(HOUSE_FRIDGE_X + 9.1, HOUSE_FRIDGE_Z, 2.05);
+  const rearFixtures = [
+    addToilet(1213.48 - CENTER_X, 53.37 - HOUSE_CENTER_Z),
+    addBathroomSinkFixture(1209.94 - CENTER_X, 53.54 - HOUSE_CENTER_Z),
+    addLaundryAppliance(1205.13 - CENTER_X, 53.30 - HOUSE_CENTER_Z, 'washing-machine'),
+    addLaundryAppliance(1204.85 - CENTER_X, 55.97 - HOUSE_CENTER_Z, 'dryer'),
+  ];
   const kitchenUpperCupboards = [
     addUpperCupboard(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z, 1.62, 'Upper cupboards over the fridge'),
     addUpperCupboard(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.1, 'Upper cupboards over the counter'),
@@ -2956,6 +3191,7 @@ export function createChapterSeven(): ChapterSevenData {
     oldWoodenClosets,
     cardboardBox,
     kitchenSink,
+    rearFixtures,
     getSupportedFloorY(position: Vector3, crawling = false): number | null {
       const insideForest = position.x >= CENTER_X - HALF_SIZE
         && position.x <= CENTER_X + HALF_SIZE
@@ -3138,6 +3374,26 @@ export function createChapterSeven(): ChapterSevenData {
       kitchenSink.waterStream.visible = kitchenSink.openAmount > 0.03;
       kitchenSink.waterStream.scale.y = Math.max(0.01, kitchenSink.openAmount);
       kitchenSink.open = kitchenSink.targetOpenAmount > 0.5;
+
+      rearFixtures.forEach((fixture) => {
+        const fixtureDelta = fixture.targetOpenAmount - fixture.openAmount;
+        if (Math.abs(fixtureDelta) > 0.001) {
+          const step = Math.min(Math.abs(fixtureDelta), deltaSeconds * 4.0) * Math.sign(fixtureDelta);
+          fixture.openAmount += step;
+        } else {
+          fixture.openAmount = fixture.targetOpenAmount;
+        }
+
+        if (fixture.animation === 'toilet-lid') {
+          fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.62;
+        } else if (fixture.animation === 'double-door') {
+          fixture.doorPivots[0].rotation.y = -fixture.openAmount * Math.PI * 0.52;
+          fixture.doorPivots[1].rotation.y = fixture.openAmount * Math.PI * 0.52;
+        } else {
+          fixture.doorPivots[0].rotation.y = -fixture.openAmount * Math.PI * 0.58;
+        }
+        fixture.open = fixture.targetOpenAmount > 0.5;
+      });
     },
     reset(): void {
       root.visible = false;
@@ -3206,6 +3462,15 @@ export function createChapterSeven(): ChapterSevenData {
       kitchenSink.handlePivot.rotation.z = 0;
       kitchenSink.waterStream.visible = false;
       kitchenSink.waterStream.scale.y = 0.01;
+      rearFixtures.forEach((fixture) => {
+        fixture.open = false;
+        fixture.openAmount = 0;
+        fixture.targetOpenAmount = 0;
+        fixture.doorPivots.forEach((doorPivot) => {
+          doorPivot.rotation.set(0, 0, 0);
+        });
+        fixture.collider.enabled = true;
+      });
     },
   };
 }
