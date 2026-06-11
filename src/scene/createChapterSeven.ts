@@ -624,6 +624,57 @@ export function createChapterSeven(): ChapterSevenData {
   };
   const dogPortraitMaterial = createPortraitMaterial('dog');
   const catPortraitMaterial = createPortraitMaterial('cat');
+  const flowerPortraitMaterial = (() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#d9ecf0';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#8b5a31';
+      context.beginPath();
+      context.moveTo(92, 124);
+      context.lineTo(164, 124);
+      context.lineTo(150, 158);
+      context.lineTo(106, 158);
+      context.closePath();
+      context.fill();
+      context.strokeStyle = '#2e7546';
+      context.lineWidth = 8;
+      context.beginPath();
+      context.moveTo(128, 124);
+      context.bezierCurveTo(124, 96, 126, 74, 128, 48);
+      context.stroke();
+      context.fillStyle = '#2e7546';
+      context.beginPath();
+      context.ellipse(108, 90, 28, 12, -0.44, 0, Math.PI * 2);
+      context.ellipse(148, 80, 27, 12, 0.52, 0, Math.PI * 2);
+      context.fill();
+      ['#e24d6f', '#f0d35b', '#8d63c7', '#f47f45', '#ffffff'].forEach((color, index) => {
+        const angle = (index / 5) * Math.PI * 2;
+        context.fillStyle = color;
+        context.beginPath();
+        context.ellipse(128 + Math.cos(angle) * 16, 44 + Math.sin(angle) * 12, 13, 18, angle, 0, Math.PI * 2);
+        context.fill();
+      });
+      context.fillStyle = '#c99d25';
+      context.beginPath();
+      context.arc(128, 44, 9, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = 'rgba(255,255,255,0.45)';
+      context.lineWidth = 8;
+      context.strokeRect(18, 14, canvas.width - 36, canvas.height - 28);
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  })();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -734,6 +785,41 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.5,
     metalness: 0.04,
   });
+  const laundryBasketMaterial = new MeshStandardMaterial({
+    color: 0xe8dfcf,
+    emissive: 0x11100c,
+    emissiveIntensity: 0.035,
+    roughness: 0.78,
+    metalness: 0.02,
+  });
+  const laundryBasketShadowMaterial = new MeshStandardMaterial({
+    color: 0x594f43,
+    emissive: 0x080706,
+    emissiveIntensity: 0.04,
+    roughness: 0.82,
+    metalness: 0.01,
+  });
+  const trashBagMaterial = new MeshStandardMaterial({
+    color: 0x2f6f37,
+    emissive: 0x061507,
+    emissiveIntensity: 0.06,
+    roughness: 0.5,
+    metalness: 0.02,
+  });
+  const trashBagCreaseMaterial = new MeshStandardMaterial({
+    color: 0x1f4f28,
+    emissive: 0x040c05,
+    emissiveIntensity: 0.04,
+    roughness: 0.62,
+    metalness: 0.01,
+  });
+  const laundryClothMaterials = [
+    new MeshStandardMaterial({ color: 0xc73d3d, roughness: 0.84, metalness: 0.01 }),
+    new MeshStandardMaterial({ color: 0x315dbb, roughness: 0.84, metalness: 0.01 }),
+    new MeshStandardMaterial({ color: 0xf0d35b, roughness: 0.84, metalness: 0.01 }),
+    new MeshStandardMaterial({ color: 0xf2f1e7, roughness: 0.84, metalness: 0.01 }),
+    new MeshStandardMaterial({ color: 0x7e4aa8, roughness: 0.84, metalness: 0.01 }),
+  ];
 
   const ground = new Mesh(new PlaneGeometry(FOREST_SIZE, FOREST_SIZE, 16, 16), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
@@ -885,6 +971,41 @@ export function createChapterSeven(): ChapterSevenData {
     const innerTop = new Mesh(new BoxGeometry(1.66, 0.055, 0.12), closetHandleMaterial);
     innerTop.position.y = 0.56;
     innerTop.position.z = 0.06;
+    const innerBottom = innerTop.clone();
+    innerBottom.position.y = -0.56;
+    const innerLeft = new Mesh(new BoxGeometry(0.055, 1.08, 0.12), closetHandleMaterial);
+    innerLeft.position.set(-0.84, 0, 0.06);
+    const innerRight = innerLeft.clone();
+    innerRight.position.x = 0.84;
+
+    frame.add(backing, portrait, top, bottom, left, right, innerTop, innerBottom, innerLeft, innerRight);
+    house.add(frame);
+  };
+
+  const addSidePictureFrame = (
+    localX: number,
+    localY: number,
+    localZ: number,
+    normalX: 1 | -1,
+    portraitMaterial: MeshStandardMaterial,
+  ): void => {
+    const frame = new Group();
+    frame.position.set(localX + normalX * 0.12, localY, localZ);
+    frame.rotation.y = normalX > 0 ? Math.PI / 2 : -Math.PI / 2;
+
+    const backing = new Mesh(new BoxGeometry(2.06, 1.42, 0.06), houseTrimMaterial);
+    const portrait = new Mesh(new PlaneGeometry(1.62, 1.04), portraitMaterial);
+    portrait.position.z = 0.038;
+    const top = new Mesh(new BoxGeometry(2.2, 0.12, 0.1), houseTrimMaterial);
+    top.position.y = 0.74;
+    const bottom = top.clone();
+    bottom.position.y = -0.74;
+    const left = new Mesh(new BoxGeometry(0.12, 1.44, 0.1), houseTrimMaterial);
+    left.position.x = -1.07;
+    const right = left.clone();
+    right.position.x = 1.07;
+    const innerTop = new Mesh(new BoxGeometry(1.66, 0.055, 0.12), closetHandleMaterial);
+    innerTop.position.set(0, 0.56, 0.06);
     const innerBottom = innerTop.clone();
     innerBottom.position.y = -0.56;
     const innerLeft = new Mesh(new BoxGeometry(0.055, 1.08, 0.12), closetHandleMaterial);
@@ -1867,6 +1988,141 @@ export function createChapterSeven(): ChapterSevenData {
     root.add(cookie);
   };
 
+  const addLaundryBasket = (localX: number, localZ: number, rotationY = 0): void => {
+    const basket = new Group();
+    basket.position.set(localX, 0.18, localZ);
+    basket.rotation.y = rotationY;
+
+    const width = 1.72;
+    const depth = 1.18;
+    const height = 1.0;
+    const bottom = new Mesh(new BoxGeometry(width, 0.1, depth), laundryBasketMaterial);
+    bottom.position.y = 0.05;
+    const rimFront = new Mesh(new BoxGeometry(width + 0.16, 0.12, 0.12), laundryBasketMaterial);
+    rimFront.position.set(0, height, depth / 2);
+    const rimBack = rimFront.clone();
+    rimBack.position.z = -depth / 2;
+    const rimLeft = new Mesh(new BoxGeometry(0.12, 0.12, depth + 0.16), laundryBasketMaterial);
+    rimLeft.position.set(-width / 2, height, 0);
+    const rimRight = rimLeft.clone();
+    rimRight.position.x = width / 2;
+    basket.add(bottom, rimFront, rimBack, rimLeft, rimRight);
+
+    const addBasketSide = (z: number): void => {
+      for (let row = 0; row < 3; row += 1) {
+        const rail = new Mesh(new BoxGeometry(width, 0.07, 0.08), laundryBasketMaterial);
+        rail.position.set(0, 0.28 + row * 0.22, z);
+        basket.add(rail);
+      }
+      for (let column = 0; column < 7; column += 1) {
+        const x = -width / 2 + 0.18 + column * ((width - 0.36) / 6);
+        const rib = new Mesh(new BoxGeometry(0.055, 0.72, 0.075), laundryBasketMaterial);
+        rib.position.set(x, 0.54, z);
+        basket.add(rib);
+      }
+      for (let column = 0; column < 6; column += 1) {
+        for (let row = 0; row < 2; row += 1) {
+          const hole = new Mesh(new BoxGeometry(0.12, 0.1, 0.012), laundryBasketShadowMaterial);
+          hole.position.set(-0.56 + column * 0.22, 0.4 + row * 0.22, z + Math.sign(z) * 0.042);
+          basket.add(hole);
+        }
+      }
+    };
+
+    const addBasketEnd = (x: number): void => {
+      for (let column = 0; column < 5; column += 1) {
+        const rib = new Mesh(new BoxGeometry(0.075, 0.68, 0.055), laundryBasketMaterial);
+        rib.position.set(x, 0.54, -depth / 2 + 0.18 + column * ((depth - 0.36) / 4));
+        basket.add(rib);
+      }
+      for (let row = 0; row < 3; row += 1) {
+        const rail = new Mesh(new BoxGeometry(0.08, 0.06, depth), laundryBasketMaterial);
+        rail.position.set(x, 0.3 + row * 0.22, 0);
+        basket.add(rail);
+      }
+    };
+
+    addBasketSide(depth / 2);
+    addBasketSide(-depth / 2);
+    addBasketEnd(width / 2);
+    addBasketEnd(-width / 2);
+
+    const clothPositions: Array<[number, number, number, number, number]> = [
+      [-0.44, 0.86, -0.18, 0.44, -0.18],
+      [-0.05, 1.0, 0.02, -0.2, 0.22],
+      [0.34, 0.88, -0.08, 0.18, 0.32],
+      [0.18, 1.13, 0.22, 0.55, -0.26],
+      [-0.28, 1.1, 0.18, -0.42, 0.18],
+    ];
+    clothPositions.forEach(([x, y, z, rotX, rotZ], index) => {
+      const cloth = new Mesh(new BoxGeometry(0.48, 0.18, 0.36), laundryClothMaterials[index % laundryClothMaterials.length]);
+      cloth.position.set(x, y, z);
+      cloth.rotation.set(rotX, index * 0.27, rotZ);
+      basket.add(cloth);
+    });
+
+    house.add(basket);
+    addRotatedFurnitureCollider(localX, localZ, width + 0.2, depth + 0.2, rotationY);
+  };
+
+  const addGreenTrashBags = (localX: number, localZ: number): void => {
+    const bags = new Group();
+    bags.position.set(localX, 0.2, localZ);
+
+    const bagSpecs: Array<[number, number, number, number, number]> = [
+      [-0.42, 0, 0.06, 0.68, -0.12],
+      [0.3, 0.02, -0.1, 0.58, 0.18],
+      [0.02, 0.52, 0.2, 0.46, 0.08],
+    ];
+    bagSpecs.forEach(([x, y, z, scale, tilt], index) => {
+      const bag = new Mesh(new SphereGeometry(0.58, 18, 12), trashBagMaterial);
+      bag.position.set(x, 0.48 + y, z);
+      bag.scale.set(scale * 1.08, scale * 0.82, scale);
+      bag.rotation.set(0.05, index * 0.7, tilt);
+      const tie = new Mesh(new ConeGeometry(0.16 * scale, 0.42 * scale, 8), trashBagCreaseMaterial);
+      tie.position.set(x + 0.08, 0.98 + y, z - 0.03);
+      tie.rotation.set(0.22, index * 0.44, -0.18);
+      const crease = new Mesh(new BoxGeometry(0.045, 0.62 * scale, 0.035), trashBagCreaseMaterial);
+      crease.position.set(x - 0.16 * scale, 0.5 + y, z + 0.42 * scale);
+      crease.rotation.z = -0.36 + index * 0.18;
+      bags.add(bag, tie, crease);
+    });
+
+    house.add(bags);
+    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.75, 1.25);
+  };
+
+  const addWallShelf = (localX: number, localY: number, localZ: number, normalX: 1 | -1): void => {
+    const shelf = new Group();
+    shelf.position.set(localX + normalX * 0.16, localY, localZ);
+    shelf.rotation.y = normalX > 0 ? Math.PI / 2 : -Math.PI / 2;
+
+    const board = new Mesh(new BoxGeometry(3.0, 0.14, 0.36), houseTrimMaterial);
+    const backLip = new Mesh(new BoxGeometry(3.08, 0.18, 0.08), furnitureWoodMaterial);
+    backLip.position.set(0, 0.14, -0.18);
+    const leftBracket = new Mesh(new BoxGeometry(0.1, 0.5, 0.12), furnitureWoodMaterial);
+    leftBracket.position.set(-1.08, -0.26, -0.08);
+    leftBracket.rotation.x = -0.4;
+    const rightBracket = leftBracket.clone();
+    rightBracket.position.x = 1.08;
+
+    const pot = new Mesh(new CylinderGeometry(0.16, 0.22, 0.32, 14), plantPotMaterial);
+    pot.position.set(-0.72, 0.28, 0.02);
+    const plantStem = new Mesh(new CylinderGeometry(0.02, 0.026, 0.42, 8), plantLeafMaterial);
+    plantStem.position.set(-0.72, 0.62, 0.02);
+    const leafLeft = new Mesh(new SphereGeometry(0.14, 10, 8), plantLeafMaterial);
+    leafLeft.scale.set(1.35, 0.32, 0.62);
+    leafLeft.position.set(-0.88, 0.7, 0.02);
+    leafLeft.rotation.z = -0.45;
+    const leafRight = leafLeft.clone();
+    leafRight.position.x = -0.56;
+    leafRight.rotation.z = 0.45;
+
+    addCookie(shelf, 0.62, 0.18, 0.02, 1.0);
+    shelf.add(board, backLip, leftBracket, rightBracket, pot, plantStem, leafLeft, leafRight);
+    house.add(shelf);
+  };
+
   const addCabinetCookies = (
     root: Group,
     localX: number,
@@ -2605,6 +2861,10 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_REAR_ROOM_WIDTH + HOUSE_WALL_THICKNESS,
     HOUSE_WALL_THICKNESS,
   );
+  addLaundryBasket(1202.82 - CENTER_X, 59.07 - HOUSE_CENTER_Z, -0.12);
+  addSidePictureFrame(1217.07 - CENTER_X, 2.9, 55.38 - HOUSE_CENTER_Z, -1, flowerPortraitMaterial);
+  addGreenTrashBags(1231.64 - CENTER_X, 62.83 - HOUSE_CENTER_Z);
+  addWallShelf(1215.95 - CENTER_X, 2.06, 65.92 - HOUSE_CENTER_Z, 1);
 
   const leftWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, HOUSE_DEPTH), houseWallMaterial);
   leftWall.position.set(-HOUSE_WIDTH / 2, HOUSE_HEIGHT / 2, 0);
@@ -3189,15 +3449,30 @@ export function createChapterSeven(): ChapterSevenData {
   crownTopInstances.frustumCulled = false;
   root.add(trunkInstances, crownBottomInstances, crownTopInstances);
 
+  const isInsideBuiltFootprint = (worldX: number, worldZ: number): boolean => {
+    const localX = worldX - CENTER_X;
+    const localZ = worldZ - HOUSE_CENTER_Z;
+    const insideMainHouse = Math.abs(localX) <= HOUSE_WIDTH / 2 + 1.2
+      && Math.abs(localZ) <= HOUSE_DEPTH / 2 + 1.2;
+    const insideRearRoom = Math.abs(localX - HOUSE_REAR_ROOM_DOOR_X) <= HOUSE_REAR_ROOM_WIDTH / 2 + 1.0
+      && Math.abs(localZ - rearRoomCenterZ) <= HOUSE_REAR_ROOM_DEPTH / 2 + 1.0;
+    const insidePorch = Math.abs(localX) <= porchWidth / 2 + 1.0
+      && Math.abs(localZ - porchCenterZ) <= porchDepth / 2 + 1.0;
+
+    return insideMainHouse || insideRearRoom || insidePorch;
+  };
+
   const grassGeometry = new ConeGeometry(0.08, 0.72, 5);
   const grassInstances = new InstancedMesh(grassGeometry, grassMaterial, GRASS_PATCH_COUNT);
   for (let index = 0; index < GRASS_PATCH_COUNT; index += 1) {
     const scale = 0.5 + random() * 0.95;
-    dummy.position.set(
-      CENTER_X + (random() - 0.5) * FOREST_SIZE * 0.96,
-      getForestFloorY() + 0.34 * scale,
-      CENTER_Z + (random() - 0.5) * FOREST_SIZE * 0.96,
-    );
+    let x = CENTER_X + (random() - 0.5) * FOREST_SIZE * 0.96;
+    let z = CENTER_Z + (random() - 0.5) * FOREST_SIZE * 0.96;
+    for (let attempt = 0; attempt < 24 && isInsideBuiltFootprint(x, z); attempt += 1) {
+      x = CENTER_X + (random() - 0.5) * FOREST_SIZE * 0.96;
+      z = CENTER_Z + (random() - 0.5) * FOREST_SIZE * 0.96;
+    }
+    dummy.position.set(x, getForestFloorY() + 0.34 * scale, z);
     dummy.rotation.set(0.12 + random() * 0.22, random() * Math.PI * 2, (random() - 0.5) * 0.28);
     dummy.scale.setScalar(scale);
     dummy.updateMatrix();
