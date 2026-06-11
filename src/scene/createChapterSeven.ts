@@ -2175,15 +2175,15 @@ export function createChapterSeven(): ChapterSevenData {
     water.position.set(0, 0.94, 0.18);
     water.scale.z = 0.7;
     const lidPivot = new Group();
-    lidPivot.position.set(0, 1.02, -0.18);
+    lidPivot.position.set(0, 1.02, -0.24);
     const lid = new Mesh(new CylinderGeometry(0.5, 0.42, 0.075, 32), porcelainMaterial);
     lid.rotation.x = Math.PI / 2;
-    lid.position.set(0, 0.045, 0.42);
+    lid.position.set(0, 0.045, 0.48);
     lid.scale.set(1.08, 1, 1.34);
     const seat = new Mesh(new CylinderGeometry(0.56, 0.56, 0.055, 28), porcelainMaterial);
     seat.scale.z = 0.72;
     seat.rotation.x = Math.PI / 2;
-    seat.position.set(0, 0.07, 0.42);
+    seat.position.set(0, 0.07, 0.48);
     lidPivot.add(lid, seat);
     toilet.add(tank, tankLid, base, bowl, water, lidPivot);
     house.add(toilet);
@@ -3452,7 +3452,7 @@ export function createChapterSeven(): ChapterSevenData {
         }
 
         if (fixture.animation === 'toilet-lid') {
-          fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.62;
+          fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.86;
         } else if (fixture.animation === 'faucet') {
           fixture.doorPivots[0].rotation.z = -fixture.openAmount * Math.PI * 0.52;
           if (fixture.waterStream) {
