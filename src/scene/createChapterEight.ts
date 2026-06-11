@@ -20,6 +20,7 @@ export interface ChapterEightData {
   colliders: CollisionBox[];
   spawn: Vector3;
   lookTarget: Vector3;
+  waterPump: ChapterEightWaterPump;
   trees: ChapterEightTree[];
   drops: ChapterEightDrop[];
   isFireLit(): boolean;
@@ -27,9 +28,18 @@ export interface ChapterEightData {
   collectDrop(drop: ChapterEightDrop): boolean;
   dropWood(position: Vector3): ChapterEightDrop;
   lightFire(): void;
+  activateWaterPump(): void;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number): void;
   reset(): void;
+}
+
+export interface ChapterEightWaterPump {
+  label: string;
+  interactPosition: Vector3;
+  handlePivot: Group;
+  waterStream: Mesh;
+  pumping: boolean;
 }
 
 export interface ChapterEightTree {
@@ -248,6 +258,7 @@ function createCabin(colliders: CollisionBox[]): {
   root: Group;
   bedSurface: ChapterEightBedSurface;
   fireplacePosition: Vector3;
+  waterPump: ChapterEightWaterPump;
 } {
   const cabin = new Group();
   cabin.name = 'Chapter 8 Woods Cabin';
@@ -516,15 +527,18 @@ function createCabin(colliders: CollisionBox[]): {
   spout.position.set(0, 1.72, 0.52);
   const spoutLip = new Mesh(new CylinderGeometry(0.08, 0.1, 0.18, 12), wornIronMaterial);
   spoutLip.position.set(0, 1.54, 0.94);
+  const pumpHandle = new Group();
+  pumpHandle.position.set(0, 2.08, -0.48);
+  pumpHandle.rotation.x = -0.34;
   const handleArm = new Mesh(new BoxGeometry(0.1, 0.09, 1.14), wornIronMaterial);
-  handleArm.position.set(0, 2.08, -0.48);
-  handleArm.rotation.x = -0.34;
   const handleGrip = new Mesh(new CylinderGeometry(0.045, 0.045, 0.48, 10), wornIronMaterial);
   handleGrip.rotation.z = Math.PI / 2;
-  handleGrip.position.set(0, 2.27, -1.06);
+  handleGrip.position.set(0, 0.19, -0.58);
+  pumpHandle.add(handleArm, handleGrip);
   const waterStream = new Mesh(new CylinderGeometry(0.035, 0.045, 0.46, 10), pumpWaterMaterial);
   waterStream.position.set(0, 1.26, 1.02);
-  pump.add(pumpBase, pumpPost, pumpHead, spout, spoutLip, handleArm, handleGrip, waterStream);
+  waterStream.visible = false;
+  pump.add(pumpBase, pumpPost, pumpHead, spout, spoutLip, pumpHandle, waterStream);
   cabin.add(pump);
   addCollider(colliders, CENTER_X - 5.8, CENTER_Z + halfDepth + 4.05, 1.1, 1.3);
 
@@ -545,6 +559,13 @@ function createCabin(colliders: CollisionBox[]): {
       collider: bedCollider,
     },
     fireplacePosition: new Vector3(CENTER_X, GROUND_Y, CENTER_Z - halfDepth + 0.4),
+    waterPump: {
+      label: 'Hand water pump',
+      interactPosition: new Vector3(CENTER_X - 5.8, GAME_CONFIG.player.height, CENTER_Z + halfDepth + 4.05),
+      handlePivot: pumpHandle,
+      waterStream,
+      pumping: false,
+    },
   };
 }
 
@@ -645,6 +666,7 @@ export function createChapterEight(): ChapterEightData {
   const lookTarget = new Vector3(CENTER_X, 1.8, CENTER_Z + 4.6);
   let elapsed = 0;
   let fireplaceLit = false;
+  let waterPumpTimer = 0;
 
   const removeTreeCollider = (tree: ChapterEightTree): void => {
     tree.collider.enabled = false;
@@ -681,6 +703,7 @@ export function createChapterEight(): ChapterEightData {
     colliders,
     spawn,
     lookTarget,
+    waterPump: cabin.waterPump,
     trees,
     drops,
     isFireLit() {
@@ -741,6 +764,11 @@ export function createChapterEight(): ChapterEightData {
     lightFire() {
       fireplaceLit = true;
     },
+    activateWaterPump() {
+      waterPumpTimer = 2.8;
+      cabin.waterPump.pumping = true;
+      cabin.waterPump.waterStream.visible = true;
+    },
     getSupportedFloorY(position) {
       const insideX = position.x >= CENTER_X - HALF_FOREST_SIZE && position.x <= CENTER_X + HALF_FOREST_SIZE;
       const insideZ = position.z >= CENTER_Z - HALF_FOREST_SIZE && position.z <= CENTER_Z + HALF_FOREST_SIZE;
@@ -769,10 +797,24 @@ export function createChapterEight(): ChapterEightData {
         const shake = Math.sin(tree.shakeTimer * 52) * tree.shakeTimer * 0.18;
         tree.root.rotation.z = shake;
       });
+      if (cabin.waterPump.pumping) {
+        waterPumpTimer = Math.max(0, waterPumpTimer - deltaSeconds);
+        const pumpCycle = Math.sin(elapsed * 13.2);
+        cabin.waterPump.handlePivot.rotation.x = -0.34 + pumpCycle * 0.46;
+        cabin.waterPump.waterStream.scale.y = 0.78 + Math.max(0, pumpCycle) * 0.38;
+        if (waterPumpTimer <= 0) {
+          cabin.waterPump.pumping = false;
+          cabin.waterPump.waterStream.visible = false;
+          cabin.waterPump.waterStream.scale.setScalar(1);
+        }
+      } else {
+        cabin.waterPump.handlePivot.rotation.x += (-0.34 - cabin.waterPump.handlePivot.rotation.x) * Math.min(1, deltaSeconds * 8);
+      }
     },
     reset() {
       elapsed = 0;
       fireplaceLit = false;
+      waterPumpTimer = 0;
       drops.forEach((drop) => {
         drop.active = false;
         root.remove(drop.root);
@@ -790,6 +832,10 @@ export function createChapterEight(): ChapterEightData {
         }
       });
       cabin.bedSurface.collider.enabled = true;
+      cabin.waterPump.pumping = false;
+      cabin.waterPump.handlePivot.rotation.x = -0.34;
+      cabin.waterPump.waterStream.visible = false;
+      cabin.waterPump.waterStream.scale.setScalar(1);
       root.visible = false;
     },
   };

@@ -10486,6 +10486,11 @@ export class Game {
       return;
     }
 
+    if (this.chapterEightActive) {
+      this.handleChapterEightInteract();
+      return;
+    }
+
     if (this.chapterTwoActive) {
       this.handleChapterTwoInteract();
       return;
@@ -10752,6 +10757,20 @@ export class Game {
     this.chapterEightKnifeAttackMode = mode;
     this.chapterEightKnifeAttackTimer = CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS;
     this.pushStatus(mode === 'slash' ? 'You slash the Military Knife through the air.' : 'You thrust the Military Knife forward.', 0.9);
+  }
+
+  private handleChapterEightInteract(): void {
+    if (this.isNearChapterEightWaterPump()) {
+      this.chapterEight.activateWaterPump();
+      this.pushStatus('You pump the handle. Water starts pouring from the spout.', 2.2);
+      return;
+    }
+
+    this.pushStatus('Nothing here needs pumping or opening.', 1.8);
+  }
+
+  private isNearChapterEightWaterPump(): boolean {
+    return this.player.getPosition().distanceTo(this.chapterEight.waterPump.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.8;
   }
 
   private handleOfficePrizeFire(): boolean {
@@ -14476,6 +14495,12 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
+      if (locked && this.isNearChapterEightWaterPump()) {
+        return this.chapterEight.waterPump.pumping
+          ? 'The pump handle is moving and water is pouring from the spout.'
+          : 'Press E to pump water.';
+      }
+
       return locked
         ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, mouse wheel switches items, left click slashes with the Military Knife, and right click stabs.'
         : 'Click the play space to walk around Chapter 8: The Woods.';
