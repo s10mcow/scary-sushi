@@ -681,32 +681,81 @@ export function createChapterSeven(): ChapterSevenData {
     canvas.height = 176;
     const context = canvas.getContext('2d');
     if (context) {
-      context.fillStyle = subject === 'baby' ? '#f3d7df' : '#b7d8ef';
+      context.fillStyle = subject === 'baby' ? '#d9ecff' : '#b7d8ef';
       context.fillRect(0, 0, canvas.width, canvas.height);
       if (subject === 'baby') {
+        const skyGradient = context.createLinearGradient(0, 0, 0, 118);
+        skyGradient.addColorStop(0, '#eef7ff');
+        skyGradient.addColorStop(0.52, '#b9dcff');
+        skyGradient.addColorStop(1, '#f7fbff');
+        context.fillStyle = skyGradient;
+        context.fillRect(0, 0, canvas.width, 118);
+
+        context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        for (let stripeY = 18; stripeY < 112; stripeY += 24) {
+          context.fillRect(0, stripeY, canvas.width, 9);
+        }
+
+        context.fillStyle = '#eef3f9';
+        context.fillRect(0, 118, canvas.width, 58);
+        context.strokeStyle = '#b9cde4';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(18, 132);
+        context.lineTo(238, 132);
+        context.moveTo(28, 150);
+        context.lineTo(226, 150);
+        context.stroke();
+
+        context.lineCap = 'round';
+        context.lineJoin = 'round';
+        context.strokeStyle = '#f1bf9a';
+        context.lineWidth = 12;
+        context.beginPath();
+        context.moveTo(92, 119);
+        context.lineTo(62, 142);
+        context.moveTo(126, 121);
+        context.lineTo(150, 146);
+        context.moveTo(154, 111);
+        context.lineTo(188, 132);
+        context.moveTo(178, 116);
+        context.lineTo(209, 98);
+        context.stroke();
+
+        context.fillStyle = '#fff7ed';
+        context.beginPath();
+        context.ellipse(132, 108, 55, 30, -0.1, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#82aee5';
+        context.beginPath();
+        context.ellipse(132, 108, 43, 22, -0.08, 0, Math.PI * 2);
+        context.fill();
+
         context.fillStyle = '#f6cfae';
         context.beginPath();
-        context.ellipse(128, 74, 40, 34, 0, 0, Math.PI * 2);
+        context.ellipse(190, 86, 31, 27, -0.18, 0, Math.PI * 2);
         context.fill();
         context.fillStyle = '#6d4b36';
         context.beginPath();
-        context.arc(114, 70, 4, 0, Math.PI * 2);
-        context.arc(142, 70, 4, 0, Math.PI * 2);
+        context.arc(181, 83, 3.4, 0, Math.PI * 2);
+        context.arc(201, 82, 3.4, 0, Math.PI * 2);
         context.fill();
         context.strokeStyle = '#6d4b36';
-        context.lineWidth = 3;
+        context.lineWidth = 2.4;
         context.beginPath();
-        context.moveTo(118, 88);
-        context.quadraticCurveTo(128, 96, 140, 88);
+        context.moveTo(184, 98);
+        context.quadraticCurveTo(194, 103, 205, 96);
         context.stroke();
-        context.fillStyle = '#fff7ed';
+        context.fillStyle = '#c94135';
         context.beginPath();
-        context.ellipse(128, 130, 54, 34, 0, 0, Math.PI * 2);
+        context.ellipse(199, 62, 8, 5.5, -0.28, 0, Math.PI * 2);
         context.fill();
-        context.fillStyle = '#86a8d8';
+        context.strokeStyle = 'rgba(255, 245, 245, 0.86)';
+        context.lineWidth = 2;
         context.beginPath();
-        context.ellipse(128, 125, 42, 24, 0, 0, Math.PI * 2);
-        context.fill();
+        context.moveTo(194, 62);
+        context.lineTo(204, 62);
+        context.stroke();
       } else {
         context.fillStyle = '#79b65f';
         context.fillRect(0, 128, canvas.width, 48);
