@@ -535,8 +535,8 @@ function createCabin(colliders: CollisionBox[]): {
   handleGrip.rotation.z = Math.PI / 2;
   handleGrip.position.set(0, 0.19, -0.58);
   pumpHandle.add(handleArm, handleGrip);
-  const waterStream = new Mesh(new CylinderGeometry(0.035, 0.045, 0.46, 10), pumpWaterMaterial);
-  waterStream.position.set(0, 1.26, 1.02);
+  const waterStream = new Mesh(new CylinderGeometry(0.045, 0.045, 1.42, 18), pumpWaterMaterial);
+  waterStream.position.set(0, 0.82, 1.02);
   waterStream.visible = false;
   pump.add(pumpBase, pumpPost, pumpHead, spout, spoutLip, pumpHandle, waterStream);
   cabin.add(pump);
@@ -768,6 +768,7 @@ export function createChapterEight(): ChapterEightData {
       waterPumpTimer = 2.8;
       cabin.waterPump.pumping = true;
       cabin.waterPump.waterStream.visible = true;
+      cabin.waterPump.waterStream.scale.setScalar(1);
     },
     getSupportedFloorY(position) {
       const insideX = position.x >= CENTER_X - HALF_FOREST_SIZE && position.x <= CENTER_X + HALF_FOREST_SIZE;
@@ -801,7 +802,6 @@ export function createChapterEight(): ChapterEightData {
         waterPumpTimer = Math.max(0, waterPumpTimer - deltaSeconds);
         const pumpCycle = Math.sin(elapsed * 13.2);
         cabin.waterPump.handlePivot.rotation.x = -0.34 + pumpCycle * 0.46;
-        cabin.waterPump.waterStream.scale.y = 0.78 + Math.max(0, pumpCycle) * 0.38;
         if (waterPumpTimer <= 0) {
           cabin.waterPump.pumping = false;
           cabin.waterPump.waterStream.visible = false;
