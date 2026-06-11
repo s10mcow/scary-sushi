@@ -10858,13 +10858,18 @@ export class Game {
   }
 
   private isNearChapterEightDoor(): boolean {
-    return this.player.getPosition().distanceTo(this.chapterEight.door.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.7;
+    const playerPosition = this.player.getPosition();
+    return Math.abs(playerPosition.x - this.chapterEight.door.interactPosition.x) <= 1.85
+      && Math.abs(playerPosition.z - this.chapterEight.door.interactPosition.z) <= GAME_CONFIG.player.interactionRange + 0.95;
   }
 
   private isNearChapterEightDoorLock(): boolean {
     const playerPosition = this.player.getPosition();
+    const standingAtInsideBolt = playerPosition.x > this.chapterEight.door.interactPosition.x + 0.62
+      && Math.abs(playerPosition.x - this.chapterEight.door.lockPosition.x) <= 0.72
+      && Math.abs(playerPosition.z - this.chapterEight.door.lockPosition.z) <= 0.9;
     return playerPosition.z < this.chapterEight.door.interactPosition.z
-      && playerPosition.distanceTo(this.chapterEight.door.lockPosition) <= GAME_CONFIG.player.interactionRange + 0.45;
+      && standingAtInsideBolt;
   }
 
   private isNearChapterEightSleepSpot(): boolean {
