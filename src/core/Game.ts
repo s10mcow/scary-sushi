@@ -786,6 +786,18 @@ type ChapterSevenInteractable =
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
 type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'torch' | 'empty';
+type AIPlayOfficeAction =
+  | 'seat'
+  | 'left-flash'
+  | 'right-flash'
+  | 'left-door'
+  | 'right-door'
+  | 'party-play'
+  | 'foxy-play'
+  | 'prize-wheel'
+  | 'basketball'
+  | 'ticket'
+  | 'stage-tease';
 
 const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'coordinate-tool',
@@ -793,10 +805,27 @@ const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'torch',
   'empty',
 ];
+const AI_PLAY_OFFICE_ACTIONS: AIPlayOfficeAction[] = [
+  'left-flash',
+  'right-flash',
+  'party-play',
+  'seat',
+  'left-door',
+  'right-door',
+  'prize-wheel',
+  'basketball',
+  'foxy-play',
+  'ticket',
+  'stage-tease',
+  'seat',
+];
 const CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS = 0.38;
 const AI_PLAY_INTERACT_COOLDOWN_SECONDS = 0.65;
 const AI_PLAY_TARGET_REACHED_DISTANCE = 1.05;
 const AI_PLAY_CHAPTER_ONE_WAYPOINT_REACHED_DISTANCE = 0.72;
+const AI_PLAY_CHAPTER_ONE_MONSTER_PANIC_DISTANCE = 7.2;
+const AI_PLAY_OFFICE_ACTION_REACHED_DISTANCE = 1.45;
+const AI_PLAY_OFFICE_THREAT_DISTANCE = 8.4;
 
 export class Game {
   private readonly scene;
@@ -942,6 +971,8 @@ export class Game {
   private chapterEightKnifeAttackTimer = 0;
   private aiPlayActive = false;
   private aiPlayInteractCooldown = 0;
+  private aiPlayOfficeActionIndex = 0;
+  private aiPlayOfficeActionTimer = 0;
   private readonly aiPlayMoveTarget = new Vector3();
   private holdingPlate = false;
   private plateRecipeId: string | null = null;
@@ -10987,11 +11018,16 @@ export class Game {
 
     this.aiPlayActive = true;
     this.aiPlayInteractCooldown = 0;
+    this.aiPlayOfficeActionIndex = 0;
+    this.aiPlayOfficeActionTimer = 0;
     this.chapterMenuOpen = false;
     this.curatorToolOpen = false;
     this.officeJumpscareMenuOpen = false;
     this.officeModeMenuOpen = false;
     this.setPlacementToolActive(false);
+    if (this.officeChapterActive && !this.officeGameModeActive) {
+      this.applyOfficeMode('game', 'normal');
+    }
     this.player.lock();
     this.pushStatus(`AI Play started for ${this.getAIPlayChapterLabel()}. Press Escape or AI Play again to stop immediately.`, 3.4);
   }
@@ -11003,6 +11039,8 @@ export class Game {
 
     this.aiPlayActive = false;
     this.aiPlayInteractCooldown = 0;
+    this.aiPlayOfficeActionIndex = 0;
+    this.aiPlayOfficeActionTimer = 0;
     if (message) {
       this.player.controls.unlock();
       this.pushStatus(message, 2.6);
@@ -11046,6 +11084,10 @@ export class Game {
       this.aiPlayInteractCooldown = AI_PLAY_INTERACT_COOLDOWN_SECONDS;
     };
     const position = this.player.getPosition();
+    const panicTarget = this.getChapterOneAIPanicTarget(position);
+    if (panicTarget) {
+      return this.getChapterOneAIMoveInput(panicTarget, true);
+    }
 
     if (this.submittedRecipes.size >= RECIPES.length) {
       this.stopAIPlay('AI Play finished the Chapter 1 dishes. You have control again.');
@@ -11092,28 +11134,263 @@ export class Game {
 
   private getOfficeChapterAIInput(deltaSeconds: number): MovementState {
     this.aiPlayInteractCooldown = Math.max(0, this.aiPlayInteractCooldown - deltaSeconds);
+    this.aiPlayOfficeActionTimer = Math.max(0, this.aiPlayOfficeActionTimer - deltaSeconds);
 
     if (!this.player.isLocked() || this.activeOfficeJumpscare || this.officeDeathNoticePhase) {
       return { forward: 0, strafe: 0, sprint: false };
     }
 
+    if (this.officeTabletCameraFeedActive) {
+      this.resetOfficeTabletState();
+    }
+
     const position = this.player.getPosition();
-    if (!this.officeChapterSeated) {
-      if (position.distanceTo(this.officeChapter.seat.position) <= GAME_CONFIG.player.interactionRange + 0.35) {
-        this.enterOfficeChapterSeat();
+    const threatenedDoors = this.getOfficeAIPlayThreatenedDoors(position);
+    const emergency = this.officeGameModeActive
+      && this.officeGameModeNightPhase
+      && (this.officeGameModePowerOut || threatenedDoors.size > 0 || this.getClosestOfficeAIPlayAnimatronicDistance(position) <= AI_PLAY_OFFICE_THREAT_DISTANCE);
+
+    if (this.officeGameModeActive && !this.officeGameModePowerOut) {
+      this.updateOfficeAIPlayDoors(threatenedDoors);
+    }
+
+    if (emergency) {
+      this.aiPlayOfficeActionTimer = 0;
+      if (!this.officeChapterSeated) {
+        return this.getOfficeAIPlayMoveOrEnterSeat();
+      }
+
+      this.player.lookToward(this.officeChapter.seat.lookTarget, 0.18);
+      this.flashOfficeAIPlayThreatenedDoor(threatenedDoors);
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    const action = this.getCurrentOfficeAIPlayAction();
+    if (this.officeChapterSeated) {
+      this.player.lookToward(this.officeChapter.seat.lookTarget, 0.12);
+      if (action === 'seat' || (this.officeGameModeActive && this.officeGameModeNightPhase && this.aiPlayOfficeActionTimer > 0)) {
+        if (this.aiPlayOfficeActionTimer <= 0) {
+          this.advanceOfficeAIPlayAction();
+        }
         return { forward: 0, strafe: 0, sprint: false };
       }
 
-      return this.getAIPlayMoveInput(this.officeChapter.seat.position, false);
+      this.leaveOfficeChapterSeat();
+      return { forward: 0, strafe: 0, sprint: false };
     }
 
-    this.player.lookToward(this.officeChapter.seat.lookTarget, 0.12);
-
-    if (this.officeGameModeActive && !this.officeGameModePowerOut) {
-      this.updateOfficeAIPlayDoors(deltaSeconds);
+    if (action === 'seat') {
+      return this.getOfficeAIPlayMoveOrEnterSeat();
     }
 
-    return { forward: 0, strafe: 0, sprint: false };
+    const target = this.getOfficeAIPlayActionTarget(action);
+    if (!target) {
+      this.advanceOfficeAIPlayAction();
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    const distance = Math.hypot(position.x - target.x, position.z - target.z);
+    if (distance <= AI_PLAY_OFFICE_ACTION_REACHED_DISTANCE && this.aiPlayInteractCooldown <= 0 && this.aiPlayOfficeActionTimer <= 0) {
+      const complete = this.performOfficeAIPlayAction(action);
+      this.aiPlayInteractCooldown = AI_PLAY_INTERACT_COOLDOWN_SECONDS;
+      if (complete) {
+        this.advanceOfficeAIPlayAction();
+      }
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    return this.getAIPlayMoveInput(target, true);
+  }
+
+  private getChapterOneAIPanicTarget(position: Vector3): Vector3 | null {
+    if (this.isPlayerSafe()) {
+      return null;
+    }
+
+    const closeMonster = this.monsters.some((monster) => (
+      monster.root.visible
+      && Math.hypot(monster.root.position.x - position.x, monster.root.position.z - position.z)
+        <= AI_PLAY_CHAPTER_ONE_MONSTER_PANIC_DISTANCE
+    ));
+    return closeMonster ? this.level.spawn : null;
+  }
+
+  private getOfficeAIPlayMoveOrEnterSeat(): MovementState {
+    const position = this.player.getPosition();
+    if (position.distanceTo(this.officeChapter.seat.position) <= GAME_CONFIG.player.interactionRange + 0.35) {
+      this.enterOfficeChapterSeat();
+      this.aiPlayOfficeActionTimer = this.officeGameModeActive && this.officeGameModeNightPhase ? 2.2 : 1.15;
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    return this.getAIPlayMoveInput(this.officeChapter.seat.position, true);
+  }
+
+  private getCurrentOfficeAIPlayAction(): AIPlayOfficeAction {
+    return AI_PLAY_OFFICE_ACTIONS[
+      this.aiPlayOfficeActionIndex % AI_PLAY_OFFICE_ACTIONS.length
+    ] ?? 'seat';
+  }
+
+  private advanceOfficeAIPlayAction(): void {
+    this.aiPlayOfficeActionIndex = (this.aiPlayOfficeActionIndex + 1) % AI_PLAY_OFFICE_ACTIONS.length;
+    this.aiPlayOfficeActionTimer = 0;
+  }
+
+  private getOfficeAIPlayActionTarget(action: AIPlayOfficeAction): Vector3 | null {
+    switch (action) {
+      case 'seat':
+        return this.officeChapter.seat.position;
+      case 'left-flash':
+        return this.getOfficeAIPlayButtonPosition('left', 'flash');
+      case 'right-flash':
+        return this.getOfficeAIPlayButtonPosition('right', 'flash');
+      case 'left-door':
+        return this.getOfficeAIPlayButtonPosition('left', 'door');
+      case 'right-door':
+        return this.getOfficeAIPlayButtonPosition('right', 'door');
+      case 'party-play':
+        return this.officeChapter.partyPlay.interactPosition;
+      case 'foxy-play':
+        return this.officeChapter.foxyPlay.interactPosition;
+      case 'prize-wheel':
+        return this.officeChapter.prizeWheel.interactPosition;
+      case 'basketball':
+        return this.officeChapter.basketballGame.interactPosition;
+      case 'ticket':
+        return this.officeChapter.ticketPickups.find((ticket) => !ticket.collected)?.position ?? null;
+      case 'stage-tease':
+        return this.getOfficeGameModePoint(new Vector3(-240, GAME_CONFIG.player.height, 160.8));
+    }
+  }
+
+  private getOfficeAIPlayButtonPosition(doorId: 'left' | 'right', buttonType: 'door' | 'flash'): Vector3 | null {
+    return this.officeChapter.buttons.find((button) => (
+      button.doorId === doorId && button.buttonType === buttonType
+    ))?.interactPosition ?? null;
+  }
+
+  private performOfficeAIPlayAction(action: AIPlayOfficeAction): boolean {
+    switch (action) {
+      case 'left-flash':
+        this.performOfficeAIPlayFlash('left');
+        return true;
+      case 'right-flash':
+        this.performOfficeAIPlayFlash('right');
+        return true;
+      case 'left-door':
+        this.performOfficeAIPlayDoorJoke('left');
+        return true;
+      case 'right-door':
+        this.performOfficeAIPlayDoorJoke('right');
+        return true;
+      case 'party-play':
+        this.officeChapter.startPartyShow(this.player.getPosition());
+        this.gameplaySfxAudio.playSmallPanel(false);
+        this.partyShowAudio.start();
+        this.pushStatus('AI Play hits the party button so the stage animatronics perform for a moment.', 2.6);
+        return true;
+      case 'foxy-play':
+        this.officeChapter.startFoxyPlay();
+        this.foxyPlayAudio.play();
+        this.gameplaySfxAudio.playSmallPanel(false);
+        this.pushStatus('AI Play pokes the Foxy button and lets the pirate dance play.', 2.8);
+        return true;
+      case 'prize-wheel':
+        this.startOfficePrizeWheelSpin();
+        return true;
+      case 'basketball':
+        return this.performOfficeAIPlayBasketball();
+      case 'ticket':
+        return this.performOfficeAIPlayTicketPickup();
+      case 'stage-tease':
+        this.performOfficeAIPlayStageTease();
+        return true;
+      case 'seat':
+        return true;
+    }
+  }
+
+  private performOfficeAIPlayFlash(doorId: 'left' | 'right'): void {
+    this.officeChapter.flashHallLight(doorId);
+    this.repelOfficeGameModeAnimatronicsAtDoor(doorId);
+    this.gameplaySfxAudio.playSmallPanel(false);
+    this.pushStatus(`AI Play flashes the ${doorId} hall to check on the animatronics.`, 1.8);
+  }
+
+  private performOfficeAIPlayDoorJoke(doorId: 'left' | 'right'): void {
+    if (this.officeGameModeActive && this.officeGameModeNightPhase) {
+      this.setOfficeAIPlayDoorOpen(doorId, false);
+      this.aiPlayOfficeActionTimer = 0.7;
+      this.pushStatus(`AI Play quickly shuts the ${doorId} door, then gets ready to reopen it if the hall is clear.`, 2.1);
+      return;
+    }
+
+    const door = this.getOfficeDoorById(doorId);
+    if (!door) {
+      return;
+    }
+
+    this.setOfficeAIPlayDoorOpen(doorId, door.targetOpenAmount < 0.5);
+    this.pushStatus(`AI Play plays with the ${doorId} office door controls.`, 1.9);
+  }
+
+  private performOfficeAIPlayBasketball(): boolean {
+    const game = this.officeChapter.basketballGame;
+    if (this.officeChapter.isBasketballThrowActive()) {
+      this.aiPlayOfficeActionTimer = 0.8;
+      return false;
+    }
+
+    if (!this.officeBasketballHeld) {
+      this.officeBasketballHeld = true;
+      this.officeBasketballAnchor.visible = true;
+      this.officeGlassHeld = false;
+      this.officeGlassAnchor.visible = false;
+      this.clearOfficeHeldPrizeItem();
+      this.officeTabletHeld = false;
+      this.officeTabletCameraFeedActive = false;
+      this.officeTabletAnchor.visible = false;
+      this.officeChapter.setBasketballHeld(true);
+      this.gameplaySfxAudio.playSmallPanel(false);
+      this.pushStatus('AI Play grabs the basketball and lines up a shot.', 1.8);
+      this.aiPlayOfficeActionTimer = 0.55;
+      return false;
+    }
+
+    const hoopTarget = game.root.localToWorld(game.leftHoopTarget.clone());
+    this.player.lookToward(hoopTarget, 1);
+    this.handleOfficeBasketballFire();
+    return true;
+  }
+
+  private performOfficeAIPlayTicketPickup(): boolean {
+    const ticket = this.officeChapter.ticketPickups.find((candidate) => !candidate.collected);
+    if (!ticket) {
+      this.pushStatus('AI Play looks for party tickets, but they are already cleaned out.', 1.9);
+      return true;
+    }
+
+    ticket.collected = true;
+    ticket.root.visible = false;
+    this.officeChapterTickets += 1;
+    this.gameplaySfxAudio.playSmallPanel(false);
+    this.pushStatus(`AI Play snatches a hidden party ticket. Tickets: ${this.officeChapterTickets}.`, 2.2);
+    return true;
+  }
+
+  private performOfficeAIPlayStageTease(): void {
+    if (this.officeGameModeActive) {
+      this.addOfficePrizeItem('tiny-bear', 1);
+      this.setOfficeHeldPrizeItem('tiny-bear', false);
+      this.player.lookToward(this.getOfficeGameModePoint(new Vector3(-240, GAME_CONFIG.player.height, 160.8)), 1);
+      this.throwOfficeTinyBear();
+      this.pushStatus('AI Play tosses a tiny bear toward the stage route to bait the animatronics away.', 2.6);
+      return;
+    }
+
+    this.player.lookToward(this.officeChapter.partyPlay.interactPosition, 0.5);
+    this.pushStatus('AI Play stares at the stage like it is daring the animatronics to move.', 2.2);
   }
 
   private getChapterOneStationById(id: StationInteractableId): StationInteractable | null {
@@ -11199,14 +11476,12 @@ export class Game {
     return this.getAIPlayMoveInput(waypoint, sprint);
   }
 
-  private updateOfficeAIPlayDoors(deltaSeconds: number): void {
-    if (!this.officeGameModeNightPhase) {
-      this.setOfficeAIPlayDoorOpen('left', true);
-      this.setOfficeAIPlayDoorOpen('right', true);
-      return;
+  private getOfficeAIPlayThreatenedDoors(playerPosition: Vector3): Set<'left' | 'right'> {
+    const threatenedDoors = new Set<'left' | 'right'>();
+    if (!this.officeGameModeActive || !this.officeGameModeNightPhase) {
+      return threatenedDoors;
     }
 
-    const threatenedDoors = new Set<'left' | 'right'>();
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       const doorId = animatronic.doorBreachDoorId ?? animatronic.cachedBlockedDoorId;
       if (doorId && (
@@ -11217,16 +11492,72 @@ export class Game {
         || animatronic.state === 'rush'
       )) {
         threatenedDoors.add(doorId);
+        return;
       }
+
+      if (animatronic.state !== 'chase' && animatronic.state !== 'rush') {
+        return;
+      }
+
+      const rootPosition = animatronic.model.root.position;
+      if (Math.hypot(rootPosition.x - playerPosition.x, rootPosition.z - playerPosition.z) > AI_PLAY_OFFICE_THREAT_DISTANCE) {
+        return;
+      }
+
+      const leftDoor = this.getOfficeGameModeDoorWatchPoint('left');
+      const rightDoor = this.getOfficeGameModeDoorWatchPoint('right');
+      threatenedDoors.add(
+        rootPosition.distanceTo(leftDoor) <= rootPosition.distanceTo(rightDoor) ? 'left' : 'right',
+      );
     });
+
+    return threatenedDoors;
+  }
+
+  private getClosestOfficeAIPlayAnimatronicDistance(playerPosition: Vector3): number {
+    if (!this.officeGameModeActive || this.officeGameModeAnimatronics.length === 0) {
+      return Infinity;
+    }
+
+    return this.officeGameModeAnimatronics.reduce((closest, animatronic) => {
+      if (!animatronic.model.root.visible || animatronic.state === 'stage' || animatronic.state === 'distracted-watch') {
+        return closest;
+      }
+
+      return Math.min(
+        closest,
+        Math.hypot(
+          animatronic.model.root.position.x - playerPosition.x,
+          animatronic.model.root.position.z - playerPosition.z,
+        ),
+      );
+    }, Infinity);
+  }
+
+  private flashOfficeAIPlayThreatenedDoor(threatenedDoors: Set<'left' | 'right'>): void {
+    if (this.aiPlayInteractCooldown > 0 || this.officeGameModePowerOut) {
+      return;
+    }
+
+    const doorId = threatenedDoors.values().next().value;
+    if (doorId !== 'left' && doorId !== 'right') {
+      return;
+    }
+
+    this.performOfficeAIPlayFlash(doorId);
+    this.aiPlayInteractCooldown = 1.15;
+  }
+
+  private updateOfficeAIPlayDoors(threatenedDoors: Set<'left' | 'right'>): void {
+    if (!this.officeGameModeNightPhase) {
+      this.setOfficeAIPlayDoorOpen('left', true);
+      this.setOfficeAIPlayDoorOpen('right', true);
+      return;
+    }
 
     (['left', 'right'] as const).forEach((doorId) => {
       this.setOfficeAIPlayDoorOpen(doorId, !threatenedDoors.has(doorId));
     });
-
-    if (threatenedDoors.size > 0) {
-      this.aiPlayInteractCooldown = Math.max(this.aiPlayInteractCooldown, Math.min(0.25, deltaSeconds * 2));
-    }
   }
 
   private setOfficeAIPlayDoorOpen(doorId: 'left' | 'right', open: boolean): void {
