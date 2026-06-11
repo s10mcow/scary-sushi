@@ -624,57 +624,6 @@ export function createChapterSeven(): ChapterSevenData {
   };
   const dogPortraitMaterial = createPortraitMaterial('dog');
   const catPortraitMaterial = createPortraitMaterial('cat');
-  const flowerPortraitMaterial = (() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 176;
-    const context = canvas.getContext('2d');
-    if (context) {
-      context.fillStyle = '#d9ecf0';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.fillStyle = '#8b5a31';
-      context.beginPath();
-      context.moveTo(92, 124);
-      context.lineTo(164, 124);
-      context.lineTo(150, 158);
-      context.lineTo(106, 158);
-      context.closePath();
-      context.fill();
-      context.strokeStyle = '#2e7546';
-      context.lineWidth = 8;
-      context.beginPath();
-      context.moveTo(128, 124);
-      context.bezierCurveTo(124, 96, 126, 74, 128, 48);
-      context.stroke();
-      context.fillStyle = '#2e7546';
-      context.beginPath();
-      context.ellipse(108, 90, 28, 12, -0.44, 0, Math.PI * 2);
-      context.ellipse(148, 80, 27, 12, 0.52, 0, Math.PI * 2);
-      context.fill();
-      ['#e24d6f', '#f0d35b', '#8d63c7', '#f47f45', '#ffffff'].forEach((color, index) => {
-        const angle = (index / 5) * Math.PI * 2;
-        context.fillStyle = color;
-        context.beginPath();
-        context.ellipse(128 + Math.cos(angle) * 16, 44 + Math.sin(angle) * 12, 13, 18, angle, 0, Math.PI * 2);
-        context.fill();
-      });
-      context.fillStyle = '#c99d25';
-      context.beginPath();
-      context.arc(128, 44, 9, 0, Math.PI * 2);
-      context.fill();
-      context.strokeStyle = 'rgba(255,255,255,0.45)';
-      context.lineWidth = 8;
-      context.strokeRect(18, 14, canvas.width - 36, canvas.height - 28);
-    }
-    const texture = new CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    return new MeshStandardMaterial({
-      map: texture,
-      roughness: 0.68,
-      metalness: 0.02,
-      side: DoubleSide,
-    });
-  })();
   const createFamilyPictureMaterial = (subject: 'baby' | 'swing'): MeshStandardMaterial => {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
@@ -3017,7 +2966,6 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_WALL_THICKNESS,
   );
   addLaundryBasket(1202.82 - CENTER_X, 59.07 - HOUSE_CENTER_Z, -0.12);
-  addSidePictureFrame(1217.07 - CENTER_X, 2.9, 55.38 - HOUSE_CENTER_Z, -1, flowerPortraitMaterial);
   addGreenTrashBags(1231.64 - CENTER_X, 62.83 - HOUSE_CENTER_Z);
   addWallShelf(1215.95 - CENTER_X, 2.06, 65.92 - HOUSE_CENTER_Z, 1);
 
