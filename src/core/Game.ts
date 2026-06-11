@@ -17,6 +17,8 @@ import {
   PerspectiveCamera,
   Quaternion,
   Raycaster,
+  Shape,
+  ShapeGeometry,
   SphereGeometry,
   Texture,
   TorusGeometry,
@@ -781,12 +783,14 @@ type ChapterSevenInteractable =
   | { kind: 'rear-fixture'; item: ChapterSevenData['rearFixtures'][number]; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
-type ChapterEightHeldItem = 'coordinate-tool' | 'empty';
+type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'empty';
 
 const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'coordinate-tool',
+  'military-knife',
   'empty',
 ];
+const CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS = 0.38;
 
 export class Game {
   private readonly scene;
@@ -926,6 +930,10 @@ export class Game {
   private chapterSixHeldItemType: ChapterSixItemType | null = null;
   private chapterSixPossumPickupTimer = 0;
   private chapterEightHeldItem: ChapterEightHeldItem = 'coordinate-tool';
+  private chapterEightHeldItemModel: Group | null = null;
+  private chapterEightHeldItemModelType: ChapterEightHeldItem | null = null;
+  private chapterEightKnifeAttackMode: 'slash' | 'stab' | null = null;
+  private chapterEightKnifeAttackTimer = 0;
   private holdingPlate = false;
   private plateRecipeId: string | null = null;
   private platedRecipeId: string | null = null;
@@ -2295,7 +2303,10 @@ export class Game {
       }
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeSecondaryFire() && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
+    const secondaryFireRequested = this.input.consumeSecondaryFire();
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && secondaryFireRequested && this.chapterEightActive && this.player.isLocked() && !this.placementToolActive) {
+      this.handleChapterEightSecondaryFire();
+    } else if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && secondaryFireRequested && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
       if (this.chapterSix.petLookedAtPossum()) {
         this.pushStatus('You lean down and pet the possum. It flips over for belly rubs.', 2.8);
         this.syncHud();
@@ -2644,7 +2655,7 @@ export class Game {
     }
     this.updateChapterSixHeldItemDisplay(deltaSeconds);
     this.updateChapterSixPettingArmDisplay(deltaSeconds);
-    this.updateChapterEightHeldItemDisplay();
+    this.updateChapterEightHeldItemDisplay(deltaSeconds);
     this.updateMicrophoneSoundToolDisplay();
     this.updateOfficeTabletDisplay();
     this.updateChapterFourBoxDisplay();
@@ -5209,7 +5220,11 @@ export class Game {
   }
 
   private selectChapterEightHotbarSlot(slot: number): void {
-    const item: ChapterEightHeldItem = slot === 1 ? 'coordinate-tool' : 'empty';
+    const item: ChapterEightHeldItem = slot === 1
+      ? 'coordinate-tool'
+      : slot === 2
+        ? 'military-knife'
+        : 'empty';
 
     this.selectChapterEightHeldItem(this.chapterEightHeldItem === item ? 'empty' : item);
   }
@@ -5242,7 +5257,7 @@ export class Game {
 
     if (item === 'empty') {
       this.chapterEightHeldItemAnchor.visible = false;
-      this.pushStatus('Hands empty. Spin the mouse wheel or press 1 to switch back to the Coordinate Tool.', 1.9);
+      this.pushStatus('Hands empty. Spin the mouse wheel or press 1 or 2 to hold gear.', 1.9);
     } else {
       this.pushStatus(`${this.getChapterEightHeldItemLabel(item)} equipped. Spin the mouse wheel to switch items.`, 2.2);
     }
@@ -5253,6 +5268,8 @@ export class Game {
     switch (item) {
       case 'coordinate-tool':
         return 'Coordinate Tool';
+      case 'military-knife':
+        return 'Military Knife';
       case 'empty':
         return 'Empty hands';
     }
@@ -10712,7 +10729,29 @@ export class Game {
       return;
     }
 
-    this.pushStatus('No woods tool is equipped right now.', 1.6);
+    if (this.chapterEightHeldItem === 'military-knife') {
+      this.startChapterEightKnifeAttack('slash');
+      return;
+    }
+
+    this.pushStatus('Hold the Military Knife to slash or stab.', 1.6);
+  }
+
+  private handleChapterEightSecondaryFire(): void {
+    if (!this.player.isLocked() || this.chapterMenuOpen) {
+      return;
+    }
+
+    if (this.chapterEightHeldItem === 'military-knife') {
+      this.startChapterEightKnifeAttack('stab');
+      return;
+    }
+  }
+
+  private startChapterEightKnifeAttack(mode: 'slash' | 'stab'): void {
+    this.chapterEightKnifeAttackMode = mode;
+    this.chapterEightKnifeAttackTimer = CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS;
+    this.pushStatus(mode === 'slash' ? 'You slash the Military Knife through the air.' : 'You thrust the Military Knife forward.', 0.9);
   }
 
   private handleOfficePrizeFire(): boolean {
@@ -13512,7 +13551,7 @@ export class Game {
         '',
         'You are in a semi-realistic forest camp.',
         'An unlit stone-ring fire pit sits in the middle of a lighter green clearing.',
-        'Starting gear: Coordinate Tool.',
+        'Starting gear: Coordinate Tool and Military Knife.',
         'The crafting bench and grinding bench are placed near the fire pit for later item systems.',
         'Use the Coordinate Tool if you want to mark more spots in the woods.',
       ].join('\n');
@@ -13735,12 +13774,12 @@ export class Game {
 
     if (this.chapterEightActive) {
       return [
-        'Inventory: Coordinate Tool',
+        'Inventory: Coordinate Tool, Military Knife',
         `Held: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 8: The Woods',
-        'Starting Gear: Coordinate Tool',
-        'Spin the mouse wheel to switch between the Coordinate Tool and empty hands.',
+        'Starting Gear: Coordinate Tool, Military Knife',
+        'Spin the mouse wheel to switch Coordinate Tool, Military Knife, and empty hands. Left click slashes; right click stabs.',
         'Camp props: unlit fire pit, stone ring, crafting bench, grinding bench.',
         'Crafting and grinding interactions will be added later.',
       ].join('\n');
@@ -14088,7 +14127,13 @@ export class Game {
           ...coordinateToolSlot,
           selected: this.chapterEightHeldItem === 'coordinate-tool',
         },
-        ...Array.from({ length: 8 }, (_, index) => ({
+        {
+          label: `Military Knife ${this.chapterEightHeldItem === 'military-knife' ? '[Held]' : '[2]'}`,
+          count: 1,
+          filled: true,
+          selected: this.chapterEightHeldItem === 'military-knife',
+        },
+        ...Array.from({ length: 7 }, (_, index) => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -14433,7 +14478,7 @@ export class Game {
 
     if (this.chapterEightActive) {
       return locked
-        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, and mouse wheel switches Coordinate Tool and empty hands.'
+        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, mouse wheel switches items, left click slashes with the Military Knife, and right click stabs.'
         : 'Click the play space to walk around Chapter 8: The Woods.';
     }
 
@@ -17829,8 +17874,112 @@ export class Game {
     );
   }
 
-  private updateChapterEightHeldItemDisplay(): void {
-    this.chapterEightHeldItemAnchor.visible = false;
+  private createChapterEightHeldItemModel(type: ChapterEightHeldItem): Group {
+    const root = new Group();
+    const skinMaterial = new MeshStandardMaterial({ color: 0xd49b73, roughness: 0.84 });
+    const sleeveMaterial = new MeshStandardMaterial({ color: 0x2c3b2b, roughness: 0.9 });
+    const hand = new Mesh(new BoxGeometry(0.18, 0.13, 0.22), skinMaterial);
+    hand.position.set(0.12, -0.24, 0.06);
+    const sleeve = new Mesh(new BoxGeometry(0.16, 0.34, 0.18), sleeveMaterial);
+    sleeve.position.set(0.2, -0.44, 0.1);
+    root.add(hand, sleeve);
+
+    if (type === 'military-knife') {
+      const handleMaterial = new MeshStandardMaterial({ color: 0x26221b, roughness: 0.88, metalness: 0.05 });
+      const gripMaterial = new MeshStandardMaterial({ color: 0x14120f, roughness: 0.92, metalness: 0.02 });
+      const metalMaterial = new MeshStandardMaterial({ color: 0x9ea7a8, roughness: 0.34, metalness: 0.68 });
+      const edgeMaterial = new MeshStandardMaterial({ color: 0xd7dee0, roughness: 0.24, metalness: 0.72, side: DoubleSide });
+      const guardMaterial = new MeshStandardMaterial({ color: 0x5b6261, roughness: 0.44, metalness: 0.52 });
+
+      const knife = new Group();
+      knife.position.set(0.02, -0.03, -0.04);
+      knife.rotation.set(0.08, -0.05, -0.26);
+
+      const handle = new Mesh(new CylinderGeometry(0.055, 0.06, 0.42, 14), handleMaterial);
+      handle.position.y = -0.19;
+      const pommel = new Mesh(new CylinderGeometry(0.066, 0.066, 0.045, 14), guardMaterial);
+      pommel.position.y = -0.43;
+      const guard = new Mesh(new BoxGeometry(0.3, 0.04, 0.075), guardMaterial);
+      guard.position.y = 0.035;
+
+      [-0.31, -0.19, -0.07].forEach((gripY) => {
+        const gripRing = new Mesh(new CylinderGeometry(0.064, 0.067, 0.028, 14), gripMaterial);
+        gripRing.position.y = gripY;
+        knife.add(gripRing);
+      });
+
+      const bladeShape = new Shape();
+      bladeShape.moveTo(-0.04, 0.04);
+      bladeShape.lineTo(-0.04, 0.58);
+      bladeShape.lineTo(0.0, 0.7);
+      bladeShape.quadraticCurveTo(0.105, 0.48, 0.082, 0.06);
+      bladeShape.lineTo(-0.04, 0.04);
+      const blade = new Mesh(new ShapeGeometry(bladeShape, 18), metalMaterial);
+      blade.position.set(0, 0.02, -0.018);
+      const sharpenedEdgeShape = new Shape();
+      sharpenedEdgeShape.moveTo(0.022, 0.08);
+      sharpenedEdgeShape.quadraticCurveTo(0.078, 0.42, 0.0, 0.66);
+      sharpenedEdgeShape.quadraticCurveTo(0.052, 0.42, 0.046, 0.1);
+      sharpenedEdgeShape.lineTo(0.022, 0.08);
+      const edge = new Mesh(new ShapeGeometry(sharpenedEdgeShape, 12), edgeMaterial);
+      edge.position.set(0, 0.022, -0.021);
+      const flatSpine = new Mesh(new BoxGeometry(0.018, 0.56, 0.018), guardMaterial);
+      flatSpine.position.set(-0.044, 0.34, -0.012);
+
+      knife.add(handle, pommel, guard, blade, edge, flatSpine);
+      root.add(knife);
+      root.rotation.set(0.14, 0.22, -0.02);
+      root.scale.setScalar(1.16);
+    }
+
+    return root;
+  }
+
+  private updateChapterEightHeldItemDisplay(deltaSeconds: number): void {
+    this.chapterEightKnifeAttackTimer = Math.max(0, this.chapterEightKnifeAttackTimer - deltaSeconds);
+    if (this.chapterEightKnifeAttackTimer <= 0) {
+      this.chapterEightKnifeAttackMode = null;
+    }
+
+    if (
+      !this.chapterEightActive
+      || !this.player.isLocked()
+      || this.chapterMenuOpen
+      || this.placementToolActive
+      || this.chapterEightHeldItem !== 'military-knife'
+    ) {
+      this.chapterEightHeldItemAnchor.visible = false;
+      return;
+    }
+
+    if (this.chapterEightHeldItemModelType !== this.chapterEightHeldItem || !this.chapterEightHeldItemModel) {
+      if (this.chapterEightHeldItemModel) {
+        this.chapterEightHeldItemAnchor.remove(this.chapterEightHeldItemModel);
+      }
+      this.chapterEightHeldItemModelType = this.chapterEightHeldItem;
+      this.chapterEightHeldItemModel = this.createChapterEightHeldItemModel(this.chapterEightHeldItem);
+      this.chapterEightHeldItemAnchor.add(this.chapterEightHeldItemModel);
+    }
+
+    const bob = Math.sin((this.elapsed + deltaSeconds) * 6.8) * 0.014;
+    const attackProgress = this.chapterEightKnifeAttackMode
+      ? 1 - this.chapterEightKnifeAttackTimer / CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS
+      : 0;
+    const attackArc = Math.sin(MathUtils.clamp(attackProgress, 0, 1) * Math.PI);
+    const slash = this.chapterEightKnifeAttackMode === 'slash' ? attackArc : 0;
+    const stab = this.chapterEightKnifeAttackMode === 'stab' ? attackArc : 0;
+
+    this.chapterEightHeldItemAnchor.visible = true;
+    this.chapterEightHeldItemAnchor.position.set(
+      0.43 + slash * 0.08,
+      -0.38 + bob + slash * 0.03,
+      -0.68 - stab * 0.36,
+    );
+    this.chapterEightHeldItemAnchor.rotation.set(
+      -0.12 + bob * 0.45 - stab * 0.16,
+      -0.34 - slash * 0.96,
+      0.12 + slash * 0.72 + stab * 0.12,
+    );
   }
 
   private createChapterSixPettingArmModel(): void {
@@ -20163,11 +20312,13 @@ export class Game {
     });
     this.chapterEightHeldItem = 'coordinate-tool';
     this.chapterEightHeldItemAnchor.visible = false;
+    this.chapterEightKnifeAttackMode = null;
+    this.chapterEightKnifeAttackTimer = 0;
     this.setPlacementToolActive(true);
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);
     this.pushStatus(
-      'Chapter 8: The Woods loaded. You start with the Coordinate Tool. Spin the mouse wheel to switch to empty hands. The fire pit is not lit yet.',
+      'Chapter 8: The Woods loaded. You start with the Coordinate Tool and Military Knife. Left click slashes; right click stabs. The fire pit is not lit yet.',
       3.2,
     );
     this.resize();
