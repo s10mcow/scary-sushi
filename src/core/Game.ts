@@ -10454,13 +10454,23 @@ export class Game {
         const fixture = interactable.item;
         fixture.targetOpenAmount = fixture.targetOpenAmount > 0.5 ? 0 : 1;
         fixture.open = fixture.targetOpenAmount > 0.5;
-        this.gameplaySfxAudio.playClosetDoor(fixture.open);
-        this.pushStatus(
-          fixture.open
-            ? `${fixture.label} opens.`
-            : `${fixture.label} closes.`,
-          2.2,
-        );
+        if (fixture.kind === 'bathroom-sink') {
+          this.gameplaySfxAudio.playSmallPanel(fixture.open);
+          this.pushStatus(
+            fixture.open
+              ? 'You turn on the bathroom sink. Water pours into the bowl.'
+              : 'You turn off the bathroom sink.',
+            2.2,
+          );
+        } else {
+          this.gameplaySfxAudio.playClosetDoor(fixture.open);
+          this.pushStatus(
+            fixture.open
+              ? `${fixture.label} opens.`
+              : `${fixture.label} closes.`,
+            2.2,
+          );
+        }
         return;
       }
 
@@ -14580,6 +14590,12 @@ export class Game {
         }
 
         if (interactable.kind === 'rear-fixture') {
+          if (interactable.item.kind === 'bathroom-sink') {
+            return interactable.item.open
+              ? 'Press E to turn off the bathroom sink.'
+              : 'Press E to turn on the bathroom sink.';
+          }
+
           return interactable.item.open
             ? `Press E to close ${interactable.item.label}.`
             : `Press E to open ${interactable.item.label}.`;
@@ -15296,6 +15312,12 @@ export class Game {
         }
 
         if (interactable.kind === 'rear-fixture') {
+          if (interactable.item.kind === 'bathroom-sink') {
+            return interactable.item.open
+              ? 'The bathroom sink is running. Press E to turn it off.'
+              : 'The bathroom sink is off. Press E to turn it on.';
+          }
+
           return interactable.item.open
             ? `${interactable.item.label} is open. Press E to close it.`
             : `${interactable.item.label} is closed. Press E to open it.`;
