@@ -18151,7 +18151,7 @@ export class Game {
       const flameOuterMaterial = new MeshStandardMaterial({
         color: 0xff6a21,
         emissive: 0xff3d0c,
-        emissiveIntensity: 2.5,
+        emissiveIntensity: 3.8,
         roughness: 0.42,
         transparent: true,
         opacity: 0.76,
@@ -18159,7 +18159,7 @@ export class Game {
       const flameInnerMaterial = new MeshStandardMaterial({
         color: 0xffdf77,
         emissive: 0xffa52a,
-        emissiveIntensity: 3.4,
+        emissiveIntensity: 5.2,
         roughness: 0.34,
         transparent: true,
         opacity: 0.9,
@@ -18175,7 +18175,7 @@ export class Game {
       flameOuter.position.y = 0.78;
       const flameInner = new Mesh(new ConeGeometry(0.1, 0.36, 8), flameInnerMaterial);
       flameInner.position.y = 0.72;
-      const torchLight = new PointLight(0xffa34a, 5.4, 28, 1.55);
+      const torchLight = new PointLight(0xffad56, 10.5, 58, 1.18);
       torchLight.position.set(0, 0.64, -0.18);
       torch.add(handle, wrap, flameOuter, flameInner, torchLight);
       root.add(torch);

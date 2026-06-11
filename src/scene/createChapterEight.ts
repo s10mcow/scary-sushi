@@ -122,11 +122,11 @@ const GRASS_TUFT_COUNT = 390;
 const MIST_PATCH_COUNT = 22;
 const GROUND_Y = 0;
 const TREE_HITS_TO_FELL = 7;
-const CHAPTER_EIGHT_DAY_SECONDS = 120;
-const CHAPTER_EIGHT_NIGHT_SECONDS = 120;
+const CHAPTER_EIGHT_DAY_SECONDS = 240;
+const CHAPTER_EIGHT_NIGHT_SECONDS = 240;
 const CHAPTER_EIGHT_FULL_DAY_SECONDS = CHAPTER_EIGHT_DAY_SECONDS + CHAPTER_EIGHT_NIGHT_SECONDS;
 
-type ChapterEightMonsterMode = 'hidden' | 'stalk' | 'roam' | 'chase' | 'blocked';
+type ChapterEightMonsterMode = 'hidden' | 'stalk' | 'roam' | 'chase' | 'watch' | 'blocked';
 
 interface ChapterEightMonster {
   root: Group;
@@ -1015,7 +1015,13 @@ export function createChapterEight(): ChapterEightData {
     monster.mode = 'hidden';
     monster.root.visible = false;
     monster.root.position.set(CENTER_X - 18, GROUND_Y, CENTER_Z - 24);
+    monster.root.rotation.set(0, 0, 0);
     monster.root.scale.setScalar(1);
+    monster.root.children.forEach((child, index) => {
+      if (index >= 8) {
+        child.scale.setScalar(1);
+      }
+    });
     monster.timer = 0;
     monster.catchCooldown = 0;
   };
@@ -1029,6 +1035,13 @@ export function createChapterEight(): ChapterEightData {
       GROUND_Y,
       CENTER_Z + Math.sin(angle) * radius,
     );
+    monster.root.rotation.set(0, 0, 0);
+    monster.root.scale.setScalar(1);
+    monster.root.children.forEach((child, index) => {
+      if (index >= 8) {
+        child.scale.setScalar(1);
+      }
+    });
     monster.target.copy(monster.root.position);
     monster.root.visible = true;
   };
@@ -1237,7 +1250,7 @@ export function createChapterEight(): ChapterEightData {
         lastPhaseWasNight = nightActive;
         if (nightActive) {
           monster.mode = 'roam';
-          monster.timer = 5.5;
+          monster.timer = 12.8;
           placeMonsterAtWoodsEdge(playerPosition, Math.PI * 0.85);
           pushMonsterEvent('night-start');
         } else {
@@ -1296,6 +1309,11 @@ export function createChapterEight(): ChapterEightData {
       const monsterPosition = monster.root.position;
       const playerInsideCabin = Math.abs(playerPosition.x - CENTER_X) <= 8.4 && Math.abs(playerPosition.z - CENTER_Z) <= 6.65;
       const doorPosition = cabin.door.interactPosition;
+      const faceMonsterToward = (target: Vector3): void => {
+        monster.root.lookAt(target.x, monster.root.position.y, target.z);
+        monster.root.rotation.x = 0;
+        monster.root.rotation.z = 0;
+      };
       const moveMonsterToward = (target: Vector3, speed: number): void => {
         const direction = new Vector3(target.x - monsterPosition.x, 0, target.z - monsterPosition.z);
         const distance = direction.length();
@@ -1304,7 +1322,7 @@ export function createChapterEight(): ChapterEightData {
         }
         direction.multiplyScalar(1 / distance);
         monsterPosition.addScaledVector(direction, Math.min(distance, speed * deltaSeconds));
-        monster.root.lookAt(target.x, monster.root.position.y + 1.1, target.z);
+        faceMonsterToward(target);
       };
       const chooseRoamTarget = (): void => {
         const seed = Math.floor(elapsed * 11) + dayNumber * 131;
@@ -1322,7 +1340,7 @@ export function createChapterEight(): ChapterEightData {
           const roll = seededRandom(Math.floor(elapsed * 5) + dayNumber * 211);
           if (roll > 0.52) {
             monster.mode = 'stalk';
-            monster.timer = 3.2 + roll * 2.4;
+            monster.timer = 14 + roll * 10;
             placeMonsterAtWoodsEdge(playerPosition, Math.PI + roll);
             pushMonsterEvent('stalk');
           } else {
@@ -1331,8 +1349,12 @@ export function createChapterEight(): ChapterEightData {
         }
       } else if (monster.mode === 'stalk') {
         monster.timer -= deltaSeconds;
-        monster.root.lookAt(playerPosition.x, playerPosition.y, playerPosition.z);
+        faceMonsterToward(playerPosition);
         monster.root.position.y = Math.sin(elapsed * 6.2) * 0.035;
+        const stalkDistance = monsterPosition.distanceTo(playerPosition);
+        if (stalkDistance > 8.5) {
+          moveMonsterToward(playerPosition, 0.42);
+        }
         if (monster.timer <= 0) {
           monster.mode = 'chase';
           pushMonsterEvent('chase');
@@ -1359,16 +1381,29 @@ export function createChapterEight(): ChapterEightData {
           });
           if (monsterPosition.distanceTo(playerPosition) < 1.45 && monster.catchCooldown <= 0) {
             monster.catchCooldown = 9;
-            monster.mode = 'stalk';
-            monster.timer = 4.8;
-            placeMonsterAtWoodsEdge(playerPosition, Math.PI);
+            monster.mode = 'watch';
+            monster.timer = 6.5;
+            faceMonsterToward(playerPosition);
+            monster.root.rotation.z = 0;
+            monster.root.scale.set(1.2, 1.12, 1.2);
             pushMonsterEvent('caught');
           }
+        }
+      } else if (monster.mode === 'watch') {
+        monster.timer -= deltaSeconds;
+        monster.root.position.y = 0;
+        monster.root.rotation.z = 0;
+        monster.root.scale.set(1.2, 1.12, 1.2);
+        faceMonsterToward(playerPosition);
+        if (monster.timer <= 0) {
+          monster.mode = 'stalk';
+          monster.timer = 12;
+          placeMonsterAtWoodsEdge(playerPosition, Math.PI);
         }
       } else if (monster.mode === 'blocked') {
         monster.timer -= deltaSeconds;
         monster.root.position.set(CENTER_X, GROUND_Y, CENTER_Z + 10.6);
-        monster.root.lookAt(CENTER_X, 1.6, CENTER_Z + 6.6);
+        faceMonsterToward(new Vector3(CENTER_X, GROUND_Y, CENTER_Z + 6.6));
         monster.root.scale.set(1.08, 1.12, 1.08);
         if (monster.timer <= 0) {
           monster.mode = 'roam';
