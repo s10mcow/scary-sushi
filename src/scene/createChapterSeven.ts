@@ -3117,7 +3117,12 @@ export function createChapterSeven(): ChapterSevenData {
       HOUSE_FRONT_ROOM_DOOR_Z - (96.31 - HOUSE_CENTER_Z),
     ),
   );
-  const oldWoodenClosets = [oldWoodenCloset, frontBedroomOldWoodenCloset];
+  const rearBedroomOldWoodenCloset = addOldWoodenCloset(
+    1187.67 - CENTER_X,
+    63.76 - HOUSE_CENTER_Z,
+    Math.PI / 2,
+  );
+  const oldWoodenClosets = [oldWoodenCloset, frontBedroomOldWoodenCloset, rearBedroomOldWoodenCloset];
   addPictureFrame(1193.33 - CENTER_X, 2.4, 84.23 - HOUSE_CENTER_Z, 1, dogPortraitMaterial);
   addPictureFrame(1197.89 - CENTER_X, 2.46, 83.77 - HOUSE_CENTER_Z, -1, catPortraitMaterial);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
