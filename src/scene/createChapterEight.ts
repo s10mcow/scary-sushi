@@ -20,18 +20,31 @@ export interface ChapterEightData {
   colliders: CollisionBox[];
   spawn: Vector3;
   lookTarget: Vector3;
+  fireplacePosition: Vector3;
   waterPump: ChapterEightWaterPump;
   stove: ChapterEightStove;
+  door: ChapterEightDoor;
+  sleepSpot: ChapterEightSleepSpot;
   trees: ChapterEightTree[];
   drops: ChapterEightDrop[];
   isFireLit(): boolean;
+  isNight(): boolean;
+  getNightBlend(): number;
+  getPhaseLabel(): string;
+  getPhaseRemaining(): number;
+  hasTorch(): boolean;
   chopTree(tree: ChapterEightTree): ChapterEightChopResult;
   collectDrop(drop: ChapterEightDrop): boolean;
   dropWood(position: Vector3): ChapterEightDrop;
   lightFire(): void;
+  toggleDoor(): boolean;
+  toggleDoorLock(): boolean;
+  sleepUntilMorning(): boolean;
+  craftTorch(): boolean;
   activateWaterPump(): void;
+  consumeMonsterEvent(): ChapterEightMonsterEvent | null;
   getSupportedFloorY(position: Vector3): number | null;
-  update(deltaSeconds: number): void;
+  update(deltaSeconds: number, playerPosition: Vector3): void;
   reset(): void;
 }
 
@@ -49,6 +62,24 @@ export interface ChapterEightStove {
   doorPivot: Group;
   open: boolean;
 }
+
+export interface ChapterEightDoor {
+  label: string;
+  interactPosition: Vector3;
+  lockPosition: Vector3;
+  root: Group;
+  collider: CollisionBox;
+  open: boolean;
+  locked: boolean;
+  lockBolt: Mesh;
+}
+
+export interface ChapterEightSleepSpot {
+  label: string;
+  interactPosition: Vector3;
+}
+
+export type ChapterEightMonsterEvent = 'stalk' | 'chase' | 'blocked' | 'caught' | 'night-start' | 'day-start';
 
 interface ChapterEightFireplaceVisuals {
   flames: Group;
@@ -91,6 +122,20 @@ const GRASS_TUFT_COUNT = 390;
 const MIST_PATCH_COUNT = 22;
 const GROUND_Y = 0;
 const TREE_HITS_TO_FELL = 7;
+const CHAPTER_EIGHT_DAY_SECONDS = 120;
+const CHAPTER_EIGHT_NIGHT_SECONDS = 120;
+const CHAPTER_EIGHT_FULL_DAY_SECONDS = CHAPTER_EIGHT_DAY_SECONDS + CHAPTER_EIGHT_NIGHT_SECONDS;
+
+type ChapterEightMonsterMode = 'hidden' | 'stalk' | 'roam' | 'chase' | 'blocked';
+
+interface ChapterEightMonster {
+  root: Group;
+  mode: ChapterEightMonsterMode;
+  target: Vector3;
+  timer: number;
+  event: ChapterEightMonsterEvent | null;
+  catchCooldown: number;
+}
 
 function addCollider(colliders: CollisionBox[], x: number, z: number, width: number, depth: number): CollisionBox {
   const collider = {
@@ -259,6 +304,63 @@ function createSaplingDropModel(): Group {
   return root;
 }
 
+function createNightMonster(): ChapterEightMonster {
+  const root = new Group();
+  root.name = 'Chapter 8 Red-Eyed Night Monster';
+  root.visible = false;
+
+  const bodyMaterial = new MeshStandardMaterial({
+    color: 0x030303,
+    emissive: 0x010101,
+    emissiveIntensity: 0.24,
+    roughness: 0.96,
+    metalness: 0,
+  });
+  const eyeMaterial = new MeshStandardMaterial({
+    color: 0xff1010,
+    emissive: 0xff0000,
+    emissiveIntensity: 2.6,
+    roughness: 0.22,
+    metalness: 0,
+  });
+
+  const torso = new Mesh(new CylinderGeometry(0.34, 0.46, 1.38, 10), bodyMaterial);
+  torso.position.y = 1.22;
+  torso.scale.z = 0.58;
+  const neck = new Mesh(new CylinderGeometry(0.1, 0.16, 0.62, 8), bodyMaterial);
+  neck.position.y = 2.16;
+  const head = new Mesh(new SphereGeometry(0.32, 14, 10), bodyMaterial);
+  head.position.y = 2.58;
+  head.scale.set(0.76, 1.08, 0.72);
+  const leftEye = new Mesh(new SphereGeometry(0.045, 8, 6), eyeMaterial);
+  leftEye.position.set(-0.11, 2.61, -0.25);
+  const rightEye = leftEye.clone();
+  rightEye.position.x = 0.11;
+
+  const makeLimb = (x: number, y: number, z: number, length: number, radius: number, rotationZ: number): Mesh => {
+    const limb = new Mesh(new CylinderGeometry(radius * 0.72, radius, length, 7), bodyMaterial);
+    limb.position.set(x, y, z);
+    limb.rotation.z = rotationZ;
+    limb.rotation.x = 0.14;
+    return limb;
+  };
+  const leftArm = makeLimb(-0.55, 1.2, -0.02, 1.55, 0.08, -0.28);
+  const rightArm = makeLimb(0.55, 1.2, -0.02, 1.55, 0.08, 0.28);
+  const leftLeg = makeLimb(-0.26, 0.42, 0.03, 1.12, 0.1, 0.18);
+  const rightLeg = makeLimb(0.26, 0.42, 0.03, 1.12, 0.1, -0.18);
+  root.add(torso, neck, head, leftEye, rightEye, leftArm, rightArm, leftLeg, rightLeg);
+  root.position.set(CENTER_X - 18, GROUND_Y, CENTER_Z - 24);
+
+  return {
+    root,
+    mode: 'hidden',
+    target: new Vector3(CENTER_X - 18, GROUND_Y, CENTER_Z - 24),
+    timer: 0,
+    event: null,
+    catchCooldown: 0,
+  };
+}
+
 interface ChapterEightBedSurface {
   centerX: number;
   centerZ: number;
@@ -274,6 +376,8 @@ function createCabin(colliders: CollisionBox[]): {
   fireplacePosition: Vector3;
   waterPump: ChapterEightWaterPump;
   stove: ChapterEightStove;
+  door: ChapterEightDoor;
+  sleepSpot: ChapterEightSleepSpot;
   fireplaceVisuals: ChapterEightFireplaceVisuals;
 } {
   const cabin = new Group();
@@ -485,11 +589,23 @@ function createCabin(colliders: CollisionBox[]): {
   addWindow(5.2, 2.46, halfDepth + 0.16, 2.4, 1.62, 'z');
   addWindow(halfWidth + 0.16, 2.58, 0, 5.6, 2.06, 'x');
 
-  const openDoor = addCabinBox(doorWidth, 3.55, 0.16, -1.42, 1.78, halfDepth + 1.16, doorMaterial);
-  openDoor.rotation.y = -1.05;
+  const cabinDoor = new Group();
+  cabinDoor.position.set(-doorWidth / 2, 0, halfDepth + 0.1);
+  const doorPanel = new Mesh(new BoxGeometry(doorWidth, 3.55, 0.16), doorMaterial);
+  doorPanel.position.set(doorWidth / 2, 1.78, 0);
+  cabinDoor.add(doorPanel);
   const doorKnob = new Mesh(new SphereGeometry(0.085, 12, 8), trimMaterial);
-  doorKnob.position.set(-0.52, 1.82, halfDepth + 1.64);
-  cabin.add(doorKnob);
+  doorKnob.position.set(doorWidth - 0.42, 1.82, 0.1);
+  const insideDoorKnob = doorKnob.clone();
+  insideDoorKnob.position.z = -0.1;
+  cabinDoor.add(doorKnob, insideDoorKnob);
+  const lockPlate = new Mesh(new BoxGeometry(0.18, 0.42, 0.06), wornIronMaterial);
+  lockPlate.position.set(doorWidth - 0.24, 2.24, -0.12);
+  const lockBolt = new Mesh(new BoxGeometry(0.62, 0.12, 0.08), wornIronMaterial);
+  lockBolt.position.set(doorWidth - 0.54, 2.24, -0.18);
+  cabinDoor.add(lockPlate, lockBolt);
+  cabin.add(cabinDoor);
+  const doorCollider = addCollider(colliders, CENTER_X, CENTER_Z + halfDepth + 0.1, doorWidth, 0.24);
 
   const roofSlopeLength = Math.hypot(halfWidth + 0.9, roofRise);
   const roofAngle = Math.atan2(roofRise, halfWidth + 0.9);
@@ -499,6 +615,27 @@ function createCabin(colliders: CollisionBox[]): {
   const rightRoof = addCabinBox(roofSlopeLength, 0.34, depth + 1.4, halfWidth / 2 + 0.15, roofY, 0, roofMaterial);
   rightRoof.rotation.z = -roofAngle;
   addCabinBox(0.52, 0.34, depth + 1.48, 0, height + roofRise - 0.22, 0, trimMaterial);
+
+  const lantern = new Group();
+  lantern.position.set(-1.4, 4.38, 0.3);
+  const lanternChain = new Mesh(new CylinderGeometry(0.018, 0.018, 0.6, 6), wornIronMaterial);
+  lanternChain.position.y = 0.28;
+  const lanternFrame = new Mesh(new CylinderGeometry(0.22, 0.28, 0.52, 10), wornIronMaterial);
+  lanternFrame.position.y = -0.18;
+  const lanternGlow = new Mesh(new SphereGeometry(0.19, 12, 8), new MeshStandardMaterial({
+    color: 0xffc36a,
+    emissive: 0xff9a2e,
+    emissiveIntensity: 1.65,
+    roughness: 0.32,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.72,
+  }));
+  lanternGlow.position.y = -0.18;
+  const lanternLight = new PointLight(0xffb15f, 1.85, 9.5, 1.9);
+  lanternLight.position.y = -0.16;
+  lantern.add(lanternChain, lanternFrame, lanternGlow, lanternLight);
+  cabin.add(lantern);
 
   const fireplace = new Group();
   fireplace.position.set(0, 0, -halfDepth + 0.5);
@@ -656,9 +793,9 @@ function createCabin(colliders: CollisionBox[]): {
     cabin.add(chair);
     addCollider(colliders, CENTER_X + localX, CENTER_Z + localZ, 0.9, 0.86);
   };
-  addDiningChair(-5.2, -2.08, 0);
-  addDiningChair(-6.95, -0.9, Math.PI / 2);
-  addDiningChair(-3.45, -0.9, -Math.PI / 2);
+  addDiningChair(-5.2, -2.34, 0);
+  addDiningChair(-7.35, -0.9, Math.PI / 2);
+  addDiningChair(-3.05, -0.9, -Math.PI / 2);
 
   const pump = new Group();
   pump.name = 'Cabin outdoor hand water pump';
@@ -713,6 +850,20 @@ function createCabin(colliders: CollisionBox[]): {
       handlePivot: pumpHandle,
       waterStream,
       pumping: false,
+    },
+    door: {
+      label: 'Cabin door',
+      interactPosition: new Vector3(CENTER_X, GAME_CONFIG.player.height, CENTER_Z + halfDepth + 0.55),
+      lockPosition: new Vector3(CENTER_X + 0.95, GAME_CONFIG.player.height, CENTER_Z + halfDepth - 0.55),
+      root: cabinDoor,
+      collider: doorCollider,
+      open: false,
+      locked: false,
+      lockBolt,
+    },
+    sleepSpot: {
+      label: 'Cabin bed',
+      interactPosition: new Vector3(CENTER_X + halfWidth - 2.05, GAME_CONFIG.player.height, CENTER_Z - 1.1),
     },
     stove: {
       label: 'Cast iron stove',
@@ -820,12 +971,55 @@ export function createChapterEight(): ChapterEightData {
 
   const cabin = createCabin(colliders);
   root.add(cabin.root);
+  const monster = createNightMonster();
+  root.add(monster.root);
 
   const spawn = new Vector3(CENTER_X, GAME_CONFIG.player.height, CENTER_Z + 17);
   const lookTarget = new Vector3(CENTER_X, 1.8, CENTER_Z + 4.6);
   let elapsed = 0;
   let fireplaceLit = true;
   let waterPumpTimer = 0;
+  let dayCycleTime = 0;
+  let dayNumber = 1;
+  let lastSleepDay = 0;
+  let torchCrafted = false;
+  let lastPhaseWasNight = false;
+
+  const getCycleIsNight = (): boolean => dayCycleTime >= CHAPTER_EIGHT_DAY_SECONDS;
+
+  const setDoorOpen = (open: boolean): void => {
+    if (open && cabin.door.locked) {
+      return;
+    }
+    cabin.door.open = open;
+    cabin.door.collider.enabled = !open;
+  };
+
+  const resetMonsterForDay = (): void => {
+    monster.mode = 'hidden';
+    monster.root.visible = false;
+    monster.root.position.set(CENTER_X - 18, GROUND_Y, CENTER_Z - 24);
+    monster.root.scale.setScalar(1);
+    monster.timer = 0;
+    monster.catchCooldown = 0;
+  };
+
+  const placeMonsterAtWoodsEdge = (playerPosition: Vector3, offsetAngle = Math.PI): void => {
+    const playerAngle = Math.atan2(playerPosition.z - CENTER_Z, playerPosition.x - CENTER_X);
+    const angle = playerAngle + offsetAngle + (seededRandom(Math.floor(elapsed * 10) + dayNumber * 97) - 0.5) * 1.2;
+    const radius = 26 + seededRandom(Math.floor(elapsed * 7) + dayNumber * 43) * 8;
+    monster.root.position.set(
+      CENTER_X + Math.cos(angle) * radius,
+      GROUND_Y,
+      CENTER_Z + Math.sin(angle) * radius,
+    );
+    monster.target.copy(monster.root.position);
+    monster.root.visible = true;
+  };
+
+  const pushMonsterEvent = (event: ChapterEightMonsterEvent): void => {
+    monster.event = monster.event ?? event;
+  };
 
   const removeTreeCollider = (tree: ChapterEightTree): void => {
     tree.collider.enabled = false;
@@ -862,12 +1056,41 @@ export function createChapterEight(): ChapterEightData {
     colliders,
     spawn,
     lookTarget,
+    fireplacePosition: cabin.fireplacePosition,
     waterPump: cabin.waterPump,
     stove: cabin.stove,
+    door: cabin.door,
+    sleepSpot: cabin.sleepSpot,
     trees,
     drops,
     isFireLit() {
       return fireplaceLit;
+    },
+    isNight() {
+      return getCycleIsNight();
+    },
+    getNightBlend() {
+      if (dayCycleTime < CHAPTER_EIGHT_DAY_SECONDS - 8) {
+        return 0;
+      }
+      if (dayCycleTime < CHAPTER_EIGHT_DAY_SECONDS) {
+        return (dayCycleTime - (CHAPTER_EIGHT_DAY_SECONDS - 8)) / 8;
+      }
+      if (dayCycleTime > CHAPTER_EIGHT_FULL_DAY_SECONDS - 8) {
+        return 1 - (dayCycleTime - (CHAPTER_EIGHT_FULL_DAY_SECONDS - 8)) / 8;
+      }
+      return 1;
+    },
+    getPhaseLabel() {
+      return getCycleIsNight() ? `Night ${dayNumber}` : `Day ${dayNumber}`;
+    },
+    getPhaseRemaining() {
+      return getCycleIsNight()
+        ? CHAPTER_EIGHT_FULL_DAY_SECONDS - dayCycleTime
+        : CHAPTER_EIGHT_DAY_SECONDS - dayCycleTime;
+    },
+    hasTorch() {
+      return torchCrafted;
     },
     chopTree(tree) {
       if (!tree.active) {
@@ -924,11 +1147,50 @@ export function createChapterEight(): ChapterEightData {
     lightFire() {
       fireplaceLit = true;
     },
+    toggleDoor() {
+      if (cabin.door.locked) {
+        return false;
+      }
+      setDoorOpen(!cabin.door.open);
+      return true;
+    },
+    toggleDoorLock() {
+      if (cabin.door.open) {
+        return false;
+      }
+      cabin.door.locked = !cabin.door.locked;
+      cabin.door.lockBolt.position.x = cabin.door.locked ? 1.82 : 2.06;
+      return true;
+    },
+    sleepUntilMorning() {
+      if (!getCycleIsNight() || dayNumber <= lastSleepDay) {
+        return false;
+      }
+      lastSleepDay = dayNumber;
+      dayNumber += 1;
+      dayCycleTime = 0;
+      lastPhaseWasNight = false;
+      resetMonsterForDay();
+      pushMonsterEvent('day-start');
+      return true;
+    },
+    craftTorch() {
+      if (!fireplaceLit || torchCrafted) {
+        return false;
+      }
+      torchCrafted = true;
+      return true;
+    },
     activateWaterPump() {
       waterPumpTimer = 2.8;
       cabin.waterPump.pumping = true;
       cabin.waterPump.waterStream.visible = true;
       cabin.waterPump.waterStream.scale.setScalar(1);
+    },
+    consumeMonsterEvent() {
+      const event = monster.event;
+      monster.event = null;
+      return event;
     },
     getSupportedFloorY(position) {
       const insideX = position.x >= CENTER_X - HALF_FOREST_SIZE && position.x <= CENTER_X + HALF_FOREST_SIZE;
@@ -944,8 +1206,30 @@ export function createChapterEight(): ChapterEightData {
       }
       return insideX && insideZ ? GAME_CONFIG.player.height : null;
     },
-    update(deltaSeconds) {
+    update(deltaSeconds, playerPosition) {
       elapsed += deltaSeconds;
+      dayCycleTime += deltaSeconds;
+      if (dayCycleTime >= CHAPTER_EIGHT_FULL_DAY_SECONDS) {
+        dayCycleTime -= CHAPTER_EIGHT_FULL_DAY_SECONDS;
+        dayNumber += 1;
+        lastPhaseWasNight = false;
+        pushMonsterEvent('day-start');
+        resetMonsterForDay();
+      }
+      const nightActive = getCycleIsNight();
+      if (nightActive !== lastPhaseWasNight) {
+        lastPhaseWasNight = nightActive;
+        if (nightActive) {
+          monster.mode = 'roam';
+          monster.timer = 5.5;
+          placeMonsterAtWoodsEdge(playerPosition, Math.PI * 0.85);
+          pushMonsterEvent('night-start');
+        } else {
+          pushMonsterEvent('day-start');
+          resetMonsterForDay();
+        }
+      }
+
       trees.forEach((tree) => {
         if (!tree.active) {
           return;
@@ -970,6 +1254,8 @@ export function createChapterEight(): ChapterEightData {
       } else {
         cabin.waterPump.handlePivot.rotation.x += (-0.34 - cabin.waterPump.handlePivot.rotation.x) * Math.min(1, deltaSeconds * 8);
       }
+      cabin.door.root.rotation.y += ((cabin.door.open ? -1.28 : 0) - cabin.door.root.rotation.y) * Math.min(1, deltaSeconds * 7.5);
+      cabin.door.collider.enabled = !cabin.door.open;
       const fireFlicker = fireplaceLit ? 1 + Math.sin(elapsed * 15.5) * 0.08 + Math.sin(elapsed * 27.0) * 0.04 : 0;
       cabin.fireplaceVisuals.flames.visible = fireplaceLit;
       cabin.fireplaceVisuals.fireLight.visible = fireplaceLit;
@@ -985,11 +1271,104 @@ export function createChapterEight(): ChapterEightData {
         puff.scale.set(puffScale * 1.25, puffScale * 0.58, puffScale);
       });
       cabin.stove.doorPivot.rotation.y += ((cabin.stove.open ? -1.25 : 0) - cabin.stove.doorPivot.rotation.y) * Math.min(1, deltaSeconds * 8);
+
+      if (!nightActive) {
+        return;
+      }
+
+      monster.catchCooldown = Math.max(0, monster.catchCooldown - deltaSeconds);
+      const monsterPosition = monster.root.position;
+      const playerInsideCabin = Math.abs(playerPosition.x - CENTER_X) <= 8.4 && Math.abs(playerPosition.z - CENTER_Z) <= 6.65;
+      const doorPosition = cabin.door.interactPosition;
+      const moveMonsterToward = (target: Vector3, speed: number): void => {
+        const direction = new Vector3(target.x - monsterPosition.x, 0, target.z - monsterPosition.z);
+        const distance = direction.length();
+        if (distance <= 0.05) {
+          return;
+        }
+        direction.multiplyScalar(1 / distance);
+        monsterPosition.addScaledVector(direction, Math.min(distance, speed * deltaSeconds));
+        monster.root.lookAt(target.x, monster.root.position.y + 1.1, target.z);
+      };
+      const chooseRoamTarget = (): void => {
+        const seed = Math.floor(elapsed * 11) + dayNumber * 131;
+        const angle = seededRandom(seed) * Math.PI * 2;
+        const radius = 18 + seededRandom(seed + 1) * 35;
+        monster.target.set(CENTER_X + Math.cos(angle) * radius, GROUND_Y, CENTER_Z + Math.sin(angle) * radius);
+        monster.timer = 4 + seededRandom(seed + 2) * 5.5;
+      };
+
+      monster.root.visible = monster.mode !== 'hidden';
+      if (monster.mode === 'roam') {
+        moveMonsterToward(monster.target, 1.75);
+        monster.timer -= deltaSeconds;
+        if (monsterPosition.distanceTo(monster.target) < 1.1 || monster.timer <= 0) {
+          const roll = seededRandom(Math.floor(elapsed * 5) + dayNumber * 211);
+          if (roll > 0.52) {
+            monster.mode = 'stalk';
+            monster.timer = 3.2 + roll * 2.4;
+            placeMonsterAtWoodsEdge(playerPosition, Math.PI + roll);
+            pushMonsterEvent('stalk');
+          } else {
+            chooseRoamTarget();
+          }
+        }
+      } else if (monster.mode === 'stalk') {
+        monster.timer -= deltaSeconds;
+        monster.root.lookAt(playerPosition.x, playerPosition.y, playerPosition.z);
+        monster.root.position.y = Math.sin(elapsed * 6.2) * 0.035;
+        if (monster.timer <= 0) {
+          monster.mode = 'chase';
+          pushMonsterEvent('chase');
+        }
+      } else if (monster.mode === 'chase') {
+        const doorDistance = monsterPosition.distanceTo(doorPosition);
+        if (cabin.door.locked && playerInsideCabin && doorDistance < 3.2) {
+          monster.mode = 'blocked';
+          monster.timer = 5.5;
+          pushMonsterEvent('blocked');
+        } else {
+          if (!cabin.door.locked && !cabin.door.open && playerInsideCabin && doorDistance < 2.6) {
+            setDoorOpen(true);
+          }
+          moveMonsterToward(playerPosition, 5.3 + Math.sin(elapsed * 5.6) * 0.7);
+          monster.root.position.y = 0.16 + Math.abs(Math.sin(elapsed * 9.5)) * 0.12;
+          monster.root.rotation.z = Math.sin(elapsed * 7.5) * 0.18;
+          monster.root.scale.set(1.18, 1.08, 1.18);
+          monster.root.children.forEach((child, index) => {
+            if (index >= 5) {
+              child.scale.y = 1.65 + Math.sin(elapsed * 10 + index) * 0.28;
+              child.rotation.z += Math.sin(elapsed * 8 + index) * 0.012;
+            }
+          });
+          if (monsterPosition.distanceTo(playerPosition) < 1.45 && monster.catchCooldown <= 0) {
+            monster.catchCooldown = 9;
+            monster.mode = 'stalk';
+            monster.timer = 4.8;
+            placeMonsterAtWoodsEdge(playerPosition, Math.PI);
+            pushMonsterEvent('caught');
+          }
+        }
+      } else if (monster.mode === 'blocked') {
+        monster.timer -= deltaSeconds;
+        monster.root.position.set(CENTER_X, GROUND_Y, CENTER_Z + 10.6);
+        monster.root.lookAt(CENTER_X, 1.6, CENTER_Z + 6.6);
+        monster.root.scale.set(1.08, 1.12, 1.08);
+        if (monster.timer <= 0) {
+          monster.mode = 'roam';
+          chooseRoamTarget();
+        }
+      }
     },
     reset() {
       elapsed = 0;
       fireplaceLit = true;
       waterPumpTimer = 0;
+      dayCycleTime = 0;
+      dayNumber = 1;
+      lastSleepDay = 0;
+      lastPhaseWasNight = false;
+      torchCrafted = false;
       drops.forEach((drop) => {
         drop.active = false;
         root.remove(drop.root);
@@ -1013,6 +1392,12 @@ export function createChapterEight(): ChapterEightData {
       cabin.waterPump.waterStream.scale.setScalar(1);
       cabin.stove.open = false;
       cabin.stove.doorPivot.rotation.y = 0;
+      cabin.door.open = false;
+      cabin.door.locked = false;
+      cabin.door.root.rotation.y = 0;
+      cabin.door.collider.enabled = true;
+      cabin.door.lockBolt.position.x = 2.06;
+      resetMonsterForDay();
       root.visible = false;
     },
   };

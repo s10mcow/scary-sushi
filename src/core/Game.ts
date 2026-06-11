@@ -3,6 +3,7 @@ import {
   BoxGeometry,
   CanvasTexture,
   Color,
+  ConeGeometry,
   CylinderGeometry,
   DoubleSide,
   Fog,
@@ -15,6 +16,7 @@ import {
   Object3D,
   PlaneGeometry,
   PerspectiveCamera,
+  PointLight,
   Quaternion,
   Raycaster,
   Shape,
@@ -783,11 +785,12 @@ type ChapterSevenInteractable =
   | { kind: 'rear-fixture'; item: ChapterSevenData['rearFixtures'][number]; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
-type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'empty';
+type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'torch' | 'empty';
 
 const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'coordinate-tool',
   'military-knife',
+  'torch',
   'empty',
 ];
 const CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS = 0.38;
@@ -2586,7 +2589,8 @@ export class Game {
     } else if (this.chapterSevenActive) {
       this.chapterSeven.update(deltaSeconds, this.player.getPosition());
     } else if (this.chapterEightActive) {
-      this.chapterEight.update(deltaSeconds);
+      this.chapterEight.update(deltaSeconds, this.player.getPosition());
+      this.handleChapterEightMonsterEvents();
     } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
@@ -5224,7 +5228,9 @@ export class Game {
       ? 'coordinate-tool'
       : slot === 2
         ? 'military-knife'
-        : 'empty';
+        : slot === 3
+          ? 'torch'
+          : 'empty';
 
     this.selectChapterEightHeldItem(this.chapterEightHeldItem === item ? 'empty' : item);
   }
@@ -5242,6 +5248,14 @@ export class Game {
     }
 
     this.chapterEightHeldItem = item;
+    if (item === 'torch' && !this.chapterEight.hasTorch()) {
+      this.chapterEightHeldItem = 'empty';
+      this.chapterEightHeldItemAnchor.visible = false;
+      this.pushStatus('Make a torch at the burning fireplace before you can hold one.', 2.3);
+      this.syncHud();
+      return;
+    }
+
     if (item === 'coordinate-tool') {
       this.chapterEightHeldItemAnchor.visible = false;
       this.setPlacementToolActive(true);
@@ -5270,6 +5284,8 @@ export class Game {
         return 'Coordinate Tool';
       case 'military-knife':
         return 'Military Knife';
+      case 'torch':
+        return 'Torch';
       case 'empty':
         return 'Empty hands';
     }
@@ -9744,19 +9760,22 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
-      this.lighting.ambient.intensity = 0.64;
-      this.lighting.hemisphere.intensity = 0.86;
-      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.34;
-      this.lighting.flashlight.distance = 16;
+      const nightBlend = this.chapterEight.getNightBlend();
+      this.lighting.ambient.intensity = MathUtils.lerp(0.64, 0.035, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(0.86, 0.09, nightBlend);
+      this.lighting.flashlight.intensity = MathUtils.lerp(GAME_CONFIG.flashlight.intensity * 0.34, GAME_CONFIG.flashlight.intensity * 1.35, nightBlend);
+      this.lighting.flashlight.distance = MathUtils.lerp(16, 24, nightBlend);
 
       if (this.scene.background instanceof Color) {
         this.scene.background.setHex(0x8db8c3);
+        this.scene.background.lerp(new Color(0x06080d), nightBlend);
       }
 
       if (this.scene.fog instanceof Fog) {
         this.scene.fog.color.setHex(0x9fb9af);
-        this.scene.fog.near = 72;
-        this.scene.fog.far = 330;
+        this.scene.fog.color.lerp(new Color(0x07090d), nightBlend);
+        this.scene.fog.near = MathUtils.lerp(72, 10, nightBlend);
+        this.scene.fog.far = MathUtils.lerp(330, 84, nightBlend);
       }
 
       return;
@@ -10760,6 +10779,56 @@ export class Game {
   }
 
   private handleChapterEightInteract(): void {
+    if (this.isNearChapterEightDoorLock()) {
+      const changed = this.chapterEight.toggleDoorLock();
+      this.pushStatus(
+        changed
+          ? this.chapterEight.door.locked
+            ? 'You slide the cabin door lock into place. Nothing outside can open it.'
+            : 'You unclip the cabin door lock.'
+          : 'Close the cabin door before locking it.',
+        2.4,
+      );
+      return;
+    }
+
+    if (this.isNearChapterEightDoor()) {
+      const changed = this.chapterEight.toggleDoor();
+      this.pushStatus(
+        changed
+          ? this.chapterEight.door.open
+            ? 'You open the cabin door.'
+            : 'You close the cabin door.'
+          : 'The cabin door is locked from the inside.',
+        1.9,
+      );
+      return;
+    }
+
+    if (this.isNearChapterEightSleepSpot()) {
+      const slept = this.chapterEight.sleepUntilMorning();
+      this.pushStatus(
+        slept
+          ? 'You sleep through the night. Morning comes back to the woods.'
+          : this.chapterEight.isNight()
+            ? 'You already slept this day. Wait until the next day before sleeping again.'
+            : 'You can only sleep through the night.',
+        2.6,
+      );
+      return;
+    }
+
+    if (this.isNearChapterEightFireplace() && !this.chapterEight.hasTorch()) {
+      const crafted = this.chapterEight.craftTorch();
+      if (crafted) {
+        this.selectChapterEightHeldItem('torch');
+        this.pushStatus('You make a torch from the fire. It lights the woods around you when held.', 2.8);
+      } else {
+        this.pushStatus('The fireplace needs to be burning before you can make a torch.', 2.2);
+      }
+      return;
+    }
+
     if (this.isNearChapterEightStove()) {
       this.chapterEight.stove.open = !this.chapterEight.stove.open;
       this.pushStatus(
@@ -10786,6 +10855,57 @@ export class Game {
 
   private isNearChapterEightStove(): boolean {
     return this.player.getPosition().distanceTo(this.chapterEight.stove.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.55;
+  }
+
+  private isNearChapterEightDoor(): boolean {
+    return this.player.getPosition().distanceTo(this.chapterEight.door.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.7;
+  }
+
+  private isNearChapterEightDoorLock(): boolean {
+    const playerPosition = this.player.getPosition();
+    return playerPosition.z < this.chapterEight.door.interactPosition.z
+      && playerPosition.distanceTo(this.chapterEight.door.lockPosition) <= GAME_CONFIG.player.interactionRange + 0.45;
+  }
+
+  private isNearChapterEightSleepSpot(): boolean {
+    return this.player.getPosition().distanceTo(this.chapterEight.sleepSpot.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.9;
+  }
+
+  private isNearChapterEightFireplace(): boolean {
+    return this.player.getPosition().distanceTo(this.chapterEight.fireplacePosition) <= GAME_CONFIG.player.interactionRange + 1.0;
+  }
+
+  private handleChapterEightMonsterEvents(): void {
+    let event = this.chapterEight.consumeMonsterEvent();
+    while (event) {
+      switch (event) {
+        case 'night-start':
+          this.gameplaySfxAudio.playOfficeJumpscareCue('hook-scrape');
+          this.pushStatus('Night falls over the woods. Something starts moving between the trees.', 3.0);
+          break;
+        case 'day-start':
+          this.pushStatus('Daylight returns, and the red-eyed figure disappears.', 2.5);
+          break;
+        case 'stalk':
+          this.gameplaySfxAudio.playOfficeJumpscareCue('hook-scrape');
+          this.pushStatus('A creepy scrape echoes nearby. Look around and you might see red eyes watching.', 2.8);
+          break;
+        case 'chase':
+          this.gameplaySfxAudio.playOfficeJumpscareCue('broken-crawl');
+          this.pushStatus('The black figure drops low and crawls straight toward you. Get inside, close the door, and lock it.', 3.1);
+          break;
+        case 'blocked':
+          this.gameplaySfxAudio.playOfficeJumpscareCue('bear-grab');
+          this.pushStatus('The locked cabin door rattles hard, but the monster cannot get in.', 2.8);
+          break;
+        case 'caught':
+          this.gameplaySfxAudio.playOfficeJumpscareCue('bear-grab');
+          this.health = Math.max(0, this.health - 45);
+          this.pushStatus('The red-eyed figure lunges into your face before vanishing back into the trees.', 3.0);
+          break;
+      }
+      event = this.chapterEight.consumeMonsterEvent();
+    }
   }
 
   private handleOfficePrizeFire(): boolean {
@@ -14166,7 +14286,25 @@ export class Game {
           filled: true,
           selected: this.chapterEightHeldItem === 'military-knife',
         },
-        ...Array.from({ length: 7 }, (_, index) => ({
+        {
+          label: this.chapterEight.hasTorch()
+            ? `Torch ${this.chapterEightHeldItem === 'torch' ? '[Held]' : '[3]'}`
+            : 'Torch',
+          count: this.chapterEight.hasTorch() ? 1 : 0,
+          filled: this.chapterEight.hasTorch(),
+          selected: this.chapterEightHeldItem === 'torch',
+        },
+        {
+          label: this.chapterEight.getPhaseLabel(),
+          count: Math.max(1, Math.ceil(this.chapterEight.getPhaseRemaining())),
+          filled: true,
+        },
+        {
+          label: this.chapterEight.door.locked ? 'Door Locked' : this.chapterEight.door.open ? 'Door Open' : 'Door Shut',
+          count: this.chapterEight.door.locked ? 1 : 0,
+          filled: this.chapterEight.door.locked,
+        },
+        ...Array.from({ length: 4 }, (_, index) => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -14510,6 +14648,33 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
+      if (locked && this.isNearChapterEightDoorLock()) {
+        if (this.chapterEight.door.open) {
+          return 'Close the cabin door before clipping the lock.';
+        }
+        return this.chapterEight.door.locked
+          ? 'Press E to unlock the cabin door.'
+          : 'Press E to lock the cabin door.';
+      }
+
+      if (locked && this.isNearChapterEightDoor()) {
+        return this.chapterEight.door.locked
+          ? 'The cabin door is locked. Use the inside lock to unclip it.'
+          : this.chapterEight.door.open
+            ? 'Press E to close the cabin door.'
+            : 'Press E to open the cabin door.';
+      }
+
+      if (locked && this.isNearChapterEightSleepSpot()) {
+        return this.chapterEight.isNight()
+          ? 'Press E to sleep until morning.'
+          : 'You can sleep here once night starts.';
+      }
+
+      if (locked && this.isNearChapterEightFireplace() && !this.chapterEight.hasTorch()) {
+        return 'Press E by the fire to make a torch.';
+      }
+
       if (locked && this.isNearChapterEightStove()) {
         return this.chapterEight.stove.open
           ? 'Press E to close the cast iron stove.'
@@ -14523,7 +14688,7 @@ export class Game {
       }
 
       return locked
-        ? 'Chapter 8: The Woods controls: WASD moves, Space jumps, Shift sprints, F toggles the flashlight, mouse wheel switches items, left click slashes with the Military Knife, and right click stabs.'
+        ? 'Chapter 8: The Woods controls: E uses the door, lock, bed, fire, stove, and pump. Mouse wheel switches gear; left/right click attack with the knife.'
         : 'Click the play space to walk around Chapter 8: The Woods.';
     }
 
@@ -17975,6 +18140,41 @@ export class Game {
       root.add(knife);
       root.rotation.set(0.14, 0.22, -0.02);
       root.scale.setScalar(1.16);
+    } else if (type === 'torch') {
+      const woodMaterial = new MeshStandardMaterial({ color: 0x5b351d, roughness: 0.92, metalness: 0.01 });
+      const wrapMaterial = new MeshStandardMaterial({ color: 0x1a1510, roughness: 0.86, metalness: 0.02 });
+      const flameOuterMaterial = new MeshStandardMaterial({
+        color: 0xff6a21,
+        emissive: 0xff3d0c,
+        emissiveIntensity: 1.7,
+        roughness: 0.42,
+        transparent: true,
+        opacity: 0.76,
+      });
+      const flameInnerMaterial = new MeshStandardMaterial({
+        color: 0xffdf77,
+        emissive: 0xffa52a,
+        emissiveIntensity: 2.2,
+        roughness: 0.34,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const torch = new Group();
+      torch.position.set(0.08, -0.08, -0.04);
+      torch.rotation.set(-0.24, -0.16, -0.28);
+      const handle = new Mesh(new CylinderGeometry(0.055, 0.08, 0.92, 10), woodMaterial);
+      handle.position.y = -0.18;
+      const wrap = new Mesh(new CylinderGeometry(0.1, 0.11, 0.22, 10), wrapMaterial);
+      wrap.position.y = 0.36;
+      const flameOuter = new Mesh(new ConeGeometry(0.18, 0.5, 9), flameOuterMaterial);
+      flameOuter.position.y = 0.78;
+      const flameInner = new Mesh(new ConeGeometry(0.1, 0.36, 8), flameInnerMaterial);
+      flameInner.position.y = 0.72;
+      const torchLight = new PointLight(0xff9b3f, 2.7, 14, 1.85);
+      torchLight.position.set(0, 0.64, -0.18);
+      torch.add(handle, wrap, flameOuter, flameInner, torchLight);
+      root.add(torch);
+      root.rotation.set(0.18, 0.08, 0.12);
     }
 
     return root;
@@ -17991,7 +18191,8 @@ export class Game {
       || !this.player.isLocked()
       || this.chapterMenuOpen
       || this.placementToolActive
-      || this.chapterEightHeldItem !== 'military-knife'
+      || (this.chapterEightHeldItem !== 'military-knife' && this.chapterEightHeldItem !== 'torch')
+      || (this.chapterEightHeldItem === 'torch' && !this.chapterEight.hasTorch())
     ) {
       this.chapterEightHeldItemAnchor.visible = false;
       return;
@@ -18007,7 +18208,7 @@ export class Game {
     }
 
     const bob = Math.sin((this.elapsed + deltaSeconds) * 6.8) * 0.014;
-    const attackProgress = this.chapterEightKnifeAttackMode
+    const attackProgress = this.chapterEightHeldItem === 'military-knife' && this.chapterEightKnifeAttackMode
       ? 1 - this.chapterEightKnifeAttackTimer / CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS
       : 0;
     const clampedAttackProgress = MathUtils.clamp(attackProgress, 0, 1);
@@ -18029,7 +18230,7 @@ export class Game {
     this.chapterEightHeldItemAnchor.visible = true;
     this.chapterEightHeldItemAnchor.position.set(
       0.42 + slashX,
-      -0.39 + bob + slashY,
+      (this.chapterEightHeldItem === 'torch' ? -0.44 : -0.39) + bob + slashY,
       -0.68 - stabThrust * 0.48,
     );
     this.chapterEightHeldItemAnchor.rotation.set(
