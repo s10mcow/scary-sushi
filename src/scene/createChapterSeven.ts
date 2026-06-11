@@ -2177,13 +2177,11 @@ export function createChapterSeven(): ChapterSevenData {
     const lidPivot = new Group();
     lidPivot.position.set(0, 1.02, -0.24);
     const lid = new Mesh(new CylinderGeometry(0.5, 0.42, 0.075, 32), porcelainMaterial);
-    lid.rotation.x = Math.PI / 2;
-    lid.position.set(0, 0.045, 0.48);
+    lid.position.set(0, 0.035, 0.48);
     lid.scale.set(1.08, 1, 1.34);
     const seat = new Mesh(new CylinderGeometry(0.56, 0.56, 0.055, 28), porcelainMaterial);
     seat.scale.z = 0.72;
-    seat.rotation.x = Math.PI / 2;
-    seat.position.set(0, 0.07, 0.48);
+    seat.position.set(0, 0.0, 0.48);
     lidPivot.add(lid, seat);
     toilet.add(tank, tankLid, base, bowl, water, lidPivot);
     house.add(toilet);
