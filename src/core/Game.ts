@@ -9991,7 +9991,7 @@ export class Game {
       return {
         eyebrow: 'Chapter Eight',
         title: 'The Woods',
-        summary: 'Walk through a semi-realistic forest camp with a stone-ring fire pit, light-green clearing grass, a crafting bench, and a grinding bench.',
+        summary: 'Walk through a dense horror forest and find a small cabin with a fireplace, bed, and iron stove.',
         buttonText: 'Enter The Woods',
       };
     }
@@ -13549,10 +13549,10 @@ export class Game {
       return [
         'Chapter 8: The Woods',
         '',
-        'You are in a semi-realistic forest camp.',
-        'An unlit stone-ring fire pit sits in the middle of a lighter green clearing.',
+        'You are in a semi-realistic horror forest.',
+        'A small cabin sits in the clearing with a front door, two front windows, and one big side window.',
         'Starting gear: Coordinate Tool and Military Knife.',
-        'The crafting bench and grinding bench are placed near the fire pit for later item systems.',
+        'Inside the cabin are a stone fireplace with a chimney, a wall-side bed, and an iron stove with its own pipe.',
         'Use the Coordinate Tool if you want to mark more spots in the woods.',
       ].join('\n');
     }
@@ -13780,8 +13780,7 @@ export class Game {
         'Chapter 8: The Woods',
         'Starting Gear: Coordinate Tool, Military Knife',
         'Spin the mouse wheel to switch Coordinate Tool, Military Knife, and empty hands. Left click slashes; right click stabs.',
-        'Camp props: unlit fire pit, stone ring, crafting bench, grinding bench.',
-        'Crafting and grinding interactions will be added later.',
+        'Cabin props: front door, front windows, big side window, stone fireplace, bed, and iron stove.',
       ].join('\n');
     }
 
@@ -15191,8 +15190,8 @@ export class Game {
     }
 
     if (this.chapterEightActive) {
-      const fireState = this.chapterEight.isFireLit() ? 'lit' : 'unlit';
-      return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. The stone-ring fire pit is ${fireState}.`;
+      const fireplaceState = this.chapterEight.isFireLit() ? 'lit' : 'unlit';
+      return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. The cabin fireplace is ${fireplaceState}.`;
     }
 
     if (this.officeChapterActive) {
@@ -20210,7 +20209,7 @@ export class Game {
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter 8: The Woods';
     this.chapterCardBody =
-      'A separate woods chapter with semi-realistic trees, a lighter green clearing around a stone-ring fire pit, a crafting bench, and a grinding bench.';
+      'A separate woods chapter with dense semi-realistic trees and a small cabin with a fireplace, bed, and iron stove.';
     this.activeJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
@@ -20318,7 +20317,7 @@ export class Game {
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);
     this.pushStatus(
-      'Chapter 8: The Woods loaded. You start with the Coordinate Tool and Military Knife. Left click slashes; right click stabs. The fire pit is not lit yet.',
+      'Chapter 8: The Woods loaded. You start with the Coordinate Tool and Military Knife. Left click slashes; right click stabs. The cabin fireplace is unlit.',
       3.2,
     );
     this.resize();

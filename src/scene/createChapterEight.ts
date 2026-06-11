@@ -20,9 +20,6 @@ export interface ChapterEightData {
   colliders: CollisionBox[];
   spawn: Vector3;
   lookTarget: Vector3;
-  craftingBench: ChapterEightBench;
-  grindingBench: ChapterEightBench;
-  firePitPosition: Vector3;
   trees: ChapterEightTree[];
   drops: ChapterEightDrop[];
   isFireLit(): boolean;
@@ -33,12 +30,6 @@ export interface ChapterEightData {
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number): void;
   reset(): void;
-}
-
-export interface ChapterEightBench {
-  label: string;
-  position: Vector3;
-  collider: CollisionBox;
 }
 
 export interface ChapterEightTree {
@@ -126,102 +117,6 @@ function createIrregularGroundGeometry(width: number, depth: number, segments: n
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
-}
-
-function createBenchMaterials() {
-  return {
-    wood: new MeshStandardMaterial({
-      color: 0x6b3f24,
-      roughness: 0.82,
-      metalness: 0.03,
-    }),
-    darkWood: new MeshStandardMaterial({
-      color: 0x3d2518,
-      roughness: 0.88,
-      metalness: 0.02,
-    }),
-    stone: new MeshStandardMaterial({
-      color: 0x827b70,
-      roughness: 0.92,
-      metalness: 0.01,
-    }),
-    metal: new MeshStandardMaterial({
-      color: 0x5c6061,
-      roughness: 0.48,
-      metalness: 0.36,
-    }),
-  };
-}
-
-function createCraftingBench(materials: ReturnType<typeof createBenchMaterials>): Group {
-  const bench = new Group();
-  bench.name = 'Chapter 8 Crafting Bench';
-
-  const top = new Mesh(new BoxGeometry(3.2, 0.28, 1.45), materials.wood);
-  top.position.y = 1.04;
-  bench.add(top);
-
-  const plankGeometry = new BoxGeometry(0.1, 0.035, 1.5);
-  for (let index = -2; index <= 2; index += 1) {
-    const line = new Mesh(plankGeometry, materials.darkWood);
-    line.position.set(index * 0.62, 1.2, 0);
-    bench.add(line);
-  }
-
-  const crossGeometry = new BoxGeometry(3.25, 0.035, 0.08);
-  [-0.48, 0.48].forEach((z) => {
-    const line = new Mesh(crossGeometry, materials.darkWood);
-    line.position.set(0, 1.22, z);
-    bench.add(line);
-  });
-
-  const legGeometry = new BoxGeometry(0.34, 1.0, 0.34);
-  [
-    [-1.35, -0.52],
-    [1.35, -0.52],
-    [-1.35, 0.52],
-    [1.35, 0.52],
-  ].forEach(([x, z]) => {
-    const leg = new Mesh(legGeometry, materials.darkWood);
-    leg.position.set(x, 0.52, z);
-    bench.add(leg);
-  });
-
-  const lowerShelf = new Mesh(new BoxGeometry(2.8, 0.16, 1.08), materials.darkWood);
-  lowerShelf.position.y = 0.42;
-  bench.add(lowerShelf);
-
-  return bench;
-}
-
-function createGrindingBench(materials: ReturnType<typeof createBenchMaterials>): Group {
-  const bench = new Group();
-  bench.name = 'Chapter 8 Grinding Bench';
-
-  const slab = new Mesh(new BoxGeometry(3.0, 0.3, 1.45), materials.stone);
-  slab.position.y = 0.98;
-  bench.add(slab);
-
-  const base = new Mesh(new BoxGeometry(2.6, 0.62, 1.05), materials.wood);
-  base.position.y = 0.5;
-  bench.add(base);
-
-  const wheel = new Mesh(new CylinderGeometry(0.56, 0.56, 0.22, 28), materials.stone);
-  wheel.rotation.z = Math.PI / 2;
-  wheel.position.set(0.35, 1.38, 0);
-  bench.add(wheel);
-
-  const axle = new Mesh(new CylinderGeometry(0.09, 0.09, 1.45, 14), materials.metal);
-  axle.rotation.x = Math.PI / 2;
-  axle.position.set(0.35, 1.38, 0);
-  bench.add(axle);
-
-  const handle = new Mesh(new BoxGeometry(0.16, 0.16, 0.84), materials.darkWood);
-  handle.position.set(0.35, 1.38, -0.78);
-  handle.rotation.x = 0.28;
-  bench.add(handle);
-
-  return bench;
 }
 
 function createTree(index: number, colliders: CollisionBox[]): ChapterEightTree {
@@ -340,6 +235,280 @@ function createSaplingDropModel(): Group {
   return root;
 }
 
+interface ChapterEightBedSurface {
+  centerX: number;
+  centerZ: number;
+  halfWidth: number;
+  halfDepth: number;
+  floorY: number;
+  collider: CollisionBox;
+}
+
+function createCabin(colliders: CollisionBox[]): {
+  root: Group;
+  bedSurface: ChapterEightBedSurface;
+  fireplacePosition: Vector3;
+} {
+  const cabin = new Group();
+  cabin.name = 'Chapter 8 Woods Cabin';
+  cabin.position.set(CENTER_X, GROUND_Y, CENTER_Z);
+
+  const width = 18;
+  const depth = 14;
+  const height = 5;
+  const wallThickness = 0.28;
+  const doorWidth = 2.6;
+  const roofRise = 2.1;
+  const halfWidth = width / 2;
+  const halfDepth = depth / 2;
+
+  const wallMaterial = new MeshStandardMaterial({ color: 0x4b321f, roughness: 0.9, metalness: 0.02 });
+  const trimMaterial = new MeshStandardMaterial({ color: 0x261a12, roughness: 0.92, metalness: 0.02 });
+  const floorMaterial = new MeshStandardMaterial({ color: 0x3a2618, roughness: 0.88, metalness: 0.02 });
+  const roofMaterial = new MeshStandardMaterial({ color: 0x171411, roughness: 0.84, metalness: 0.04 });
+  const doorMaterial = new MeshStandardMaterial({ color: 0x352113, roughness: 0.86, metalness: 0.02 });
+  const glassMaterial = new MeshStandardMaterial({
+    color: 0x8fb6c3,
+    emissive: 0x071113,
+    emissiveIntensity: 0.08,
+    roughness: 0.16,
+    metalness: 0.08,
+    transparent: true,
+    opacity: 0.46,
+  });
+  const stoneMaterial = new MeshStandardMaterial({ color: 0x706b60, roughness: 0.96, metalness: 0.02 });
+  const darkStoneMaterial = new MeshStandardMaterial({ color: 0x2b2925, roughness: 0.98, metalness: 0.01 });
+  const ironMaterial = new MeshStandardMaterial({ color: 0x1f2324, roughness: 0.5, metalness: 0.46 });
+  const beddingMaterial = new MeshStandardMaterial({ color: 0x5b6f5d, roughness: 0.86, metalness: 0.01 });
+  const pillowMaterial = new MeshStandardMaterial({ color: 0xddd5c8, roughness: 0.78, metalness: 0.01 });
+
+  const addCabinBox = (
+    geometryWidth: number,
+    geometryHeight: number,
+    geometryDepth: number,
+    x: number,
+    y: number,
+    z: number,
+    material: MeshStandardMaterial,
+  ): Mesh => {
+    const mesh = new Mesh(new BoxGeometry(geometryWidth, geometryHeight, geometryDepth), material);
+    mesh.position.set(x, y, z);
+    cabin.add(mesh);
+    return mesh;
+  };
+
+  const floor = addCabinBox(width + 0.7, 0.22, depth + 0.7, 0, 0.11, 0, floorMaterial);
+  floor.name = 'Cabin wood plank floor';
+  for (let index = 0; index < 13; index += 1) {
+    const plankLine = addCabinBox(width + 0.34, 0.018, 0.035, 0, 0.235, -halfDepth + 0.95 + index * 1.02, trimMaterial);
+    plankLine.name = 'Cabin floor plank seam';
+  }
+
+  const addWindow = (x: number, y: number, z: number, windowWidth: number, windowHeight: number, axis: 'x' | 'z'): void => {
+    const glass = axis === 'z'
+      ? addCabinBox(windowWidth, windowHeight, 0.045, x, y, z, glassMaterial)
+      : addCabinBox(0.045, windowHeight, windowWidth, x, y, z, glassMaterial);
+    glass.name = 'Cabin glass window';
+    const horizontal = axis === 'z'
+      ? new BoxGeometry(windowWidth + 0.24, 0.12, 0.12)
+      : new BoxGeometry(0.12, 0.12, windowWidth + 0.24);
+    const vertical = axis === 'z'
+      ? new BoxGeometry(0.12, windowHeight + 0.24, 0.12)
+      : new BoxGeometry(0.12, windowHeight + 0.24, 0.12);
+    const top = new Mesh(horizontal, trimMaterial);
+    top.position.set(x, y + windowHeight / 2 + 0.09, z);
+    const bottom = top.clone();
+    bottom.position.y = y - windowHeight / 2 - 0.09;
+    const left = new Mesh(vertical, trimMaterial);
+    const right = new Mesh(vertical, trimMaterial);
+    if (axis === 'z') {
+      left.position.set(x - windowWidth / 2 - 0.09, y, z);
+      right.position.set(x + windowWidth / 2 + 0.09, y, z);
+    } else {
+      left.position.set(x, y, z - windowWidth / 2 - 0.09);
+      right.position.set(x, y, z + windowWidth / 2 + 0.09);
+    }
+    cabin.add(top, bottom, left, right);
+  };
+
+  type ZOpening = { xMin: number; xMax: number; yMin: number; yMax: number };
+  const addZWall = (z: number, openings: ZOpening[]): void => {
+    const xEdges = [-halfWidth, halfWidth, ...openings.flatMap((opening) => [opening.xMin, opening.xMax])]
+      .filter((value, index, array) => value >= -halfWidth && value <= halfWidth && array.indexOf(value) === index)
+      .sort((a, b) => a - b);
+    const yEdges = [0, height, ...openings.flatMap((opening) => [opening.yMin, opening.yMax])]
+      .filter((value, index, array) => value >= 0 && value <= height && array.indexOf(value) === index)
+      .sort((a, b) => a - b);
+    for (let xIndex = 0; xIndex < xEdges.length - 1; xIndex += 1) {
+      for (let yIndex = 0; yIndex < yEdges.length - 1; yIndex += 1) {
+        const xMin = xEdges[xIndex];
+        const xMax = xEdges[xIndex + 1];
+        const yMin = yEdges[yIndex];
+        const yMax = yEdges[yIndex + 1];
+        const centerX = (xMin + xMax) / 2;
+        const centerY = (yMin + yMax) / 2;
+        const insideOpening = openings.some((opening) => (
+          centerX > opening.xMin
+          && centerX < opening.xMax
+          && centerY > opening.yMin
+          && centerY < opening.yMax
+        ));
+        if (!insideOpening && xMax - xMin > 0.05 && yMax - yMin > 0.05) {
+          addCabinBox(xMax - xMin, yMax - yMin, wallThickness, centerX, centerY, z, wallMaterial);
+        }
+      }
+    }
+  };
+
+  type XOpening = { zMin: number; zMax: number; yMin: number; yMax: number };
+  const addXWall = (x: number, openings: XOpening[]): void => {
+    const zEdges = [-halfDepth, halfDepth, ...openings.flatMap((opening) => [opening.zMin, opening.zMax])]
+      .filter((value, index, array) => value >= -halfDepth && value <= halfDepth && array.indexOf(value) === index)
+      .sort((a, b) => a - b);
+    const yEdges = [0, height, ...openings.flatMap((opening) => [opening.yMin, opening.yMax])]
+      .filter((value, index, array) => value >= 0 && value <= height && array.indexOf(value) === index)
+      .sort((a, b) => a - b);
+    for (let zIndex = 0; zIndex < zEdges.length - 1; zIndex += 1) {
+      for (let yIndex = 0; yIndex < yEdges.length - 1; yIndex += 1) {
+        const zMin = zEdges[zIndex];
+        const zMax = zEdges[zIndex + 1];
+        const yMin = yEdges[yIndex];
+        const yMax = yEdges[yIndex + 1];
+        const centerZ = (zMin + zMax) / 2;
+        const centerY = (yMin + yMax) / 2;
+        const insideOpening = openings.some((opening) => (
+          centerZ > opening.zMin
+          && centerZ < opening.zMax
+          && centerY > opening.yMin
+          && centerY < opening.yMax
+        ));
+        if (!insideOpening && zMax - zMin > 0.05 && yMax - yMin > 0.05) {
+          addCabinBox(wallThickness, yMax - yMin, zMax - zMin, x, centerY, centerZ, wallMaterial);
+        }
+      }
+    }
+  };
+
+  addZWall(halfDepth, [
+    { xMin: -doorWidth / 2, xMax: doorWidth / 2, yMin: 0, yMax: 3.65 },
+    { xMin: -6.4, xMax: -4.0, yMin: 1.65, yMax: 3.28 },
+    { xMin: 4.0, xMax: 6.4, yMin: 1.65, yMax: 3.28 },
+  ]);
+  addZWall(-halfDepth, []);
+  addXWall(-halfWidth, []);
+  addXWall(halfWidth, [
+    { zMin: -2.8, zMax: 2.8, yMin: 1.55, yMax: 3.62 },
+  ]);
+
+  addWindow(-5.2, 2.46, halfDepth + 0.16, 2.4, 1.62, 'z');
+  addWindow(5.2, 2.46, halfDepth + 0.16, 2.4, 1.62, 'z');
+  addWindow(halfWidth + 0.16, 2.58, 0, 5.6, 2.06, 'x');
+
+  const openDoor = addCabinBox(doorWidth, 3.55, 0.16, -1.42, 1.78, halfDepth + 1.16, doorMaterial);
+  openDoor.rotation.y = -1.05;
+  const doorKnob = new Mesh(new SphereGeometry(0.085, 12, 8), trimMaterial);
+  doorKnob.position.set(-0.52, 1.82, halfDepth + 1.64);
+  cabin.add(doorKnob);
+
+  const roofSlopeLength = Math.hypot(halfWidth + 0.9, roofRise);
+  const roofAngle = Math.atan2(roofRise, halfWidth + 0.9);
+  const roofY = height + roofRise / 2 - 0.18;
+  const leftRoof = addCabinBox(roofSlopeLength, 0.34, depth + 1.4, -halfWidth / 2 - 0.15, roofY, 0, roofMaterial);
+  leftRoof.rotation.z = roofAngle;
+  const rightRoof = addCabinBox(roofSlopeLength, 0.34, depth + 1.4, halfWidth / 2 + 0.15, roofY, 0, roofMaterial);
+  rightRoof.rotation.z = -roofAngle;
+  addCabinBox(0.52, 0.34, depth + 1.48, 0, height + roofRise - 0.22, 0, trimMaterial);
+
+  const fireplace = new Group();
+  fireplace.position.set(0, 0, -halfDepth + 0.5);
+  const hearth = new Mesh(new BoxGeometry(3.2, 0.28, 1.25), stoneMaterial);
+  hearth.position.set(0, 0.14, 0.28);
+  const firebox = new Mesh(new BoxGeometry(2.4, 2.3, 0.72), stoneMaterial);
+  firebox.position.set(0, 1.35, -0.05);
+  const darkOpening = new Mesh(new BoxGeometry(1.55, 1.18, 0.08), darkStoneMaterial);
+  darkOpening.position.set(0, 1.1, 0.34);
+  const mantle = new Mesh(new BoxGeometry(3.0, 0.28, 0.85), stoneMaterial);
+  mantle.position.set(0, 2.6, 0.12);
+  fireplace.add(hearth, firebox, darkOpening, mantle);
+  cabin.add(fireplace);
+  const chimney = addCabinBox(1.38, height + roofRise + 1.8, 1.05, 0, (height + roofRise + 1.8) / 2, -halfDepth - 0.38, stoneMaterial);
+  chimney.name = 'Cabin stone chimney';
+  addCollider(colliders, CENTER_X, CENTER_Z - halfDepth + 0.42, 3.45, 1.5);
+
+  const bed = new Group();
+  bed.position.set(halfWidth - 2.05, 0, -1.1);
+  const bedFrame = new Mesh(new BoxGeometry(2.4, 0.44, 6.1), trimMaterial);
+  bedFrame.position.y = 0.55;
+  const mattress = new Mesh(new BoxGeometry(2.22, 0.32, 5.78), beddingMaterial);
+  mattress.position.y = 0.88;
+  const pillow = new Mesh(new BoxGeometry(1.72, 0.25, 0.78), pillowMaterial);
+  pillow.position.set(0, 1.15, -2.32);
+  const blanket = new Mesh(new BoxGeometry(2.24, 0.16, 3.15), new MeshStandardMaterial({ color: 0x3a4a3d, roughness: 0.88 }));
+  blanket.position.set(0, 1.12, 0.8);
+  const bedLegs = [
+    [-0.92, -2.62],
+    [0.92, -2.62],
+    [-0.92, 2.62],
+    [0.92, 2.62],
+  ].map(([legX, legZ]) => {
+    const leg = new Mesh(new BoxGeometry(0.18, 0.56, 0.18), trimMaterial);
+    leg.position.set(legX, 0.28, legZ);
+    return leg;
+  });
+  bed.add(bedFrame, mattress, pillow, blanket, ...bedLegs);
+  cabin.add(bed);
+  const bedCollider = addCollider(colliders, CENTER_X + halfWidth - 2.05, CENTER_Z - 1.1, 2.6, 6.3);
+
+  const stove = new Group();
+  stove.position.set(halfWidth - 2.45, 0, halfDepth - 3.1);
+  const stoveBody = new Mesh(new SphereGeometry(0.76, 24, 16), ironMaterial);
+  stoveBody.scale.set(1.15, 0.88, 0.78);
+  stoveBody.position.y = 1.02;
+  const stoveDoor = new Mesh(new CylinderGeometry(0.32, 0.32, 0.06, 20), darkStoneMaterial);
+  stoveDoor.position.set(0, 1.02, 0.61);
+  stoveDoor.rotation.x = Math.PI / 2;
+  const stoveTop = new Mesh(new CylinderGeometry(0.42, 0.48, 0.12, 22), ironMaterial);
+  stoveTop.position.y = 1.72;
+  const stoveLegs = [
+    [-0.48, -0.36],
+    [0.48, -0.36],
+    [-0.48, 0.36],
+    [0.48, 0.36],
+  ].map(([legX, legZ]) => {
+    const leg = new Mesh(new CylinderGeometry(0.045, 0.06, 0.62, 8), ironMaterial);
+    leg.position.set(legX, 0.35, legZ);
+    return leg;
+  });
+  const verticalPipe = new Mesh(new CylinderGeometry(0.13, 0.13, 3.35, 16), ironMaterial);
+  verticalPipe.position.set(0, 3.14, -0.16);
+  const wallPipe = new Mesh(new CylinderGeometry(0.13, 0.13, 3.02, 16), ironMaterial);
+  wallPipe.rotation.x = Math.PI / 2;
+  wallPipe.position.set(0, 4.7, 1.18);
+  stove.add(stoveBody, stoveDoor, stoveTop, ...stoveLegs, verticalPipe, wallPipe);
+  cabin.add(stove);
+  addCabinBox(0.72, height + roofRise + 0.9, 0.72, halfWidth - 2.45, (height + roofRise + 0.9) / 2, halfDepth + 0.44, ironMaterial);
+  addCollider(colliders, CENTER_X + halfWidth - 2.45, CENTER_Z + halfDepth - 3.1, 1.85, 1.7);
+
+  addCollider(colliders, CENTER_X - (doorWidth / 2 + (width - doorWidth) / 4), CENTER_Z + halfDepth, (width - doorWidth) / 2, wallThickness);
+  addCollider(colliders, CENTER_X + doorWidth / 2 + (width - doorWidth) / 4, CENTER_Z + halfDepth, (width - doorWidth) / 2, wallThickness);
+  addCollider(colliders, CENTER_X, CENTER_Z - halfDepth, width, wallThickness);
+  addCollider(colliders, CENTER_X - halfWidth, CENTER_Z, wallThickness, depth);
+  addCollider(colliders, CENTER_X + halfWidth, CENTER_Z, wallThickness, depth);
+
+  return {
+    root: cabin,
+    bedSurface: {
+      centerX: CENTER_X + halfWidth - 2.05,
+      centerZ: CENTER_Z - 1.1,
+      halfWidth: 1.18,
+      halfDepth: 2.86,
+      floorY: 1.08,
+      collider: bedCollider,
+    },
+    fireplacePosition: new Vector3(CENTER_X, GROUND_Y, CENTER_Z - halfDepth + 0.4),
+  };
+}
+
 export function createChapterEight(): ChapterEightData {
   const root = new Group();
   root.name = 'Chapter 8: The Woods';
@@ -357,31 +526,6 @@ export function createChapterEight(): ChapterEightData {
     roughness: 0.92,
     metalness: 0,
   });
-  const stoneMaterial = new MeshStandardMaterial({
-    color: 0x817d73,
-    roughness: 0.96,
-    metalness: 0.02,
-  });
-  const charredWoodMaterial = new MeshStandardMaterial({
-    color: 0x25170f,
-    roughness: 0.88,
-    metalness: 0.01,
-  });
-  const flameMaterial = new MeshStandardMaterial({
-    color: 0xff8a23,
-    emissive: 0xff4f11,
-    emissiveIntensity: 1.6,
-    roughness: 0.34,
-    metalness: 0,
-  });
-  const emberMaterial = new MeshStandardMaterial({
-    color: 0xffc05a,
-    emissive: 0xff5a16,
-    emissiveIntensity: 0.9,
-    roughness: 0.48,
-    metalness: 0,
-  });
-  const benchMaterials = createBenchMaterials();
   const mistMaterial = new MeshStandardMaterial({
     color: 0x8b938f,
     emissive: 0x101817,
@@ -455,83 +599,13 @@ export function createChapterEight(): ChapterEightData {
   coldWoodsLight.position.set(CENTER_X - 24, 12, CENTER_Z + 34);
   root.add(coldWoodsLight);
 
-  const firePit = new Group();
-  firePit.name = 'Chapter 8 Fire Pit';
-  firePit.position.set(CENTER_X, GROUND_Y, CENTER_Z);
-  root.add(firePit);
+  const cabin = createCabin(colliders);
+  root.add(cabin.root);
 
-  const ash = new Mesh(new CylinderGeometry(2.4, 2.4, 0.08, 36), new MeshStandardMaterial({
-    color: 0x2c2b27,
-    roughness: 0.98,
-    metalness: 0,
-  }));
-  ash.position.y = 0.06;
-  firePit.add(ash);
-
-  const rockGeometry = new SphereGeometry(0.42, 10, 8);
-  for (let index = 0; index < 18; index += 1) {
-    const angle = (index / 18) * Math.PI * 2;
-    const rock = new Mesh(rockGeometry, stoneMaterial);
-    rock.position.set(Math.cos(angle) * 2.75, 0.22, Math.sin(angle) * 2.75);
-    rock.scale.set(
-      1 + seededRandom(800 + index) * 0.38,
-      0.52 + seededRandom(820 + index) * 0.24,
-      0.82 + seededRandom(840 + index) * 0.35,
-    );
-    rock.rotation.y = seededRandom(860 + index) * Math.PI;
-    firePit.add(rock);
-  }
-
-  const logGeometry = new CylinderGeometry(0.16, 0.2, 2.55, 9);
-  for (let index = 0; index < 4; index += 1) {
-    const log = new Mesh(logGeometry, charredWoodMaterial);
-    log.position.set(Math.cos(index * Math.PI / 2) * 0.42, 0.28, Math.sin(index * Math.PI / 2) * 0.42);
-    log.rotation.z = Math.PI / 2;
-    log.rotation.y = index * Math.PI / 4;
-    firePit.add(log);
-  }
-
-  const flame = new Group();
-  flame.name = 'Chapter 8 Fire Flame';
-  const flameA = new Mesh(new ConeGeometry(0.58, 1.85, 9), flameMaterial);
-  flameA.position.y = 1.05;
-  const flameB = new Mesh(new ConeGeometry(0.38, 1.25, 8), emberMaterial);
-  flameB.position.set(0.2, 0.9, -0.12);
-  flameB.rotation.z = -0.16;
-  flame.add(flameA, flameB);
-  flame.visible = false;
-  firePit.add(flame);
-
-  const fireLight = new PointLight(0xff9a35, 0, 34, 1.65);
-  fireLight.position.set(CENTER_X, 2.4, CENTER_Z);
-  fireLight.visible = false;
-  root.add(fireLight);
-
-  const craftingBenchRoot = createCraftingBench(benchMaterials);
-  craftingBenchRoot.position.set(CENTER_X - 7.8, GROUND_Y, CENTER_Z - 6.5);
-  craftingBenchRoot.rotation.y = Math.PI * 0.18;
-  root.add(craftingBenchRoot);
-  const craftingBench: ChapterEightBench = {
-    label: 'Crafting Bench',
-    position: new Vector3(CENTER_X - 7.8, 1.05, CENTER_Z - 6.5),
-    collider: addCollider(colliders, CENTER_X - 7.8, CENTER_Z - 6.5, 3.5, 1.8),
-  };
-
-  const grindingBenchRoot = createGrindingBench(benchMaterials);
-  grindingBenchRoot.position.set(CENTER_X + 7.4, GROUND_Y, CENTER_Z - 6.0);
-  grindingBenchRoot.rotation.y = -Math.PI * 0.18;
-  root.add(grindingBenchRoot);
-  const grindingBench: ChapterEightBench = {
-    label: 'Grinding Bench',
-    position: new Vector3(CENTER_X + 7.4, 1.2, CENTER_Z - 6.0),
-    collider: addCollider(colliders, CENTER_X + 7.4, CENTER_Z - 6.0, 3.4, 1.8),
-  };
-
-  const spawn = new Vector3(CENTER_X, GAME_CONFIG.player.height, CENTER_Z + 13);
-  const lookTarget = new Vector3(CENTER_X, 1.1, CENTER_Z);
-  const firePitPosition = new Vector3(CENTER_X, GROUND_Y, CENTER_Z);
+  const spawn = new Vector3(CENTER_X, GAME_CONFIG.player.height, CENTER_Z + 17);
+  const lookTarget = new Vector3(CENTER_X, 1.8, CENTER_Z + 4.6);
   let elapsed = 0;
-  let fireLit = false;
+  let fireplaceLit = false;
 
   const removeTreeCollider = (tree: ChapterEightTree): void => {
     tree.collider.enabled = false;
@@ -568,13 +642,10 @@ export function createChapterEight(): ChapterEightData {
     colliders,
     spawn,
     lookTarget,
-    craftingBench,
-    grindingBench,
-    firePitPosition,
     trees,
     drops,
     isFireLit() {
-      return fireLit;
+      return fireplaceLit;
     },
     chopTree(tree) {
       if (!tree.active) {
@@ -629,13 +700,20 @@ export function createChapterEight(): ChapterEightData {
       return spawnDrop('wood', position);
     },
     lightFire() {
-      fireLit = true;
-      fireLight.visible = true;
-      flame.visible = true;
+      fireplaceLit = true;
     },
     getSupportedFloorY(position) {
       const insideX = position.x >= CENTER_X - HALF_FOREST_SIZE && position.x <= CENTER_X + HALF_FOREST_SIZE;
       const insideZ = position.z >= CENTER_Z - HALF_FOREST_SIZE && position.z <= CENTER_Z + HALF_FOREST_SIZE;
+      const nearBed = Math.abs(position.x - cabin.bedSurface.centerX) <= cabin.bedSurface.halfWidth + GAME_CONFIG.player.radius + 0.28
+        && Math.abs(position.z - cabin.bedSurface.centerZ) <= cabin.bedSurface.halfDepth + GAME_CONFIG.player.radius + 0.28;
+      const highEnoughToClearBed = position.y > GAME_CONFIG.player.height + 0.22;
+      cabin.bedSurface.collider.enabled = !(nearBed && highEnoughToClearBed);
+      const onBed = Math.abs(position.x - cabin.bedSurface.centerX) <= cabin.bedSurface.halfWidth
+        && Math.abs(position.z - cabin.bedSurface.centerZ) <= cabin.bedSurface.halfDepth;
+      if (onBed && highEnoughToClearBed) {
+        return GAME_CONFIG.player.height + cabin.bedSurface.floorY;
+      }
       return insideX && insideZ ? GAME_CONFIG.player.height : null;
     },
     update(deltaSeconds) {
@@ -652,20 +730,10 @@ export function createChapterEight(): ChapterEightData {
         const shake = Math.sin(tree.shakeTimer * 52) * tree.shakeTimer * 0.18;
         tree.root.rotation.z = shake;
       });
-      if (!flame.visible) {
-        fireLight.intensity = 0;
-        return;
-      }
-      const flicker = 0.82 + Math.sin(elapsed * 8.8) * 0.12 + Math.sin(elapsed * 19.5) * 0.06;
-      fireLight.intensity = 1.65 + flicker * 0.45;
-      flame.scale.set(0.92 + flicker * 0.08, 0.92 + flicker * 0.14, 0.92 + flicker * 0.08);
-      flame.rotation.y += deltaSeconds * 0.35;
-      flameMaterial.emissiveIntensity = 1.35 + flicker * 0.45;
-      emberMaterial.emissiveIntensity = 0.72 + flicker * 0.32;
     },
     reset() {
       elapsed = 0;
-      fireLit = false;
+      fireplaceLit = false;
       drops.forEach((drop) => {
         drop.active = false;
         root.remove(drop.root);
@@ -682,11 +750,7 @@ export function createChapterEight(): ChapterEightData {
           colliders.push(tree.collider);
         }
       });
-      fireLight.intensity = 0;
-      fireLight.visible = false;
-      flame.visible = false;
-      flame.scale.setScalar(1);
-      flame.rotation.set(0, 0, 0);
+      cabin.bedSurface.collider.enabled = true;
       root.visible = false;
     },
   };
