@@ -10475,6 +10475,14 @@ export class Game {
               : 'You turn off the bathroom sink.',
             2.2,
           );
+        } else if (fixture.kind === 'bathtub') {
+          this.gameplaySfxAudio.playSmallPanel(fixture.open);
+          this.pushStatus(
+            fixture.open
+              ? 'You turn on the bathtub faucet. Water starts filling the tub.'
+              : 'You turn off the bathtub faucet.',
+            2.2,
+          );
         } else {
           this.gameplaySfxAudio.playClosetDoor(fixture.open);
           this.pushStatus(
@@ -14629,6 +14637,11 @@ export class Game {
               ? 'Press E to turn off the bathroom sink.'
               : 'Press E to turn on the bathroom sink.';
           }
+          if (interactable.item.kind === 'bathtub') {
+            return interactable.item.open
+              ? 'Press E to turn off the bathtub faucet.'
+              : 'Press E to turn on the bathtub faucet.';
+          }
 
           return interactable.item.open
             ? `Press E to close ${interactable.item.label}.`
@@ -15377,6 +15390,11 @@ export class Game {
             return interactable.item.open
               ? 'The bathroom sink is running. Press E to turn it off.'
               : 'The bathroom sink is off. Press E to turn it on.';
+          }
+          if (interactable.item.kind === 'bathtub') {
+            return interactable.item.open
+              ? 'The bathtub faucet is running and filling the tub. Press E to turn it off.'
+              : 'The bathtub faucet is off. Press E to turn it on.';
           }
 
           return interactable.item.open

@@ -141,13 +141,22 @@ export interface ChapterSevenKitchenSink {
 
 export interface ChapterSevenRearFixture {
   label: string;
-  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer';
+  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer' | 'bathtub';
   interactPosition: Vector3;
   aimPosition: Vector3;
   doorPivots: Group[];
   collider: CollisionBox;
-  animation: 'toilet-lid' | 'faucet' | 'front-door';
+  animation: 'toilet-lid' | 'faucet' | 'front-door' | 'bathtub-faucet';
   waterStream?: Mesh;
+  waterSurface?: Mesh;
+  waterFillAmount?: number;
+  wallColliders?: CollisionBox[];
+  tubBounds?: {
+    centerX: number;
+    centerZ: number;
+    halfWidth: number;
+    halfDepth: number;
+  };
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
@@ -2666,6 +2675,107 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
+  const addBathtubFixture = (localX: number, localZ: number, rotationY = 0): ChapterSevenRearFixture => {
+    const bathtub = new Group();
+    bathtub.position.set(localX, 0, localZ);
+    bathtub.rotation.y = rotationY;
+
+    const width = 2.35;
+    const depth = 4.35;
+    const height = 0.92;
+    const wallThickness = 0.16;
+    const bottom = new Mesh(new BoxGeometry(width, 0.16, depth), porcelainMaterial);
+    bottom.position.y = 0.08;
+    const leftWall = new Mesh(new BoxGeometry(wallThickness, height, depth), porcelainMaterial);
+    leftWall.position.set(-width / 2 + wallThickness / 2, height / 2, 0);
+    const rightWall = leftWall.clone();
+    rightWall.position.x = width / 2 - wallThickness / 2;
+    const backWall = new Mesh(new BoxGeometry(width, height, wallThickness), porcelainMaterial);
+    backWall.position.set(0, height / 2, -depth / 2 + wallThickness / 2);
+    const frontWall = backWall.clone();
+    frontWall.position.z = depth / 2 - wallThickness / 2;
+
+    const innerBasin = new Mesh(new BoxGeometry(width - 0.42, 0.12, depth - 0.54), sinkBasinMaterial);
+    innerBasin.position.y = 0.28;
+    const waterSurface = new Mesh(new BoxGeometry(width - 0.46, 0.035, depth - 0.62), faucetWaterMaterial);
+    waterSurface.position.y = 0.25;
+    waterSurface.visible = false;
+    const drain = new Mesh(new CylinderGeometry(0.12, 0.12, 0.025, 18), fridgeSealMaterial);
+    drain.position.set(0, 0.34, depth / 2 - 0.72);
+
+    const faucetBase = new Mesh(new CylinderGeometry(0.12, 0.12, 0.16, 16), faucetMaterial);
+    faucetBase.position.set(0, height + 0.05, -depth / 2 + 0.22);
+    const faucetNeck = new Mesh(new CylinderGeometry(0.055, 0.055, 0.52, 12), faucetMaterial);
+    faucetNeck.position.set(0, height + 0.28, -depth / 2 + 0.22);
+    const faucetSpout = new Mesh(new CylinderGeometry(0.045, 0.045, 0.64, 12), faucetMaterial);
+    faucetSpout.rotation.x = Math.PI / 2;
+    faucetSpout.position.set(0, height + 0.52, -depth / 2 + 0.52);
+    const spoutTip = new Mesh(new CylinderGeometry(0.055, 0.055, 0.1, 12), faucetMaterial);
+    spoutTip.position.set(0, height + 0.4, -depth / 2 + 0.83);
+
+    const handlePivot = new Group();
+    handlePivot.position.set(0.32, height + 0.18, -depth / 2 + 0.24);
+    const handleStem = new Mesh(new CylinderGeometry(0.035, 0.035, 0.12, 10), faucetMaterial);
+    handleStem.position.y = 0.06;
+    const handleBar = new Mesh(new BoxGeometry(0.28, 0.045, 0.075), faucetMaterial);
+    handleBar.position.y = 0.14;
+    handlePivot.add(handleStem, handleBar);
+
+    const waterStream = new Mesh(new CylinderGeometry(0.032, 0.04, 0.62, 10), faucetWaterMaterial);
+    waterStream.position.set(0, height + 0.1, -depth / 2 + 0.83);
+    waterStream.visible = false;
+    waterStream.scale.y = 0.01;
+
+    bathtub.add(
+      bottom,
+      leftWall,
+      rightWall,
+      backWall,
+      frontWall,
+      innerBasin,
+      waterSurface,
+      drain,
+      faucetBase,
+      faucetNeck,
+      faucetSpout,
+      spoutTip,
+      handlePivot,
+      waterStream,
+    );
+    house.add(bathtub);
+
+    const wallColliders = [
+      addRotatedCollider(colliders, localX, localZ, rotationY, -width / 2 + wallThickness / 2, 0, wallThickness, depth),
+      addRotatedCollider(colliders, localX, localZ, rotationY, width / 2 - wallThickness / 2, 0, wallThickness, depth),
+      addRotatedCollider(colliders, localX, localZ, rotationY, 0, -depth / 2 + wallThickness / 2, width, wallThickness),
+      addRotatedCollider(colliders, localX, localZ, rotationY, 0, depth / 2 - wallThickness / 2, width, wallThickness),
+    ];
+    const interactPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.78);
+    const aimPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, -depth / 2 + 0.74);
+    return {
+      label: 'Bathtub faucet',
+      kind: 'bathtub',
+      interactPosition: new Vector3(CENTER_X + interactPoint.x, GAME_CONFIG.player.height, HOUSE_CENTER_Z + interactPoint.z),
+      aimPosition: new Vector3(CENTER_X + aimPoint.x, 0.95, HOUSE_CENTER_Z + aimPoint.z),
+      doorPivots: [handlePivot],
+      collider: wallColliders[0],
+      animation: 'bathtub-faucet',
+      waterStream,
+      waterSurface,
+      waterFillAmount: 0,
+      wallColliders,
+      tubBounds: {
+        centerX: CENTER_X + localX,
+        centerZ: HOUSE_CENTER_Z + localZ,
+        halfWidth: width / 2,
+        halfDepth: depth / 2,
+      },
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
+  };
+
   const addLaundryAppliance = (
     localX: number,
     localZ: number,
@@ -3267,6 +3377,7 @@ export function createChapterSeven(): ChapterSevenData {
   const rearFixtures = [
     addToilet(HOUSE_REAR_ROOM_DOOR_X + 4.2, rearRoomBackFixtureZ),
     addBathroomSinkFixture(HOUSE_REAR_ROOM_DOOR_X + 0.4, rearRoomBackFixtureZ),
+    addBathtubFixture(1214.71 - CENTER_X, 57.30 - HOUSE_CENTER_Z),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 0.3, 'washing-machine', rearRoomLaundryRotation),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
@@ -3665,6 +3776,11 @@ export function createChapterSeven(): ChapterSevenData {
         cardboardBox.wallColliders.forEach((collider) => {
           collider.enabled = true;
         });
+        rearFixtures.forEach((fixture) => {
+          fixture.wallColliders?.forEach((collider) => {
+            collider.enabled = true;
+          });
+        });
         return null;
       }
 
@@ -3677,6 +3793,21 @@ export function createChapterSeven(): ChapterSevenData {
         && (highEnoughToClearCardboardBox || lowEnoughToCrawlIntoCardboardBox);
       cardboardBox.wallColliders.forEach((collider) => {
         collider.enabled = !canClearCardboardBoxWalls;
+      });
+
+      rearFixtures.forEach((fixture) => {
+        if (fixture.kind !== 'bathtub' || !fixture.wallColliders || !fixture.tubBounds) {
+          return;
+        }
+
+        const nearTub = Math.abs(position.x - fixture.tubBounds.centerX) <= fixture.tubBounds.halfWidth + GAME_CONFIG.player.radius + 0.32
+          && Math.abs(position.z - fixture.tubBounds.centerZ) <= fixture.tubBounds.halfDepth + GAME_CONFIG.player.radius + 0.32;
+        const insideTub = Math.abs(position.x - fixture.tubBounds.centerX) <= fixture.tubBounds.halfWidth - 0.24
+          && Math.abs(position.z - fixture.tubBounds.centerZ) <= fixture.tubBounds.halfDepth - 0.24;
+        const highEnoughToClearTub = position.y > GAME_CONFIG.player.height + 0.34;
+        fixture.wallColliders.forEach((collider) => {
+          collider.enabled = !(nearTub && (highEnoughToClearTub || insideTub));
+        });
       });
 
       for (const surface of counterSurfaces) {
@@ -3848,6 +3979,20 @@ export function createChapterSeven(): ChapterSevenData {
             fixture.waterStream.visible = fixture.openAmount > 0.03;
             fixture.waterStream.scale.y = Math.max(0.01, fixture.openAmount);
           }
+        } else if (fixture.animation === 'bathtub-faucet') {
+          fixture.doorPivots[0].rotation.z = -fixture.openAmount * Math.PI * 0.52;
+          if (fixture.waterStream) {
+            fixture.waterStream.visible = fixture.openAmount > 0.03;
+            fixture.waterStream.scale.y = Math.max(0.01, fixture.openAmount);
+          }
+          fixture.waterFillAmount = Math.min(
+            1,
+            (fixture.waterFillAmount ?? 0) + (fixture.targetOpenAmount > 0.5 ? deltaSeconds * 0.075 : 0),
+          );
+          if (fixture.waterSurface) {
+            fixture.waterSurface.visible = fixture.waterFillAmount > 0.015;
+            fixture.waterSurface.position.y = 0.25 + fixture.waterFillAmount * 0.48;
+          }
         } else {
           fixture.doorPivots[0].rotation.y = -fixture.openAmount * Math.PI * 0.58;
         }
@@ -3932,6 +4077,14 @@ export function createChapterSeven(): ChapterSevenData {
           fixture.waterStream.visible = false;
           fixture.waterStream.scale.y = 0.01;
         }
+        fixture.waterFillAmount = 0;
+        if (fixture.waterSurface) {
+          fixture.waterSurface.visible = false;
+          fixture.waterSurface.position.y = 0.25;
+        }
+        fixture.wallColliders?.forEach((collider) => {
+          collider.enabled = true;
+        });
         fixture.collider.enabled = true;
       });
     },
