@@ -41,6 +41,7 @@ export interface ChapterSevenData {
   rearFixtures: ChapterSevenRearFixture[];
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
   isPlayerUnderBed(position: Vector3): boolean;
+  isPlayerInsideOven(position: Vector3): boolean;
   update(deltaSeconds: number, playerPosition?: Vector3): void;
   reset(): void;
 }
@@ -123,6 +124,11 @@ export interface ChapterSevenOven {
   interactPosition: Vector3;
   aimPosition: Vector3;
   doorPivot: Group;
+  collider: CollisionBox;
+  centerX: number;
+  centerZ: number;
+  halfWidth: number;
+  halfDepth: number;
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
@@ -2939,6 +2945,11 @@ export function createChapterSeven(): ChapterSevenData {
       interactPosition: new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + depth / 2 + 1.05),
       aimPosition: new Vector3(CENTER_X + localX, 0.94, HOUSE_CENTER_Z + localZ + depth / 2 + 0.12),
       doorPivot: ovenDoorPivot,
+      collider: stoveCollider,
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: (width + 0.08) / 2,
+      halfDepth: (depth + 0.08) / 2,
       open: false,
       openAmount: 0,
       targetOpenAmount: 0,
@@ -3377,7 +3388,7 @@ export function createChapterSeven(): ChapterSevenData {
   const rearFixtures = [
     addToilet(HOUSE_REAR_ROOM_DOOR_X + 4.2, rearRoomBackFixtureZ),
     addBathroomSinkFixture(HOUSE_REAR_ROOM_DOOR_X + 0.4, rearRoomBackFixtureZ),
-    addBathtubFixture(1214.71 - CENTER_X, 57.30 - HOUSE_CENTER_Z),
+    addBathtubFixture(HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 57.30 - HOUSE_CENTER_Z),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 0.3, 'washing-machine', rearRoomLaundryRotation),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
@@ -3810,12 +3821,25 @@ export function createChapterSeven(): ChapterSevenData {
         });
       });
 
+      const insideOven = Math.abs(position.x - houseOven.centerX) <= houseOven.halfWidth - 0.1
+        && Math.abs(position.z - houseOven.centerZ) <= houseOven.halfDepth + 0.02
+        && position.y < GAME_CONFIG.player.height - 0.08;
+      const nearOven = Math.abs(position.x - houseOven.centerX) <= houseOven.halfWidth + GAME_CONFIG.player.radius + 0.36
+        && Math.abs(position.z - houseOven.centerZ) <= houseOven.halfDepth + GAME_CONFIG.player.radius + 0.46;
+      const canCrawlIntoOven = insideOven || (
+        houseOven.openAmount > 0.72
+        && crawling
+        && nearOven
+      );
+
       for (const surface of counterSurfaces) {
         if (surface.collider) {
           const nearSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth + GAME_CONFIG.player.radius + 0.28
             && Math.abs(position.z - surface.centerZ) <= surface.halfDepth + GAME_CONFIG.player.radius + 0.28;
           const highEnoughToClearSurface = position.y > GAME_CONFIG.player.height + 0.24;
-          surface.collider.enabled = !(nearSurface && highEnoughToClearSurface);
+          surface.collider.enabled = surface.collider === houseOven.collider
+            ? !canCrawlIntoOven && !(nearSurface && highEnoughToClearSurface)
+            : !(nearSurface && highEnoughToClearSurface);
         }
         const onSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth
           && Math.abs(position.z - surface.centerZ) <= surface.halfDepth;
@@ -3850,6 +3874,11 @@ export function createChapterSeven(): ChapterSevenData {
         && Math.abs(position.z - surface.centerZ) <= surface.halfDepth - 0.18
         && position.y < GAME_CONFIG.player.height - 0.15
       ));
+    },
+    isPlayerInsideOven(position: Vector3): boolean {
+      return Math.abs(position.x - houseOven.centerX) <= houseOven.halfWidth - 0.08
+        && Math.abs(position.z - houseOven.centerZ) <= houseOven.halfDepth + 0.02
+        && position.y < GAME_CONFIG.player.height - 0.08;
     },
     update(deltaSeconds: number, playerPosition?: Vector3): void {
       forestTime += deltaSeconds;

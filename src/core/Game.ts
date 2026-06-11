@@ -1009,6 +1009,7 @@ export class Game {
   private chapterFourCrouching = false;
   private chapterSevenCrawling = false;
   private chapterSevenBoxHidden = false;
+  private chapterSevenOvenHidden = false;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -2168,6 +2169,8 @@ export class Game {
       && this.input.isSpaceHeld();
     const chapterSevenUnderBed = this.chapterSevenActive
       && this.chapterSeven.isPlayerUnderBed(this.player.getPosition());
+    const chapterSevenInsideOven = this.chapterSevenActive
+      && this.chapterSeven.isPlayerInsideOven(this.player.getPosition());
     this.chapterSevenCrawling = this.chapterSevenActive
       && this.player.isLocked()
       && !jumpscareLocked
@@ -2175,7 +2178,7 @@ export class Game {
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen
       && !this.chapterSevenBoxHidden
-      && (this.input.isCrawlHeld() || chapterSevenUnderBed);
+      && (this.input.isCrawlHeld() || chapterSevenUnderBed || chapterSevenInsideOven || this.chapterSevenOvenHidden);
     let jumpRequested = !this.doomModeActive
       && !this.chapterFourActive
       && !this.chapterFiveActive
@@ -2194,6 +2197,7 @@ export class Game {
       && !chapterFourBoxHiding
       && !chapterFourLockerHiding
       && !this.chapterSevenBoxHidden
+      && !this.chapterSevenOvenHidden
       && this.input.consumeJump();
     const isTryingToMove = movementState.forward !== 0 || movementState.strafe !== 0;
     const hasSprintStamina = this.officeChapterActive || this.stamina > 0.5;
@@ -2252,6 +2256,8 @@ export class Game {
       : this.chapterFourCrouching
         ? { ...movementState, sprint: false }
       : this.chapterSevenBoxHidden
+        ? { forward: 0, strafe: 0, sprint: false }
+      : this.chapterSevenOvenHidden
         ? { forward: 0, strafe: 0, sprint: false }
       : this.chapterSevenCrawling
         ? { ...movementState, sprint: false }
@@ -10354,12 +10360,26 @@ export class Game {
         return;
       }
 
+      if (this.chapterSevenOvenHidden) {
+        this.openChapterSevenOvenFromInside();
+        return;
+      }
+
       if (
         this.chapterSeven.cardboardBox.open
         && this.chapterSevenCrawling
         && this.isPlayerInsideChapterSevenCardboardBox()
       ) {
         this.hideInsideChapterSevenCardboardBox();
+        return;
+      }
+
+      if (
+        this.chapterSeven.houseOven.open
+        && this.chapterSevenCrawling
+        && this.isPlayerInsideChapterSevenOven()
+      ) {
+        this.hideInsideChapterSevenOven();
         return;
       }
 
@@ -10497,6 +10517,11 @@ export class Game {
 
       if (interactable?.kind === 'oven') {
         const oven = interactable.item;
+        if (oven.open && this.chapterSevenCrawling && this.isPlayerInsideChapterSevenOven()) {
+          this.hideInsideChapterSevenOven();
+          return;
+        }
+
         oven.targetOpenAmount = oven.targetOpenAmount > 0.5 ? 0 : 1;
         oven.open = oven.targetOpenAmount > 0.5;
         this.gameplaySfxAudio.playClosetDoor(oven.open);
@@ -14592,6 +14617,9 @@ export class Game {
       if (this.chapterSevenBoxHidden) {
         return 'Inside the cardboard box. Press E to open it again, then hold S to crawl and jump out.';
       }
+      if (this.chapterSevenOvenHidden) {
+        return 'Inside the oven. Look out through the glass, or press E to open the door again.';
+      }
 
       const interactable = this.getLookedAtChapterSevenInteractable();
       if (interactable && locked) {
@@ -14648,8 +14676,12 @@ export class Game {
             : `Press E to open ${interactable.item.label}.`;
         }
 
+        if (interactable.item.open && this.chapterSevenCrawling && this.isPlayerInsideChapterSevenOven()) {
+          return 'Press E to close the oven door around yourself.';
+        }
+
         return interactable.item.open
-          ? 'Press E to close the oven.'
+          ? 'Press E to close the oven, or crawl inside it first.'
           : 'Press E to open the oven.';
       }
 
@@ -15334,9 +15366,18 @@ export class Game {
       if (this.chapterSevenBoxHidden) {
         return 'Inside the cardboard box. You cannot move while hidden. Press E to open it again.';
       }
+      if (this.chapterSevenOvenHidden) {
+        return 'Inside the oven. You cannot move while hidden, but you can look through the glass. Press E to open it again.';
+      }
 
       if (this.chapterSevenCrawling && this.chapterSeven.isPlayerUnderBed(this.player.getPosition())) {
         return 'Hidden under raised furniture. Crawl back out from under the frame to stand up again.';
+      }
+
+      if (this.chapterSevenCrawling && this.isPlayerInsideChapterSevenOven()) {
+        return this.chapterSeven.houseOven.open
+          ? 'Inside the open oven. Press E to close the door, or crawl back out.'
+          : 'Inside the oven. Press E to open the door again.';
       }
 
       if (this.chapterSevenCrawling) {
@@ -15400,6 +15441,10 @@ export class Game {
           return interactable.item.open
             ? `${interactable.item.label} is open. Press E to close it.`
             : `${interactable.item.label} is closed. Press E to open it.`;
+        }
+
+        if (interactable.item.open && this.chapterSevenCrawling) {
+          return 'The oven is open. Crawl inside it, then press E to close the door.';
         }
 
         return interactable.item.open
@@ -16101,9 +16146,9 @@ export class Game {
     if (this.chapterSevenActive) {
       const chapterSevenFloorY = this.chapterSeven.getSupportedFloorY(
         this.player.getPosition(),
-        this.chapterSevenCrawling || this.chapterSevenBoxHidden,
+        this.chapterSevenCrawling || this.chapterSevenBoxHidden || this.chapterSevenOvenHidden,
       );
-      if (this.chapterSevenCrawling || this.chapterSevenBoxHidden) {
+      if (this.chapterSevenCrawling || this.chapterSevenBoxHidden || this.chapterSevenOvenHidden) {
         return (chapterSevenFloorY ?? GAME_CONFIG.player.height) - CHAPTER_SEVEN_CRAWL_DROP;
       }
       return chapterSevenFloorY;
@@ -17586,8 +17631,37 @@ export class Game {
     this.pushStatus('The cardboard box opens. Hold S to crawl and jump out.', 2.6);
   }
 
+  private isPlayerInsideChapterSevenOven(): boolean {
+    if (!this.chapterSevenActive) {
+      return false;
+    }
+
+    return this.chapterSeven.isPlayerInsideOven(this.player.getPosition());
+  }
+
+  private hideInsideChapterSevenOven(): void {
+    const oven = this.chapterSeven.houseOven;
+    this.chapterSevenOvenHidden = true;
+    this.chapterSevenCrawling = true;
+    oven.targetOpenAmount = 0;
+    oven.open = false;
+    oven.collider.enabled = false;
+    this.gameplaySfxAudio.playClosetDoor(false);
+    this.pushStatus('You pull the oven door closed. You can look out through the glass. Press E to open it again.', 2.8);
+  }
+
+  private openChapterSevenOvenFromInside(): void {
+    const oven = this.chapterSeven.houseOven;
+    this.chapterSevenOvenHidden = false;
+    oven.targetOpenAmount = 1;
+    oven.open = true;
+    oven.collider.enabled = false;
+    this.gameplaySfxAudio.playClosetDoor(true);
+    this.pushStatus('The oven door folds open. Hold S to crawl back out.', 2.6);
+  }
+
   private handleChapterSevenFaucetToggle(): void {
-    if (!this.chapterSevenActive || !this.player.isLocked() || this.chapterSevenBoxHidden) {
+    if (!this.chapterSevenActive || !this.player.isLocked() || this.chapterSevenBoxHidden || this.chapterSevenOvenHidden) {
       return;
     }
 
@@ -20285,6 +20359,7 @@ export class Game {
     this.chapterFourCrouching = false;
     this.chapterSevenCrawling = false;
     this.chapterSevenBoxHidden = false;
+    this.chapterSevenOvenHidden = false;
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
     this.chapterFourBoxWideAnchor.visible = false;
@@ -20534,6 +20609,7 @@ export class Game {
     this.chapterFourCrouching = false;
     this.chapterSevenCrawling = false;
     this.chapterSevenBoxHidden = false;
+    this.chapterSevenOvenHidden = false;
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
     this.chapterFourBoxWideAnchor.visible = false;
