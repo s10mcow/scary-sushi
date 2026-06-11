@@ -2176,8 +2176,10 @@ export function createChapterSeven(): ChapterSevenData {
     water.scale.z = 0.7;
     const lidPivot = new Group();
     lidPivot.position.set(0, 1.02, -0.18);
-    const lid = new Mesh(new BoxGeometry(1.06, 0.08, 0.9), porcelainMaterial);
-    lid.position.set(0, 0.03, 0.42);
+    const lid = new Mesh(new CylinderGeometry(0.5, 0.42, 0.075, 32), porcelainMaterial);
+    lid.rotation.x = Math.PI / 2;
+    lid.position.set(0, 0.045, 0.42);
+    lid.scale.set(1.08, 1, 1.34);
     const seat = new Mesh(new CylinderGeometry(0.56, 0.56, 0.055, 28), porcelainMaterial);
     seat.scale.z = 0.72;
     seat.rotation.x = Math.PI / 2;
