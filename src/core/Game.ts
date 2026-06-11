@@ -794,6 +794,8 @@ const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'empty',
 ];
 const CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS = 0.38;
+const AI_PLAY_INTERACT_COOLDOWN_SECONDS = 0.65;
+const AI_PLAY_TARGET_REACHED_DISTANCE = 1.05;
 
 export class Game {
   private readonly scene;
@@ -937,6 +939,9 @@ export class Game {
   private chapterEightHeldItemModelType: ChapterEightHeldItem | null = null;
   private chapterEightKnifeAttackMode: 'slash' | 'stab' | null = null;
   private chapterEightKnifeAttackTimer = 0;
+  private aiPlayActive = false;
+  private aiPlayInteractCooldown = 0;
+  private readonly aiPlayMoveTarget = new Vector3();
   private holdingPlate = false;
   private plateRecipeId: string | null = null;
   private platedRecipeId: string | null = null;
@@ -1434,6 +1439,13 @@ export class Game {
   };
 
   private readonly handleGlobalKeyDown = (event: KeyboardEvent): void => {
+    if (event.code === 'Escape' && this.aiPlayActive) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.stopAIPlay('AI Play stopped. You have control again.');
+      return;
+    }
+
     if ((event.code !== 'KeyB' && event.code !== 'KeyJ' && event.code !== 'KeyK' && event.code !== 'KeyZ' && event.code !== 'KeyX' && event.code !== 'KeyT' && event.code !== 'KeyE') || event.repeat) {
       return;
     }
@@ -1614,6 +1626,10 @@ export class Game {
   }
 
   private readonly handleChapterSelection = (chapterId: HudChapterId): void => {
+    if (chapterId !== 'ai-play') {
+      this.stopAIPlay();
+    }
+
     if (chapterId === 'chapter-1') {
       this.beginChapterOne();
     } else if (chapterId === 'chapter-2') {
@@ -1632,6 +1648,9 @@ export class Game {
       this.beginChapterSeven();
     } else if (chapterId === 'chapter-8') {
       this.beginChapterEight();
+    } else if (chapterId === 'ai-play') {
+      this.beginChapterEight();
+      this.startAIPlay();
     } else if (chapterId === 'doom-fps') {
       this.beginDoomMode();
     } else {
@@ -2176,7 +2195,7 @@ export class Game {
       && !this.officeModeMenuOpen
       && !this.chapterSevenBoxHidden
       && (this.input.isCrawlHeld() || chapterSevenUnderBed);
-    const jumpRequested = !this.doomModeActive
+    let jumpRequested = !this.doomModeActive
       && !this.chapterFourActive
       && !this.chapterFiveActive
       && !jumpscareLocked
@@ -2221,7 +2240,7 @@ export class Game {
         && movementState.sprint
         && hasSprintStamina;
 
-    const effectiveMovement = jumpscareLocked
+    let effectiveMovement = jumpscareLocked
       ? { forward: 0, strafe: 0, sprint: false }
       : chapterTwoDodoNightAttacking
         ? { forward: 0, strafe: 0, sprint: false }
@@ -2266,6 +2285,11 @@ export class Game {
       : sprinting
         ? movementState
         : { ...movementState, sprint: false };
+
+    if (this.aiPlayActive && this.chapterEightActive) {
+      effectiveMovement = this.getChapterEightAIInput(deltaSeconds);
+      jumpRequested = false;
+    }
 
     if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeDrop()) {
       if (this.microphoneSoundToolActive) {
@@ -9479,6 +9503,8 @@ export class Game {
         return 'Chapter 7: The House';
       case 'chapter-8':
         return 'Chapter 8: The Woods';
+      case 'ai-play':
+        return 'AI Play';
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
@@ -9939,6 +9965,10 @@ export class Game {
   }
 
   private getCurrentHudChapterId(): HudChapterId {
+    if (this.aiPlayActive) {
+      return 'ai-play';
+    }
+
     if (this.zombieModeActive) {
       return 'zombie-fps';
     }
@@ -9985,6 +10015,7 @@ export class Game {
       || this.officeCameraPuppetPhase !== 'idle'
       || this.officeBallPitSlide !== null
       || this.officeVentDrop !== null
+      || this.aiPlayActive
       || this.chapterTwoClimb !== null
       || this.chapterTwoSlide !== null
       || this.chapterTwoDodoNightAttack !== null;
@@ -10079,7 +10110,9 @@ export class Game {
                   : this.chapterSevenActive
                     ? 'Chapter: Chapter 7: The House'
                     : this.chapterEightActive
-                      ? 'Chapter: Chapter 8: The Woods'
+                      ? this.aiPlayActive
+                        ? 'Mode: AI Play'
+                        : 'Chapter: Chapter 8: The Woods'
                       : this.chapterTwoActive
                     ? 'Chapter: daycare horror'
                     : 'Chapter: scary-sushi',
@@ -10239,6 +10272,15 @@ export class Game {
 
     if (this.officeModeMenuOpen) {
       this.hud.setStatus('Chapter 3 mode menu open. Pick Night, Game, or Creator Mode, or press M again to close it.');
+      return;
+    }
+
+    if (this.aiPlayActive) {
+      this.hud.setStatus(
+        this.transientStatusTime > 0
+          ? `${this.transientStatus} Press Escape to stop AI Play.`
+          : 'AI Play is controlling Chapter 8 survival. Press Escape to stop AI Play immediately.',
+      );
       return;
     }
 
@@ -10911,6 +10953,151 @@ export class Game {
       }
       event = this.chapterEight.consumeMonsterEvent();
     }
+  }
+
+  private startAIPlay(): void {
+    this.aiPlayActive = true;
+    this.aiPlayInteractCooldown = 0;
+    this.chapterMenuOpen = false;
+    this.curatorToolOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.setPlacementToolActive(false);
+    this.player.lock();
+    this.pushStatus('AI Play started. I am controlling Chapter 8 survival. Press Escape to stop AI Play immediately.', 3.4);
+  }
+
+  private stopAIPlay(message?: string): void {
+    if (!this.aiPlayActive) {
+      return;
+    }
+
+    this.aiPlayActive = false;
+    this.aiPlayInteractCooldown = 0;
+    if (message) {
+      this.player.controls.unlock();
+      this.pushStatus(message, 2.6);
+      this.syncHud();
+    }
+  }
+
+  private getChapterEightAIInput(deltaSeconds: number): MovementState {
+    this.aiPlayInteractCooldown = Math.max(0, this.aiPlayInteractCooldown - deltaSeconds);
+
+    if (!this.chapterEightActive || !this.player.isLocked()) {
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    const position = this.player.getPosition();
+    const doorPosition = this.chapterEight.door.interactPosition;
+    const lockPosition = this.chapterEight.door.lockPosition;
+    const bedPosition = this.chapterEight.sleepSpot.interactPosition;
+    const firePosition = this.chapterEight.fireplacePosition;
+    const insideCabin = position.z < doorPosition.z - 0.25
+      && Math.abs(position.x - doorPosition.x) <= 8.7;
+    const canInteract = this.aiPlayInteractCooldown <= 0;
+    const interact = (): void => {
+      this.aiPlayInteractCooldown = AI_PLAY_INTERACT_COOLDOWN_SECONDS;
+    };
+
+    if (!this.chapterEight.hasTorch()) {
+      if (!insideCabin && !this.chapterEight.door.open && position.distanceTo(doorPosition) <= 2.85 && canInteract) {
+        this.chapterEight.toggleDoor();
+        this.pushStatus('AI Play opens the cabin door to reach the fireplace.', 1.6);
+        interact();
+      }
+
+      if (position.distanceTo(firePosition) <= 2.35 && canInteract) {
+        if (this.chapterEight.craftTorch()) {
+          this.selectChapterEightHeldItem('torch');
+          this.pushStatus('AI Play crafts and equips the torch.', 2.0);
+          interact();
+          return { forward: 0, strafe: 0, sprint: false };
+        }
+      }
+
+      return this.getAIPlayMoveInput(insideCabin || this.chapterEight.door.open ? firePosition : doorPosition, true);
+    }
+
+    if (this.chapterEightHeldItem !== 'torch') {
+      this.selectChapterEightHeldItem('torch');
+    }
+
+    if (this.chapterEight.isNight()) {
+      if (!insideCabin) {
+        if (!this.chapterEight.door.open && position.distanceTo(doorPosition) <= 2.85 && canInteract) {
+          this.chapterEight.toggleDoor();
+          this.pushStatus('AI Play opens the cabin door and heads inside before the monster reaches you.', 1.9);
+          interact();
+        }
+        return this.getAIPlayMoveInput(doorPosition, true);
+      }
+
+      if (this.chapterEight.door.open && position.distanceTo(doorPosition) <= 3.1 && canInteract) {
+        this.chapterEight.toggleDoor();
+        this.pushStatus('AI Play closes the cabin door for the night.', 1.7);
+        interact();
+        return { forward: 0, strafe: 0, sprint: false };
+      }
+
+      if (!this.chapterEight.door.locked) {
+        if (position.distanceTo(lockPosition) <= 1.25 && canInteract) {
+          this.chapterEight.toggleDoorLock();
+          this.pushStatus('AI Play locks the cabin door so the monster cannot open it.', 2.0);
+          interact();
+          return { forward: 0, strafe: 0, sprint: false };
+        }
+        return this.getAIPlayMoveInput(lockPosition, false);
+      }
+
+      if (position.distanceTo(bedPosition) <= 1.9 && canInteract) {
+        if (this.chapterEight.sleepUntilMorning()) {
+          this.pushStatus('AI Play sleeps through the night and waits for morning.', 2.2);
+          interact();
+        }
+        return { forward: 0, strafe: 0, sprint: false };
+      }
+
+      return this.getAIPlayMoveInput(bedPosition, false);
+    }
+
+    if (this.chapterEight.door.locked) {
+      if (position.distanceTo(lockPosition) <= 1.35 && canInteract) {
+        this.chapterEight.toggleDoorLock();
+        this.pushStatus('AI Play unlocks the cabin after morning returns.', 1.8);
+        interact();
+        return { forward: 0, strafe: 0, sprint: false };
+      }
+      return this.getAIPlayMoveInput(lockPosition, false);
+    }
+
+    if (insideCabin && !this.chapterEight.door.locked) {
+      if (!this.chapterEight.door.open && position.distanceTo(doorPosition) <= 2.85 && canInteract) {
+        this.chapterEight.toggleDoor();
+        this.pushStatus('AI Play opens the door during the day.', 1.5);
+        interact();
+      }
+      this.aiPlayMoveTarget.set(doorPosition.x, position.y, doorPosition.z + 3.5);
+      return this.getAIPlayMoveInput(this.aiPlayMoveTarget, false);
+    }
+
+    this.aiPlayMoveTarget.set(doorPosition.x - 5.8, position.y, doorPosition.z + 10.5);
+    return this.getAIPlayMoveInput(this.aiPlayMoveTarget, false);
+  }
+
+  private getAIPlayMoveInput(target: Vector3, sprint: boolean): MovementState {
+    const position = this.player.getPosition();
+    this.aiPlayMoveTarget.set(target.x, position.y, target.z);
+    const distance = Math.hypot(
+      this.aiPlayMoveTarget.x - position.x,
+      this.aiPlayMoveTarget.z - position.z,
+    );
+    this.player.lookToward(this.aiPlayMoveTarget, 0.18);
+    if (distance <= AI_PLAY_TARGET_REACHED_DISTANCE) {
+      return { forward: 0, strafe: 0, sprint: false };
+    }
+
+    return { forward: 1, strafe: 0, sprint };
   }
 
   private handleOfficePrizeFire(): boolean {

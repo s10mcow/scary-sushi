@@ -10,6 +10,7 @@ export type HudChapterId =
   | 'chapter-6'
   | 'chapter-7'
   | 'chapter-8'
+  | 'ai-play'
   | 'zombie-fps'
   | 'doom-fps';
 export type HudJumpScareVariant = MonsterVariant | 'bear' | 'quacky' | 'fluffle' | 'bori' | 'foxy' | 'purple' | 'blue' | 'green';
@@ -1286,6 +1287,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-8' as const,
       label: 'Chapter 8: The Woods',
       body: 'A semi-realistic forest camp with a fire pit, stone ring, crafting bench, and grinding bench.',
+    },
+    {
+      id: 'ai-play' as const,
+      label: 'AI Play',
+      body: 'Watch the assistant take over Chapter 8 and survive the woods until you press Escape.',
     },
     {
       id: 'zombie-fps' as const,
