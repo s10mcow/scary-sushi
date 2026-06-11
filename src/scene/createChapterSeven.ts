@@ -908,6 +908,13 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.5,
     metalness: 0.04,
   });
+  const ovenInteriorMaterial = new MeshStandardMaterial({
+    color: 0x050505,
+    emissive: 0x000000,
+    emissiveIntensity: 0,
+    roughness: 0.94,
+    metalness: 0.02,
+  });
   const laundryBasketMaterial = new MeshStandardMaterial({
     color: 0xe8dfcf,
     emissive: 0x11100c,
@@ -2931,8 +2938,21 @@ export function createChapterSeven(): ChapterSevenData {
     body.position.y = height / 2;
     const cooktop = new Mesh(new BoxGeometry(width + 0.08, 0.12, depth + 0.08), stoveGlassMaterial);
     cooktop.position.y = height + 0.08;
-    const ovenCavity = new Mesh(new BoxGeometry(width - 0.28, 0.76, depth - 0.22), stoveGlassMaterial);
-    ovenCavity.position.set(0, 0.75, 0.05);
+    const cavityWidth = width - 0.28;
+    const cavityHeight = 0.78;
+    const cavityDepth = depth - 0.18;
+    const cavityCenterY = 0.75;
+    const cavityCenterZ = 0.08;
+    const ovenBackWall = new Mesh(new BoxGeometry(cavityWidth, cavityHeight, 0.08), ovenInteriorMaterial);
+    ovenBackWall.position.set(0, cavityCenterY, cavityCenterZ - cavityDepth / 2 + 0.04);
+    const ovenLeftWall = new Mesh(new BoxGeometry(0.08, cavityHeight, cavityDepth), ovenInteriorMaterial);
+    ovenLeftWall.position.set(-cavityWidth / 2 + 0.04, cavityCenterY, cavityCenterZ);
+    const ovenRightWall = ovenLeftWall.clone();
+    ovenRightWall.position.x = cavityWidth / 2 - 0.04;
+    const ovenCeiling = new Mesh(new BoxGeometry(cavityWidth, 0.08, cavityDepth), ovenInteriorMaterial);
+    ovenCeiling.position.set(0, cavityCenterY + cavityHeight / 2 - 0.04, cavityCenterZ);
+    const ovenFloor = ovenCeiling.clone();
+    ovenFloor.position.y = cavityCenterY - cavityHeight / 2 + 0.04;
     const ovenDoorPivot = new Group();
     ovenDoorPivot.position.set(0, 0.36, depth / 2 + 0.055);
     const ovenDoor = new Mesh(new BoxGeometry(width - 0.2, 0.78, 0.08), stoveMaterial);
@@ -2955,7 +2975,7 @@ export function createChapterSeven(): ChapterSevenData {
     });
 
     ovenDoorPivot.add(ovenDoor, ovenWindow, ovenHandle);
-    stove.add(body, cooktop, ovenCavity, ovenDoorPivot, knobRow, ...burners);
+    stove.add(body, cooktop, ovenBackWall, ovenLeftWall, ovenRightWall, ovenCeiling, ovenFloor, ovenDoorPivot, knobRow, ...burners);
     house.add(stove);
     const stoveCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.08, depth + 0.08);
     counterSurfaces.push({

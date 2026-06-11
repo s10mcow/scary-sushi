@@ -3840,25 +3840,25 @@ export class Game {
       side: DoubleSide,
     });
 
-    const backWall = new Mesh(new BoxGeometry(1.28, 1.02, 0.08), ovenWallMaterial);
-    backWall.position.set(0, -0.02, 0.16);
-    const leftWall = new Mesh(new BoxGeometry(0.16, 1.1, 0.82), ovenWallMaterial);
-    leftWall.position.set(-0.62, -0.02, -0.16);
+    const backWall = new Mesh(new BoxGeometry(1.2, 1.08, 0.09), ovenWallMaterial);
+    backWall.position.set(0, -0.02, 0.18);
+    const leftWall = new Mesh(new BoxGeometry(0.14, 1.12, 0.88), ovenWallMaterial);
+    leftWall.position.set(-0.55, -0.02, -0.18);
     const rightWall = leftWall.clone();
-    rightWall.position.x = 0.62;
-    const topWall = new Mesh(new BoxGeometry(1.28, 0.16, 0.82), ovenWallMaterial);
-    topWall.position.set(0, 0.5, -0.16);
+    rightWall.position.x = 0.55;
+    const topWall = new Mesh(new BoxGeometry(1.18, 0.14, 0.88), ovenWallMaterial);
+    topWall.position.set(0, 0.46, -0.18);
     const bottomWall = topWall.clone();
-    bottomWall.position.y = -0.56;
+    bottomWall.position.y = -0.54;
 
-    const doorFrameTop = new Mesh(new BoxGeometry(1.16, 0.13, 0.08), metalEdgeMaterial);
+    const doorFrameTop = new Mesh(new BoxGeometry(1.08, 0.13, 0.08), metalEdgeMaterial);
     doorFrameTop.position.set(0, 0.34, -0.48);
     const doorFrameBottom = doorFrameTop.clone();
     doorFrameBottom.position.y = -0.42;
     const doorFrameLeft = new Mesh(new BoxGeometry(0.13, 0.82, 0.08), metalEdgeMaterial);
-    doorFrameLeft.position.set(-0.51, -0.04, -0.48);
+    doorFrameLeft.position.set(-0.48, -0.04, -0.48);
     const doorFrameRight = doorFrameLeft.clone();
-    doorFrameRight.position.x = 0.51;
+    doorFrameRight.position.x = 0.48;
     const glassWindow = new Mesh(new PlaneGeometry(0.82, 0.52), glassMaterial);
     glassWindow.position.set(0, -0.04, -0.525);
 
@@ -10454,6 +10454,14 @@ export class Game {
       }
 
       const interactable = this.getLookedAtChapterSevenInteractable();
+      const nearestBathtubFaucet = interactable?.kind === 'rear-fixture' && interactable.item.kind === 'bathtub'
+        ? interactable.item
+        : this.getNearestChapterSevenBathtubFaucet();
+      if (!interactable && nearestBathtubFaucet) {
+        this.toggleChapterSevenBathtubFaucet(nearestBathtubFaucet);
+        return;
+      }
+
       const manualDoor = this.getNearestChapterSevenManualDoor();
       if (manualDoor && !interactable) {
         manualDoor.targetOpenAmount = manualDoor.targetOpenAmount > 0.5 ? 0 : 1;
@@ -10555,6 +10563,11 @@ export class Game {
 
       if (interactable?.kind === 'rear-fixture') {
         const fixture = interactable.item;
+        if (fixture.kind === 'bathtub') {
+          this.toggleChapterSevenBathtubFaucet(fixture);
+          return;
+        }
+
         fixture.targetOpenAmount = fixture.targetOpenAmount > 0.5 ? 0 : 1;
         fixture.open = fixture.targetOpenAmount > 0.5;
         if (fixture.kind === 'bathroom-sink') {
@@ -10563,14 +10576,6 @@ export class Game {
             fixture.open
               ? 'You turn on the bathroom sink. Water pours into the bowl.'
               : 'You turn off the bathroom sink.',
-            2.2,
-          );
-        } else if (fixture.kind === 'bathtub') {
-          this.gameplaySfxAudio.playSmallPanel(fixture.open);
-          this.pushStatus(
-            fixture.open
-              ? 'You turn on the bathtub faucet. Water starts filling the tub.'
-              : 'You turn off the bathtub faucet.',
             2.2,
           );
         } else {
@@ -17667,6 +17672,38 @@ export class Game {
     return closestDoor;
   }
 
+  private getNearestChapterSevenBathtubFaucet(): ChapterSevenData['rearFixtures'][number] | null {
+    if (!this.chapterSevenActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    let closestFixture: ChapterSevenData['rearFixtures'][number] | null = null;
+    let closestDistance = Infinity;
+    for (const fixture of this.chapterSeven.rearFixtures) {
+      if (fixture.kind !== 'bathtub') {
+        continue;
+      }
+
+      const interactDistance = Math.hypot(
+        playerPosition.x - fixture.interactPosition.x,
+        playerPosition.z - fixture.interactPosition.z,
+      );
+      const tubDistance = fixture.tubBounds
+        ? Math.hypot(playerPosition.x - fixture.tubBounds.centerX, playerPosition.z - fixture.tubBounds.centerZ)
+        : interactDistance;
+      const distance = Math.min(interactDistance, tubDistance);
+      if (distance > GAME_CONFIG.player.interactionRange + 2.15 || distance >= closestDistance) {
+        continue;
+      }
+
+      closestFixture = fixture;
+      closestDistance = distance;
+    }
+
+    return closestFixture;
+  }
+
   private isPlayerInsideChapterSevenCardboardBox(): boolean {
     if (!this.chapterSevenActive) {
       return false;
@@ -17732,6 +17769,18 @@ export class Game {
     this.chapterSevenOvenHideAnchor.visible = false;
     this.gameplaySfxAudio.playClosetDoor(true);
     this.pushStatus('The oven door folds open. Hold S to crawl back out.', 2.6);
+  }
+
+  private toggleChapterSevenBathtubFaucet(fixture: ChapterSevenData['rearFixtures'][number]): void {
+    fixture.targetOpenAmount = fixture.targetOpenAmount > 0.5 ? 0 : 1;
+    fixture.open = fixture.targetOpenAmount > 0.5;
+    this.gameplaySfxAudio.playSmallPanel(fixture.open);
+    this.pushStatus(
+      fixture.open
+        ? 'You turn on the bathtub faucet. Water flows into the tub.'
+        : 'You turn off the bathtub faucet. The tub water slowly drains.',
+      2.4,
+    );
   }
 
   private handleChapterSevenFaucetToggle(): void {
@@ -17824,7 +17873,9 @@ export class Game {
     }
 
     this.chapterSeven.rearFixtures.forEach((fixture) => {
-      const fixtureScore = this.getChapterSevenLookScore(fixture, 0.62, 1.15);
+      const fixtureScore = fixture.kind === 'bathtub'
+        ? this.getChapterSevenLookScore(fixture, 1.25, 2.15)
+        : this.getChapterSevenLookScore(fixture, 0.62, 1.15);
       if (fixtureScore !== null) {
         keepBest({ kind: 'rear-fixture', item: fixture, score: fixtureScore });
       }
