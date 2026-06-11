@@ -14,6 +14,7 @@ import {
   Shape,
   ShapeGeometry,
   SphereGeometry,
+  TorusGeometry,
   Vector3,
 } from 'three';
 
@@ -155,6 +156,7 @@ export interface ChapterSevenRearFixture {
   animation: 'toilet-lid' | 'faucet' | 'front-door' | 'bathtub-faucet';
   waterStream?: Mesh;
   waterSurface?: Mesh;
+  waterSplash?: Mesh[];
   waterFillAmount?: number;
   wallColliders?: CollisionBox[];
   tubBounds?: {
@@ -874,6 +876,16 @@ export function createChapterSeven(): ChapterSevenData {
     metalness: 0.02,
     transparent: true,
     opacity: 0.62,
+    depthWrite: false,
+  });
+  const bathtubWaterMaterial = new MeshStandardMaterial({
+    color: 0x2aaeff,
+    emissive: 0x1177c7,
+    emissiveIntensity: 0.34,
+    roughness: 0.14,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.68,
     depthWrite: false,
   });
   const cabinetMaterial = new MeshStandardMaterial({
@@ -2703,7 +2715,7 @@ export function createChapterSeven(): ChapterSevenData {
 
     const innerBasin = new Mesh(new BoxGeometry(width - 0.42, 0.12, depth - 0.54), sinkBasinMaterial);
     innerBasin.position.y = 0.28;
-    const waterSurface = new Mesh(new BoxGeometry(width - 0.46, 0.035, depth - 0.62), faucetWaterMaterial);
+    const waterSurface = new Mesh(new BoxGeometry(width - 0.46, 0.035, depth - 0.62), bathtubWaterMaterial);
     waterSurface.position.y = 0.25;
     waterSurface.visible = false;
     const drain = new Mesh(new CylinderGeometry(0.12, 0.12, 0.025, 18), fridgeSealMaterial);
@@ -2731,6 +2743,41 @@ export function createChapterSeven(): ChapterSevenData {
     waterStream.position.set(0, height + 0.1, -depth / 2 + 0.83);
     waterStream.visible = false;
     waterStream.scale.y = 0.01;
+    const waterSplash = [
+      [-0.12, height + 0.18, -depth / 2 + 1.04],
+      [0.1, height + 0.08, -depth / 2 + 1.08],
+      [-0.04, height - 0.02, -depth / 2 + 1.18],
+      [0.16, height + 0.23, -depth / 2 + 0.98],
+      [-0.18, height + 0.04, -depth / 2 + 1.2],
+    ].map(([dropX, dropY, dropZ], index) => {
+      const drop = new Mesh(new SphereGeometry(index === 3 ? 0.045 : 0.035, 8, 6), bathtubWaterMaterial);
+      drop.position.set(dropX, dropY, dropZ);
+      drop.visible = false;
+      drop.userData.baseX = dropX;
+      drop.userData.baseY = dropY;
+      drop.userData.baseZ = dropZ;
+      drop.userData.phase = index * 1.17;
+      return drop;
+    });
+
+    const megaphone = new Group();
+    megaphone.name = 'Bathtub megaphone';
+    megaphone.position.set(-width / 2 - 0.55, 0.34, depth / 2 - 0.82);
+    megaphone.rotation.set(0, -0.45, Math.PI / 2);
+    const megaphoneBody = new Mesh(new ConeGeometry(0.38, 0.9, 24, 1, true), applianceWhiteMaterial);
+    megaphoneBody.rotation.z = Math.PI / 2;
+    const megaphoneRim = new Mesh(new TorusGeometry(0.38, 0.035, 8, 24), faucetMaterial);
+    megaphoneRim.position.x = 0.45;
+    megaphoneRim.rotation.y = Math.PI / 2;
+    const megaphoneBack = new Mesh(new CylinderGeometry(0.19, 0.19, 0.2, 18), fridgeSealMaterial);
+    megaphoneBack.position.x = -0.5;
+    megaphoneBack.rotation.z = Math.PI / 2;
+    const megaphoneHandle = new Mesh(new BoxGeometry(0.12, 0.44, 0.12), faucetMaterial);
+    megaphoneHandle.position.set(-0.1, -0.36, 0);
+    const megaphoneButton = new Mesh(new CylinderGeometry(0.045, 0.045, 0.025, 12), faucetMaterial);
+    megaphoneButton.position.set(-0.22, 0.16, 0.17);
+    megaphoneButton.rotation.x = Math.PI / 2;
+    megaphone.add(megaphoneBody, megaphoneRim, megaphoneBack, megaphoneHandle, megaphoneButton);
 
     bathtub.add(
       bottom,
@@ -2747,6 +2794,8 @@ export function createChapterSeven(): ChapterSevenData {
       spoutTip,
       handlePivot,
       waterStream,
+      ...waterSplash,
+      megaphone,
     );
     house.add(bathtub);
 
@@ -2768,6 +2817,7 @@ export function createChapterSeven(): ChapterSevenData {
       animation: 'bathtub-faucet',
       waterStream,
       waterSurface,
+      waterSplash,
       waterFillAmount: 0,
       wallColliders,
       tubBounds: {
@@ -4010,17 +4060,28 @@ export function createChapterSeven(): ChapterSevenData {
           }
         } else if (fixture.animation === 'bathtub-faucet') {
           fixture.doorPivots[0].rotation.z = -fixture.openAmount * Math.PI * 0.52;
+          const faucetRunning = fixture.openAmount > 0.03;
           if (fixture.waterStream) {
-            fixture.waterStream.visible = fixture.openAmount > 0.03;
+            fixture.waterStream.visible = faucetRunning;
             fixture.waterStream.scale.y = Math.max(0.01, fixture.openAmount);
           }
+          fixture.waterSplash?.forEach((drop, index) => {
+            const pulse = Math.sin(forestTime * 16 + (drop.userData.phase as number));
+            drop.visible = faucetRunning;
+            drop.position.set(
+              (drop.userData.baseX as number) + pulse * 0.035,
+              (drop.userData.baseY as number) + Math.abs(pulse) * 0.08 - index * 0.006,
+              (drop.userData.baseZ as number) + Math.cos(forestTime * 13 + index) * 0.04,
+            );
+            drop.scale.setScalar(0.82 + Math.abs(pulse) * 0.42);
+          });
           fixture.waterFillAmount = Math.min(
-            1,
+            0.92,
             (fixture.waterFillAmount ?? 0) + (fixture.targetOpenAmount > 0.5 ? deltaSeconds * 0.075 : 0),
           );
           if (fixture.waterSurface) {
             fixture.waterSurface.visible = fixture.waterFillAmount > 0.015;
-            fixture.waterSurface.position.y = 0.25 + fixture.waterFillAmount * 0.48;
+            fixture.waterSurface.position.y = 0.25 + fixture.waterFillAmount * 0.55;
           }
         } else {
           fixture.doorPivots[0].rotation.y = -fixture.openAmount * Math.PI * 0.58;
@@ -4106,6 +4167,15 @@ export function createChapterSeven(): ChapterSevenData {
           fixture.waterStream.visible = false;
           fixture.waterStream.scale.y = 0.01;
         }
+        fixture.waterSplash?.forEach((drop) => {
+          drop.visible = false;
+          drop.scale.setScalar(1);
+          drop.position.set(
+            drop.userData.baseX as number,
+            drop.userData.baseY as number,
+            drop.userData.baseZ as number,
+          );
+        });
         fixture.waterFillAmount = 0;
         if (fixture.waterSurface) {
           fixture.waterSurface.visible = false;
