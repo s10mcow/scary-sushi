@@ -71,8 +71,9 @@ const CENTER_Z = 80;
 const FOREST_SIZE = 210;
 const HALF_FOREST_SIZE = FOREST_SIZE / 2;
 const CLEARING_RADIUS = 27;
-const TREE_COUNT = 96;
-const GRASS_TUFT_COUNT = 280;
+const TREE_COUNT = 174;
+const GRASS_TUFT_COUNT = 390;
+const MIST_PATCH_COUNT = 22;
 const GROUND_Y = 0;
 const TREE_HITS_TO_FELL = 7;
 
@@ -226,45 +227,69 @@ function createGrindingBench(materials: ReturnType<typeof createBenchMaterials>)
 function createTree(index: number, colliders: CollisionBox[]): ChapterEightTree {
   const tree = new Group();
   const angle = seededRandom(index * 4 + 1) * Math.PI * 2;
-  const radius = CLEARING_RADIUS + 9 + seededRandom(index * 4 + 2) * (HALF_FOREST_SIZE - CLEARING_RADIUS - 15);
-  const x = CENTER_X + Math.cos(angle) * radius + (seededRandom(index * 4 + 3) - 0.5) * 8;
-  const z = CENTER_Z + Math.sin(angle) * radius + (seededRandom(index * 4 + 4) - 0.5) * 8;
-  const trunkHeight = 5.2 + seededRandom(index * 4 + 5) * 2.6;
-  const trunkRadius = 0.28 + seededRandom(index * 4 + 6) * 0.16;
-  const canopyRadius = 1.9 + seededRandom(index * 4 + 7) * 0.8;
+  const innerRing = index % 4 === 0;
+  const radius = (innerRing ? CLEARING_RADIUS + 6 : CLEARING_RADIUS + 14)
+    + seededRandom(index * 4 + 2) * (HALF_FOREST_SIZE - CLEARING_RADIUS - (innerRing ? 24 : 14));
+  const x = CENTER_X + Math.cos(angle) * radius + (seededRandom(index * 4 + 3) - 0.5) * 10;
+  const z = CENTER_Z + Math.sin(angle) * radius + (seededRandom(index * 4 + 4) - 0.5) * 10;
+  const trunkHeight = 5.8 + seededRandom(index * 4 + 5) * 3.8;
+  const trunkRadius = 0.24 + seededRandom(index * 4 + 6) * 0.18;
+  const canopyRadius = 1.7 + seededRandom(index * 4 + 7) * 0.92;
+  const deadTree = seededRandom(index * 11 + 2) > 0.82;
 
   const bark = new MeshStandardMaterial({
-    color: 0x4b2f1d,
+    color: deadTree ? 0x241b17 : 0x332217,
     roughness: 0.92,
     metalness: 0,
   });
   const leaves = new MeshStandardMaterial({
-    color: seededRandom(index * 4 + 8) > 0.5 ? 0x1f4d27 : 0x2f6630,
-    roughness: 0.86,
+    color: seededRandom(index * 4 + 8) > 0.55 ? 0x0f2416 : 0x182f1b,
+    roughness: 0.9,
     metalness: 0,
   });
 
-  const trunk = new Mesh(new CylinderGeometry(trunkRadius * 0.85, trunkRadius * 1.1, trunkHeight, 9), bark);
+  const trunk = new Mesh(new CylinderGeometry(trunkRadius * 0.74, trunkRadius * 1.18, trunkHeight, 9), bark);
   trunk.position.y = trunkHeight / 2;
-  trunk.rotation.z = (seededRandom(index * 4 + 9) - 0.5) * 0.08;
+  trunk.rotation.z = (seededRandom(index * 4 + 9) - 0.5) * 0.18;
+  trunk.rotation.x = (seededRandom(index * 4 + 11) - 0.5) * 0.08;
   tree.add(trunk);
 
-  for (let branchIndex = 0; branchIndex < 3; branchIndex += 1) {
-    const branch = new Mesh(new CylinderGeometry(0.08, 0.16, 1.55, 7), bark);
-    branch.position.y = trunkHeight * (0.56 + branchIndex * 0.09);
-    branch.rotation.z = Math.PI / 2.6;
-    branch.rotation.y = branchIndex * Math.PI * 0.68 + seededRandom(index * 7 + branchIndex) * 0.4;
+  const branchCount = deadTree ? 6 : 4;
+  for (let branchIndex = 0; branchIndex < branchCount; branchIndex += 1) {
+    const branchLength = deadTree ? 1.7 + seededRandom(index * 13 + branchIndex) * 1.4 : 1.35 + seededRandom(index * 13 + branchIndex) * 0.75;
+    const branch = new Mesh(new CylinderGeometry(0.035, 0.14, branchLength, 7), bark);
+    branch.position.y = trunkHeight * (0.42 + branchIndex * (deadTree ? 0.075 : 0.105));
+    branch.rotation.z = Math.PI / (deadTree ? 2.25 : 2.6);
+    branch.rotation.x = (seededRandom(index * 17 + branchIndex) - 0.5) * 0.55;
+    branch.rotation.y = branchIndex * Math.PI * 0.58 + seededRandom(index * 7 + branchIndex) * 0.66;
     tree.add(branch);
+
+    if (deadTree || branchIndex % 2 === 0) {
+      const twig = new Mesh(new CylinderGeometry(0.018, 0.045, branchLength * 0.52, 6), bark);
+      twig.position.y = branch.position.y + 0.16;
+      twig.rotation.z = branch.rotation.z + 0.62;
+      twig.rotation.x = branch.rotation.x - 0.25;
+      twig.rotation.y = branch.rotation.y + 0.22;
+      tree.add(twig);
+    }
   }
 
-  const lowerCanopy = new Mesh(new SphereGeometry(canopyRadius, 14, 10), leaves);
-  lowerCanopy.position.y = trunkHeight + canopyRadius * 0.15;
-  lowerCanopy.scale.set(1, 0.72, 1);
-  tree.add(lowerCanopy);
+  if (!deadTree) {
+    const lowerCanopy = new Mesh(new SphereGeometry(canopyRadius, 14, 10), leaves);
+    lowerCanopy.position.y = trunkHeight + canopyRadius * 0.08;
+    lowerCanopy.scale.set(0.9 + seededRandom(index * 4 + 12) * 0.28, 0.62, 0.92);
+    tree.add(lowerCanopy);
 
-  const topCanopy = new Mesh(new ConeGeometry(canopyRadius * 1.05, canopyRadius * 2.15, 14), leaves);
-  topCanopy.position.y = trunkHeight + canopyRadius * 1.05;
-  tree.add(topCanopy);
+    const topCanopy = new Mesh(new ConeGeometry(canopyRadius * 1.02, canopyRadius * 2.25, 14), leaves);
+    topCanopy.position.y = trunkHeight + canopyRadius * 1.0;
+    topCanopy.rotation.z = (seededRandom(index * 4 + 13) - 0.5) * 0.1;
+    tree.add(topCanopy);
+  } else {
+    const brokenTop = new Mesh(new ConeGeometry(trunkRadius * 1.25, 0.9, 7), bark);
+    brokenTop.position.y = trunkHeight + 0.38;
+    brokenTop.rotation.z = 0.28;
+    tree.add(brokenTop);
+  }
 
   tree.position.set(x, GROUND_Y, z);
   tree.rotation.y = seededRandom(index * 4 + 10) * Math.PI * 2;
@@ -323,12 +348,12 @@ export function createChapterEight(): ChapterEightData {
   const drops: ChapterEightDrop[] = [];
 
   const grassMaterial = new MeshStandardMaterial({
-    color: 0x2f5a2f,
+    color: 0x162515,
     roughness: 0.94,
     metalness: 0,
   });
   const clearingGrassMaterial = new MeshStandardMaterial({
-    color: 0x78a95b,
+    color: 0x506f3f,
     roughness: 0.92,
     metalness: 0,
   });
@@ -357,6 +382,16 @@ export function createChapterEight(): ChapterEightData {
     metalness: 0,
   });
   const benchMaterials = createBenchMaterials();
+  const mistMaterial = new MeshStandardMaterial({
+    color: 0x8b938f,
+    emissive: 0x101817,
+    emissiveIntensity: 0.08,
+    roughness: 1,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.18,
+    depthWrite: false,
+  });
 
   const ground = new Mesh(createIrregularGroundGeometry(FOREST_SIZE, FOREST_SIZE, 36), grassMaterial);
   ground.position.set(CENTER_X, GROUND_Y, CENTER_Z);
@@ -373,7 +408,7 @@ export function createChapterEight(): ChapterEightData {
 
   const grassGeometry = new ConeGeometry(0.12, 0.7, 5);
   const grassTuftMaterial = new MeshStandardMaterial({
-    color: 0x4f7d3f,
+    color: 0x243a24,
     roughness: 0.96,
     metalness: 0,
   });
@@ -391,11 +426,34 @@ export function createChapterEight(): ChapterEightData {
     root.add(tuft);
   }
 
+  const mistGeometry = new SphereGeometry(1, 18, 8);
+  for (let index = 0; index < MIST_PATCH_COUNT; index += 1) {
+    const angle = seededRandom(1700 + index * 3) * Math.PI * 2;
+    const radius = CLEARING_RADIUS + 10 + seededRandom(1701 + index * 3) * (HALF_FOREST_SIZE - CLEARING_RADIUS - 18);
+    const mist = new Mesh(mistGeometry, mistMaterial);
+    mist.position.set(
+      CENTER_X + Math.cos(angle) * radius,
+      GROUND_Y + 0.38 + seededRandom(1704 + index) * 0.24,
+      CENTER_Z + Math.sin(angle) * radius,
+    );
+    mist.scale.set(
+      5.2 + seededRandom(1710 + index) * 4.8,
+      0.16 + seededRandom(1711 + index) * 0.12,
+      2.4 + seededRandom(1712 + index) * 2.6,
+    );
+    mist.rotation.y = seededRandom(1702 + index * 3) * Math.PI * 2;
+    root.add(mist);
+  }
+
   for (let index = 0; index < TREE_COUNT; index += 1) {
     const tree = createTree(index, colliders);
     trees.push(tree);
     root.add(tree.root);
   }
+
+  const coldWoodsLight = new PointLight(0x3d5368, 0.95, FOREST_SIZE * 0.85, 2.0);
+  coldWoodsLight.position.set(CENTER_X - 24, 12, CENTER_Z + 34);
+  root.add(coldWoodsLight);
 
   const firePit = new Group();
   firePit.name = 'Chapter 8 Fire Pit';
