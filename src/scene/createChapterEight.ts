@@ -317,11 +317,21 @@ function createNightMonster(): ChapterEightMonster {
     metalness: 0,
   });
   const eyeMaterial = new MeshStandardMaterial({
-    color: 0xff1010,
+    color: 0xff2a2a,
     emissive: 0xff0000,
-    emissiveIntensity: 2.6,
-    roughness: 0.22,
+    emissiveIntensity: 6.2,
+    roughness: 0.12,
     metalness: 0,
+  });
+  const eyeGlowMaterial = new MeshStandardMaterial({
+    color: 0xff1414,
+    emissive: 0xff0000,
+    emissiveIntensity: 3.8,
+    roughness: 0.2,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.46,
+    depthWrite: false,
   });
 
   const torso = new Mesh(new CylinderGeometry(0.34, 0.46, 1.38, 10), bodyMaterial);
@@ -332,10 +342,16 @@ function createNightMonster(): ChapterEightMonster {
   const head = new Mesh(new SphereGeometry(0.32, 14, 10), bodyMaterial);
   head.position.y = 2.58;
   head.scale.set(0.76, 1.08, 0.72);
-  const leftEye = new Mesh(new SphereGeometry(0.045, 8, 6), eyeMaterial);
+  const leftEyeGlow = new Mesh(new SphereGeometry(0.13, 12, 8), eyeGlowMaterial);
+  leftEyeGlow.position.set(-0.11, 2.61, -0.27);
+  const rightEyeGlow = leftEyeGlow.clone();
+  rightEyeGlow.position.x = 0.11;
+  const leftEye = new Mesh(new SphereGeometry(0.07, 10, 8), eyeMaterial);
   leftEye.position.set(-0.11, 2.61, -0.25);
   const rightEye = leftEye.clone();
   rightEye.position.x = 0.11;
+  const redEyeLight = new PointLight(0xff0000, 1.35, 8.5, 2);
+  redEyeLight.position.set(0, 2.58, -0.38);
 
   const makeLimb = (x: number, y: number, z: number, length: number, radius: number, rotationZ: number): Mesh => {
     const limb = new Mesh(new CylinderGeometry(radius * 0.72, radius, length, 7), bodyMaterial);
@@ -348,7 +364,7 @@ function createNightMonster(): ChapterEightMonster {
   const rightArm = makeLimb(0.55, 1.2, -0.02, 1.55, 0.08, 0.28);
   const leftLeg = makeLimb(-0.26, 0.42, 0.03, 1.12, 0.1, 0.18);
   const rightLeg = makeLimb(0.26, 0.42, 0.03, 1.12, 0.1, -0.18);
-  root.add(torso, neck, head, leftEye, rightEye, leftArm, rightArm, leftLeg, rightLeg);
+  root.add(torso, neck, head, leftEyeGlow, rightEyeGlow, leftEye, rightEye, redEyeLight, leftArm, rightArm, leftLeg, rightLeg);
   root.position.set(CENTER_X - 18, GROUND_Y, CENTER_Z - 24);
 
   return {
@@ -1336,7 +1352,7 @@ export function createChapterEight(): ChapterEightData {
           monster.root.rotation.z = Math.sin(elapsed * 7.5) * 0.18;
           monster.root.scale.set(1.18, 1.08, 1.18);
           monster.root.children.forEach((child, index) => {
-            if (index >= 5) {
+            if (index >= 8) {
               child.scale.y = 1.65 + Math.sin(elapsed * 10 + index) * 0.28;
               child.rotation.z += Math.sin(elapsed * 8 + index) * 0.012;
             }
