@@ -2330,9 +2330,9 @@ export function createChapterSeven(): ChapterSevenData {
     const tubShadow = new Mesh(new CylinderGeometry(0.38, 0.38, 0.09, 24), stoveGlassMaterial);
     tubShadow.rotation.x = Math.PI / 2;
     tubShadow.position.set(0, 0.82, depth / 2 + 0.035);
-    const washWater = new Mesh(new CylinderGeometry(0.31, 0.31, 0.1, 20), faucetWaterMaterial);
-    washWater.rotation.x = Math.PI / 2;
-    washWater.position.set(0, 0.74, depth / 2 + 0.055);
+    const washWater = new Mesh(new BoxGeometry(0.66, 0.16, 0.08), faucetWaterMaterial);
+    washWater.position.set(0, 0.61, depth / 2 + 0.09);
+    washWater.rotation.z = -0.07;
     washWater.visible = kind === 'washing-machine';
     const clothMaterials = [
       new MeshStandardMaterial({ color: 0xc43a3a, roughness: 0.84 }),
@@ -2341,10 +2341,28 @@ export function createChapterSeven(): ChapterSevenData {
       new MeshStandardMaterial({ color: 0xf2f1e7, roughness: 0.84 }),
     ];
     const clothes = clothMaterials.map((material, index) => {
-      const cloth = new Mesh(new BoxGeometry(0.22, 0.12, 0.055), material);
-      const angle = index * Math.PI * 0.5 + 0.35;
-      cloth.position.set(Math.cos(angle) * 0.18, 0.82 + Math.sin(angle) * 0.13, depth / 2 + 0.105);
-      cloth.rotation.set(0.2, 0, angle);
+      const dryerPilePositions: Array<[number, number, number]> = [
+        [-0.2, 0.68, -0.16],
+        [0.04, 0.63, 0.02],
+        [0.22, 0.72, -0.08],
+        [-0.02, 0.82, 0.14],
+      ];
+      const washerPilePositions: Array<[number, number, number]> = [
+        [-0.18, 0.69, -0.06],
+        [0.12, 0.67, 0.08],
+        [0.22, 0.8, -0.08],
+        [-0.04, 0.84, 0.11],
+      ];
+      const [clothX, clothY, clothZ] = kind === 'dryer'
+        ? dryerPilePositions[index]
+        : washerPilePositions[index];
+      const cloth = new Mesh(new BoxGeometry(
+        kind === 'dryer' ? 0.34 : 0.25,
+        kind === 'dryer' ? 0.16 : 0.12,
+        0.06,
+      ), material);
+      cloth.position.set(clothX, clothY, depth / 2 + 0.1 + clothZ * 0.18);
+      cloth.rotation.set(0.18 + index * 0.08, 0, (index - 1.5) * (kind === 'dryer' ? 0.42 : 0.24));
       return cloth;
     });
 
