@@ -17,6 +17,8 @@ import {
   PerspectiveCamera,
   Quaternion,
   Raycaster,
+  Shape,
+  ShapeGeometry,
   SphereGeometry,
   Texture,
   TorusGeometry,
@@ -18043,22 +18045,56 @@ export class Game {
       const gripMaterial = new MeshStandardMaterial({ color: 0x3b2516, roughness: 0.92 });
       const headMaterial = new MeshStandardMaterial({ color: 0xb8c0c4, roughness: 0.48, metalness: 0.52 });
       const bladeMaterial = new MeshStandardMaterial({ color: 0xd9e2e6, roughness: 0.38, metalness: 0.62 });
-      const handle = new Mesh(new CylinderGeometry(0.034, 0.043, 0.82, 12), handleMaterial);
+      const handle = new Mesh(new CylinderGeometry(0.034, 0.046, 0.88, 14), handleMaterial);
       handle.position.set(0.02, 0.02, 0);
       handle.rotation.z = -0.38;
-      const lowerGrip = new Mesh(new CylinderGeometry(0.042, 0.046, 0.18, 10), gripMaterial);
-      lowerGrip.position.set(0.15, -0.3, 0.001);
+      const handleHighlight = new Mesh(new CylinderGeometry(0.012, 0.014, 0.82, 8), new MeshStandardMaterial({ color: 0xa36a3d, roughness: 0.86 }));
+      handleHighlight.position.set(-0.01, 0.04, 0.032);
+      handleHighlight.rotation.z = -0.38;
+      const lowerGrip = new Mesh(new CylinderGeometry(0.043, 0.049, 0.2, 10), gripMaterial);
+      lowerGrip.position.set(0.16, -0.33, 0.001);
       lowerGrip.rotation.z = -0.38;
-      const head = new Mesh(new BoxGeometry(0.34, 0.13, 0.07), headMaterial);
-      head.position.set(-0.12, 0.34, -0.01);
-      head.rotation.z = -0.38;
-      const blade = new Mesh(new BoxGeometry(0.18, 0.27, 0.06), bladeMaterial);
-      blade.position.set(-0.28, 0.29, -0.01);
-      blade.rotation.z = -0.38;
-      const backPoll = new Mesh(new BoxGeometry(0.11, 0.12, 0.06), headMaterial);
-      backPoll.position.set(0.08, 0.39, -0.01);
-      backPoll.rotation.z = -0.38;
-      root.add(handle, lowerGrip, head, blade, backPoll);
+
+      const headShape = new Shape();
+      headShape.moveTo(-0.1, -0.11);
+      headShape.quadraticCurveTo(-0.38, -0.16, -0.52, 0.02);
+      headShape.quadraticCurveTo(-0.42, 0.22, -0.16, 0.3);
+      headShape.quadraticCurveTo(0.02, 0.36, 0.18, 0.19);
+      headShape.quadraticCurveTo(0.25, 0.1, 0.22, -0.02);
+      headShape.quadraticCurveTo(0.12, -0.13, -0.1, -0.11);
+      const axeHead = new Mesh(new ShapeGeometry(headShape, 20), headMaterial);
+      axeHead.position.set(-0.05, 0.34, -0.02);
+      axeHead.rotation.z = -0.38;
+
+      const edgeShape = new Shape();
+      edgeShape.moveTo(-0.47, -0.03);
+      edgeShape.quadraticCurveTo(-0.55, 0.04, -0.46, 0.15);
+      edgeShape.quadraticCurveTo(-0.34, 0.22, -0.2, 0.26);
+      edgeShape.quadraticCurveTo(-0.32, 0.12, -0.23, -0.07);
+      edgeShape.quadraticCurveTo(-0.34, -0.08, -0.47, -0.03);
+      const bladeEdge = new Mesh(new ShapeGeometry(edgeShape, 12), bladeMaterial);
+      bladeEdge.position.copy(axeHead.position);
+      bladeEdge.position.z -= 0.004;
+      bladeEdge.rotation.z = axeHead.rotation.z;
+
+      const socket = new Mesh(new CylinderGeometry(0.078, 0.09, 0.14, 16), headMaterial);
+      socket.position.set(-0.01, 0.35, 0.006);
+      socket.rotation.set(Math.PI / 2, 0, -0.38);
+      const socketBand = new Mesh(new CylinderGeometry(0.092, 0.104, 0.034, 16), bladeMaterial);
+      socketBand.position.set(-0.01, 0.35, 0.01);
+      socketBand.rotation.set(Math.PI / 2, 0, -0.38);
+
+      const backPollShape = new Shape();
+      backPollShape.moveTo(0.14, 0.02);
+      backPollShape.quadraticCurveTo(0.29, 0.04, 0.32, 0.15);
+      backPollShape.quadraticCurveTo(0.28, 0.25, 0.14, 0.25);
+      backPollShape.quadraticCurveTo(0.19, 0.14, 0.14, 0.02);
+      const backPoll = new Mesh(new ShapeGeometry(backPollShape, 10), headMaterial);
+      backPoll.position.copy(axeHead.position);
+      backPoll.position.z += 0.002;
+      backPoll.rotation.z = axeHead.rotation.z;
+
+      root.add(handle, handleHighlight, lowerGrip, axeHead, bladeEdge, socket, socketBand, backPoll);
       root.rotation.set(0.14, 0.28, -0.08);
       root.scale.setScalar(1.08);
       return root;
