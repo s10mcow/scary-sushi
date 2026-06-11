@@ -9417,9 +9417,12 @@ export class Game {
 
   private updateChapterSevenBoxDisplay(): void {
     this.chapterSevenBoxHideAnchor.visible = false;
+    const insideOpenOven = this.chapterSevenActive
+      && this.chapterSevenCrawling
+      && this.isPlayerInsideChapterSevenOven();
     this.chapterSevenOvenHideAnchor.visible = this.chapterSevenActive
       && this.player.isLocked()
-      && this.chapterSevenOvenHidden
+      && (this.chapterSevenOvenHidden || insideOpenOven)
       && !this.chapterMenuOpen
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen;
