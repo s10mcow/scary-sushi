@@ -13780,7 +13780,7 @@ export class Game {
         'Chapter 8: The Woods',
         'Starting Gear: Coordinate Tool, Military Knife',
         'Spin the mouse wheel to switch Coordinate Tool, Military Knife, and empty hands. Left click slashes; right click stabs.',
-        'Cabin props: front door, front windows, big side window, stone fireplace, bed, and iron stove.',
+        'Cabin props: front door, front windows, big side window, stone fireplace, bed, iron stove, and outdoor hand pump.',
       ].join('\n');
     }
 
@@ -17964,20 +17964,32 @@ export class Game {
     const attackProgress = this.chapterEightKnifeAttackMode
       ? 1 - this.chapterEightKnifeAttackTimer / CHAPTER_EIGHT_KNIFE_ATTACK_SECONDS
       : 0;
-    const attackArc = Math.sin(MathUtils.clamp(attackProgress, 0, 1) * Math.PI);
-    const slash = this.chapterEightKnifeAttackMode === 'slash' ? attackArc : 0;
-    const stab = this.chapterEightKnifeAttackMode === 'stab' ? attackArc : 0;
+    const clampedAttackProgress = MathUtils.clamp(attackProgress, 0, 1);
+    const attackArc = Math.sin(clampedAttackProgress * Math.PI);
+    const slashWindup = this.chapterEightKnifeAttackMode === 'slash'
+      ? 1 - MathUtils.smoothstep(clampedAttackProgress, 0, 0.28)
+      : 0;
+    const slashCut = this.chapterEightKnifeAttackMode === 'slash'
+      ? MathUtils.smoothstep(clampedAttackProgress, 0.16, 0.74)
+      : 0;
+    const stabThrust = this.chapterEightKnifeAttackMode === 'stab'
+      ? MathUtils.smoothstep(clampedAttackProgress, 0.08, 0.52) * (1 - MathUtils.smoothstep(clampedAttackProgress, 0.62, 1))
+      : 0;
+
+    const slashX = slashWindup * 0.22 - slashCut * 0.52;
+    const slashY = slashWindup * 0.19 - slashCut * 0.24;
+    const slashTilt = slashWindup * -0.85 + slashCut * 1.15;
 
     this.chapterEightHeldItemAnchor.visible = true;
     this.chapterEightHeldItemAnchor.position.set(
-      0.43 + slash * 0.08,
-      -0.38 + bob + slash * 0.03,
-      -0.68 - stab * 0.36,
+      0.42 + slashX,
+      -0.39 + bob + slashY,
+      -0.68 - stabThrust * 0.48,
     );
     this.chapterEightHeldItemAnchor.rotation.set(
-      -0.12 + bob * 0.45 - stab * 0.16,
-      -0.34 - slash * 0.96,
-      0.12 + slash * 0.72 + stab * 0.12,
+      -0.18 + bob * 0.45 + attackArc * 0.12 - stabThrust * 0.82,
+      -0.42 + slashTilt - stabThrust * 0.08,
+      0.08 - slashWindup * 0.7 + slashCut * 1.18 + stabThrust * 0.18,
     );
   }
 

@@ -279,6 +279,16 @@ function createCabin(colliders: CollisionBox[]): {
   const stoneMaterial = new MeshStandardMaterial({ color: 0x706b60, roughness: 0.96, metalness: 0.02 });
   const darkStoneMaterial = new MeshStandardMaterial({ color: 0x2b2925, roughness: 0.98, metalness: 0.01 });
   const ironMaterial = new MeshStandardMaterial({ color: 0x1f2324, roughness: 0.5, metalness: 0.46 });
+  const wornIronMaterial = new MeshStandardMaterial({ color: 0x3b4545, roughness: 0.58, metalness: 0.42 });
+  const pumpWaterMaterial = new MeshStandardMaterial({
+    color: 0x8ed4ef,
+    emissive: 0x1b6a85,
+    emissiveIntensity: 0.22,
+    roughness: 0.2,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.62,
+  });
   const beddingMaterial = new MeshStandardMaterial({ color: 0x5b6f5d, roughness: 0.86, metalness: 0.01 });
   const pillowMaterial = new MeshStandardMaterial({ color: 0xddd5c8, roughness: 0.78, metalness: 0.01 });
 
@@ -465,8 +475,10 @@ function createCabin(colliders: CollisionBox[]): {
   stoveBody.scale.set(1.15, 0.88, 0.78);
   stoveBody.position.y = 1.02;
   const stoveDoor = new Mesh(new CylinderGeometry(0.32, 0.32, 0.06, 20), darkStoneMaterial);
-  stoveDoor.position.set(0, 1.02, 0.61);
-  stoveDoor.rotation.x = Math.PI / 2;
+  stoveDoor.position.set(-0.68, 1.02, 0);
+  stoveDoor.rotation.z = Math.PI / 2;
+  const stoveDoorHandle = new Mesh(new BoxGeometry(0.06, 0.18, 0.08), ironMaterial);
+  stoveDoorHandle.position.set(-0.73, 1.02, 0.23);
   const stoveTop = new Mesh(new CylinderGeometry(0.42, 0.48, 0.12, 22), ironMaterial);
   stoveTop.position.y = 1.72;
   const stoveLegs = [
@@ -484,10 +496,37 @@ function createCabin(colliders: CollisionBox[]): {
   const wallPipe = new Mesh(new CylinderGeometry(0.13, 0.13, 3.02, 16), ironMaterial);
   wallPipe.rotation.x = Math.PI / 2;
   wallPipe.position.set(0, 4.7, 1.18);
-  stove.add(stoveBody, stoveDoor, stoveTop, ...stoveLegs, verticalPipe, wallPipe);
+  stove.add(stoveBody, stoveDoor, stoveDoorHandle, stoveTop, ...stoveLegs, verticalPipe, wallPipe);
   cabin.add(stove);
   addCabinBox(0.72, height + roofRise + 0.9, 0.72, halfWidth - 2.45, (height + roofRise + 0.9) / 2, halfDepth + 0.44, ironMaterial);
   addCollider(colliders, CENTER_X + halfWidth - 2.45, CENTER_Z + halfDepth - 3.1, 1.85, 1.7);
+
+  const pump = new Group();
+  pump.name = 'Cabin outdoor hand water pump';
+  pump.position.set(-5.8, 0, halfDepth + 4.05);
+  const pumpBase = new Mesh(new CylinderGeometry(0.36, 0.42, 0.18, 18), wornIronMaterial);
+  pumpBase.position.y = 0.09;
+  const pumpPost = new Mesh(new CylinderGeometry(0.15, 0.18, 1.72, 16), wornIronMaterial);
+  pumpPost.position.y = 0.98;
+  const pumpHead = new Mesh(new SphereGeometry(0.31, 18, 12), wornIronMaterial);
+  pumpHead.scale.set(0.88, 0.68, 0.88);
+  pumpHead.position.y = 1.82;
+  const spout = new Mesh(new CylinderGeometry(0.06, 0.08, 0.86, 12), wornIronMaterial);
+  spout.rotation.x = Math.PI / 2;
+  spout.position.set(0, 1.72, 0.52);
+  const spoutLip = new Mesh(new CylinderGeometry(0.08, 0.1, 0.18, 12), wornIronMaterial);
+  spoutLip.position.set(0, 1.54, 0.94);
+  const handleArm = new Mesh(new BoxGeometry(0.1, 0.09, 1.14), wornIronMaterial);
+  handleArm.position.set(0, 2.08, -0.48);
+  handleArm.rotation.x = -0.34;
+  const handleGrip = new Mesh(new CylinderGeometry(0.045, 0.045, 0.48, 10), wornIronMaterial);
+  handleGrip.rotation.z = Math.PI / 2;
+  handleGrip.position.set(0, 2.27, -1.06);
+  const waterStream = new Mesh(new CylinderGeometry(0.035, 0.045, 0.46, 10), pumpWaterMaterial);
+  waterStream.position.set(0, 1.26, 1.02);
+  pump.add(pumpBase, pumpPost, pumpHead, spout, spoutLip, handleArm, handleGrip, waterStream);
+  cabin.add(pump);
+  addCollider(colliders, CENTER_X - 5.8, CENTER_Z + halfDepth + 4.05, 1.1, 1.3);
 
   addCollider(colliders, CENTER_X - (doorWidth / 2 + (width - doorWidth) / 4), CENTER_Z + halfDepth, (width - doorWidth) / 2, wallThickness);
   addCollider(colliders, CENTER_X + doorWidth / 2 + (width - doorWidth) / 4, CENTER_Z + halfDepth, (width - doorWidth) / 2, wallThickness);
