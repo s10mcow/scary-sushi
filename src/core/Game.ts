@@ -617,6 +617,7 @@ const OFFICE_ANIMATRONIC_JUKE_GIVE_UP_RECORDING_ID = '007';
 const OFFICE_FOXY_LEAP_SECONDS = 1.18;
 const OFFICE_FOXY_LEAP_CHANCE = 0.5;
 const OFFICE_VENT_CHASE_CHANCE = 0.5;
+const OFFICE_VENT_CHASE_DELAY_SECONDS = 5;
 const OFFICE_VENT_CHASE_SPEED = 1.32;
 const OFFICE_ANIMATRONIC_DOOR_LAUGH_RECORDING_ID = '003';
 const OFFICE_DEATH_DIED_NOTICE_SECONDS = 1.45;
@@ -1003,6 +1004,8 @@ export class Game {
   private officeBallPitSlide: ActiveOfficeBallPitSlide | null = null;
   private officeVentActive = false;
   private officeVentDrop: ActiveOfficeVentDrop | null = null;
+  private officeVentChasePendingTimer = 0;
+  private officeVentChasePendingAnimatronic: OfficeGameModeAnimatronicState | null = null;
   private officeJumpscareMenuOpen = false;
   private officeModeMenuOpen = false;
   private officeModeMenuStep: OfficeModeMenuStep = 'mode';
@@ -5649,6 +5652,7 @@ export class Game {
     this.officeBallPitSlide = null;
     this.officeVentActive = false;
     this.officeVentDrop = null;
+    this.clearOfficePendingVentChase();
     this.officeJumpscareMenuOpen = false;
     this.stopOfficeJumpscare();
     this.officeGlassHeld = false;
@@ -6128,6 +6132,7 @@ export class Game {
     this.officeFoxyRushCooldown = 8;
     this.officeFoxyClankCooldown = 0;
     this.officeFoxyRushDoor = null;
+    this.clearOfficePendingVentChase();
     this.clearOfficeCameraPuppetThreat();
     this.officeChapter.doors.forEach((door) => {
       door.targetOpenAmount = 1;
@@ -6210,6 +6215,7 @@ export class Game {
     this.officeBallPitSlide = null;
     this.officeVentActive = false;
     this.officeVentDrop = null;
+    this.clearOfficePendingVentChase();
     this.officeTabletCameraFeedActive = false;
     this.officeTabletHeld = false;
     this.officeTabletAnchor.visible = false;
@@ -6277,6 +6283,9 @@ export class Game {
     this.officeMicrophoneAutoStatusShown = false;
     this.officeMicrophoneStartToken += 1;
     this.officeBallPitSlide = null;
+    this.officeVentActive = false;
+    this.officeVentDrop = null;
+    this.clearOfficePendingVentChase();
     this.clearOfficeDoorSparks();
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       animatronic.model.root.visible = false;
@@ -7384,24 +7393,13 @@ export class Game {
     return new Vector3(bestX, ventSystem.floorY, bestZ);
   }
 
-  private getClosestOfficeVentOpeningPosition(position: Vector3): Vector3 {
-    let closest = this.officeChapter.ventSystem.ladderEntryPosition;
-    let closestDistance = Infinity;
-
-    for (const opening of this.officeChapter.ventSystem.openings) {
-      const distance = Math.hypot(position.x - opening.position.x, position.z - opening.position.z);
-      if (distance >= closestDistance) {
-        continue;
-      }
-
-      closest = opening.position;
-      closestDistance = distance;
-    }
-
-    return this.getNearestOfficeVentPoint(closest);
+  private clearOfficePendingVentChase(): void {
+    this.officeVentChasePendingTimer = 0;
+    this.officeVentChasePendingAnimatronic = null;
   }
 
-  private maybeStartOfficeAnimatronicVentChase(): void {
+  private scheduleOfficeAnimatronicVentChase(): void {
+    this.clearOfficePendingVentChase();
     if (!this.officeGameModeActive || Math.random() >= OFFICE_VENT_CHASE_CHANCE) {
       return;
     }
@@ -7420,7 +7418,37 @@ export class Game {
       return;
     }
 
-    const entry = this.getClosestOfficeVentOpeningPosition(animatronic.model.root.position);
+    this.officeVentChasePendingTimer = OFFICE_VENT_CHASE_DELAY_SECONDS;
+    this.officeVentChasePendingAnimatronic = animatronic;
+    this.pushStatus('You hear metal climbing below the ladder. You have five seconds before something reaches the vent.', 3.2);
+  }
+
+  private updateOfficePendingVentChase(deltaSeconds: number): void {
+    if (this.officeVentChasePendingTimer <= 0) {
+      return;
+    }
+
+    if (!this.officeVentActive || this.officeVentDrop || !this.officeGameModeActive || this.activeOfficeJumpscare) {
+      this.clearOfficePendingVentChase();
+      return;
+    }
+
+    this.officeVentChasePendingTimer = Math.max(0, this.officeVentChasePendingTimer - deltaSeconds);
+    if (this.officeVentChasePendingTimer > 0) {
+      return;
+    }
+
+    const animatronic = this.officeVentChasePendingAnimatronic;
+    this.officeVentChasePendingAnimatronic = null;
+    if (!animatronic || !animatronic.model.root.visible || animatronic.state === 'stage' || animatronic.state === 'vent-chase') {
+      return;
+    }
+
+    this.startOfficeAnimatronicVentChase(animatronic);
+  }
+
+  private startOfficeAnimatronicVentChase(animatronic: OfficeGameModeAnimatronicState): void {
+    const entry = this.getNearestOfficeVentPoint(this.officeChapter.ventSystem.ladderEntryPosition);
     animatronic.state = 'vent-chase';
     animatronic.model.root.visible = true;
     animatronic.model.root.position.copy(entry);
@@ -7445,7 +7473,7 @@ export class Game {
     animatronic.cachedNoiseResponse = 'none';
     animatronic.cachedBlockedDoorId = null;
     this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, false);
-    this.pushStatus(`${animatronic.label} crawls into the vent after you.`, 2.4);
+    this.pushStatus(`${animatronic.label} climbs through the ladder hatch and crawls after you.`, 2.4);
   }
 
   private updateOfficeGameModeVentChase(
@@ -9352,6 +9380,7 @@ export class Game {
 
     this.officeInsultHeardTimer = Math.max(0, this.officeInsultHeardTimer - deltaSeconds);
     this.officeStageVoiceReleaseCooldown = Math.max(0, this.officeStageVoiceReleaseCooldown - deltaSeconds);
+    this.updateOfficePendingVentChase(deltaSeconds);
     const maxOffstage = this.getOfficeGameModeMaxOffstage();
     let offStageCount = 0;
     for (const animatronic of this.officeGameModeAnimatronics) {
@@ -17551,6 +17580,7 @@ export class Game {
 
     this.officeVentActive = false;
     this.officeBallPitHidden = false;
+    this.clearOfficePendingVentChase();
     this.officeVentDrop = {
       elapsed: 0,
       duration: OFFICE_VENT_DROP_DURATION,
@@ -17789,13 +17819,14 @@ export class Game {
       this.officeChapter.ventSystem.ladderEntryPosition.clone().add(new Vector3(0, 0, 4)),
       1,
     );
-    this.maybeStartOfficeAnimatronicVentChase();
+    this.scheduleOfficeAnimatronicVentChase();
     this.pushStatus('You climb into the ceiling vent. Move slowly with WASD and look around normally.', 3.2);
   }
 
   private exitOfficeVentSystem(exitPosition: Vector3, openingLabel = ''): void {
     this.officeVentActive = false;
     this.officeVentDrop = null;
+    this.clearOfficePendingVentChase();
     this.player.teleport(exitPosition);
     this.player.lookToward(exitPosition.clone().add(new Vector3(0, 0, 3)), 1);
     this.pushStatus(
