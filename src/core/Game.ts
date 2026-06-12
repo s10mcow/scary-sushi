@@ -455,9 +455,13 @@ interface OfficeGameModeAnimatronicState {
   model: OfficeJumpscareStageModel;
   route: Vector3[];
   routeIndex: number;
-  state: 'stage' | 'wander' | 'chase' | 'rush' | 'creep' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch' | 'off-balance';
+  state: 'stage' | 'wander' | 'chase' | 'rush' | 'creep' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch' | 'off-balance' | 'foxy-leap';
   waitTimer: number;
   offBalanceTimer: number;
+  jukeCount: number;
+  foxyLeapTimer: number;
+  foxyLeapStartPosition: Vector3;
+  foxyLeapTargetPosition: Vector3;
   doorBreachTimer: number;
   doorBreachDoorId: 'left' | 'right' | null;
   doorLingerSoundPlayed: boolean;
@@ -555,8 +559,6 @@ const OFFICE_GAME_MODE_DAY_SECONDS = 3 * 60;
 const OFFICE_FUSE_WIRE_COLORS: OfficeFuseWireColor[] = ['green', 'blue', 'red'];
 const OFFICE_VENT_BOY_STARE_LIMIT_SECONDS = 2.65;
 const OFFICE_VENT_BOY_SPEED = 0.82;
-const OFFICE_FOXY_CAMERA_TRIGGER_MIN_SECONDS = 15;
-const OFFICE_FOXY_CAMERA_TRIGGER_MAX_SECONDS = 15.35;
 const OFFICE_GAME_MODE_CHASE_MATCH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.06;
 const OFFICE_FOXY_RUSH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.1;
 const OFFICE_PLAYER_SPRINT_SPEED_MULTIPLIER = 1.22;
@@ -610,6 +612,11 @@ const OFFICE_DOOR_LINGER_LAUGH_DELAY = 0.95;
 const OFFICE_DOOR_LINGER_STEP_IN_CHANCE = 0.82;
 const OFFICE_ANIMATRONIC_JUKE_STUMBLE_SECONDS = 1.08;
 const OFFICE_ANIMATRONIC_JUKE_RANGE = 2.35;
+const OFFICE_ANIMATRONIC_JUKE_GIVE_UP_THRESHOLD = 5;
+const OFFICE_ANIMATRONIC_JUKE_GIVE_UP_RECORDING_ID = '007';
+const OFFICE_FOXY_LEAP_SECONDS = 1.18;
+const OFFICE_FOXY_LEAP_CHANCE = 0.5;
+const OFFICE_BORI_DOOR_OPEN_SOUND_RECORDING_ID = '008';
 const OFFICE_ANIMATRONIC_DOOR_LAUGH_RECORDING_ID = '003';
 const OFFICE_DEATH_DIED_NOTICE_SECONDS = 1.45;
 const OFFICE_DEATH_FIRED_NOTICE_SECONDS = 4.8;
@@ -664,8 +671,6 @@ const OFFICE_GAME_MODE_OFFICE_LOOK_TARGET = new Vector3(-240, GAME_CONFIG.player
 const OFFICE_GAME_MODE_LEFT_DOOR_WATCH = new Vector3(-248.5, GAME_CONFIG.player.height, 184.9);
 const OFFICE_GAME_MODE_RIGHT_DOOR_WATCH = new Vector3(-231.5, GAME_CONFIG.player.height, 184.9);
 const OFFICE_GAME_MODE_BALL_PIT_CENTER = new Vector3(-216.7, GAME_CONFIG.player.height, 141.2);
-const OFFICE_FOXY_STAGE_RUSH_START = new Vector3(-199.4, GAME_CONFIG.player.height, 156.8);
-const OFFICE_FOXY_CLOSET_RUSH_START = new Vector3(-254.4, GAME_CONFIG.player.height, 153.1);
 const OFFICE_GAME_MODE_ROUTES: Record<OfficeJumpscareAnimatronic, Vector3[]> = {
   quacky: [
     new Vector3(-244.6, GAME_CONFIG.player.height, 160.8),
@@ -1043,7 +1048,6 @@ export class Game {
   private readonly officeGameModeAnimatronics: OfficeGameModeAnimatronicState[] = [];
   private officeStageVoiceReleaseCooldown = 0;
   private officeFoxyCameraWatchTime = 0;
-  private officeFoxyCameraTriggerSeconds = OFFICE_FOXY_CAMERA_TRIGGER_MIN_SECONDS;
   private officeFoxyRushCooldown = 0;
   private officeFoxyClankCooldown = 0;
   private officeFoxyRushDoor: 'left' | 'right' | null = null;
@@ -4700,6 +4704,14 @@ export class Game {
     });
   }
 
+  private playOfficeBoriDoorOpenSound(): void {
+    if (this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playSecurityDoor(true), OFFICE_BORI_DOOR_OPEN_SOUND_RECORDING_ID)) {
+      return;
+    }
+
+    this.gameplaySfxAudio.playSecurityDoor(true);
+  }
+
   private updateOfficeDoorSoundPlayback(): void {
     if (!this.officeDoorSoundPlayback || !this.officeDoorSoundTarget) {
       return;
@@ -5808,6 +5820,10 @@ export class Game {
         state: 'stage',
         waitTimer: 0,
         offBalanceTimer: 0,
+        jukeCount: 0,
+        foxyLeapTimer: 0,
+        foxyLeapStartPosition: this.getOfficeGameModeOfficeCenter(),
+        foxyLeapTargetPosition: this.getOfficeGameModeOfficeCenter(),
         doorBreachTimer: 0,
         doorBreachDoorId: null,
         doorLingerSoundPlayed: false,
@@ -5959,6 +5975,10 @@ export class Game {
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
       animatronic.waitTimer = this.getOfficeGameModeStageDwellSeconds(animatronic.animatronic) + index * 5.8;
       animatronic.offBalanceTimer = 0;
+      animatronic.jukeCount = 0;
+      animatronic.foxyLeapTimer = 0;
+      animatronic.foxyLeapStartPosition.copy(this.getOfficeGameModeOfficeCenter());
+      animatronic.foxyLeapTargetPosition.copy(this.getOfficeGameModeOfficeCenter());
       animatronic.doorBreachTimer = 0;
       animatronic.doorBreachDoorId = null;
       animatronic.doorLingerSoundPlayed = false;
@@ -6269,6 +6289,8 @@ export class Game {
       animatronic.model.root.visible = false;
       animatronic.state = 'stage';
       animatronic.offBalanceTimer = 0;
+      animatronic.jukeCount = 0;
+      animatronic.foxyLeapTimer = 0;
       animatronic.distractionTarget = null;
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
     });
@@ -6326,6 +6348,7 @@ export class Game {
 
       animatronic.state = 'retreat';
       animatronic.offBalanceTimer = 0;
+      animatronic.foxyLeapTimer = 0;
       animatronic.doorBreachTimer = 0;
       animatronic.doorBreachDoorId = null;
       animatronic.doorLingerSoundPlayed = false;
@@ -6352,6 +6375,7 @@ export class Game {
 
     animatronic.state = 'door-breach';
     animatronic.offBalanceTimer = 0;
+    animatronic.foxyLeapTimer = 0;
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = doorId;
     animatronic.doorLingerSoundPlayed = false;
@@ -6379,6 +6403,7 @@ export class Game {
   ): void {
     animatronic.state = 'door';
     animatronic.offBalanceTimer = 0;
+    animatronic.foxyLeapTimer = 0;
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = null;
     animatronic.doorLingerSoundPlayed = false;
@@ -6549,7 +6574,7 @@ export class Game {
     }
 
     if (previousTimer < OFFICE_DOOR_BREACH_SECONDS * 0.38 && animatronic.doorBreachTimer >= OFFICE_DOOR_BREACH_SECONDS * 0.38) {
-      this.playOfficeDoorToggleSound(doorId, true);
+      this.playOfficeBoriDoorOpenSound();
       this.gameplaySfxAudio.playForcedSecurityDoorScreech();
       this.gameplaySfxAudio.playSecurityDoorCrash();
       this.spawnOfficeDoorSparks(doorId, doorLift);
@@ -6686,21 +6711,8 @@ export class Game {
     return true;
   }
 
-  private getOfficeGameModeFoxy(): OfficeGameModeAnimatronicState | null {
-    return this.officeGameModeAnimatronics.find((animatronic) => animatronic.animatronic === 'foxy') ?? null;
-  }
-
-  private rollOfficeFoxyCameraTriggerSeconds(): number {
-    return MathUtils.lerp(
-      OFFICE_FOXY_CAMERA_TRIGGER_MIN_SECONDS,
-      OFFICE_FOXY_CAMERA_TRIGGER_MAX_SECONDS,
-      Math.random(),
-    );
-  }
-
   private resetOfficeFoxyCameraPressure(): void {
     this.officeFoxyCameraWatchTime = 0;
-    this.officeFoxyCameraTriggerSeconds = this.rollOfficeFoxyCameraTriggerSeconds();
   }
 
   private getOfficeFoxyRushDoorTarget(): Vector3 {
@@ -6717,114 +6729,15 @@ export class Game {
       : this.getOfficeGameModeDoorWatchPoint('right');
   }
 
-  private triggerOfficeFoxyRush(source: 'stage' | 'closet'): void {
-    const foxy = this.getOfficeGameModeFoxy();
-    if (
-      !foxy
-      || foxy.state === 'rush'
-      || foxy.state === 'chase'
-      || foxy.state === 'distracted'
-      || foxy.state === 'distracted-watch'
-      || this.officeFoxyRushCooldown > 0
-    ) {
-      return;
-    }
-
-    const start = this.getOfficeGameModePoint(
-      source === 'closet'
-        ? OFFICE_FOXY_CLOSET_RUSH_START
-        : OFFICE_FOXY_STAGE_RUSH_START,
-    );
-    const doorId = source === 'closet' ? 'left' : 'right';
-    foxy.model.root.position.set(
-      start.x,
-      this.getOfficeGameModeAnimatronicFloorY('foxy', start.x, start.z),
-      start.z,
-    );
-    foxy.model.root.visible = true;
-    this.officeChapter.setStageAnimatronicPresent('foxy', false);
-    foxy.state = 'rush';
-    foxy.routeIndex = 0;
-    foxy.waitTimer = 0;
-    foxy.attackCooldown = 0;
-    foxy.lostSightTimer = 0;
-    foxy.stuckTimer = 0;
-    foxy.progressStallTimer = 0;
-    foxy.detourTarget = null;
-    foxy.detourTimer = 0;
-    foxy.distractionTarget = null;
-    foxy.chaseGiveUpTimer = 0;
-    foxy.insultStareTimer = 0;
-    foxy.insultChargeTimer = 0;
-    this.officeFoxyRushDoor = doorId;
-    foxy.lastKnownPlayerPosition.copy(this.getOfficeFoxyRushDoorTarget());
-    this.officeFoxyRushCooldown = 22;
-    this.resetOfficeFoxyCameraPressure();
-    this.officeFoxyClankCooldown = 0;
-    this.gameplaySfxAudio.resume();
-    this.gameplaySfxAudio.playFoxyClank(1.08);
-    this.pushStatus(
-      source === 'closet'
-        ? `You hear Foxy running loudly from the closet. He is sprinting for the ${doorId} door.`
-        : `You hear Foxy running loudly from his stage. He is sprinting for the ${doorId} door.`,
-      3.2,
-    );
-  }
-
   private updateOfficeFoxyCameraPressure(deltaSeconds: number): void {
     this.officeFoxyRushCooldown = Math.max(0, this.officeFoxyRushCooldown - deltaSeconds);
-    if (
-      !this.officeGameModeActive
-      || this.officeGameModeNight <= 1
-      || this.officeGameModePowerOut
-      || this.activeOfficeJumpscare
-    ) {
-      if (this.officeFoxyCameraWatchTime > 0) {
-        this.resetOfficeFoxyCameraPressure();
-      }
-      return;
-    }
-
-    const foxy = this.getOfficeGameModeFoxy();
-    if (!foxy || foxy.state === 'rush' || foxy.state === 'chase' || foxy.state === 'distracted' || foxy.state === 'distracted-watch') {
-      if (this.officeFoxyCameraWatchTime > 0) {
-        this.resetOfficeFoxyCameraPressure();
-      }
-      return;
-    }
-
-    if (this.officeTabletCameraFeedActive) {
-      this.officeFoxyCameraWatchTime += deltaSeconds;
-    } else if (this.officeFoxyCameraWatchTime > 0) {
+    if (this.officeFoxyCameraWatchTime > 0 || this.officeTabletCameraFeedActive) {
       this.resetOfficeFoxyCameraPressure();
     }
-
-    if (this.officeFoxyCameraWatchTime < this.officeFoxyCameraTriggerSeconds || this.officeFoxyRushCooldown > 0) {
-      return;
-    }
-
-    const closeToCloset = foxy.state !== 'stage'
-      && foxy.model.root.position.distanceTo(this.getOfficeGameModePoint(OFFICE_FOXY_CLOSET_RUSH_START)) < 7.5;
-    const source = closeToCloset || Math.sin(this.elapsed * 0.73) > -0.25 ? 'closet' : 'stage';
-    this.triggerOfficeFoxyRush(source);
   }
 
   private updateOfficeFoxyRushAudio(deltaSeconds: number): void {
     this.officeFoxyClankCooldown = Math.max(0, this.officeFoxyClankCooldown - deltaSeconds);
-    const foxy = this.getOfficeGameModeFoxy();
-    if (!foxy || foxy.state !== 'rush') {
-      return;
-    }
-
-    const doorTarget = this.getOfficeFoxyRushDoorTarget();
-    const distance = foxy.model.root.position.distanceTo(doorTarget);
-    const closeness = MathUtils.clamp(1 - distance / 34, 0, 1);
-    if (this.officeFoxyClankCooldown > 0) {
-      return;
-    }
-
-    this.gameplaySfxAudio.playFoxyClank(MathUtils.lerp(0.58, 1.28, closeness));
-    this.officeFoxyClankCooldown = MathUtils.lerp(0.52, 0.13, closeness);
   }
 
   private getOfficeGameModeStageDwellSeconds(animatronic: OfficeJumpscareAnimatronic): number {
@@ -7076,6 +6989,7 @@ export class Game {
   ): void {
     animatronic.state = state;
     animatronic.offBalanceTimer = 0;
+    animatronic.foxyLeapTimer = 0;
     animatronic.lastKnownPlayerPosition.copy(target);
     animatronic.waitTimer = 0;
     animatronic.lostSightTimer = 0;
@@ -7096,6 +7010,7 @@ export class Game {
   private makeOfficeGameModeAnimatronicGiveUp(animatronic: OfficeGameModeAnimatronicState): void {
     animatronic.state = 'retreat';
     animatronic.offBalanceTimer = 0;
+    animatronic.foxyLeapTimer = 0;
     animatronic.routeIndex = 0;
     animatronic.waitTimer = 0.18;
     animatronic.lostSightTimer = 0;
@@ -7122,6 +7037,16 @@ export class Game {
     animatronic: OfficeGameModeAnimatronicState,
     playerPosition: Vector3,
   ): void {
+    animatronic.jukeCount += 1;
+    if (animatronic.jukeCount > OFFICE_ANIMATRONIC_JUKE_GIVE_UP_THRESHOLD) {
+      if (!this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playOfficeJumpscareCue('ear-snap'), OFFICE_ANIMATRONIC_JUKE_GIVE_UP_RECORDING_ID)) {
+        this.gameplaySfxAudio.playOfficeJumpscareCue('ear-snap');
+      }
+      this.makeOfficeGameModeAnimatronicGiveUp(animatronic);
+      this.pushStatus(`${animatronic.label} got duped too many times and walks away.`, 2.4);
+      return;
+    }
+
     animatronic.state = 'off-balance';
     animatronic.offBalanceTimer = OFFICE_ANIMATRONIC_JUKE_STUMBLE_SECONDS;
     animatronic.waitTimer = 0;
@@ -7179,6 +7104,92 @@ export class Game {
 
     this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
     animatronic.attackCooldown = Math.max(animatronic.attackCooldown, 0.45);
+  }
+
+  private startOfficeFoxyLeapAttack(
+    animatronic: OfficeGameModeAnimatronicState,
+    playerPosition: Vector3,
+  ): void {
+    const root = animatronic.model.root;
+    const dx = playerPosition.x - root.position.x;
+    const dz = playerPosition.z - root.position.z;
+    const distance = Math.max(0.001, Math.hypot(dx, dz));
+    const leapDistance = Math.min(distance + 0.7, 5.2);
+    const targetX = root.position.x + (dx / distance) * leapDistance;
+    const targetZ = root.position.z + (dz / distance) * leapDistance;
+
+    animatronic.state = 'foxy-leap';
+    animatronic.foxyLeapTimer = 0;
+    animatronic.foxyLeapStartPosition.copy(root.position);
+    animatronic.foxyLeapTargetPosition.set(
+      targetX,
+      this.getOfficeGameModeAnimatronicFloorY('foxy', targetX, targetZ),
+      targetZ,
+    );
+    animatronic.lastKnownPlayerPosition.copy(playerPosition);
+    animatronic.waitTimer = 0;
+    animatronic.attackCooldown = OFFICE_FOXY_LEAP_SECONDS + 0.9;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    animatronic.lostSightTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    this.pushStatus('Foxy launches forward and crashes down before pushing himself back up.', 2.2);
+  }
+
+  private updateOfficeFoxyLeapAttack(
+    animatronic: OfficeGameModeAnimatronicState,
+    deltaSeconds: number,
+    playerPosition: Vector3,
+  ): void {
+    animatronic.foxyLeapTimer = Math.min(OFFICE_FOXY_LEAP_SECONDS, animatronic.foxyLeapTimer + deltaSeconds);
+    const progress = MathUtils.clamp(animatronic.foxyLeapTimer / OFFICE_FOXY_LEAP_SECONDS, 0, 1);
+    const flight = MathUtils.smoothstep(progress, 0, 0.46);
+    const impact = MathUtils.smoothstep(progress, 0.38, 0.58);
+    const pushUp = MathUtils.smoothstep(progress, 0.66, 1);
+    const root = animatronic.model.root;
+    const leapX = MathUtils.lerp(animatronic.foxyLeapStartPosition.x, animatronic.foxyLeapTargetPosition.x, flight);
+    const leapZ = MathUtils.lerp(animatronic.foxyLeapStartPosition.z, animatronic.foxyLeapTargetPosition.z, flight);
+    const floorY = this.getOfficeGameModeAnimatronicFloorY('foxy', leapX, leapZ);
+    const arc = Math.sin(flight * Math.PI) * 0.72 * (1 - impact * 0.35);
+
+    root.visible = true;
+    root.position.set(leapX, floorY + arc, leapZ);
+    const faceX = playerPosition.x - root.position.x;
+    const faceZ = playerPosition.z - root.position.z;
+    if (Math.hypot(faceX, faceZ) > 0.01) {
+      root.rotation.y = Math.atan2(faceX, faceZ);
+    }
+    root.rotation.x = MathUtils.lerp(0.34, -1.3, impact) + pushUp * 1.18;
+    root.rotation.z = Math.sin(this.elapsed * 19) * 0.045 * (1 - pushUp);
+    animatronic.model.head.rotation.x = MathUtils.lerp(-0.15, 0.72, impact) - pushUp * 0.5;
+    animatronic.model.head.rotation.y = Math.sin(this.elapsed * 12) * 0.08 * (1 - pushUp);
+    animatronic.model.leftArm.rotation.x = MathUtils.lerp(-1.55, -1.82, impact) + pushUp * 0.38;
+    animatronic.model.rightArm.rotation.x = MathUtils.lerp(-1.55, -1.82, impact) + pushUp * 0.38;
+    animatronic.model.leftArm.rotation.z = MathUtils.lerp(0.92, 0.22, impact) + pushUp * 0.52;
+    animatronic.model.rightArm.rotation.z = MathUtils.lerp(-0.92, -0.22, impact) - pushUp * 0.52;
+    animatronic.model.leftArmJoint.rotation.x = MathUtils.lerp(-0.2, -0.78, impact) + pushUp * 0.44;
+    animatronic.model.rightArmJoint.rotation.x = MathUtils.lerp(-0.2, -0.78, impact) + pushUp * 0.44;
+    animatronic.model.leftLeg.rotation.x = MathUtils.lerp(0.54, -0.32, impact) + pushUp * 0.2;
+    animatronic.model.rightLeg.rotation.x = MathUtils.lerp(0.54, -0.28, impact) + pushUp * 0.2;
+    animatronic.model.leftLegJoint.rotation.x = MathUtils.lerp(0.2, 0.52, impact) - pushUp * 0.24;
+    animatronic.model.rightLegJoint.rotation.x = MathUtils.lerp(0.2, 0.52, impact) - pushUp * 0.24;
+
+    if (progress < 1) {
+      return;
+    }
+
+    root.rotation.x = 0;
+    root.rotation.z = 0;
+    animatronic.foxyLeapTimer = 0;
+    this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
+    animatronic.attackCooldown = Math.max(animatronic.attackCooldown, 0.65);
   }
 
   private startOfficeInsultRevenge(animatronic: OfficeGameModeAnimatronicState): void {
@@ -7408,6 +7419,8 @@ export class Game {
     this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
     animatronic.state = 'stage';
     animatronic.offBalanceTimer = 0;
+    animatronic.jukeCount = 0;
+    animatronic.foxyLeapTimer = 0;
     animatronic.routeIndex = 1 % animatronic.route.length;
     animatronic.waitTimer = this.getOfficeGameModeStageDwellSeconds(animatronic.animatronic);
     animatronic.doorBreachTimer = 0;
@@ -7453,6 +7466,7 @@ export class Game {
     this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, false);
     animatronic.state = 'wander';
     animatronic.offBalanceTimer = 0;
+    animatronic.foxyLeapTimer = 0;
     animatronic.routeIndex = 1 % animatronic.route.length;
     animatronic.waitTimer = 0.2;
     animatronic.doorBreachTimer = 0;
@@ -8637,6 +8651,7 @@ export class Game {
       && !distractionActive
       && animatronic.state !== 'door-breach'
       && animatronic.state !== 'off-balance'
+      && animatronic.state !== 'foxy-leap'
       && (
         animatronic.senseTimer <= 0
         || animatronic.state === 'rush'
@@ -8750,6 +8765,11 @@ export class Game {
       return false;
     }
 
+    if (animatronic.state === 'foxy-leap') {
+      this.updateOfficeFoxyLeapAttack(animatronic, deltaSeconds, playerPosition);
+      return false;
+    }
+
     if (animatronic.state === 'off-balance') {
       this.updateOfficeGameModeAnimatronicOffBalance(animatronic, deltaSeconds, playerPosition);
       return false;
@@ -8787,6 +8807,21 @@ export class Game {
       }
     } else {
       animatronic.chaseGiveUpTimer = 0;
+    }
+
+    if (
+      animatronic.animatronic === 'foxy'
+      && canSeePlayer
+      && (animatronic.state === 'wander' || animatronic.state === 'chase')
+      && animatronic.attackCooldown <= 0
+      && animatronic.chaseCommitTimer <= 0
+    ) {
+      if (Math.random() < OFFICE_FOXY_LEAP_CHANCE) {
+        this.startOfficeFoxyLeapAttack(animatronic, playerPosition);
+        return false;
+      }
+
+      animatronic.attackCooldown = 2.2;
     }
 
     if (canSeePlayer && animatronic.chaseCommitTimer <= 0) {
@@ -8984,7 +9019,10 @@ export class Game {
       : animatronic.state === 'retreat'
         ? config.walkSpeed * nightSpeedMultiplier * 1.08
         : config.walkSpeed * nightSpeedMultiplier;
-    const speed = baseSpeed * (animatronic.insultChargeTimer > 0 ? 2 : 1);
+    const foxyWanderBurst = animatronic.animatronic === 'foxy'
+      && animatronic.state === 'wander'
+      && Math.sin(this.elapsed * 0.31 + animatronic.walkCyclePhase) > 0.15;
+    const speed = baseSpeed * (foxyWanderBurst ? 1.5 : 1) * (animatronic.insultChargeTimer > 0 ? 2 : 1);
 
     if (distance <= 0.16) {
       if (movingToDetour) {
