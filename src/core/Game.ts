@@ -2164,7 +2164,7 @@ export class Game {
 
     const chapterSevenSpaceCrawlHeld = this.chapterSevenActive
       && this.input.isSpaceHeld()
-      && this.input.getSpaceHeldMilliseconds() > 170;
+      && this.input.getSpaceHeldMilliseconds() >= 3000;
     const movementState = this.input.getMovementState();
     this.chapterFourCrouching = this.chapterFourActive
       && this.player.isLocked()
@@ -2206,12 +2206,7 @@ export class Game {
       && !chapterFourLockerHiding
       && !this.chapterSevenBoxHidden
       && !this.chapterSevenOvenHidden
-      && (this.chapterSevenActive ? this.input.consumeSpaceTap() : this.input.consumeJump());
-    if (this.chapterSevenActive) {
-      this.input.consumeJump();
-    } else {
-      this.input.consumeSpaceTap();
-    }
+      && this.input.consumeJump();
     const isTryingToMove = movementState.forward !== 0 || movementState.strafe !== 0;
     const hasSprintStamina = this.officeChapterActive || this.stamina > 0.5;
     const sprinting = this.doomModeActive
@@ -10554,7 +10549,7 @@ export class Game {
         this.gameplaySfxAudio.playClosetDoor(cardboardBox.open);
         this.pushStatus(
           cardboardBox.open
-            ? 'The cardboard box flaps fold open. Hold Space to crawl, then tap Space to jump inside it.'
+            ? 'The cardboard box flaps fold open. Press Space to jump, or hold Space for 3 seconds to crawl.'
             : 'The cardboard box flaps fold shut.',
           2.4,
         );
@@ -14704,7 +14699,7 @@ export class Game {
 
     if (this.chapterSevenActive) {
       if (this.chapterSevenBoxHidden) {
-        return 'Inside the cardboard box. Press E to open it again, then hold Space to crawl and tap Space to jump out.';
+        return 'Inside the cardboard box. Press E to open it again, then press Space to jump out or hold Space for 3 seconds to crawl.';
       }
       if (this.chapterSevenOvenHidden) {
         return 'Inside the oven. Look out through the glass, or press E to open the door again.';
@@ -14732,7 +14727,7 @@ export class Game {
 
         if (interactable.kind === 'cardboard-box') {
           return interactable.item.open
-            ? 'Hold Space to crawl and tap Space to jump inside the open box. Press E inside it to close the flaps.'
+            ? 'Hold Space for 3 seconds to crawl, then press Space to jump inside the open box. Press E inside it to close the flaps.'
             : 'Press E to open the cardboard box.';
         }
 
@@ -14782,7 +14777,7 @@ export class Game {
       }
 
       return locked
-        ? 'Chapter 7: The House controls: WASD moves, hold Space to crawl, tap Space to jump, walk into push doors, and press E for furniture, the sliding glass door, or the sink faucet.'
+        ? 'Chapter 7: The House controls: WASD moves, press Space to jump, hold Space for 3 seconds to crawl, walk into push doors, and press E for furniture, the sliding glass door, or the sink faucet.'
         : 'Click the play space to walk around Chapter 7: The House.';
     }
 
@@ -15554,7 +15549,7 @@ export class Game {
           : `${door.label} opens when you walk into it.`;
       }
 
-      return 'Chapter 7: The House starts inside on the front bedroom bed. Hold Space to crawl, tap Space to jump, and press E for drawers, cupboards, the cardboard box, old closet, sliding glass door, or sink faucet.';
+      return 'Chapter 7: The House starts inside on the front bedroom bed. Press Space to jump, hold Space for 3 seconds to crawl, and press E for drawers, cupboards, the cardboard box, old closet, sliding glass door, or sink faucet.';
     }
 
     if (this.chapterEightActive) {
@@ -17753,7 +17748,7 @@ export class Game {
     this.chapterSevenBoxHideAnchor.visible = false;
     this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterSevenOvenDoorOverlay.visible = false;
-    this.pushStatus('The cardboard box opens. Hold Space to crawl and tap Space to jump out.', 2.6);
+    this.pushStatus('The cardboard box opens. Press Space to jump out, or hold Space for 3 seconds to crawl.', 2.6);
   }
 
   private isPlayerInsideChapterSevenOven(): boolean {
@@ -17786,7 +17781,7 @@ export class Game {
     this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterSevenOvenDoorOverlay.visible = false;
     this.gameplaySfxAudio.playClosetDoor(true);
-    this.pushStatus('The oven door folds open. Hold Space to crawl back out.', 2.6);
+    this.pushStatus('The oven door folds open. Hold Space for 3 seconds to crawl back out.', 2.6);
   }
 
   private toggleChapterSevenBathtubFaucet(fixture: ChapterSevenData['rearFixtures'][number]): void {
@@ -20688,7 +20683,7 @@ export class Game {
     this.player.teleport(this.chapterSeven.spawn);
     this.player.lookToward(this.chapterSeven.lookTarget, 1);
     this.pushStatus(
-      'Chapter 7: The House loaded. You spawn on the front bedroom bed. Hold Space to crawl under raised beds, tap Space to jump, and press E to use furniture or the sink faucet.',
+      'Chapter 7: The House loaded. You spawn on the front bedroom bed. Press Space to jump, hold Space for 3 seconds to crawl, and press E to use furniture or the sink faucet.',
       3.2,
     );
     this.resize();

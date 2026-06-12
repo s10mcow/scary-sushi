@@ -18,7 +18,6 @@ export class InputController {
   private useItemQueued = false;
   private pickupQueued = false;
   private jumpQueued = false;
-  private spaceTapQueued = false;
   private spacePressedAt = 0;
   private chapterMenuToggleQueued = false;
   private officeJumpscareMenuToggleQueued = false;
@@ -97,12 +96,6 @@ export class InputController {
   consumeJump(): boolean {
     const value = this.jumpQueued;
     this.jumpQueued = false;
-    return value;
-  }
-
-  consumeSpaceTap(): boolean {
-    const value = this.spaceTapQueued;
-    this.spaceTapQueued = false;
     return value;
   }
 
@@ -269,9 +262,6 @@ export class InputController {
 
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
     if (event.code === 'Space') {
-      if (performance.now() - this.spacePressedAt <= 220) {
-        this.spaceTapQueued = true;
-      }
       event.preventDefault();
     }
     this.pressed.delete(event.code);
@@ -312,7 +302,6 @@ export class InputController {
 
   private readonly handleBlur = (): void => {
     this.fireHeld = false;
-    this.spaceTapQueued = false;
     this.spacePressedAt = 0;
     this.pressed.clear();
   };
