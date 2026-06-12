@@ -18,6 +18,8 @@ export class InputController {
   private useItemQueued = false;
   private pickupQueued = false;
   private jumpQueued = false;
+  private spaceTapQueued = false;
+  private spacePressedAt = 0;
   private chapterMenuToggleQueued = false;
   private officeJumpscareMenuToggleQueued = false;
   private hudHelpToggleQueued = false;
@@ -54,8 +56,8 @@ export class InputController {
     return this.pressed.has('Space');
   }
 
-  isCrawlHeld(): boolean {
-    return this.pressed.has('KeyS');
+  getSpaceHeldMilliseconds(): number {
+    return this.pressed.has('Space') ? performance.now() - this.spacePressedAt : 0;
   }
 
   isInteractHeld(): boolean {
@@ -95,6 +97,12 @@ export class InputController {
   consumeJump(): boolean {
     const value = this.jumpQueued;
     this.jumpQueued = false;
+    return value;
+  }
+
+  consumeSpaceTap(): boolean {
+    const value = this.spaceTapQueued;
+    this.spaceTapQueued = false;
     return value;
   }
 
@@ -186,6 +194,9 @@ export class InputController {
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     this.pressed.add(event.code);
+    if (event.code === 'Space' && !event.repeat) {
+      this.spacePressedAt = performance.now();
+    }
 
     if (event.code === 'KeyF' && !event.repeat) {
       this.flashlightToggleQueued = true;
@@ -258,6 +269,9 @@ export class InputController {
 
   private readonly handleKeyUp = (event: KeyboardEvent): void => {
     if (event.code === 'Space') {
+      if (performance.now() - this.spacePressedAt <= 220) {
+        this.spaceTapQueued = true;
+      }
       event.preventDefault();
     }
     this.pressed.delete(event.code);
@@ -298,6 +312,8 @@ export class InputController {
 
   private readonly handleBlur = (): void => {
     this.fireHeld = false;
+    this.spaceTapQueued = false;
+    this.spacePressedAt = 0;
     this.pressed.clear();
   };
 

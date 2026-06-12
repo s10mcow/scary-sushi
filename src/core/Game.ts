@@ -2162,9 +2162,10 @@ export class Game {
       this.flashlight.toggle();
     }
 
-    const movementState = this.input.getMovementState({
-      ignoreBackward: this.chapterSevenActive && this.input.isCrawlHeld(),
-    });
+    const chapterSevenSpaceCrawlHeld = this.chapterSevenActive
+      && this.input.isSpaceHeld()
+      && this.input.getSpaceHeldMilliseconds() > 170;
+    const movementState = this.input.getMovementState();
     this.chapterFourCrouching = this.chapterFourActive
       && this.player.isLocked()
       && !jumpscareLocked
@@ -2185,7 +2186,7 @@ export class Game {
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen
       && !this.chapterSevenBoxHidden
-      && (this.input.isCrawlHeld() || chapterSevenUnderBed || chapterSevenInsideOven || this.chapterSevenOvenHidden);
+      && (chapterSevenSpaceCrawlHeld || chapterSevenUnderBed || chapterSevenInsideOven || this.chapterSevenOvenHidden);
     let jumpRequested = !this.doomModeActive
       && !this.chapterFourActive
       && !this.chapterFiveActive
@@ -2205,7 +2206,12 @@ export class Game {
       && !chapterFourLockerHiding
       && !this.chapterSevenBoxHidden
       && !this.chapterSevenOvenHidden
-      && this.input.consumeJump();
+      && (this.chapterSevenActive ? this.input.consumeSpaceTap() : this.input.consumeJump());
+    if (this.chapterSevenActive) {
+      this.input.consumeJump();
+    } else {
+      this.input.consumeSpaceTap();
+    }
     const isTryingToMove = movementState.forward !== 0 || movementState.strafe !== 0;
     const hasSprintStamina = this.officeChapterActive || this.stamina > 0.5;
     const sprinting = this.doomModeActive
@@ -3842,8 +3848,6 @@ export class Game {
       side: DoubleSide,
     });
 
-    const backWall = new Mesh(new BoxGeometry(1.2, 1.08, 0.09), ovenWallMaterial);
-    backWall.position.set(0, -0.02, 0.18);
     const leftWall = new Mesh(new BoxGeometry(0.14, 1.12, 0.88), ovenWallMaterial);
     leftWall.position.set(-0.55, -0.02, -0.18);
     const rightWall = leftWall.clone();
@@ -3873,7 +3877,6 @@ export class Game {
     );
 
     this.chapterSevenOvenHideAnchor.add(
-      backWall,
       leftWall,
       rightWall,
       topWall,
@@ -10551,7 +10554,7 @@ export class Game {
         this.gameplaySfxAudio.playClosetDoor(cardboardBox.open);
         this.pushStatus(
           cardboardBox.open
-            ? 'The cardboard box flaps fold open. Hold S to crawl, then jump inside it.'
+            ? 'The cardboard box flaps fold open. Hold Space to crawl, then tap Space to jump inside it.'
             : 'The cardboard box flaps fold shut.',
           2.4,
         );
@@ -14701,7 +14704,7 @@ export class Game {
 
     if (this.chapterSevenActive) {
       if (this.chapterSevenBoxHidden) {
-        return 'Inside the cardboard box. Press E to open it again, then hold S to crawl and jump out.';
+        return 'Inside the cardboard box. Press E to open it again, then hold Space to crawl and tap Space to jump out.';
       }
       if (this.chapterSevenOvenHidden) {
         return 'Inside the oven. Look out through the glass, or press E to open the door again.';
@@ -14729,7 +14732,7 @@ export class Game {
 
         if (interactable.kind === 'cardboard-box') {
           return interactable.item.open
-            ? 'Hold S to crawl and jump inside the open box. Press E inside it to close the flaps.'
+            ? 'Hold Space to crawl and tap Space to jump inside the open box. Press E inside it to close the flaps.'
             : 'Press E to open the cardboard box.';
         }
 
@@ -14779,7 +14782,7 @@ export class Game {
       }
 
       return locked
-        ? 'Chapter 7: The House controls: WASD moves, hold S to crawl, walk into push doors, and press E for furniture, the sliding glass door, or the sink faucet.'
+        ? 'Chapter 7: The House controls: WASD moves, hold Space to crawl, tap Space to jump, walk into push doors, and press E for furniture, the sliding glass door, or the sink faucet.'
         : 'Click the play space to walk around Chapter 7: The House.';
     }
 
@@ -15551,7 +15554,7 @@ export class Game {
           : `${door.label} opens when you walk into it.`;
       }
 
-      return 'Chapter 7: The House starts inside on the front bedroom bed. Hold S to crawl, and press E for drawers, cupboards, the cardboard box, old closet, sliding glass door, or sink faucet.';
+      return 'Chapter 7: The House starts inside on the front bedroom bed. Hold Space to crawl, tap Space to jump, and press E for drawers, cupboards, the cardboard box, old closet, sliding glass door, or sink faucet.';
     }
 
     if (this.chapterEightActive) {
@@ -17750,7 +17753,7 @@ export class Game {
     this.chapterSevenBoxHideAnchor.visible = false;
     this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterSevenOvenDoorOverlay.visible = false;
-    this.pushStatus('The cardboard box opens. Hold S to crawl and jump out.', 2.6);
+    this.pushStatus('The cardboard box opens. Hold Space to crawl and tap Space to jump out.', 2.6);
   }
 
   private isPlayerInsideChapterSevenOven(): boolean {
@@ -17783,7 +17786,7 @@ export class Game {
     this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterSevenOvenDoorOverlay.visible = false;
     this.gameplaySfxAudio.playClosetDoor(true);
-    this.pushStatus('The oven door folds open. Hold S to crawl back out.', 2.6);
+    this.pushStatus('The oven door folds open. Hold Space to crawl back out.', 2.6);
   }
 
   private toggleChapterSevenBathtubFaucet(fixture: ChapterSevenData['rearFixtures'][number]): void {
@@ -20685,7 +20688,7 @@ export class Game {
     this.player.teleport(this.chapterSeven.spawn);
     this.player.lookToward(this.chapterSeven.lookTarget, 1);
     this.pushStatus(
-      'Chapter 7: The House loaded. You spawn on the front bedroom bed. Hold S to crawl under raised beds, and press E to use furniture or the sink faucet.',
+      'Chapter 7: The House loaded. You spawn on the front bedroom bed. Hold Space to crawl under raised beds, tap Space to jump, and press E to use furniture or the sink faucet.',
       3.2,
     );
     this.resize();
