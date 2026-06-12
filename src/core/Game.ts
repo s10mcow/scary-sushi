@@ -583,6 +583,7 @@ const OFFICE_STAGE_VOICE_RELEASE_COOLDOWN = 2.4;
 const OFFICE_STAGE_YELL_PRIMARY_RELEASE_MIN_CHANCE = 0.2;
 const OFFICE_STAGE_YELL_PRIMARY_RELEASE_MAX_CHANCE = 0.4;
 const OFFICE_STAGE_YELL_CHAIN_RELEASE_CHANCE = 0.1;
+const OFFICE_BORI_STAGE_YELL_RELEASE_CHANCE = 0.025;
 const OFFICE_CHASE_GIVE_UP_SECONDS = 14;
 const OFFICE_INSULT_STARE_SECONDS = 1.65;
 const OFFICE_INSULT_CHARGE_SECONDS = 10;
@@ -6206,6 +6207,11 @@ export class Game {
     animatronic: OfficeGameModeAnimatronicState,
     doorId: 'left' | 'right',
   ): void {
+    if (!this.canOfficeGameModeAnimatronicForceOfficeDoor(animatronic)) {
+      this.startOfficeGameModeDoorBlockedWait(animatronic, doorId);
+      return;
+    }
+
     animatronic.state = 'door-breach';
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = doorId;
@@ -6279,6 +6285,10 @@ export class Game {
     let closestDistance = Infinity;
 
     for (const animatronic of this.officeGameModeAnimatronics) {
+      if (!this.canOfficeGameModeAnimatronicForceOfficeDoor(animatronic)) {
+        continue;
+      }
+
       if (
         animatronic.state !== 'chase'
         && animatronic.state !== 'rush'
@@ -6507,7 +6517,10 @@ export class Game {
 
     const doorClosed = Boolean(door && door.targetOpenAmount < 0.5);
     if (doorClosed) {
-      if (Math.random() < OFFICE_DOOR_BREACH_CHANCE) {
+      if (
+        this.canOfficeGameModeAnimatronicForceOfficeDoor(animatronic)
+        && Math.random() < OFFICE_DOOR_BREACH_CHANCE
+      ) {
         this.startOfficeGameModeDoorBreach(animatronic, doorId);
       } else {
         animatronic.waitTimer = 0.8 + Math.random() * 0.9;
@@ -6888,13 +6901,16 @@ export class Game {
       && other.state !== 'stage'
       && (other.animatronic === 'quacky' || other.animatronic === 'fluffle' || other.animatronic === 'bori')
     ));
-    const chance = animatronic.animatronic === 'bori' || alreadyReleasedByVoice
-      ? OFFICE_STAGE_YELL_CHAIN_RELEASE_CHANCE
-      : MathUtils.lerp(
-        OFFICE_STAGE_YELL_PRIMARY_RELEASE_MIN_CHANCE,
-        OFFICE_STAGE_YELL_PRIMARY_RELEASE_MAX_CHANCE,
-        Math.random(),
-      );
+    let chance = OFFICE_BORI_STAGE_YELL_RELEASE_CHANCE;
+    if (animatronic.animatronic !== 'bori') {
+      chance = alreadyReleasedByVoice
+        ? OFFICE_STAGE_YELL_CHAIN_RELEASE_CHANCE
+        : MathUtils.lerp(
+          OFFICE_STAGE_YELL_PRIMARY_RELEASE_MIN_CHANCE,
+          OFFICE_STAGE_YELL_PRIMARY_RELEASE_MAX_CHANCE,
+          Math.random(),
+        );
+    }
     return Math.random() < chance;
   }
 
@@ -6954,6 +6970,10 @@ export class Game {
     animatronic.cachedBlockedDoorId = null;
     animatronic.chaseGiveUpTimer = 0;
     this.pushStatus(`${animatronic.label} gives up the chase and walks away.`, 2.2);
+  }
+
+  private canOfficeGameModeAnimatronicForceOfficeDoor(animatronic: OfficeGameModeAnimatronicState): boolean {
+    return animatronic.animatronic === 'bori';
   }
 
   private startOfficeInsultRevenge(animatronic: OfficeGameModeAnimatronicState): void {
@@ -8580,7 +8600,10 @@ export class Game {
       animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
       this.clearOfficeAnimatronicChaseTimers(animatronic);
     } else if (doorBlocked && (animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep') && blockedDoorId) {
-      if (Math.random() < OFFICE_DOOR_BREACH_CHANCE) {
+      if (
+        this.canOfficeGameModeAnimatronicForceOfficeDoor(animatronic)
+        && Math.random() < OFFICE_DOOR_BREACH_CHANCE
+      ) {
         this.startOfficeGameModeDoorBreach(animatronic, blockedDoorId);
         this.updateOfficeGameModeDoorBreach(animatronic, deltaSeconds, playerPosition);
         return false;
