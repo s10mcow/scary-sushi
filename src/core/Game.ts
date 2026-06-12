@@ -3857,14 +3857,6 @@ export class Game {
     const bottomWall = topWall.clone();
     bottomWall.position.y = -0.54;
 
-    const doorTopPanel = new Mesh(new BoxGeometry(1.12, 0.31, 0.08), ovenWallMaterial);
-    doorTopPanel.position.set(0, 0.31, -0.48);
-    const doorBottomPanel = doorTopPanel.clone();
-    doorBottomPanel.position.y = -0.39;
-    const doorLeftPanel = new Mesh(new BoxGeometry(0.31, 0.42, 0.08), ovenWallMaterial);
-    doorLeftPanel.position.set(-0.41, -0.04, -0.48);
-    const doorRightPanel = doorLeftPanel.clone();
-    doorRightPanel.position.x = 0.41;
     const doorFrameTop = new Mesh(new BoxGeometry(0.54, 0.045, 0.09), metalEdgeMaterial);
     doorFrameTop.position.set(0, 0.18, -0.515);
     const doorFrameBottom = doorFrameTop.clone();
@@ -3877,10 +3869,6 @@ export class Game {
     glassWindow.position.set(0, -0.04, -0.545);
     this.chapterSevenOvenDoorOverlay.visible = false;
     this.chapterSevenOvenDoorOverlay.add(
-      doorTopPanel,
-      doorBottomPanel,
-      doorLeftPanel,
-      doorRightPanel,
       doorFrameTop,
       doorFrameBottom,
       doorFrameLeft,
