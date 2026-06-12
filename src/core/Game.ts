@@ -10587,6 +10587,14 @@ export class Game {
               : 'You turn off the bathroom sink.',
             2.2,
           );
+        } else if (fixture.kind === 'trash-can') {
+          this.gameplaySfxAudio.playClosetDoor(fixture.open);
+          this.pushStatus(
+            fixture.open
+              ? 'You flip open the trash can lid.'
+              : 'You close the trash can lid.',
+            2.2,
+          );
         } else {
           this.gameplaySfxAudio.playClosetDoor(fixture.open);
           this.pushStatus(
@@ -14754,6 +14762,11 @@ export class Game {
               ? 'Press E to turn off the bathtub faucet.'
               : 'Press E to turn on the bathtub faucet.';
           }
+          if (interactable.item.kind === 'trash-can') {
+            return interactable.item.open
+              ? 'Press E to close the trash can.'
+              : 'Press E to open the trash can.';
+          }
 
           return interactable.item.open
             ? `Press E to close ${interactable.item.label}.`
@@ -15520,6 +15533,11 @@ export class Game {
             return interactable.item.open
               ? 'The bathtub faucet is running and filling the tub. Press E to turn it off.'
               : 'The bathtub faucet is off. Press E to turn it on.';
+          }
+          if (interactable.item.kind === 'trash-can') {
+            return interactable.item.open
+              ? 'The trash can is open. Press E to close it.'
+              : 'The trash can is closed. Press E to open it.';
           }
 
           return interactable.item.open

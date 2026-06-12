@@ -147,12 +147,12 @@ export interface ChapterSevenKitchenSink {
 
 export interface ChapterSevenRearFixture {
   label: string;
-  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer' | 'bathtub';
+  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer' | 'bathtub' | 'trash-can';
   interactPosition: Vector3;
   aimPosition: Vector3;
   doorPivots: Group[];
   collider: CollisionBox;
-  animation: 'toilet-lid' | 'faucet' | 'front-door' | 'bathtub-faucet';
+  animation: 'toilet-lid' | 'faucet' | 'front-door' | 'bathtub-faucet' | 'trash-lid';
   waterStream?: Mesh;
   waterSurface?: Mesh;
   waterSplash?: Mesh[];
@@ -2195,44 +2195,55 @@ export function createChapterSeven(): ChapterSevenData {
     addRotatedFurnitureCollider(localX, localZ, width + 0.2, depth + 0.2, rotationY);
   };
 
-  const addGreenTrashBags = (localX: number, localZ: number): void => {
-    const bags = new Group();
-    bags.position.set(localX, 0.2, localZ);
+  const addTrashCanFixture = (localX: number, localZ: number, rotationY = 0): ChapterSevenRearFixture => {
+    const trashCan = new Group();
+    trashCan.position.set(localX, 0, localZ);
+    trashCan.rotation.y = rotationY;
 
-    const bagSpecs: Array<[number, number, number, number, number]> = [
-      [-0.42, 0, 0.06, 0.72, -0.12],
-      [0.34, 0.02, -0.12, 0.62, 0.18],
-      [0.02, 0.42, 0.18, 0.48, 0.08],
-    ];
-    bagSpecs.forEach(([x, y, z, scale, tilt], index) => {
-      const body = new Mesh(new SphereGeometry(0.62, 22, 14), trashBagMaterial);
-      body.position.set(x, 0.44 + y, z);
-      body.scale.set(scale * 1.12, scale * 0.86, scale * 1.02);
-      body.rotation.set(0.04, index * 0.7, tilt);
+    const width = 1.05;
+    const depth = 0.92;
+    const height = 1.08;
+    const body = new Mesh(new CylinderGeometry(width / 2, width * 0.42, height, 24), trashBagMaterial);
+    body.scale.z = depth / width;
+    body.position.y = height / 2;
+    const rim = new Mesh(new CylinderGeometry(width / 2 + 0.05, width / 2 + 0.05, 0.08, 24), trashBagCreaseMaterial);
+    rim.scale.z = depth / width;
+    rim.position.y = height + 0.04;
+    const inside = new Mesh(new CylinderGeometry(width * 0.37, width * 0.34, 0.1, 18), ovenInteriorMaterial);
+    inside.scale.z = depth / width;
+    inside.position.y = height + 0.02;
+    const foot = new Mesh(new CylinderGeometry(width * 0.36, width * 0.4, 0.12, 20), trashBagCreaseMaterial);
+    foot.scale.z = depth / width;
+    foot.position.y = 0.06;
 
-      const shoulder = new Mesh(new SphereGeometry(0.42, 18, 10), trashBagMaterial);
-      shoulder.position.set(x + 0.04 * scale, 0.92 + y, z - 0.02 * scale);
-      shoulder.scale.set(scale * 0.82, scale * 0.46, scale * 0.72);
-      shoulder.rotation.set(0.08, index * 0.62, tilt * 0.55);
+    const lidPivot = new Group();
+    lidPivot.position.set(0, height + 0.1, -depth / 2 + 0.06);
+    const lid = new Mesh(new BoxGeometry(width + 0.16, 0.1, depth + 0.12), trashBagMaterial);
+    lid.position.set(0, 0.02, depth / 2 - 0.06);
+    const lidLip = new Mesh(new BoxGeometry(width + 0.26, 0.06, 0.08), trashBagCreaseMaterial);
+    lidLip.position.set(0, -0.01, depth + 0.02);
+    const handle = new Mesh(new BoxGeometry(0.42, 0.08, 0.08), trashBagCreaseMaterial);
+    handle.position.set(0, 0.1, depth / 2 - 0.04);
+    lidPivot.add(lid, lidLip, handle);
 
-      const neck = new Mesh(new CylinderGeometry(0.08 * scale, 0.22 * scale, 0.5 * scale, 10), trashBagMaterial);
-      neck.position.set(x + 0.08 * scale, 1.16 + y, z - 0.04 * scale);
-      neck.rotation.set(0.18, index * 0.44, -0.1 + tilt * 0.4);
+    trashCan.add(body, rim, inside, foot, lidPivot);
+    house.add(trashCan);
 
-      const tiedTop = new Mesh(new SphereGeometry(0.14 * scale, 10, 8), trashBagCreaseMaterial);
-      tiedTop.position.set(x + 0.1 * scale, 1.34 + y, z - 0.06 * scale);
-      tiedTop.scale.set(0.8, 1.18, 0.78);
-      const crease = new Mesh(new BoxGeometry(0.045, 0.62 * scale, 0.035), trashBagCreaseMaterial);
-      crease.position.set(x - 0.16 * scale, 0.5 + y, z + 0.42 * scale);
-      crease.rotation.z = -0.36 + index * 0.18;
-      const cinchBand = new Mesh(new CylinderGeometry(0.17 * scale, 0.18 * scale, 0.055, 10), trashBagCreaseMaterial);
-      cinchBand.position.set(x + 0.08 * scale, 1.16 + y, z - 0.04 * scale);
-
-      bags.add(body, shoulder, neck, tiedTop, cinchBand, crease);
-    });
-
-    house.add(bags);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.75, 1.25);
+    const collider = addRotatedCollider(colliders, localX, localZ, rotationY, 0, 0, width + 0.16, depth + 0.16);
+    const interactPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.72);
+    const aimPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, 0.18);
+    return {
+      label: 'Trash can',
+      kind: 'trash-can',
+      interactPosition: new Vector3(CENTER_X + interactPoint.x, GAME_CONFIG.player.height, HOUSE_CENTER_Z + interactPoint.z),
+      aimPosition: new Vector3(CENTER_X + aimPoint.x, 0.82, HOUSE_CENTER_Z + aimPoint.z),
+      doorPivots: [lidPivot],
+      collider,
+      animation: 'trash-lid',
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
   };
 
   const addWallShelf = (localX: number, localY: number, localZ: number, normalX: 1 | -1): void => {
@@ -3140,7 +3151,6 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_WALL_THICKNESS,
   );
   addLaundryBasket(1202.82 - CENTER_X, 59.07 - HOUSE_CENTER_Z, -0.12);
-  addGreenTrashBags(1231.64 - CENTER_X, 62.83 - HOUSE_CENTER_Z);
   addWallShelf(1215.95 - CENTER_X, 2.06, 65.92 - HOUSE_CENTER_Z, 1);
 
   const leftWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, HOUSE_DEPTH), houseWallMaterial);
@@ -3436,6 +3446,7 @@ export function createChapterSeven(): ChapterSevenData {
     addToilet(HOUSE_REAR_ROOM_DOOR_X + 4.2, rearRoomBackFixtureZ),
     addBathroomSinkFixture(HOUSE_REAR_ROOM_DOOR_X + 0.4, rearRoomBackFixtureZ),
     addBathtubFixture(HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 57.30 - HOUSE_CENTER_Z),
+    addTrashCanFixture(1231.64 - CENTER_X, 62.83 - HOUSE_CENTER_Z, -Math.PI / 2),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 0.3, 'washing-machine', rearRoomLaundryRotation),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
@@ -4083,6 +4094,8 @@ export function createChapterSeven(): ChapterSevenData {
             fixture.waterSurface.visible = fixture.waterFillAmount > 0.015;
             fixture.waterSurface.position.y = 0.25 + fixture.waterFillAmount * 0.55;
           }
+        } else if (fixture.animation === 'trash-lid') {
+          fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.68;
         } else {
           fixture.doorPivots[0].rotation.y = -fixture.openAmount * Math.PI * 0.58;
         }
