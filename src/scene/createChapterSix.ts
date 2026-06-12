@@ -47,6 +47,7 @@ export interface ChapterSixData {
   isHoldingPossum(): boolean;
   consumePossumSqueak(): boolean;
   selectHotbarSlot(slot: number): void;
+  cycleHotbarSlot(direction: number): void;
   placeSelectedBlock(playerPosition: Vector3): boolean;
   handleInventoryAction(action: ChapterSixInventoryAction): void;
   reset(): void;
@@ -1657,6 +1658,15 @@ export function createChapterSix(): ChapterSixData {
     selectHotbarSlot(slot) {
       const nextSlot = MathUtils.clamp(Math.floor(slot) - 1, 0, CHAPTER_SIX_HOTBAR_SLOT_COUNT - 1);
       selectedHotbarSlot = selectedHotbarSlot === nextSlot ? null : nextSlot;
+    },
+    cycleHotbarSlot(direction) {
+      const step = Math.sign(direction);
+      if (step === 0) {
+        return;
+      }
+
+      const currentSlot = selectedHotbarSlot ?? (step > 0 ? -1 : CHAPTER_SIX_HOTBAR_SLOT_COUNT);
+      selectedHotbarSlot = (currentSlot + step + CHAPTER_SIX_HOTBAR_SLOT_COUNT) % CHAPTER_SIX_HOTBAR_SLOT_COUNT;
     },
     placeSelectedBlock(playerPosition) {
       return placeBlockFromSelectedSlot(playerPosition);

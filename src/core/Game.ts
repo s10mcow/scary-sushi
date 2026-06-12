@@ -455,8 +455,9 @@ interface OfficeGameModeAnimatronicState {
   model: OfficeJumpscareStageModel;
   route: Vector3[];
   routeIndex: number;
-  state: 'stage' | 'wander' | 'chase' | 'rush' | 'creep' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch';
+  state: 'stage' | 'wander' | 'chase' | 'rush' | 'creep' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch' | 'off-balance';
   waitTimer: number;
+  offBalanceTimer: number;
   doorBreachTimer: number;
   doorBreachDoorId: 'left' | 'right' | null;
   doorLingerSoundPlayed: boolean;
@@ -602,11 +603,13 @@ const OFFICE_INSULT_PHRASES = [
   'you are dumb',
   'your dumb',
 ] as const;
-const OFFICE_DOOR_BREACH_CHANCE = 0.25;
+const OFFICE_DOOR_BREACH_CHANCE = 0.5;
 const OFFICE_DOOR_BREACH_SECONDS = 4.75;
 const OFFICE_DOOR_LINGER_SECONDS = 2.8;
 const OFFICE_DOOR_LINGER_LAUGH_DELAY = 0.95;
 const OFFICE_DOOR_LINGER_STEP_IN_CHANCE = 0.82;
+const OFFICE_ANIMATRONIC_JUKE_STUMBLE_SECONDS = 1.08;
+const OFFICE_ANIMATRONIC_JUKE_RANGE = 2.35;
 const OFFICE_ANIMATRONIC_DOOR_LAUGH_RECORDING_ID = '003';
 const OFFICE_DEATH_DIED_NOTICE_SECONDS = 1.45;
 const OFFICE_DEATH_FIRED_NOTICE_SECONDS = 4.8;
@@ -2147,8 +2150,25 @@ export class Game {
     }
 
     const itemCycle = this.input.consumeItemCycle();
-    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && this.chapterEightActive && itemCycle !== 0) {
-      this.cycleChapterEightHeldItem(itemCycle);
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && itemCycle !== 0) {
+      if (this.officeChapterActive) {
+        if (this.officeTabletCameraFeedActive) {
+          this.cycleOfficeTabletCamera(itemCycle);
+        } else {
+          this.cycleOfficeHotbarItem(itemCycle);
+        }
+      } else if (this.chapterFourActive) {
+        this.cycleChapterFourHotbarItem(itemCycle);
+      } else if (this.chapterSixActive && !this.chapterSix.isInventoryOpen()) {
+        this.chapterSix.cycleHotbarSlot(itemCycle);
+        this.syncHud();
+      } else if (this.chapterEightActive) {
+        this.cycleChapterEightHeldItem(itemCycle);
+      } else if (this.zombieModeActive) {
+        this.cycleZombieWeapon(itemCycle);
+      } else if (this.doomModeActive) {
+        this.cycleDoomWeapon(itemCycle);
+      }
     }
 
     const weaponSelect = this.input.consumeWeaponSelect();
@@ -5294,6 +5314,68 @@ export class Game {
     }
   }
 
+  private getCurrentOfficeHotbarSlot(): number {
+    if (this.placementToolActive) {
+      return 1;
+    }
+
+    if (this.microphoneSoundToolActive) {
+      return 3;
+    }
+
+    if (this.cameraToolActive) {
+      return 4;
+    }
+
+    const heldPrizeSlot = OFFICE_PRIZE_HOTBAR_SLOTS.find((entry) => entry.item === this.officeHeldPrizeItem);
+    return heldPrizeSlot?.slot ?? 0;
+  }
+
+  private clearOfficeCycleHeldItem(): void {
+    this.placementToolActive = false;
+    this.placementToolAnchor.visible = false;
+    this.placementPreview.visible = false;
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.officeTabletHeld = false;
+    this.officeTabletCameraFeedActive = false;
+    this.officeTabletAnchor.visible = false;
+    this.officeBasketballHeld = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.clearOfficeHeldPrizeItem();
+    this.pushStatus('Hands empty. Spin the mouse wheel or press a hotbar number to hold an item.', 1.7);
+    this.syncHud();
+  }
+
+  private cycleOfficeHotbarItem(direction: number): void {
+    const prizeSlots = OFFICE_PRIZE_HOTBAR_SLOTS
+      .filter((entry) => this.getOfficePrizeItemCount(entry.item) > 0)
+      .map((entry) => entry.slot);
+    const slots = [0, 1, 3, 4, ...prizeSlots];
+    const currentSlot = this.getCurrentOfficeHotbarSlot();
+    const currentIndex = Math.max(0, slots.indexOf(currentSlot));
+    const nextIndex = (currentIndex + Math.sign(direction) + slots.length) % slots.length;
+    const nextSlot = slots[nextIndex] ?? 0;
+    if (nextSlot === 0) {
+      this.clearOfficeCycleHeldItem();
+      return;
+    }
+
+    this.handleOfficeHotbarSlot(nextSlot);
+  }
+
+  private cycleOfficeTabletCamera(direction: number): void {
+    const cameras = this.officeChapter.securityCameras;
+    if (cameras.length === 0) {
+      return;
+    }
+
+    this.officeTabletCameraIndex = (this.officeTabletCameraIndex + Math.sign(direction) + cameras.length) % cameras.length;
+    const camera = this.getActiveOfficeTabletCamera();
+    this.pushStatus(`${camera?.label ?? 'Camera'} selected.`, 1.2);
+  }
+
   private handleChapterFourHotbarSlot(slot: number): void {
     if (slot === 1) {
       this.setPlacementToolActive(true);
@@ -5308,6 +5390,46 @@ export class Game {
     if (slot === 3) {
       this.setMicrophoneSoundToolActive(true);
     }
+  }
+
+  private getCurrentChapterFourHotbarSlot(): number {
+    if (this.placementToolActive) {
+      return 1;
+    }
+
+    if (this.chapterFourBoxHeld || this.chapterFourBoxActive) {
+      return 2;
+    }
+
+    if (this.microphoneSoundToolActive) {
+      return 3;
+    }
+
+    return 0;
+  }
+
+  private clearChapterFourCycleHeldItem(): void {
+    this.placementToolActive = false;
+    this.placementToolAnchor.visible = false;
+    this.placementPreview.visible = false;
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.setChapterFourBoxHeld(false, false);
+    this.pushStatus('Hands empty. Spin the mouse wheel or press a hotbar number to hold a Chapter 4 item.', 1.7);
+    this.syncHud();
+  }
+
+  private cycleChapterFourHotbarItem(direction: number): void {
+    const slots = [0, 1, 2, 3];
+    const currentIndex = Math.max(0, slots.indexOf(this.getCurrentChapterFourHotbarSlot()));
+    const nextIndex = (currentIndex + Math.sign(direction) + slots.length) % slots.length;
+    const nextSlot = slots[nextIndex] ?? 0;
+    if (nextSlot === 0) {
+      this.clearChapterFourCycleHeldItem();
+      return;
+    }
+
+    this.handleChapterFourHotbarSlot(nextSlot);
   }
 
   private selectChapterEightHotbarSlot(slot: number): void {
@@ -5685,6 +5807,7 @@ export class Game {
         routeIndex: 0,
         state: 'stage',
         waitTimer: 0,
+        offBalanceTimer: 0,
         doorBreachTimer: 0,
         doorBreachDoorId: null,
         doorLingerSoundPlayed: false,
@@ -5835,6 +5958,7 @@ export class Game {
       animatronic.model.root.visible = false;
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
       animatronic.waitTimer = this.getOfficeGameModeStageDwellSeconds(animatronic.animatronic) + index * 5.8;
+      animatronic.offBalanceTimer = 0;
       animatronic.doorBreachTimer = 0;
       animatronic.doorBreachDoorId = null;
       animatronic.doorLingerSoundPlayed = false;
@@ -6144,6 +6268,7 @@ export class Game {
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       animatronic.model.root.visible = false;
       animatronic.state = 'stage';
+      animatronic.offBalanceTimer = 0;
       animatronic.distractionTarget = null;
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
     });
@@ -6200,6 +6325,7 @@ export class Game {
       }
 
       animatronic.state = 'retreat';
+      animatronic.offBalanceTimer = 0;
       animatronic.doorBreachTimer = 0;
       animatronic.doorBreachDoorId = null;
       animatronic.doorLingerSoundPlayed = false;
@@ -6225,6 +6351,7 @@ export class Game {
     }
 
     animatronic.state = 'door-breach';
+    animatronic.offBalanceTimer = 0;
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = doorId;
     animatronic.doorLingerSoundPlayed = false;
@@ -6251,6 +6378,7 @@ export class Game {
     doorId: 'left' | 'right',
   ): void {
     animatronic.state = 'door';
+    animatronic.offBalanceTimer = 0;
     animatronic.doorBreachTimer = 0;
     animatronic.doorBreachDoorId = null;
     animatronic.doorLingerSoundPlayed = false;
@@ -6947,6 +7075,7 @@ export class Game {
     state: 'chase' | 'rush' = 'chase',
   ): void {
     animatronic.state = state;
+    animatronic.offBalanceTimer = 0;
     animatronic.lastKnownPlayerPosition.copy(target);
     animatronic.waitTimer = 0;
     animatronic.lostSightTimer = 0;
@@ -6966,6 +7095,7 @@ export class Game {
 
   private makeOfficeGameModeAnimatronicGiveUp(animatronic: OfficeGameModeAnimatronicState): void {
     animatronic.state = 'retreat';
+    animatronic.offBalanceTimer = 0;
     animatronic.routeIndex = 0;
     animatronic.waitTimer = 0.18;
     animatronic.lostSightTimer = 0;
@@ -6986,6 +7116,69 @@ export class Game {
 
   private canOfficeGameModeAnimatronicForceOfficeDoor(animatronic: OfficeGameModeAnimatronicState): boolean {
     return animatronic.animatronic === 'bori';
+  }
+
+  private startOfficeGameModeAnimatronicOffBalance(
+    animatronic: OfficeGameModeAnimatronicState,
+    playerPosition: Vector3,
+  ): void {
+    animatronic.state = 'off-balance';
+    animatronic.offBalanceTimer = OFFICE_ANIMATRONIC_JUKE_STUMBLE_SECONDS;
+    animatronic.waitTimer = 0;
+    animatronic.attackCooldown = Math.max(animatronic.attackCooldown, OFFICE_ANIMATRONIC_JUKE_STUMBLE_SECONDS + 0.25);
+    animatronic.lastKnownPlayerPosition.copy(playerPosition);
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    animatronic.lostSightTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.senseTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    this.pushStatus(`${animatronic.label} stumbles off balance after the last-second dodge.`, 1.9);
+  }
+
+  private updateOfficeGameModeAnimatronicOffBalance(
+    animatronic: OfficeGameModeAnimatronicState,
+    deltaSeconds: number,
+    playerPosition: Vector3,
+  ): void {
+    animatronic.offBalanceTimer = Math.max(0, animatronic.offBalanceTimer - deltaSeconds);
+    const root = animatronic.model.root;
+    const wobble = this.elapsed * 18 + animatronic.walkCyclePhase;
+    const remainingRatio = MathUtils.clamp(animatronic.offBalanceTimer / OFFICE_ANIMATRONIC_JUKE_STUMBLE_SECONDS, 0, 1);
+    const flail = MathUtils.smoothstep(remainingRatio, 0, 1);
+    const dx = playerPosition.x - root.position.x;
+    const dz = playerPosition.z - root.position.z;
+
+    if (Math.hypot(dx, dz) > 0.01) {
+      root.rotation.y = MathUtils.lerp(root.rotation.y, Math.atan2(dx, dz), 0.18);
+    }
+    root.position.y = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, root.position.x, root.position.z);
+    root.rotation.x = MathUtils.lerp(root.rotation.x, -0.12 + Math.sin(wobble * 0.6) * 0.09 * flail, 0.36);
+    root.rotation.z = MathUtils.lerp(root.rotation.z, Math.sin(wobble * 0.74) * 0.32 * flail, 0.42);
+    animatronic.model.head.rotation.x = Math.sin(wobble * 0.8) * 0.2 * flail;
+    animatronic.model.head.rotation.y = Math.cos(wobble * 0.65) * 0.28 * flail;
+    animatronic.model.leftArm.rotation.x = Math.sin(wobble) * 1.05 * flail - 0.28;
+    animatronic.model.rightArm.rotation.x = Math.cos(wobble * 1.08) * 1.05 * flail - 0.28;
+    animatronic.model.leftArm.rotation.z = -1.18 - Math.cos(wobble * 1.25) * 0.62 * flail;
+    animatronic.model.rightArm.rotation.z = 1.18 + Math.sin(wobble * 1.2) * 0.62 * flail;
+    animatronic.model.leftArmJoint.rotation.x = -0.42 - Math.sin(wobble * 1.3) * 0.45 * flail;
+    animatronic.model.rightArmJoint.rotation.x = -0.42 + Math.cos(wobble * 1.35) * 0.45 * flail;
+    animatronic.model.leftLeg.rotation.x = MathUtils.lerp(animatronic.model.leftLeg.rotation.x, -0.28, 0.32);
+    animatronic.model.rightLeg.rotation.x = MathUtils.lerp(animatronic.model.rightLeg.rotation.x, 0.22, 0.32);
+    animatronic.model.leftLegJoint.rotation.x = MathUtils.lerp(animatronic.model.leftLegJoint.rotation.x, 0.34, 0.32);
+    animatronic.model.rightLegJoint.rotation.x = MathUtils.lerp(animatronic.model.rightLegJoint.rotation.x, 0.24, 0.32);
+
+    if (animatronic.offBalanceTimer > 0) {
+      return;
+    }
+
+    this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
+    animatronic.attackCooldown = Math.max(animatronic.attackCooldown, 0.45);
   }
 
   private startOfficeInsultRevenge(animatronic: OfficeGameModeAnimatronicState): void {
@@ -7214,6 +7407,7 @@ export class Game {
     animatronic.model.root.visible = false;
     this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
     animatronic.state = 'stage';
+    animatronic.offBalanceTimer = 0;
     animatronic.routeIndex = 1 % animatronic.route.length;
     animatronic.waitTimer = this.getOfficeGameModeStageDwellSeconds(animatronic.animatronic);
     animatronic.doorBreachTimer = 0;
@@ -7258,6 +7452,7 @@ export class Game {
     animatronic.model.root.visible = true;
     this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, false);
     animatronic.state = 'wander';
+    animatronic.offBalanceTimer = 0;
     animatronic.routeIndex = 1 % animatronic.route.length;
     animatronic.waitTimer = 0.2;
     animatronic.doorBreachTimer = 0;
@@ -8441,6 +8636,7 @@ export class Game {
     const refreshSense = animatronic.chaseCommitTimer <= 0
       && !distractionActive
       && animatronic.state !== 'door-breach'
+      && animatronic.state !== 'off-balance'
       && (
         animatronic.senseTimer <= 0
         || animatronic.state === 'rush'
@@ -8551,6 +8747,11 @@ export class Game {
     }
 
     if (this.updateOfficeGameModeDoorLinger(animatronic, deltaSeconds, playerPosition)) {
+      return false;
+    }
+
+    if (animatronic.state === 'off-balance') {
+      this.updateOfficeGameModeAnimatronicOffBalance(animatronic, deltaSeconds, playerPosition);
       return false;
     }
 
@@ -8676,6 +8877,16 @@ export class Game {
     const playerInAttackRange = animatronic.chaseCommitTimer > 0
       ? this.canOfficeGameModeChargeHitPlayer(animatronic, playerPosition, config.attackRange)
       : distanceToPlayer <= config.attackRange;
+    if (
+      animatronic.state === 'chase'
+      && animatronic.chaseCommitTimer > 0
+      && distanceToPlayer <= OFFICE_ANIMATRONIC_JUKE_RANGE
+      && !playerInAttackRange
+    ) {
+      this.startOfficeGameModeAnimatronicOffBalance(animatronic, playerPosition);
+      return false;
+    }
+
     if ((canSeePlayer || animatronic.state === 'creep' || animatronic.insultChargeTimer > 0) && playerInAttackRange && animatronic.attackCooldown <= 0) {
       const definition = this.getRandomOfficeJumpscareDefinition(animatronic.animatronic);
       if (definition && !this.activeOfficeJumpscare) {
@@ -12644,6 +12855,13 @@ export class Game {
     this.pushStatus(weapon === 'pistol' ? 'Pistol up.' : 'Shotgun up.', 1.2);
   }
 
+  private cycleZombieWeapon(direction: number): void {
+    const weapons: WeaponSelectId[] = ['pistol', 'shotgun'];
+    const currentIndex = Math.max(0, weapons.indexOf(this.zombieWeapon));
+    const nextIndex = (currentIndex + Math.sign(direction) + weapons.length) % weapons.length;
+    this.selectZombieWeapon(weapons[nextIndex] ?? 'pistol');
+  }
+
   private handleZombieModeInteract(): void {
     const defense = this.getNearestZombieDefense();
     if (!defense) {
@@ -12996,6 +13214,18 @@ export class Game {
     this.doomWeapon = weapon;
     this.ensureZombieWeaponVisual();
     this.pushStatus(weapon === 'pistol' ? 'Pistol up.' : 'Shotgun up.', 1.2);
+  }
+
+  private cycleDoomWeapon(direction: number): void {
+    const allWeapons: WeaponSelectId[] = ['pistol', 'shotgun'];
+    const weapons = allWeapons.filter((weapon) => this.doomWeaponsOwned.has(weapon));
+    if (weapons.length === 0) {
+      return;
+    }
+
+    const currentIndex = Math.max(0, weapons.indexOf(this.doomWeapon));
+    const nextIndex = (currentIndex + Math.sign(direction) + weapons.length) % weapons.length;
+    this.selectDoomWeapon(weapons[nextIndex] ?? 'pistol');
   }
 
   private handleDoomModeInteract(): void {
