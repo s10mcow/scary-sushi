@@ -3739,12 +3739,14 @@ function createStageAnimatronic(
   head.position.set(0, 0, 0);
   const muzzle = new Mesh(
     kind === 'duck'
-      ? new BoxGeometry(0.54, 0.16, 0.34)
+      ? new SphereGeometry(0.24, 18, 12)
       : new SphereGeometry(0.18, 12, 10),
     muzzleMaterial,
   );
   muzzle.position.set(0, -0.08, -0.32);
-  if (kind !== 'duck') {
+  if (kind === 'duck') {
+    muzzle.scale.set(1.42, 0.42, 0.82);
+  } else {
     muzzle.scale.set(1.25, 0.78, 0.56);
   }
   headGroup.add(head, muzzle);
@@ -3793,7 +3795,24 @@ function createStageAnimatronic(
     const crest = new Mesh(new BoxGeometry(0.12, 0.34, 0.08), accentMaterial);
     crest.position.set(0, 0.36, 0.04);
     crest.rotation.x = -0.32;
-    headGroup.add(crest);
+    const mouthCavityMaterial = new MeshStandardMaterial({
+      color: 0x050100,
+      emissive: 0x170300,
+      emissiveIntensity: 0.2,
+      roughness: 0.58,
+      metalness: 0.02,
+    });
+    const mouthCavity = new Mesh(new SphereGeometry(0.18, 14, 8), mouthCavityMaterial);
+    mouthCavity.scale.set(1.55, 0.26, 0.54);
+    mouthCavity.position.set(0, -0.155, -0.39);
+    mouthJaw = new Group();
+    mouthJaw.position.set(0, -0.19, -0.35);
+    mouthBasePosition = mouthJaw.position.clone();
+    const lowerBeak = new Mesh(new SphereGeometry(0.2, 18, 10), muzzleMaterial);
+    lowerBeak.scale.set(1.5, 0.33, 0.76);
+    lowerBeak.position.set(0, -0.015, -0.06);
+    mouthJaw.add(lowerBeak);
+    headGroup.add(crest, mouthCavity, mouthJaw);
   }
 
   const leftArmPose: StageArmPose = includePerformanceProps && kind === 'bunny'
@@ -4218,10 +4237,68 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
         roughness: 0.72,
         metalness: 0.04,
       });
+      const mouthDarkMaterial = new MeshBasicMaterial({ color: 0x050000 });
+      const toothMaterial = new MeshStandardMaterial({
+        color: 0xe9dfc8,
+        emissive: 0x221407,
+        emissiveIntensity: 0.08,
+        roughness: 0.48,
+        metalness: 0.03,
+      });
+      const metalJawMaterial = new MeshStandardMaterial({
+        color: 0xa8a494,
+        emissive: 0x151410,
+        emissiveIntensity: 0.18,
+        roughness: 0.38,
+        metalness: 0.68,
+      });
+      jaw.clear();
       jaw.position.set(0, -0.15, -0.34);
-      const lowerBeak = new Mesh(new BoxGeometry(0.44, 0.07, 0.22), lowerBeakMaterial);
-      lowerBeak.position.set(0, -0.01, -0.12);
+      const mouthCavity = new Mesh(new SphereGeometry(0.2, 16, 10), mouthDarkMaterial);
+      mouthCavity.scale.set(1.72, 0.42, 0.74);
+      mouthCavity.position.set(0, -0.035, -0.18);
+      head.add(mouthCavity);
+      const lowerBeak = new Mesh(new SphereGeometry(0.24, 18, 12), lowerBeakMaterial);
+      lowerBeak.scale.set(1.62, 0.35, 0.86);
+      lowerBeak.position.set(0, -0.025, -0.13);
       jaw.add(lowerBeak);
+      [-0.18, -0.11, -0.04, 0.04, 0.11, 0.18].forEach((toothX) => {
+        const upperTooth = new Mesh(new ConeGeometry(0.025, 0.08, 8), toothMaterial);
+        upperTooth.position.set(toothX, -0.15, -0.47);
+        upperTooth.rotation.x = Math.PI;
+        const lowerTooth = new Mesh(new ConeGeometry(0.022, 0.07, 8), toothMaterial);
+        lowerTooth.position.set(toothX, 0.03, -0.12);
+        lowerTooth.rotation.x = 0.1;
+        head.add(upperTooth);
+        jaw.add(lowerTooth);
+      });
+      const innerJaw = new Group();
+      innerJaw.name = 'quacky-inner-jaw';
+      innerJaw.position.set(0, -0.015, -0.26);
+      const innerUpper = new Mesh(new BoxGeometry(0.28, 0.035, 0.09), lowerBeakMaterial);
+      innerUpper.position.set(0, 0.055, 0);
+      const innerLower = new Mesh(new BoxGeometry(0.26, 0.03, 0.08), lowerBeakMaterial);
+      innerLower.position.set(0, -0.055, 0.005);
+      [-0.09, -0.03, 0.03, 0.09].forEach((toothX) => {
+        const tooth = new Mesh(new ConeGeometry(0.014, 0.048, 7), toothMaterial);
+        tooth.position.set(toothX, -0.018, -0.045);
+        innerJaw.add(tooth);
+      });
+      innerJaw.add(innerUpper, innerLower);
+      const tinyMetalJaw = new Group();
+      tinyMetalJaw.name = 'quacky-tiny-metal-jaw';
+      tinyMetalJaw.position.set(0, -0.012, -0.34);
+      const metalUpper = new Mesh(new BoxGeometry(0.16, 0.024, 0.06), metalJawMaterial);
+      metalUpper.position.set(0, 0.04, 0);
+      const metalLower = new Mesh(new BoxGeometry(0.15, 0.022, 0.055), metalJawMaterial);
+      metalLower.position.set(0, -0.04, 0.004);
+      [-0.045, 0, 0.045].forEach((toothX) => {
+        const metalTooth = new Mesh(new ConeGeometry(0.01, 0.038, 6), metalJawMaterial);
+        metalTooth.position.set(toothX, -0.013, -0.033);
+        tinyMetalJaw.add(metalTooth);
+      });
+      tinyMetalJaw.add(metalUpper, metalLower);
+      head.add(innerJaw, tinyMetalJaw);
     }
     if (animatronic === 'fluffle') {
       const lowerJawMaterial = new MeshStandardMaterial({
