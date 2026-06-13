@@ -478,6 +478,7 @@ interface OfficeGameModeAnimatronicState {
   chaseCommitTimer: number;
   chaseCommitCooldown: number;
   chaseGiveUpTimer: number;
+  calmProximityTimer: number;
   quackyMouthScareTimer: number;
   insultStareTimer: number;
   insultChargeTimer: number;
@@ -581,15 +582,17 @@ const OFFICE_VOICE_YELL_RANGE_MULTIPLIER = 2.35;
 const OFFICE_VOICE_INVESTIGATE_THRESHOLD = 0.09;
 const OFFICE_VOICE_RUSH_THRESHOLD = 0.46;
 const OFFICE_STAGE_YELL_LEVEL = 0.48;
-const OFFICE_STAGE_YELL_RADIUS_PADDING = 8.5;
 const OFFICE_YELL_ATTRACT_RANGE = 34;
 const OFFICE_STAGE_VOICE_RELEASE_COOLDOWN = 2.4;
+const OFFICE_STAGE_YELL_RELEASE_CHANCE = 0.25;
 const OFFICE_CHASE_GIVE_UP_SECONDS = 14;
 const OFFICE_CALM_WATCH_CHANCE_PER_SECOND = 0.24;
 const OFFICE_CALM_WATCH_MIN_SECONDS = 2.1;
 const OFFICE_CALM_WATCH_MAX_SECONDS = 4.2;
 const OFFICE_CALM_WATCH_MAX_VOICE_LEVEL = 0.08;
 const OFFICE_CALM_WATCH_MAX_NOISE_LEVEL = 0.18;
+const OFFICE_CALM_PROXIMITY_CHASE_SECONDS = 60;
+const OFFICE_CALM_PROXIMITY_RANGE = 5.8;
 const OFFICE_INSULT_STARE_SECONDS = 1.65;
 const OFFICE_INSULT_CHARGE_SECONDS = 10;
 const OFFICE_INSULT_COOLDOWN_SECONDS = 12;
@@ -631,6 +634,18 @@ const OFFICE_INSULT_PHRASES = [
   'dumb robot',
   'kill you',
   'destroy you',
+  'freaky',
+  'get freaky',
+  'getting freaky',
+  'bout to get freaky',
+  'about to get freaky',
+  'creep on you',
+  'touch you',
+  'touching you',
+  'kiss you',
+  'sexy',
+  'nasty',
+  'sus',
   'damn',
   'crap',
   'hell',
@@ -676,7 +691,6 @@ const OFFICE_JUMPSCARE_VIDEO_ASSET_ASSIGNMENTS: Partial<Record<OfficeJumpscareAn
 }>> = {
 };
 const OFFICE_BORI_STAGE_WANDER_CHANCE = 0.1;
-const OFFICE_BORI_STAGE_YELL_RUSH_CHANCE = 0.1;
 const OFFICE_DISTRACTION_RANGE = 38;
 const OFFICE_DISTRACTION_LOOK_SECONDS = 1.25;
 const OFFICE_GLASS_SHARD_VISIBLE_SECONDS = 5;
@@ -1081,6 +1095,7 @@ export class Game {
   private officeGameModeNight = 1;
   private readonly officeGameModeAnimatronics: OfficeGameModeAnimatronicState[] = [];
   private officeStageVoiceReleaseCooldown = 0;
+  private officeStageYellReleaseAllowed: boolean | null = null;
   private officeFoxyCameraWatchTime = 0;
   private officeFoxyRushCooldown = 0;
   private officeFoxyClankCooldown = 0;
@@ -1751,6 +1766,7 @@ export class Game {
       this.stopOfficeSpeechRecognition();
       this.officePlayerVoiceLevel = 0;
       this.officePlayerNoiseLevel = 0;
+      this.officeStageYellReleaseAllowed = null;
       this.pushStatus('Microphone start cancelled.', 1.8);
     } else {
       this.officeMicrophoneManualOff = true;
@@ -1760,6 +1776,7 @@ export class Game {
       this.officeMicrophoneStartToken += 1;
       this.officePlayerVoiceLevel = 0;
       this.officePlayerNoiseLevel = 0;
+      this.officeStageYellReleaseAllowed = null;
       this.pushStatus('Microphone off. Animatronics cannot hear your voice.', 2.4);
     }
     this.syncHud();
@@ -1810,6 +1827,7 @@ export class Game {
         this.stopOfficeSpeechRecognition();
         this.officePlayerVoiceLevel = 0;
         this.officePlayerNoiseLevel = 0;
+        this.officeStageYellReleaseAllowed = null;
         if (mode === 'manual') {
           this.pushStatus('Microphone stayed off. Allow microphone permission in the browser to use voice noise.', 3.2);
         } else if (!this.voiceInput.isBlocked()) {
@@ -5779,6 +5797,9 @@ export class Game {
     const targetNoise = Math.max(movementNoise, voiceNoise);
 
     this.officePlayerVoiceLevel = voiceLevel;
+    if (voiceLevel < OFFICE_STAGE_YELL_LEVEL * 0.62) {
+      this.officeStageYellReleaseAllowed = null;
+    }
     if (targetNoise > 0.02) {
       this.officePlayerNoisePosition.copy(playerPosition);
       this.officePlayerNoiseLevel = targetNoise > this.officePlayerNoiseLevel
@@ -5839,6 +5860,7 @@ export class Game {
         chaseCommitTimer: 0,
         chaseCommitCooldown: 0,
         chaseGiveUpTimer: 0,
+        calmProximityTimer: 0,
         quackyMouthScareTimer: 0,
         insultStareTimer: 0,
         insultChargeTimer: 0,
@@ -5994,6 +6016,7 @@ export class Game {
       animatronic.chaseCommitTarget.copy(this.getOfficeGameModeOfficeCenter());
       animatronic.chaseCommitTimer = 0;
       animatronic.chaseCommitCooldown = 0;
+      animatronic.calmProximityTimer = 0;
       this.clearOfficeAnimatronicChaseTimers(animatronic, true);
       animatronic.cameraStareTimer = 0;
       animatronic.cameraStareCooldown = 0;
@@ -6131,6 +6154,7 @@ export class Game {
     this.officeMicrophoneAutoStatusShown = false;
     this.officePlayerNoiseLevel = 0;
     this.officePlayerVoiceLevel = 0;
+    this.officeStageYellReleaseAllowed = null;
     this.resetOfficeFoxyCameraPressure();
     this.officeFoxyRushCooldown = 8;
     this.officeFoxyClankCooldown = 0;
@@ -6205,6 +6229,7 @@ export class Game {
     this.officePlayerNoiseLevel = 0;
     this.officePlayerVoiceLevel = 0;
     this.officeStageVoiceReleaseCooldown = 0;
+    this.officeStageYellReleaseAllowed = null;
     this.officeGameModeNightPhase = true;
     this.officeGameModePhaseTime = 0;
     this.officeGameModeNight = 1;
@@ -6269,6 +6294,7 @@ export class Game {
     this.officePlayerNoiseLevel = 0;
     this.officePlayerVoiceLevel = 0;
     this.officeStageVoiceReleaseCooldown = 0;
+    this.officeStageYellReleaseAllowed = null;
     this.officeGameModeNightPhase = false;
     this.officeGameModePhaseTime = 0;
     this.officeGameModeNight = 1;
@@ -6838,7 +6864,7 @@ export class Game {
   }
 
   private getOfficeGameModeMaxOffstage(): number {
-    if (this.isOfficeVoiceYellNearStage()) {
+    if (this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL) {
       return 4;
     }
 
@@ -6926,33 +6952,31 @@ export class Game {
     );
   }
 
-  private isOfficeVoiceYellNearStage(): boolean {
-    if (this.officePlayerVoiceLevel < OFFICE_STAGE_YELL_LEVEL) {
-      return false;
-    }
-
-    return this.officeChapter.stageFloors.some((stage) => {
-      const distance = Math.hypot(
-        this.officePlayerNoisePosition.x - stage.center.x,
-        this.officePlayerNoisePosition.z - stage.center.z,
-      );
-      return distance <= Math.max(stage.halfWidth, stage.halfDepth) + OFFICE_STAGE_YELL_RADIUS_PADDING;
-    });
-  }
-
   private needsOfficeStageVoiceRelease(animatronic: OfficeJumpscareAnimatronic): boolean {
     return animatronic === 'quacky' || animatronic === 'fluffle';
   }
 
-  private shouldOfficeStageNoiseRelease(animatronic: OfficeGameModeAnimatronicState): boolean {
-    if (this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL) {
+  private shouldOfficeStageNoiseRelease(animatronic: OfficeGameModeAnimatronicState, noiseResponse: OfficeGameModeNoiseResponse): boolean {
+    if (this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL && noiseResponse === 'rush') {
+      if (this.officeStageYellReleaseAllowed === null) {
+        this.officeStageYellReleaseAllowed = Math.random() < OFFICE_STAGE_YELL_RELEASE_CHANCE;
+      }
+
+      if (!this.officeStageYellReleaseAllowed) {
+        return false;
+      }
+
+      if (this.officeStageVoiceReleaseCooldown > 0) {
+        return false;
+      }
+
       return true;
     }
 
     return !this.needsOfficeStageVoiceRelease(animatronic.animatronic);
   }
 
-  private shouldOfficeVoiceForceRush(animatronicPosition: Vector3): boolean {
+  private isOfficeVoiceYellHeardAt(animatronicPosition: Vector3): boolean {
     if (this.officePlayerVoiceLevel < OFFICE_STAGE_YELL_LEVEL) {
       return false;
     }
@@ -6961,8 +6985,11 @@ export class Game {
   }
 
   private markOfficeStageVoiceRelease(animatronic: OfficeJumpscareAnimatronic): void {
-    if (this.needsOfficeStageVoiceRelease(animatronic) || this.isOfficeVoiceYellNearStage()) {
+    if (this.needsOfficeStageVoiceRelease(animatronic)) {
       this.officeStageVoiceReleaseCooldown = OFFICE_STAGE_VOICE_RELEASE_COOLDOWN;
+    }
+    if (this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL) {
+      this.officeStageYellReleaseAllowed = false;
     }
   }
 
@@ -6998,6 +7025,7 @@ export class Game {
     animatronic.cachedNoiseResponse = state === 'rush' ? 'rush' : 'investigate';
     animatronic.cachedBlockedDoorId = null;
     animatronic.chaseGiveUpTimer = 0;
+    animatronic.calmProximityTimer = 0;
   }
 
   private makeOfficeGameModeAnimatronicGiveUp(animatronic: OfficeGameModeAnimatronicState): void {
@@ -7019,11 +7047,45 @@ export class Game {
     animatronic.cachedNoiseResponse = 'none';
     animatronic.cachedBlockedDoorId = null;
     animatronic.chaseGiveUpTimer = 0;
+    animatronic.calmProximityTimer = 0;
     this.pushStatus(`${animatronic.label} gives up the chase and walks away.`, 2.2);
   }
 
   private canOfficeGameModeAnimatronicForceOfficeDoor(animatronic: OfficeGameModeAnimatronicState): boolean {
     return animatronic.animatronic === 'bori';
+  }
+
+  private updateOfficeGameModeCalmProximity(
+    animatronic: OfficeGameModeAnimatronicState,
+    deltaSeconds: number,
+    playerPosition: Vector3,
+    canSeePlayer: boolean,
+  ): boolean {
+    const canChillNearby = animatronic.state === 'stage' || animatronic.state === 'wander' || animatronic.state === 'calm-watch';
+    const tooLoud = this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL || this.officeInsultHeardTimer > 0;
+    const distance = Math.hypot(
+      animatronic.model.root.position.x - playerPosition.x,
+      animatronic.model.root.position.z - playerPosition.z,
+    );
+    const nearby = distance <= OFFICE_CALM_PROXIMITY_RANGE || (canSeePlayer && distance <= OFFICE_CALM_PROXIMITY_RANGE + 1.4);
+    if (!canChillNearby || tooLoud || !nearby) {
+      animatronic.calmProximityTimer = 0;
+      return false;
+    }
+
+    animatronic.calmProximityTimer += deltaSeconds;
+    if (animatronic.calmProximityTimer < OFFICE_CALM_PROXIMITY_CHASE_SECONDS) {
+      return false;
+    }
+
+    animatronic.calmProximityTimer = 0;
+    const wasOnStage = animatronic.state === 'stage';
+    if (wasOnStage) {
+      this.sendOfficeGameModeAnimatronicOffStage(animatronic);
+    }
+    this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
+    this.pushStatus(`${animatronic.label} tolerated you standing nearby for a while, then finally starts chasing.`, 2.8);
+    return wasOnStage;
   }
 
   private canOfficeGameModeAnimatronicCalmWatch(
@@ -7359,16 +7421,14 @@ export class Game {
       return 'none';
     }
 
-    if (this.shouldOfficeVoiceForceRush(animatronicPosition)) {
-      return 'rush';
+    if (this.isOfficeVoiceYellHeardAt(animatronicPosition)) {
+      return animatronic.state === 'stage' || Math.random() < OFFICE_STAGE_YELL_RELEASE_CHANCE
+        ? 'rush'
+        : 'investigate';
     }
 
     if (animatronic.animatronic === 'bori') {
-      return voiceActive
-        && this.isOfficeVoiceYellNearStage()
-        && Math.random() < OFFICE_BORI_STAGE_YELL_RUSH_CHANCE
-        ? 'rush'
-        : 'none';
+      return 'none';
     }
 
     const distanceFalloff = MathUtils.clamp(1 - distance / Math.max(0.1, range), 0, 1);
@@ -7698,6 +7758,7 @@ export class Game {
     animatronic.distractionTarget = null;
     animatronic.chaseCommitTimer = 0;
     animatronic.chaseCommitCooldown = 0;
+    animatronic.calmProximityTimer = 0;
     this.clearOfficeAnimatronicChaseTimers(animatronic, true);
     animatronic.cameraStareTimer = 0;
     animatronic.cameraStareCooldown = 0;
@@ -7757,6 +7818,7 @@ export class Game {
     animatronic.distractionTarget = null;
     animatronic.chaseCommitTimer = 0;
     animatronic.chaseCommitCooldown = 0;
+    animatronic.calmProximityTimer = 0;
     this.clearOfficeAnimatronicChaseTimers(animatronic, true);
     animatronic.cameraStareTimer = 0;
     animatronic.cameraStareCooldown = MathUtils.lerp(
@@ -8968,6 +9030,9 @@ export class Game {
           : OFFICE_GAME_MODE_WANDER_SENSE_INTERVAL;
     }
     this.updateOfficeQuackySeenJaw(animatronic, canSeePlayer, deltaSeconds);
+    if (this.updateOfficeGameModeCalmProximity(animatronic, deltaSeconds, playerPosition, canSeePlayer)) {
+      return true;
+    }
 
     if (animatronic.state === 'stage') {
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
@@ -8976,7 +9041,7 @@ export class Game {
       if (
         noiseResponse !== 'none'
         && (canLeaveStage || forceStageChase)
-        && this.shouldOfficeStageNoiseRelease(animatronic)
+        && this.shouldOfficeStageNoiseRelease(animatronic, noiseResponse)
       ) {
         this.sendOfficeGameModeAnimatronicOffStage(animatronic);
         this.markOfficeStageVoiceRelease(animatronic.animatronic);
