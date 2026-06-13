@@ -6206,11 +6206,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const employeeElevatorLowerEyeY = GAME_CONFIG.player.height + employeeElevatorBasementFloorY;
   const employeeElevatorPlatform = new Group();
   employeeElevatorPlatform.position.set(employeeElevatorCenterX, employeeElevatorPlatformHomeY, employeeElevatorCenterZ);
-  const elevatorShaftDark = new Mesh(
+  const elevatorShaftOpening = new Mesh(
     new BoxGeometry(employeeElevatorPlatformSize + 0.42, 0.035, employeeElevatorPlatformSize + 0.42),
     elevatorDarkMaterial,
   );
-  elevatorShaftDark.position.set(0, -0.012, 0);
+  elevatorShaftOpening.position.set(employeeElevatorCenterX, 0.006, employeeElevatorCenterZ);
   const elevatorPatch = new Mesh(
     new BoxGeometry(employeeElevatorPlatformSize, 0.08, employeeElevatorPlatformSize),
     elevatorMetalMaterial,
@@ -6225,6 +6225,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     metalness: 0.7,
   });
   [
+    { x: employeeElevatorCenterX, z: employeeElevatorCenterZ - employeeElevatorPlatformSize / 2 - 0.14, sx: employeeElevatorPlatformSize + 0.42, sz: 0.12 },
+    { x: employeeElevatorCenterX, z: employeeElevatorCenterZ + employeeElevatorPlatformSize / 2 + 0.14, sx: employeeElevatorPlatformSize + 0.42, sz: 0.12 },
+    { x: employeeElevatorCenterX - employeeElevatorPlatformSize / 2 - 0.14, z: employeeElevatorCenterZ, sx: 0.12, sz: employeeElevatorPlatformSize + 0.42 },
+    { x: employeeElevatorCenterX + employeeElevatorPlatformSize / 2 + 0.14, z: employeeElevatorCenterZ, sx: 0.12, sz: employeeElevatorPlatformSize + 0.42 },
+  ].forEach((edge) => {
+    const rim = new Mesh(new BoxGeometry(edge.sx, 0.08, edge.sz), elevatorEdgeMaterial);
+    rim.position.set(edge.x, 0.075, edge.z);
+    employeeElevatorRoot.add(rim);
+  });
+  [
     { x: 0, z: -employeeElevatorPlatformSize / 2 - 0.055, sx: employeeElevatorPlatformSize + 0.18, sz: 0.09 },
     { x: 0, z: employeeElevatorPlatformSize / 2 + 0.055, sx: employeeElevatorPlatformSize + 0.18, sz: 0.09 },
     { x: -employeeElevatorPlatformSize / 2 - 0.055, z: 0, sx: 0.09, sz: employeeElevatorPlatformSize + 0.18 },
@@ -6234,8 +6244,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     rail.position.set(edge.x, 0.12, edge.z);
     employeeElevatorPlatform.add(rail);
   });
-  employeeElevatorPlatform.add(elevatorShaftDark, elevatorPatch);
-  employeeElevatorRoot.add(employeeElevatorPlatform);
+  employeeElevatorPlatform.add(elevatorPatch);
+  employeeElevatorRoot.add(elevatorShaftOpening, employeeElevatorPlatform);
 
   const cableTopY = WALL_HEIGHT - 0.08;
   const cableBaseLength = cableTopY - 0.22;
