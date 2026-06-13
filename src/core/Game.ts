@@ -881,6 +881,7 @@ type ChapterSevenInteractable =
   | { kind: 'cardboard-box'; item: ChapterSevenData['cardboardBox']; score: number }
   | { kind: 'kitchen-sink'; item: ChapterSevenData['kitchenSink']; score: number }
   | { kind: 'rear-fixture'; item: ChapterSevenData['rearFixtures'][number]; score: number }
+  | { kind: 'swing'; item: ChapterSevenData['swingSet']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
 type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'torch' | 'empty';
@@ -1112,6 +1113,7 @@ export class Game {
   private chapterSevenCrawling = false;
   private chapterSevenBoxHidden = false;
   private chapterSevenOvenHidden = false;
+  private chapterSevenSwingSeated = false;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -2450,6 +2452,7 @@ export class Game {
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen
       && !this.chapterSevenBoxHidden
+      && !this.chapterSevenSwingSeated
       && (chapterSevenSpaceCrawlHeld || chapterSevenUnderBed || chapterSevenInsideOven || this.chapterSevenOvenHidden);
     let jumpRequested = !this.doomModeActive
       && !this.chapterFourActive
@@ -2470,6 +2473,7 @@ export class Game {
       && !chapterFourLockerHiding
       && !this.chapterSevenBoxHidden
       && !this.chapterSevenOvenHidden
+      && !this.chapterSevenSwingSeated
       && this.input.consumeJump();
     const isTryingToMove = movementState.forward !== 0 || movementState.strafe !== 0;
     const hasSprintStamina = this.officeChapterActive || this.stamina > 0.5;
@@ -2493,6 +2497,7 @@ export class Game {
         && !this.chapterFourCrouching
         && !this.chapterSevenCrawling
         && !this.chapterSevenBoxHidden
+        && !this.chapterSevenSwingSeated
         && isTryingToMove
         && movementState.sprint
         && hasSprintStamina;
@@ -2530,6 +2535,8 @@ export class Game {
       : this.chapterSevenBoxHidden
         ? { forward: 0, strafe: 0, sprint: false }
       : this.chapterSevenOvenHidden
+        ? { forward: 0, strafe: 0, sprint: false }
+      : this.chapterSevenSwingSeated
         ? { forward: 0, strafe: 0, sprint: false }
       : this.chapterSevenCrawling
         ? { ...movementState, sprint: false }
@@ -2620,6 +2627,11 @@ export class Game {
 
     this.chapterTwo.setSwingInput(
       this.chapterTwoActive && !chapterTwoDodoNightAttacking && this.chapterTwoSeatId === 'dodo-room-swing'
+        ? Math.max(0, movementState.forward)
+        : 0,
+    );
+    this.chapterSeven.setSwingInput(
+      this.chapterSevenActive && this.chapterSevenSwingSeated
         ? Math.max(0, movementState.forward)
         : 0,
     );
@@ -2866,6 +2878,10 @@ export class Game {
       }
     } else if (this.chapterSevenActive) {
       this.chapterSeven.update(deltaSeconds, this.player.getPosition());
+      if (this.chapterSevenSwingSeated) {
+        this.player.teleport(this.chapterSeven.swingSet.sitPosition);
+        this.player.lookToward(this.chapterSeven.swingSet.lookTarget, 1);
+      }
     } else if (this.chapterEightActive) {
       this.chapterEight.update(deltaSeconds, this.player.getPosition());
       this.handleChapterEightMonsterEvents();
@@ -11260,6 +11276,11 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
+      if (this.chapterSevenSwingSeated) {
+        this.leaveChapterSevenSwing();
+        return;
+      }
+
       if (this.chapterSevenBoxHidden) {
         this.openChapterSevenCardboardBoxFromInside();
         return;
@@ -11433,6 +11454,11 @@ export class Game {
         return;
       }
 
+      if (interactable?.kind === 'swing') {
+        this.enterChapterSevenSwing();
+        return;
+      }
+
       if (interactable?.kind === 'oven') {
         const oven = interactable.item;
         if (oven.open && this.chapterSevenCrawling && this.isPlayerInsideChapterSevenOven()) {
@@ -11452,7 +11478,7 @@ export class Game {
         return;
       }
 
-      this.pushStatus('Look directly at the fridge, oven, cupboard, drawer, cardboard box, wooden closet, or rear-room fixture you want, then press E.', 2.6);
+      this.pushStatus('Look directly at the fridge, oven, cupboard, drawer, cardboard box, wooden closet, swing set, or rear-room fixture you want, then press E.', 2.6);
       return;
     }
 
@@ -15617,6 +15643,10 @@ export class Game {
             : `Press E to open ${interactable.item.label}.`;
         }
 
+        if (interactable.kind === 'swing') {
+          return 'Press E to swing on the swing set.';
+        }
+
         if (interactable.item.open && this.chapterSevenCrawling && this.isPlayerInsideChapterSevenOven()) {
           return 'Press E to close the oven door around yourself.';
         }
@@ -16304,6 +16334,10 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
+      if (this.chapterSevenSwingSeated) {
+        return 'Hold W to swing, and press E to get off the swing set.';
+      }
+
       if (this.chapterSevenBoxHidden) {
         return 'Inside the cardboard box. You cannot move while hidden. Press E to open it again.';
       }
@@ -16387,6 +16421,10 @@ export class Game {
           return interactable.item.open
             ? `${interactable.item.label} is open. Press E to close it.`
             : `${interactable.item.label} is closed. Press E to open it.`;
+        }
+
+        if (interactable.kind === 'swing') {
+          return 'Press E to swing on the swing set.';
         }
 
         if (interactable.item.open && this.chapterSevenCrawling) {
@@ -18792,6 +18830,11 @@ export class Game {
       }
     });
 
+    const swingScore = this.getChapterSevenLookScore(this.chapterSeven.swingSet, 1.0, 1.25);
+    if (swingScore !== null) {
+      keepBest({ kind: 'swing', item: this.chapterSeven.swingSet, score: swingScore });
+    }
+
     return best;
   }
 
@@ -19686,6 +19729,23 @@ export class Game {
     }
 
     this.pushStatus('You stand back up.');
+  }
+
+  private enterChapterSevenSwing(): void {
+    this.chapterSevenSwingSeated = true;
+    this.chapterSevenCrawling = false;
+    this.chapterSeven.setSwingOccupied(true);
+    this.player.teleport(this.chapterSeven.swingSet.sitPosition);
+    this.player.lookToward(this.chapterSeven.swingSet.lookTarget, 1);
+    this.pushStatus('You climb onto the swing set. Hold W to swing, and press E to get back off.', 2.4);
+  }
+
+  private leaveChapterSevenSwing(): void {
+    this.chapterSevenSwingSeated = false;
+    this.chapterSeven.setSwingOccupied(false);
+    this.player.teleport(this.chapterSeven.swingSet.exitPosition);
+    this.player.lookToward(this.chapterSeven.swingSet.lookTarget, 1);
+    this.pushStatus('You step off the swing set.', 1.8);
   }
 
   private enterOfficeChapterSeat(): void {
@@ -21363,6 +21423,8 @@ export class Game {
     this.chapterSevenCrawling = false;
     this.chapterSevenBoxHidden = false;
     this.chapterSevenOvenHidden = false;
+    this.chapterSevenSwingSeated = false;
+    this.chapterSeven.setSwingOccupied(false);
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
     this.chapterFourBoxWideAnchor.visible = false;
@@ -21615,6 +21677,8 @@ export class Game {
     this.chapterSevenCrawling = false;
     this.chapterSevenBoxHidden = false;
     this.chapterSevenOvenHidden = false;
+    this.chapterSevenSwingSeated = false;
+    this.chapterSeven.setSwingOccupied(false);
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
     this.chapterFourBoxWideAnchor.visible = false;

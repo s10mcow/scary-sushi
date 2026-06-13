@@ -39,9 +39,12 @@ export interface ChapterSevenData {
   cardboardBox: ChapterSevenCardboardBox;
   kitchenSink: ChapterSevenKitchenSink;
   rearFixtures: ChapterSevenRearFixture[];
+  swingSet: ChapterSevenSwingSet;
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
   isPlayerUnderBed(position: Vector3): boolean;
   isPlayerInsideOven(position: Vector3): boolean;
+  setSwingOccupied(occupied: boolean): void;
+  setSwingInput(input: number): void;
   update(deltaSeconds: number, playerPosition?: Vector3): void;
   reset(): void;
 }
@@ -143,6 +146,25 @@ export interface ChapterSevenKitchenSink {
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
+}
+
+export interface ChapterSevenSwingSet {
+  label: string;
+  interactPosition: Vector3;
+  aimPosition: Vector3;
+  sitPosition: Vector3;
+  exitPosition: Vector3;
+  lookTarget: Vector3;
+  seatAnchor: Group;
+  lookAnchor: Group;
+  pivot: Group;
+  baseX: number;
+  baseZ: number;
+  rotationY: number;
+  occupied: boolean;
+  angle: number;
+  swingPhase: number;
+  swingPower: number;
 }
 
 export interface ChapterSevenRearFixture {
@@ -540,6 +562,26 @@ export function createChapterSeven(): ChapterSevenData {
     emissiveIntensity: 0.04,
     roughness: 0.82,
     metalness: 0.01,
+  });
+  const swingFrameMaterial = new MeshStandardMaterial({
+    color: 0x9ec7df,
+    roughness: 0.48,
+    metalness: 0.42,
+  });
+  const swingConnectorMaterial = new MeshStandardMaterial({
+    color: 0xe1b85a,
+    roughness: 0.66,
+    metalness: 0.14,
+  });
+  const swingChainMaterial = new MeshStandardMaterial({
+    color: 0xbfc8d4,
+    roughness: 0.38,
+    metalness: 0.52,
+  });
+  const swingSeatMaterial = new MeshStandardMaterial({
+    color: 0xd85e58,
+    roughness: 0.74,
+    metalness: 0.06,
   });
   const yellowCouchMaterial = new MeshStandardMaterial({
     color: 0xd4a82f,
@@ -1635,6 +1677,150 @@ export function createChapterSeven(): ChapterSevenData {
     addChair(localX, localZ + 2.25, Math.PI);
     addChair(localX - 3, localZ, Math.PI / 2);
     addChair(localX + 3, localZ, -Math.PI / 2);
+  };
+
+  const addOutdoorChair = (worldX: number, worldZ: number, rotationY: number): void => {
+    const chair = new Group();
+    chair.position.set(worldX, 0, worldZ);
+    chair.rotation.y = rotationY;
+
+    const seat = new Mesh(new BoxGeometry(0.78, 0.22, 0.72), chairCushionMaterial);
+    seat.position.y = 0.58;
+    const back = new Mesh(new BoxGeometry(0.84, 0.92, 0.16), furnitureWoodMaterial);
+    back.position.set(0, 1.02, -0.34);
+    const legs = [
+      [-0.28, -0.24],
+      [0.28, -0.24],
+      [-0.28, 0.24],
+      [0.28, 0.24],
+    ].map(([legX, legZ]) => {
+      const leg = new Mesh(new BoxGeometry(0.1, 0.56, 0.1), furnitureWoodMaterial);
+      leg.position.set(legX, 0.28, legZ);
+      return leg;
+    });
+
+    chair.add(seat, back, ...legs);
+    root.add(chair);
+    addCollider(colliders, worldX, worldZ, 0.92, 0.92);
+  };
+
+  const addOutdoorRoundTableSet = (worldX: number, worldZ: number): void => {
+    const table = new Group();
+    table.position.set(worldX, 0, worldZ);
+
+    const top = new Mesh(new CylinderGeometry(1, 1, 0.16, 32), furnitureWoodMaterial);
+    top.position.y = 2.0;
+    const pedestal = new Mesh(new CylinderGeometry(0.18, 0.24, 1.92, 14), furnitureWoodMaterial);
+    pedestal.position.y = 1.02;
+    const foot = new Mesh(new CylinderGeometry(0.62, 0.68, 0.1, 20), furnitureWoodMaterial);
+    foot.position.y = 0.05;
+    table.add(top, pedestal, foot);
+    root.add(table);
+    addCollider(colliders, worldX, worldZ, 2.08, 2.08);
+
+    const chairDistance = 1.78;
+    const chairAngles = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6];
+    chairAngles.forEach((angle) => {
+      const chairX = worldX + Math.cos(angle) * chairDistance;
+      const chairZ = worldZ + Math.sin(angle) * chairDistance;
+      addOutdoorChair(chairX, chairZ, Math.atan2(worldX - chairX, worldZ - chairZ));
+    });
+  };
+
+  const addOutdoorSwingSet = (
+    worldX: number,
+    worldZ: number,
+    rotationY: number,
+    scale = 1,
+  ): ChapterSevenSwingSet => {
+    const swingRoot = new Group();
+    swingRoot.position.set(worldX, 0, worldZ);
+    swingRoot.rotation.y = rotationY;
+    const topBeamY = 2.86 * scale;
+    const chainLength = 1.72 * scale;
+    const seatY = 0.98 * scale;
+    const seatWidth = 0.56 * scale;
+    const seatDepth = 0.22 * scale;
+    const swingSpacing = [-1.2, -0.4, 0.4, 1.2];
+
+    const topBeam = new Mesh(new BoxGeometry(4.04 * scale, 0.13 * scale, 0.14 * scale), swingFrameMaterial);
+    topBeam.position.y = topBeamY;
+
+    const legOffsets: Array<[number, number, number, number]> = [
+      [-1.74, 1.38, -0.42, 0.24],
+      [-1.74, 1.38, 0.42, -0.24],
+      [1.74, 1.38, -0.42, -0.24],
+      [1.74, 1.38, 0.42, 0.24],
+    ];
+    legOffsets.forEach(([legX, legY, legZ, tiltZ]) => {
+      const leg = new Mesh(new CylinderGeometry(0.065 * scale, 0.085 * scale, 2.86 * scale, 10), swingFrameMaterial);
+      leg.position.set(legX * scale, legY * scale, legZ * scale);
+      leg.rotation.z = tiltZ;
+      swingRoot.add(leg);
+    });
+
+    const braces: Array<[number, number, number, number]> = [
+      [-1.38, 1.2, -0.02, -0.72],
+      [1.38, 1.2, -0.02, 0.72],
+    ];
+    braces.forEach(([braceX, braceY, braceZ, rotZ]) => {
+      const brace = new Mesh(new BoxGeometry(0.14 * scale, 1.16 * scale, 0.08 * scale), swingConnectorMaterial);
+      brace.position.set(braceX * scale, braceY * scale, braceZ * scale);
+      brace.rotation.z = rotZ;
+      swingRoot.add(brace);
+    });
+
+    const swingPivot = new Group();
+    swingPivot.position.y = topBeamY - 0.04 * scale;
+    const swingRig = new Group();
+    swingPivot.add(swingRig);
+    const seatAnchor = new Group();
+    const lookAnchor = new Group();
+    swingSpacing.forEach((swingX, index) => {
+      const chainLeft = new Mesh(new CylinderGeometry(0.015 * scale, 0.015 * scale, chainLength, 8), swingChainMaterial);
+      const chainRight = chainLeft.clone();
+      const chainSpread = 0.2 * scale;
+      chainLeft.position.set(swingX * scale - chainSpread, -chainLength * 0.5, 0);
+      chainRight.position.set(swingX * scale + chainSpread, -chainLength * 0.5, 0);
+      chainLeft.rotation.z = index % 2 === 0 ? 0.03 : -0.03;
+      chainRight.rotation.z = index % 2 === 0 ? 0.05 : -0.05;
+
+      const seat = new Mesh(new BoxGeometry(seatWidth, 0.07 * scale, seatDepth), swingSeatMaterial);
+      seat.position.set(swingX * scale, -topBeamY + seatY, 0);
+      seat.rotation.x = index % 2 === 0 ? 0.03 : -0.03;
+      swingRig.add(chainLeft, chainRight, seat);
+    });
+
+    seatAnchor.position.set(-0.4 * scale, -topBeamY + seatY + 0.54 * scale, -0.02 * scale);
+    lookAnchor.position.set(0, -topBeamY + seatY + 0.42 * scale, 3.8 * scale);
+    swingRig.add(seatAnchor, lookAnchor);
+    swingRoot.add(topBeam, swingPivot);
+    root.add(swingRoot);
+
+    addRotatedCollider(colliders, worldX - CENTER_X, worldZ - HOUSE_CENTER_Z, rotationY, 0, 0, 4.45 * scale, 1.12 * scale);
+
+    const interactPoint = getRotatedLocalPoint(worldX - CENTER_X, worldZ - HOUSE_CENTER_Z, rotationY, 0, 1.76 * scale);
+    const exitPoint = getRotatedLocalPoint(worldX - CENTER_X, worldZ - HOUSE_CENTER_Z, rotationY, 0, 2.25 * scale);
+    const lookPoint = getRotatedLocalPoint(worldX - CENTER_X, worldZ - HOUSE_CENTER_Z, rotationY, 0, 4.2 * scale);
+
+    return {
+      label: 'Swing Set',
+      interactPosition: new Vector3(CENTER_X + interactPoint.x, 1.02, HOUSE_CENTER_Z + interactPoint.z),
+      aimPosition: new Vector3(CENTER_X + interactPoint.x, 1.28, HOUSE_CENTER_Z + interactPoint.z),
+      sitPosition: new Vector3(worldX, 1.38, worldZ),
+      exitPosition: new Vector3(CENTER_X + exitPoint.x, GAME_CONFIG.player.height, HOUSE_CENTER_Z + exitPoint.z),
+      lookTarget: new Vector3(CENTER_X + lookPoint.x, 1.46, HOUSE_CENTER_Z + lookPoint.z),
+      seatAnchor,
+      lookAnchor,
+      pivot: swingPivot,
+      baseX: worldX,
+      baseZ: worldZ,
+      rotationY,
+      occupied: false,
+      angle: 0,
+      swingPhase: 0,
+      swingPower: 0,
+    };
   };
 
   const addRotatedFurnitureCollider = (
@@ -3945,6 +4131,9 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
+  addOutdoorRoundTableSet(1240.54, 91.39);
+  const swingSet = addOutdoorSwingSet(1247.37, 67.97, Math.PI / 2, 1.05);
+  let swingInput = 0;
   const yardFenceStartX = HOUSE_WIDTH / 2 + HOUSE_WALL_THICKNESS / 2;
   const yardFenceLength = 20;
   const frontYardFenceZ = 98.57 - HOUSE_CENTER_Z;
@@ -4108,6 +4297,7 @@ export function createChapterSeven(): ChapterSevenData {
     cardboardBox,
     kitchenSink,
     rearFixtures,
+    swingSet,
     getSupportedFloorY(position: Vector3, crawling = false): number | null {
       const insideForest = position.x >= CENTER_X - HALF_SIZE
         && position.x <= CENTER_X + HALF_SIZE
@@ -4221,9 +4411,32 @@ export function createChapterSeven(): ChapterSevenData {
         && Math.abs(position.z - houseOven.centerZ) <= houseOven.halfDepth + 0.02
         && position.y < GAME_CONFIG.player.height - 0.08;
     },
+    setSwingOccupied(occupied: boolean): void {
+      swingSet.occupied = occupied;
+      if (!occupied) {
+        swingInput = 0;
+      }
+    },
+    setSwingInput(input: number): void {
+      swingInput = Math.max(0, Math.min(1, input));
+    },
     update(deltaSeconds: number, playerPosition?: Vector3): void {
       forestTime += deltaSeconds;
       light.intensity = 2.85 + Math.sin(forestTime * 0.7) * 0.16;
+      const targetSwingPower = swingSet.occupied ? swingInput : 0;
+      const swingPowerRate = targetSwingPower > swingSet.swingPower ? 0.78 : 0.46;
+      swingSet.swingPower += (targetSwingPower - swingSet.swingPower) * (1 - Math.exp(-swingPowerRate * deltaSeconds));
+      swingSet.swingPhase += (2.05 + swingSet.swingPower * 1.45) * deltaSeconds;
+      const targetSwingAngle = Math.sin(swingSet.swingPhase) * 0.58 * swingSet.swingPower;
+      swingSet.angle += (targetSwingAngle - swingSet.angle) * (1 - Math.exp(-4.1 * deltaSeconds));
+      if (Math.abs(swingSet.angle) < 0.0015 && swingSet.swingPower < 0.0015) {
+        swingSet.angle = 0;
+      }
+      swingSet.pivot.rotation.x = swingSet.angle;
+      swingSet.sitPosition.copy(swingSet.seatAnchor.getWorldPosition(new Vector3()));
+      swingSet.lookTarget.copy(swingSet.lookAnchor.getWorldPosition(new Vector3()));
+      const exitPoint = getRotatedLocalPoint(swingSet.baseX - CENTER_X, swingSet.baseZ - HOUSE_CENTER_Z, swingSet.rotationY, 0, 2.25);
+      swingSet.exitPosition.set(CENTER_X + exitPoint.x, GAME_CONFIG.player.height, HOUSE_CENTER_Z + exitPoint.z);
       houseDoors.forEach((door) => {
         if (playerPosition && door.interactionMode !== 'manual') {
           const distanceToDoor = Math.hypot(
@@ -4455,6 +4668,12 @@ export function createChapterSeven(): ChapterSevenData {
       kitchenSink.handlePivot.rotation.z = 0;
       kitchenSink.waterStream.visible = false;
       kitchenSink.waterStream.scale.y = 0.01;
+      swingInput = 0;
+      swingSet.occupied = false;
+      swingSet.angle = 0;
+      swingSet.swingPhase = 0;
+      swingSet.swingPower = 0;
+      swingSet.pivot.rotation.x = 0;
       rearFixtures.forEach((fixture) => {
         fixture.open = false;
         fixture.openAmount = 0;
