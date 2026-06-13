@@ -478,6 +478,7 @@ interface OfficeGameModeAnimatronicState {
   chaseCommitTimer: number;
   chaseCommitCooldown: number;
   chaseGiveUpTimer: number;
+  quackyMouthScareTimer: number;
   insultStareTimer: number;
   insultChargeTimer: number;
   insultCooldown: number;
@@ -5837,6 +5838,7 @@ export class Game {
         chaseCommitTimer: 0,
         chaseCommitCooldown: 0,
         chaseGiveUpTimer: 0,
+        quackyMouthScareTimer: 0,
         insultStareTimer: 0,
         insultChargeTimer: 0,
         insultCooldown: 0,
@@ -7526,6 +7528,38 @@ export class Game {
     animatronic.model.rightLegJoint.rotation.x = -0.92 + rightPull * 0.2;
   }
 
+  private updateOfficeQuackySeenJaw(animatronic: OfficeGameModeAnimatronicState, seesPlayer: boolean, deltaSeconds: number): void {
+    if (animatronic.animatronic !== 'quacky') {
+      return;
+    }
+
+    const scareActive = seesPlayer && (animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep');
+    animatronic.quackyMouthScareTimer = scareActive
+      ? Math.min(animatronic.quackyMouthScareTimer + deltaSeconds, 2)
+      : Math.max(0, animatronic.quackyMouthScareTimer - deltaSeconds * 2.4);
+    const beakOpen = MathUtils.smoothstep(animatronic.quackyMouthScareTimer, 0.02, 0.34);
+    const innerOpen = MathUtils.smoothstep(animatronic.quackyMouthScareTimer, 0.24, 0.62);
+    const snap = innerOpen * Math.max(0, Math.sin(this.elapsed * 13.5 + animatronic.walkCyclePhase));
+    const jawTarget = -1.34 * beakOpen + snap * 0.08;
+    animatronic.model.jaw.rotation.x = MathUtils.lerp(animatronic.model.jaw.rotation.x, jawTarget, scareActive ? 0.34 : 0.18);
+
+    const innerJaw = animatronic.model.head.getObjectByName('quacky-inner-jaw');
+    if (innerJaw) {
+      innerJaw.rotation.x = MathUtils.lerp(
+        innerJaw.rotation.x,
+        Math.sin(this.elapsed * 9.5 + animatronic.walkCyclePhase) * 0.2 * innerOpen,
+        0.32,
+      );
+      innerJaw.scale.setScalar(MathUtils.lerp(innerJaw.scale.x, 1 + innerOpen * 0.12, 0.22));
+    }
+
+    const tinyMetalJaw = animatronic.model.head.getObjectByName('quacky-tiny-metal-jaw');
+    if (tinyMetalJaw) {
+      tinyMetalJaw.rotation.x = MathUtils.lerp(tinyMetalJaw.rotation.x, (0.16 + snap * 0.42) * innerOpen, 0.38);
+      tinyMetalJaw.position.y = MathUtils.lerp(tinyMetalJaw.position.y, -0.012 + snap * 0.018 * innerOpen, 0.32);
+    }
+  }
+
   private isOfficePlayerNearDodgeThreat(): boolean {
     if (!this.officeChapterActive || !this.officeGameModeActive || this.officeGameModePowerOut) {
       return false;
@@ -7605,7 +7639,19 @@ export class Game {
     animatronic.cachedCanSeePlayer = false;
     animatronic.cachedNoiseResponse = 'none';
     animatronic.cachedBlockedDoorId = null;
+    animatronic.quackyMouthScareTimer = 0;
     animatronic.model.head.rotation.set(0, 0, 0);
+    animatronic.model.jaw.rotation.set(0, 0, 0);
+    const innerJaw = animatronic.model.head.getObjectByName('quacky-inner-jaw');
+    if (innerJaw) {
+      innerJaw.rotation.set(0, 0, 0);
+      innerJaw.scale.set(1, 1, 1);
+    }
+    const tinyMetalJaw = animatronic.model.head.getObjectByName('quacky-tiny-metal-jaw');
+    if (tinyMetalJaw) {
+      tinyMetalJaw.rotation.set(0, 0, 0);
+      tinyMetalJaw.position.y = -0.012;
+    }
     animatronic.model.leftArm.rotation.set(0, 0, 0);
     animatronic.model.rightArm.rotation.set(0, 0, 0);
     animatronic.model.leftArmJoint.rotation.set(0, 0, 0);
@@ -8854,6 +8900,7 @@ export class Game {
           ? OFFICE_GAME_MODE_CHASE_SENSE_INTERVAL
           : OFFICE_GAME_MODE_WANDER_SENSE_INTERVAL;
     }
+    this.updateOfficeQuackySeenJaw(animatronic, canSeePlayer, deltaSeconds);
 
     if (animatronic.state === 'stage') {
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
