@@ -43,6 +43,7 @@ export interface ChapterSevenData {
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
   isPlayerUnderBed(position: Vector3): boolean;
   isPlayerInsideOven(position: Vector3): boolean;
+  isPlayerInForcedCrawlSpace(position: Vector3): boolean;
   setSwingOccupied(occupied: boolean): void;
   setSwingInput(input: number): void;
   update(deltaSeconds: number, playerPosition?: Vector3): void;
@@ -4447,6 +4448,30 @@ export function createChapterSeven(): ChapterSevenData {
       return Math.abs(position.x - houseOven.centerX) <= houseOven.halfWidth - 0.08
         && Math.abs(position.z - houseOven.centerZ) <= houseOven.halfDepth + 0.02
         && position.y < GAME_CONFIG.player.height - 0.08;
+    },
+    isPlayerInForcedCrawlSpace(position: Vector3): boolean {
+      if (position.y >= GAME_CONFIG.player.height - 0.06) {
+        return false;
+      }
+
+      const underBed = bedSurfaces.some((surface) => (
+        Math.abs(position.x - surface.centerX) <= surface.halfWidth + GAME_CONFIG.player.radius + 0.18
+        && Math.abs(position.z - surface.centerZ) <= surface.halfDepth + GAME_CONFIG.player.radius + 0.18
+      ));
+      if (underBed) {
+        return true;
+      }
+
+      const insideOven = Math.abs(position.x - houseOven.centerX) <= houseOven.halfWidth + GAME_CONFIG.player.radius + 0.16
+        && Math.abs(position.z - houseOven.centerZ) <= houseOven.halfDepth + GAME_CONFIG.player.radius + 0.18;
+      if (insideOven) {
+        return true;
+      }
+
+      return crawlUnderTableColliders.some((table) => (
+        Math.abs(position.x - table.centerX) <= table.halfWidth + GAME_CONFIG.player.radius + 0.2
+        && Math.abs(position.z - table.centerZ) <= table.halfDepth + GAME_CONFIG.player.radius + 0.2
+      ));
     },
     setSwingOccupied(occupied: boolean): void {
       swingSet.occupied = occupied;

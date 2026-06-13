@@ -1122,6 +1122,7 @@ export class Game {
   private chapterFourLockerId: string | null = null;
   private chapterFourCrouching = false;
   private chapterSevenCrawling = false;
+  private chapterSevenForcedCrawl = false;
   private chapterSevenBoxHidden = false;
   private chapterSevenOvenHidden = false;
   private chapterSevenSwingSeated = false;
@@ -2458,6 +2459,15 @@ export class Game {
       && this.chapterSeven.isPlayerUnderBed(this.player.getPosition());
     const chapterSevenInsideOven = this.chapterSevenActive
       && this.chapterSeven.isPlayerInsideOven(this.player.getPosition());
+    const chapterSevenInForcedCrawlSpace = this.chapterSevenActive
+      && this.chapterSeven.isPlayerInForcedCrawlSpace(this.player.getPosition());
+    if (!this.chapterSevenActive || this.chapterSevenBoxHidden || this.chapterSevenSwingSeated) {
+      this.chapterSevenForcedCrawl = false;
+    } else if (chapterSevenInForcedCrawlSpace) {
+      this.chapterSevenForcedCrawl = true;
+    } else if (!chapterSevenSpaceCrawlHeld && !this.chapterSevenOvenHidden) {
+      this.chapterSevenForcedCrawl = false;
+    }
     this.chapterSevenCrawling = this.chapterSevenActive
       && this.player.isLocked()
       && !jumpscareLocked
@@ -2466,7 +2476,7 @@ export class Game {
       && !this.officeModeMenuOpen
       && !this.chapterSevenBoxHidden
       && !this.chapterSevenSwingSeated
-      && (chapterSevenSpaceCrawlHeld || chapterSevenUnderBed || chapterSevenInsideOven || this.chapterSevenOvenHidden);
+      && (chapterSevenSpaceCrawlHeld || chapterSevenUnderBed || chapterSevenInsideOven || this.chapterSevenForcedCrawl || this.chapterSevenOvenHidden);
     let jumpRequested = !this.doomModeActive
       && !this.chapterFourActive
       && !this.chapterFiveActive
@@ -18864,6 +18874,7 @@ export class Game {
     const box = this.chapterSeven.cardboardBox;
     this.chapterSevenBoxHidden = true;
     this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
     box.root.visible = true;
     box.targetOpenAmount = 0;
     box.open = false;
@@ -19981,6 +19992,7 @@ export class Game {
   private enterChapterSevenSwing(): void {
     this.chapterSevenSwingSeated = true;
     this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
     this.chapterSeven.setSwingOccupied(true);
     this.player.teleport(this.chapterSeven.swingSet.sitPosition);
     this.player.lookToward(this.chapterSeven.swingSet.lookTarget, 1);
@@ -21668,6 +21680,7 @@ export class Game {
     this.chapterFourLockerId = null;
     this.chapterFourCrouching = false;
     this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
     this.chapterSevenBoxHidden = false;
     this.chapterSevenOvenHidden = false;
     this.chapterSevenSwingSeated = false;
@@ -21922,6 +21935,7 @@ export class Game {
     this.chapterFourLockerId = null;
     this.chapterFourCrouching = false;
     this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
     this.chapterSevenBoxHidden = false;
     this.chapterSevenOvenHidden = false;
     this.chapterSevenSwingSeated = false;
