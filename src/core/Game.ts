@@ -1318,7 +1318,6 @@ export class Game {
     this.chapterSevenOvenHideAnchor.position.set(0, -0.08, -0.34);
     this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterSevenOvenDoorOverlay.visible = false;
-    this.createChapterSevenOvenHideModel();
     this.camera.add(this.chapterFourBlueJumpscareAnchor);
     this.createChapterFourBlueJumpscareModel();
     this.camera.add(this.chapterFourGreenJumpscareAnchor);
@@ -3921,33 +3920,6 @@ export class Game {
       centerCrease,
       topCrease,
       bottomCrease,
-    );
-  }
-
-  private createChapterSevenOvenHideModel(): void {
-    const ovenWallMaterial = new MeshBasicMaterial({
-      color: 0x050505,
-      transparent: true,
-      opacity: 0.98,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-    const leftWall = new Mesh(new BoxGeometry(0.14, 1.12, 0.88), ovenWallMaterial);
-    leftWall.position.set(-0.55, -0.02, -0.18);
-    const rightWall = leftWall.clone();
-    rightWall.position.x = 0.55;
-    const topWall = new Mesh(new BoxGeometry(1.18, 0.14, 0.88), ovenWallMaterial);
-    topWall.position.set(0, 0.46, -0.18);
-    const bottomWall = topWall.clone();
-    bottomWall.position.y = -0.54;
-
-    this.chapterSevenOvenDoorOverlay.visible = false;
-
-    this.chapterSevenOvenHideAnchor.add(
-      leftWall,
-      rightWall,
-      topWall,
-      bottomWall,
     );
   }
 
@@ -10029,15 +10001,7 @@ export class Game {
 
   private updateChapterSevenBoxDisplay(): void {
     this.chapterSevenBoxHideAnchor.visible = false;
-    const insideOpenOven = this.chapterSevenActive
-      && this.chapterSevenCrawling
-      && this.isPlayerInsideChapterSevenOven();
-    this.chapterSevenOvenHideAnchor.visible = this.chapterSevenActive
-      && this.player.isLocked()
-      && (this.chapterSevenOvenHidden || insideOpenOven)
-      && !this.chapterMenuOpen
-      && !this.officeJumpscareMenuOpen
-      && !this.officeModeMenuOpen;
+    this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterSevenOvenDoorOverlay.visible = false;
   }
 
@@ -18432,7 +18396,7 @@ export class Game {
     oven.targetOpenAmount = 0;
     oven.open = false;
     oven.collider.enabled = false;
-    this.chapterSevenOvenHideAnchor.visible = true;
+    this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterSevenOvenDoorOverlay.visible = false;
     this.gameplaySfxAudio.playClosetDoor(false);
     this.pushStatus('You pull the oven door closed. You can look out through the glass. Press E to open it again.', 2.8);
