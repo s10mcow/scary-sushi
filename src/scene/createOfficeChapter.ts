@@ -194,6 +194,17 @@ export interface OfficeChapterStorageClosetDoor {
   targetOpenAmount: number;
 }
 
+export interface OfficeChapterEmployeeOnlyDoor {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  doorPivot: Group;
+  collider: CollisionBox;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
+}
+
 export type OfficeChapterStorageFuseWireColor = 'green' | 'blue' | 'red';
 
 export interface OfficeChapterStorageFuseBoxWire {
@@ -337,6 +348,7 @@ export interface OfficeChapterData {
   securityCameras: OfficeChapterSecurityCamera[];
   backstageStorageDoor: OfficeChapterBackstageStorageDoor;
   storageClosetDoor: OfficeChapterStorageClosetDoor;
+  employeeOnlyDoor: OfficeChapterEmployeeOnlyDoor;
   storageFuseBox: OfficeChapterStorageFuseBox;
   kitchenEntranceDoor: OfficeChapterKitchenEntranceDoor;
   kitchenGlassShelves: OfficeChapterKitchenGlassShelf[];
@@ -2427,6 +2439,50 @@ function createBackstageSignMaterial(): MeshStandardMaterial {
     emissiveIntensity: 0.22,
     roughness: 0.48,
     metalness: 0.06,
+    side: DoubleSide,
+  });
+}
+
+function createEmployeeOnlySignMaterial(): MeshStandardMaterial {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 224;
+  const context = canvas.getContext('2d');
+
+  if (context) {
+    context.fillStyle = '#1a1715';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#f2d455';
+    context.lineWidth = 10;
+    context.strokeRect(14, 14, canvas.width - 28, canvas.height - 28);
+    context.fillStyle = '#f5f0dc';
+    context.font = 'bold 42px Trebuchet MS, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('DO NOT ENTER', canvas.width / 2, 62);
+    context.font = 'bold 30px Trebuchet MS, sans-serif';
+    context.fillText('EMPLOYEES ONLY', canvas.width / 2, 112);
+    context.fillStyle = '#ffd94b';
+    context.beginPath();
+    context.moveTo(canvas.width / 2, 140);
+    context.lineTo(canvas.width / 2 - 42, 196);
+    context.lineTo(canvas.width / 2 + 42, 196);
+    context.closePath();
+    context.fill();
+    context.strokeStyle = '#191919';
+    context.lineWidth = 6;
+    context.stroke();
+    context.fillStyle = '#191919';
+    context.font = 'bold 42px Trebuchet MS, sans-serif';
+    context.fillText('!', canvas.width / 2, 179);
+  }
+
+  return new MeshStandardMaterial({
+    map: new CanvasTexture(canvas),
+    emissive: 0x553100,
+    emissiveIntensity: 0.24,
+    roughness: 0.42,
+    metalness: 0.04,
     side: DoubleSide,
   });
 }
@@ -5005,6 +5061,19 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const backstageHallExtensionLength = abandonedStraightHalls ? 0 : 3.6;
   const backstageHallExtensionNorthZ = backstageHallNorthZ - backstageHallExtensionLength;
   const backstageHallExtensionCenterZ = backstageHallNorthZ - backstageHallExtensionLength / 2;
+  const employeeOnlyDoorCenterX = -251.9;
+  const employeeOnlyDoorCenterZ = 148.45;
+  const employeeOnlyDoorWidth = 2.35;
+  const employeeOnlyDoorMinZ = employeeOnlyDoorCenterZ - employeeOnlyDoorWidth / 2;
+  const employeeOnlyDoorMaxZ = employeeOnlyDoorCenterZ + employeeOnlyDoorWidth / 2;
+  const employeeRoomMaxX = employeeOnlyDoorCenterX - WALL_THICKNESS / 2;
+  const employeeRoomWidth = 7.1;
+  const employeeRoomMinX = employeeRoomMaxX - employeeRoomWidth;
+  const employeeRoomMinZ = 143.45;
+  const employeeRoomMaxZ = 150.55;
+  const employeeRoomCenterX = (employeeRoomMinX + employeeRoomMaxX) / 2;
+  const employeeRoomCenterZ = (employeeRoomMinZ + employeeRoomMaxZ) / 2;
+  const employeeRoomDepth = employeeRoomMaxZ - employeeRoomMinZ;
   const backstageStorageMinX = backstageHallMaxX;
   const backstageStorageMaxX = backstageStorageMinX + backstageStorageWidth;
   const backstageStorageMinZ = backstageHallNorthZ;
@@ -5317,6 +5386,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       ceilingHeight: WALL_HEIGHT,
     }, materials));
   }
+  if (!abandonedStraightHalls) {
+    root.add(createFloor({
+      width: employeeRoomWidth,
+      depth: employeeRoomDepth,
+      center: [employeeRoomCenterX, employeeRoomCenterZ],
+      ceilingHeight: WALL_HEIGHT,
+    }, materials));
+  }
   const backstageHallEastWallDepth = backstageHallSouthZ - backstageStorageMaxZ;
   const backstageWalls: WallDefinition[] = [
     {
@@ -5355,7 +5432,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       );
     }
     ([
-      [backstageHallNorthZ, storageClosetDoorMinZ],
+      [backstageHallNorthZ, employeeOnlyDoorMinZ],
+      [employeeOnlyDoorMaxZ, storageClosetDoorMinZ],
       [storageClosetDoorMaxZ, backstageHallSouthZ],
     ] as Array<[number, number]>).forEach(([startZ, endZ]) => {
       const depth = endZ - startZ;
@@ -5368,6 +5446,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
         size: [WALL_THICKNESS, WALL_HEIGHT, depth],
       });
     });
+    backstageWalls.push(
+      {
+        position: [employeeRoomMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, employeeRoomCenterZ],
+        size: [WALL_THICKNESS, WALL_HEIGHT, employeeRoomDepth],
+      },
+      {
+        position: [employeeRoomCenterX, WALL_HEIGHT / 2, employeeRoomMinZ + WALL_THICKNESS / 2],
+        size: [employeeRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+      },
+      {
+        position: [employeeRoomCenterX, WALL_HEIGHT / 2, employeeRoomMaxZ - WALL_THICKNESS / 2],
+        size: [employeeRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+      },
+    );
     backstageWalls.push(
       {
         position: [storageClosetWestX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, storageClosetCenterZ],
@@ -5978,6 +6070,61 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       : new Vector3(storageClosetDoorCenterX + 0.58, 1.24, storageClosetDoorCenterZ),
     doorPivot: storageClosetDoorPivot,
     collider: storageClosetDoorCollider,
+    open: false,
+    openAmount: 0,
+    targetOpenAmount: 0,
+  };
+
+  const employeeOnlyDoorRoot = new Group();
+  const employeeOnlyDoorPanelWidth = employeeOnlyDoorWidth - 0.22;
+  const employeeOnlyDoorPivot = new Group();
+  employeeOnlyDoorPivot.position.set(employeeOnlyDoorCenterX - 0.03, 0, employeeOnlyDoorMinZ + 0.08);
+  const employeeOnlyDoorPanel = new Mesh(
+    new BoxGeometry(0.1, 2.58, employeeOnlyDoorPanelWidth),
+    backstageDoorMaterial,
+  );
+  employeeOnlyDoorPanel.position.set(0, 1.34, employeeOnlyDoorPanelWidth / 2);
+  employeeOnlyDoorPanel.castShadow = true;
+  employeeOnlyDoorPanel.receiveShadow = true;
+  const employeeOnlyDoorHandle = new Mesh(new BoxGeometry(0.08, 0.18, 0.08), backstageFrameMaterial);
+  employeeOnlyDoorHandle.position.set(0.08, 1.2, employeeOnlyDoorPanelWidth - 0.2);
+  const employeeOnlyDoorSign = new Mesh(new PlaneGeometry(1.02, 0.66), createEmployeeOnlySignMaterial());
+  employeeOnlyDoorSign.rotation.y = Math.PI / 2;
+  employeeOnlyDoorSign.position.set(0.061, 1.82, employeeOnlyDoorPanelWidth * 0.5);
+  employeeOnlyDoorPivot.add(employeeOnlyDoorPanel, employeeOnlyDoorHandle, employeeOnlyDoorSign);
+  const employeeOnlyDoorNorthPost = new Mesh(new BoxGeometry(0.22, 2.86, 0.12), backstageFrameMaterial);
+  employeeOnlyDoorNorthPost.position.set(employeeOnlyDoorCenterX - 0.04, 1.43, employeeOnlyDoorMinZ);
+  const employeeOnlyDoorSouthPost = new Mesh(new BoxGeometry(0.22, 2.86, 0.12), backstageFrameMaterial);
+  employeeOnlyDoorSouthPost.position.set(employeeOnlyDoorCenterX - 0.04, 1.43, employeeOnlyDoorMaxZ);
+  const employeeOnlyDoorHeader = new Mesh(
+    new BoxGeometry(0.24, 0.22, employeeOnlyDoorWidth + 0.18),
+    backstageFrameMaterial,
+  );
+  employeeOnlyDoorHeader.position.set(employeeOnlyDoorCenterX - 0.04, 2.82, employeeOnlyDoorCenterZ);
+  employeeOnlyDoorRoot.add(
+    employeeOnlyDoorPivot,
+    employeeOnlyDoorNorthPost,
+    employeeOnlyDoorSouthPost,
+    employeeOnlyDoorHeader,
+  );
+  employeeOnlyDoorRoot.visible = !abandonedStraightHalls;
+  root.add(employeeOnlyDoorRoot);
+  const employeeOnlyDoorCollider: CollisionBox = {
+    centerX: employeeOnlyDoorCenterX - 0.03,
+    centerZ: employeeOnlyDoorCenterZ,
+    halfWidth: 0.16,
+    halfDepth: employeeOnlyDoorPanelWidth / 2,
+    enabled: !abandonedStraightHalls,
+  };
+  if (!abandonedStraightHalls) {
+    colliders.push(employeeOnlyDoorCollider);
+  }
+  const employeeOnlyDoor: OfficeChapterEmployeeOnlyDoor = {
+    label: 'Employees Only Room Door',
+    root: employeeOnlyDoorRoot,
+    interactPosition: new Vector3(employeeOnlyDoorCenterX + 0.58, 1.24, employeeOnlyDoorCenterZ),
+    doorPivot: employeeOnlyDoorPivot,
+    collider: employeeOnlyDoorCollider,
     open: false,
     openAmount: 0,
     targetOpenAmount: 0,
@@ -7799,6 +7946,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     storageClosetDoor.open = storageClosetDoor.targetOpenAmount > 0.5;
     storageClosetDoor.collider.enabled = storageClosetDoor.openAmount < 0.62;
 
+    employeeOnlyDoor.openAmount = MathUtils.lerp(
+      employeeOnlyDoor.openAmount,
+      employeeOnlyDoor.targetOpenAmount,
+      utilityBlend,
+    );
+    if (Math.abs(employeeOnlyDoor.openAmount - employeeOnlyDoor.targetOpenAmount) < 0.001) {
+      employeeOnlyDoor.openAmount = employeeOnlyDoor.targetOpenAmount;
+    }
+    employeeOnlyDoor.doorPivot.rotation.y = employeeOnlyDoor.openAmount * Math.PI * 0.58;
+    employeeOnlyDoor.open = employeeOnlyDoor.targetOpenAmount > 0.5;
+    employeeOnlyDoor.collider.enabled = !abandonedStraightHalls && employeeOnlyDoor.openAmount < 0.62;
+
     storageFuseBox.openAmount = MathUtils.lerp(
       storageFuseBox.openAmount,
       storageFuseBox.targetOpenAmount,
@@ -8049,6 +8208,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     storageClosetDoor.targetOpenAmount = 0;
     storageClosetDoor.doorPivot.rotation.y = 0;
     storageClosetDoor.collider.enabled = true;
+    employeeOnlyDoor.open = false;
+    employeeOnlyDoor.openAmount = 0;
+    employeeOnlyDoor.targetOpenAmount = 0;
+    employeeOnlyDoor.doorPivot.rotation.y = 0;
+    employeeOnlyDoor.collider.enabled = !abandonedStraightHalls;
     storageFuseBox.open = false;
     storageFuseBox.openAmount = 0;
     storageFuseBox.targetOpenAmount = 0;
@@ -8091,6 +8255,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     securityCameras,
     backstageStorageDoor,
     storageClosetDoor,
+    employeeOnlyDoor,
     storageFuseBox,
     kitchenEntranceDoor,
     kitchenGlassShelves,

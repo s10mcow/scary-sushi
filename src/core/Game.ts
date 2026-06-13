@@ -15763,6 +15763,7 @@ export class Game {
       const kitchenEntranceDoor = this.getNearestOfficeKitchenEntranceDoor();
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
+      const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
       const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
@@ -15831,6 +15832,12 @@ export class Game {
         return backstageStorageDoor.open
           ? 'Press E to close the backstage suit storage door.'
           : 'Press E to open the backstage suit storage door.';
+      }
+
+      if (employeeOnlyDoor) {
+        return employeeOnlyDoor.open
+          ? 'Press E to close the employees-only danger door.'
+          : 'Press E to open the employees-only danger door.';
       }
 
       if (storageFuseBox) {
@@ -16478,6 +16485,7 @@ export class Game {
       const kitchenEntranceDoor = this.getNearestOfficeKitchenEntranceDoor();
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
+      const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
       const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
@@ -16558,6 +16566,12 @@ export class Game {
         return backstageStorageDoor.open
           ? 'The backstage suit storage door is open. Press E to close it.'
           : 'The backstage suit storage door is closed. Press E to open it.';
+      }
+
+      if (employeeOnlyDoor) {
+        return employeeOnlyDoor.open
+          ? 'The employees-only danger door is open. Press E to close it.'
+          : 'The employees-only danger door is closed. Press E to open it.';
       }
 
       if (storageFuseBox) {
@@ -18039,6 +18053,20 @@ export class Game {
     return lateral <= 1.05 ? this.officeChapter.storageClosetDoor : null;
   }
 
+  private getNearestOfficeEmployeeOnlyDoor(): OfficeChapterData['employeeOnlyDoor'] | null {
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toDoor = this.officeChapter.employeeOnlyDoor.interactPosition.clone().sub(playerPosition);
+    const along = toDoor.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.05) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toDoor.sub(projected).length();
+    return lateral <= 1.05 ? this.officeChapter.employeeOnlyDoor : null;
+  }
+
   private getNearestOfficeStorageFuseBox(): OfficeChapterData['storageFuseBox'] | null {
     return null;
   }
@@ -18337,6 +18365,20 @@ export class Game {
           ? 'The backstage suit storage door swings open.'
           : 'The backstage suit storage door swings shut.',
         2.2,
+      );
+      return;
+    }
+
+    const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
+    if (employeeOnlyDoor) {
+      employeeOnlyDoor.targetOpenAmount = employeeOnlyDoor.targetOpenAmount > 0.5 ? 0 : 1;
+      employeeOnlyDoor.open = employeeOnlyDoor.targetOpenAmount > 0.5;
+      this.gameplaySfxAudio.playClosetDoor(employeeOnlyDoor.open);
+      this.pushStatus(
+        employeeOnlyDoor.open
+          ? 'The employees-only danger door swings open.'
+          : 'The employees-only danger door swings shut.',
+        2.4,
       );
       return;
     }
