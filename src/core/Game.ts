@@ -1102,6 +1102,7 @@ export class Game {
   private officeVentActive = false;
   private officeVentDrop: ActiveOfficeVentDrop | null = null;
   private officeEmployeeElevatorRide: ActiveOfficeEmployeeElevatorRide | null = null;
+  private officeEmployeeElevatorBasementActive = false;
   private officeVentChasePendingTimer = 0;
   private officeVentChasePendingAnimatronic: OfficeGameModeAnimatronicState | null = null;
   private officeJumpscareMenuOpen = false;
@@ -2737,6 +2738,9 @@ export class Game {
     }
     if (officeVentActive) {
       this.constrainOfficeVentPosition();
+    }
+    if (this.officeEmployeeElevatorBasementActive) {
+      this.constrainOfficeEmployeeElevatorBasementPosition();
     }
     if (officeVentDropping) {
       this.updateOfficeVentDropAnimation(deltaSeconds);
@@ -5847,6 +5851,7 @@ export class Game {
     this.officeVentActive = false;
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
+    this.officeEmployeeElevatorBasementActive = false;
     this.clearOfficePendingVentChase();
     this.officeJumpscareMenuOpen = false;
     this.stopOfficeJumpscare();
@@ -6419,6 +6424,7 @@ export class Game {
     this.officeVentActive = false;
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
+    this.officeEmployeeElevatorBasementActive = false;
     this.clearOfficePendingVentChase();
     this.officeTabletCameraFeedActive = false;
     this.officeTabletHeld = false;
@@ -6491,6 +6497,7 @@ export class Game {
     this.officeVentActive = false;
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
+    this.officeEmployeeElevatorBasementActive = false;
     this.clearOfficePendingVentChase();
     this.clearOfficeDoorSparks();
     this.officeGameModeAnimatronics.forEach((animatronic) => {
@@ -12385,6 +12392,7 @@ export class Game {
     this.officeVentActive = false;
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
+    this.officeEmployeeElevatorBasementActive = false;
     this.officeBallPitHidden = false;
     this.officeBallPitSlide = null;
     this.officeChapterSeated = false;
@@ -17255,6 +17263,14 @@ export class Game {
       return null;
     }
 
+    if (this.officeEmployeeElevatorRide) {
+      return null;
+    }
+
+    if (this.isPlayerInOfficeEmployeeElevatorBasement()) {
+      return this.officeChapter.employeeElevator.lowerPosition.y;
+    }
+
     if (this.officeVentActive) {
       return this.officeChapter.ventSystem.floorY;
     }
@@ -17974,6 +17990,29 @@ export class Game {
     playerPosition.z = bestZ;
   }
 
+  private isPlayerInOfficeEmployeeElevatorBasement(playerPosition = this.player.getPosition()): boolean {
+    const elevator = this.officeChapter.employeeElevator;
+    return this.officeEmployeeElevatorBasementActive
+      && playerPosition.y < GAME_CONFIG.player.height - 1.2
+      && Math.abs(playerPosition.x - elevator.lowerPosition.x) <= elevator.lowerHalfWidth + GAME_CONFIG.player.radius
+      && Math.abs(playerPosition.z - elevator.lowerPosition.z) <= elevator.lowerHalfDepth + GAME_CONFIG.player.radius;
+  }
+
+  private constrainOfficeEmployeeElevatorBasementPosition(): void {
+    const playerPosition = this.player.getPosition();
+    const elevator = this.officeChapter.employeeElevator;
+    playerPosition.x = MathUtils.clamp(
+      playerPosition.x,
+      elevator.lowerPosition.x - elevator.lowerHalfWidth,
+      elevator.lowerPosition.x + elevator.lowerHalfWidth,
+    );
+    playerPosition.z = MathUtils.clamp(
+      playerPosition.z,
+      elevator.lowerPosition.z - elevator.lowerHalfDepth,
+      elevator.lowerPosition.z + elevator.lowerHalfDepth,
+    );
+  }
+
   private updateOfficeVentDrop(): void {
     if (!this.officeChapterActive || !this.officeVentActive || this.officeVentDrop) {
       return;
@@ -18098,6 +18137,7 @@ export class Game {
     this.officeVentDrop = null;
     this.clearOfficePendingVentChase();
     this.officeBallPitHidden = false;
+    this.officeEmployeeElevatorBasementActive = false;
     this.officeEmployeeElevatorRide = {
       elapsed: 0,
       duration: OFFICE_EMPLOYEE_ELEVATOR_RIDE_DURATION,
@@ -18127,7 +18167,8 @@ export class Game {
     ride.elapsed = Math.min(ride.elapsed + deltaSeconds, ride.duration);
     const rawProgress = MathUtils.clamp(ride.elapsed / ride.duration, 0, 1);
     const loweredProgress = MathUtils.smootherstep(rawProgress, 0, 1);
-    const visualDrop = loweredProgress * 7.25;
+    const descentDistance = ride.startPosition.y - ride.endPosition.y;
+    const visualDrop = loweredProgress * descentDistance;
     elevator.platform.position.y = elevator.platformHomeY - visualDrop;
     elevator.button.position.x = elevator.buttonRestX - Math.max(0, 1 - rawProgress * 5) * 0.04;
     elevator.cables.forEach((cable) => {
@@ -18146,9 +18187,10 @@ export class Game {
     }
 
     this.officeEmployeeElevatorRide = null;
+    this.officeEmployeeElevatorBasementActive = true;
     this.player.teleport(ride.endPosition);
     this.player.lookToward(ride.lookTarget, 0.75);
-    this.pushStatus('The elevator settles into a small room below the employees-only area.', 2.8);
+    this.pushStatus('The elevator settles onto the basement floor below the employees-only area.', 2.8);
   }
 
   private getNearestOfficeStorageClosetDoor(): OfficeChapterData['storageClosetDoor'] | null {
@@ -18356,6 +18398,7 @@ export class Game {
     this.officeVentActive = true;
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
+    this.officeEmployeeElevatorBasementActive = false;
     this.officeBallPitHidden = false;
     this.player.teleport(this.officeChapter.ventSystem.ladderEntryPosition);
     this.player.lookToward(
@@ -18370,6 +18413,7 @@ export class Game {
     this.officeVentActive = false;
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
+    this.officeEmployeeElevatorBasementActive = false;
     this.clearOfficePendingVentChase();
     this.player.teleport(exitPosition);
     this.player.lookToward(exitPosition.clone().add(new Vector3(0, 0, 3)), 1);
