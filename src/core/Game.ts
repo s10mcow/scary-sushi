@@ -455,7 +455,7 @@ interface OfficeGameModeAnimatronicState {
   model: OfficeJumpscareStageModel;
   route: Vector3[];
   routeIndex: number;
-  state: 'stage' | 'wander' | 'chase' | 'rush' | 'creep' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch' | 'off-balance' | 'foxy-leap' | 'vent-chase';
+  state: 'stage' | 'wander' | 'chase' | 'rush' | 'creep' | 'door' | 'door-breach' | 'retreat' | 'distracted' | 'distracted-watch' | 'calm-watch' | 'off-balance' | 'foxy-leap' | 'vent-chase';
   waitTimer: number;
   offBalanceTimer: number;
   jukeCount: number;
@@ -575,20 +575,21 @@ const OFFICE_NOISE_INVESTIGATE_THRESHOLD = 0.18;
 const OFFICE_NOISE_RUSH_THRESHOLD = 0.68;
 const OFFICE_VOICE_HEAR_MIN_LEVEL = 0.04;
 const OFFICE_VOICE_NOISE_MULTIPLIER = 2.05;
-const OFFICE_VOICE_RANGE_MIN_MULTIPLIER = 1.24;
-const OFFICE_VOICE_RANGE_MAX_MULTIPLIER = 1.86;
-const OFFICE_VOICE_YELL_RANGE_MULTIPLIER = 1.92;
-const OFFICE_VOICE_INVESTIGATE_THRESHOLD = 0.12;
-const OFFICE_VOICE_RUSH_THRESHOLD = 0.56;
-const OFFICE_STAGE_YELL_LEVEL = 0.52;
+const OFFICE_VOICE_RANGE_MIN_MULTIPLIER = 1.45;
+const OFFICE_VOICE_RANGE_MAX_MULTIPLIER = 2.45;
+const OFFICE_VOICE_YELL_RANGE_MULTIPLIER = 2.35;
+const OFFICE_VOICE_INVESTIGATE_THRESHOLD = 0.09;
+const OFFICE_VOICE_RUSH_THRESHOLD = 0.46;
+const OFFICE_STAGE_YELL_LEVEL = 0.48;
 const OFFICE_STAGE_YELL_RADIUS_PADDING = 8.5;
-const OFFICE_YELL_ATTRACT_RANGE = 24;
+const OFFICE_YELL_ATTRACT_RANGE = 34;
 const OFFICE_STAGE_VOICE_RELEASE_COOLDOWN = 2.4;
-const OFFICE_STAGE_YELL_PRIMARY_RELEASE_MIN_CHANCE = 0.2;
-const OFFICE_STAGE_YELL_PRIMARY_RELEASE_MAX_CHANCE = 0.4;
-const OFFICE_STAGE_YELL_CHAIN_RELEASE_CHANCE = 0.1;
-const OFFICE_BORI_STAGE_YELL_RELEASE_CHANCE = 0.025;
 const OFFICE_CHASE_GIVE_UP_SECONDS = 14;
+const OFFICE_CALM_WATCH_CHANCE_PER_SECOND = 0.24;
+const OFFICE_CALM_WATCH_MIN_SECONDS = 2.1;
+const OFFICE_CALM_WATCH_MAX_SECONDS = 4.2;
+const OFFICE_CALM_WATCH_MAX_VOICE_LEVEL = 0.08;
+const OFFICE_CALM_WATCH_MAX_NOISE_LEVEL = 0.18;
 const OFFICE_INSULT_STARE_SECONDS = 1.65;
 const OFFICE_INSULT_CHARGE_SECONDS = 10;
 const OFFICE_INSULT_COOLDOWN_SECONDS = 12;
@@ -605,6 +606,34 @@ const OFFICE_INSULT_PHRASES = [
   "you're dumb",
   'you are dumb',
   'your dumb',
+  "you're weird",
+  'you are weird',
+  'your weird',
+  "you're creepy",
+  'you are creepy',
+  'your creepy',
+  "you're annoying",
+  'you are annoying',
+  'your annoying',
+  'shut up',
+  'i hate you',
+  'hate you',
+  'go away',
+  'get lost',
+  'idiot',
+  'loser',
+  'trash',
+  'garbage',
+  'stupid duck',
+  'stupid bunny',
+  'stupid bear',
+  'bad robot',
+  'dumb robot',
+  'kill you',
+  'destroy you',
+  'damn',
+  'crap',
+  'hell',
 ] as const;
 const OFFICE_DOOR_BREACH_CHANCE = 0.5;
 const OFFICE_DOOR_BREACH_SECONDS = 4.75;
@@ -1831,7 +1860,7 @@ export class Game {
         const result = event.results[index];
         const transcript = result?.[0]?.transcript ?? '';
         if (this.isOfficeInsultTranscript(transcript)) {
-          this.officeInsultHeardTimer = 1.4;
+          this.handleOfficeProvocativeSpeech(transcript);
         }
       }
     };
@@ -1882,7 +1911,52 @@ export class Game {
       .replace(/[^a-z'\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    return OFFICE_INSULT_PHRASES.some((phrase) => normalized.includes(phrase));
+    return OFFICE_INSULT_PHRASES.some((phrase) => {
+      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\b${escaped}\\b`).test(normalized);
+    });
+  }
+
+  private handleOfficeProvocativeSpeech(transcript: string): void {
+    if (!this.officeChapterActive || !this.officeGameModeActive || this.officeGameModePowerOut) {
+      return;
+    }
+
+    this.officeInsultHeardTimer = 2.2;
+    const playerPosition = this.player.getPosition();
+    this.officePlayerNoisePosition.copy(playerPosition);
+    this.officePlayerVoiceLevel = Math.max(this.officePlayerVoiceLevel, OFFICE_STAGE_YELL_LEVEL);
+    this.officePlayerNoiseLevel = Math.max(this.officePlayerNoiseLevel, 0.92);
+
+    this.ensureOfficeGameModeAnimatronics();
+    const available = this.officeGameModeAnimatronics.filter((animatronic) => (
+      animatronic.model.root.visible
+      && animatronic.state !== 'door-breach'
+      && animatronic.state !== 'foxy-leap'
+      && animatronic.state !== 'vent-chase'
+      && animatronic.state !== 'off-balance'
+    ));
+    const stageFallback = this.officeGameModeAnimatronics.find((animatronic) => animatronic.state === 'stage') ?? null;
+    const target = available
+      .sort((a, b) => a.model.root.position.distanceTo(playerPosition) - b.model.root.position.distanceTo(playerPosition))[0]
+      ?? stageFallback;
+    if (!target) {
+      return;
+    }
+
+    if (target.state === 'stage') {
+      this.sendOfficeGameModeAnimatronicOffStage(target);
+    }
+    target.insultCooldown = 0;
+    target.senseTimer = 0;
+    this.startOfficeInsultRevenge(target);
+    const cleaned = transcript.trim();
+    this.pushStatus(
+      cleaned
+        ? `${target.label} heard "${cleaned}" and turns toward you.`
+        : `${target.label} heard that and turns toward you.`,
+      2.8,
+    );
   }
 
   private readonly handleChapterFiveMonitorAction = (action: HudChapterFiveMonitorAction): void => {
@@ -6899,31 +6973,19 @@ export class Game {
   }
 
   private shouldOfficeStageNoiseRelease(animatronic: OfficeGameModeAnimatronicState): boolean {
-    const yellNearStage = this.isOfficeVoiceYellNearStage();
-    if (!yellNearStage) {
-      return !this.needsOfficeStageVoiceRelease(animatronic.animatronic);
+    if (this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL) {
+      return true;
     }
 
-    if (this.officeStageVoiceReleaseCooldown > 0) {
+    return !this.needsOfficeStageVoiceRelease(animatronic.animatronic);
+  }
+
+  private shouldOfficeVoiceForceRush(animatronicPosition: Vector3): boolean {
+    if (this.officePlayerVoiceLevel < OFFICE_STAGE_YELL_LEVEL) {
       return false;
     }
 
-    const alreadyReleasedByVoice = this.officeGameModeAnimatronics.some((other) => (
-      other !== animatronic
-      && other.state !== 'stage'
-      && (other.animatronic === 'quacky' || other.animatronic === 'fluffle' || other.animatronic === 'bori')
-    ));
-    let chance = OFFICE_BORI_STAGE_YELL_RELEASE_CHANCE;
-    if (animatronic.animatronic !== 'bori') {
-      chance = alreadyReleasedByVoice
-        ? OFFICE_STAGE_YELL_CHAIN_RELEASE_CHANCE
-        : MathUtils.lerp(
-          OFFICE_STAGE_YELL_PRIMARY_RELEASE_MIN_CHANCE,
-          OFFICE_STAGE_YELL_PRIMARY_RELEASE_MAX_CHANCE,
-          Math.random(),
-        );
-    }
-    return Math.random() < chance;
+    return animatronicPosition.distanceTo(this.officePlayerNoisePosition) <= OFFICE_YELL_ATTRACT_RANGE;
   }
 
   private markOfficeStageVoiceRelease(animatronic: OfficeJumpscareAnimatronic): void {
@@ -6990,6 +7052,84 @@ export class Game {
 
   private canOfficeGameModeAnimatronicForceOfficeDoor(animatronic: OfficeGameModeAnimatronicState): boolean {
     return animatronic.animatronic === 'bori';
+  }
+
+  private canOfficeGameModeAnimatronicCalmWatch(
+    animatronic: OfficeGameModeAnimatronicState,
+    canSeePlayer: boolean,
+    deltaSeconds: number,
+    distanceToPlayer: number,
+  ): boolean {
+    if (
+      !canSeePlayer
+      || animatronic.state !== 'wander'
+      || animatronic.attackCooldown > 0
+      || this.officeInsultHeardTimer > 0
+      || this.officePlayerVoiceLevel > OFFICE_CALM_WATCH_MAX_VOICE_LEVEL
+      || this.officePlayerNoiseLevel > OFFICE_CALM_WATCH_MAX_NOISE_LEVEL
+      || distanceToPlayer > this.getOfficeGameModeDetectionRange(this.getOfficeGameModeConfig()) * 0.72
+    ) {
+      return false;
+    }
+
+    return Math.random() < OFFICE_CALM_WATCH_CHANCE_PER_SECOND * deltaSeconds;
+  }
+
+  private startOfficeGameModeAnimatronicCalmWatch(animatronic: OfficeGameModeAnimatronicState): void {
+    animatronic.state = 'calm-watch';
+    animatronic.waitTimer = MathUtils.lerp(OFFICE_CALM_WATCH_MIN_SECONDS, OFFICE_CALM_WATCH_MAX_SECONDS, Math.random());
+    animatronic.attackCooldown = Math.max(animatronic.attackCooldown, animatronic.waitTimer + 0.45);
+    animatronic.lostSightTimer = 0;
+    animatronic.progressStallTimer = 0;
+    animatronic.stuckTimer = 0;
+    animatronic.detourTarget = null;
+    animatronic.detourTimer = 0;
+    animatronic.distractionTarget = null;
+    animatronic.chaseCommitTimer = 0;
+    animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+    animatronic.senseTimer = 0.25;
+    animatronic.cachedNoiseResponse = 'none';
+    this.pushStatus(`${animatronic.label} notices you, but just watches for now. Stay quiet.`, 2.4);
+  }
+
+  private updateOfficeGameModeAnimatronicCalmWatch(
+    animatronic: OfficeGameModeAnimatronicState,
+    deltaSeconds: number,
+    playerPosition: Vector3,
+  ): void {
+    const root = animatronic.model.root;
+    const dx = playerPosition.x - root.position.x;
+    const dz = playerPosition.z - root.position.z;
+    if (Math.hypot(dx, dz) > 0.01) {
+      root.rotation.y = MathUtils.lerp(root.rotation.y, Math.atan2(dx, dz), 0.22);
+    }
+
+    const startled = this.officeInsultHeardTimer > 0 || this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL;
+    if (startled) {
+      this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'rush');
+      this.pushStatus(`${animatronic.label} stops watching and charges at the noise.`, 2.2);
+      return;
+    }
+
+    animatronic.waitTimer = Math.max(0, animatronic.waitTimer - deltaSeconds);
+    root.position.y = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, root.position.x, root.position.z);
+    root.rotation.x = MathUtils.lerp(root.rotation.x, 0.02, 0.24);
+    root.rotation.z = MathUtils.lerp(root.rotation.z, Math.sin(this.elapsed * 2.4 + animatronic.walkCyclePhase) * 0.018, 0.2);
+    animatronic.model.head.rotation.x = MathUtils.lerp(animatronic.model.head.rotation.x, 0.1, 0.2);
+    animatronic.model.head.rotation.y = Math.sin(this.elapsed * 2.8 + animatronic.walkCyclePhase) * 0.08;
+    animatronic.model.leftArm.rotation.x = MathUtils.lerp(animatronic.model.leftArm.rotation.x, -0.16, 0.18);
+    animatronic.model.rightArm.rotation.x = MathUtils.lerp(animatronic.model.rightArm.rotation.x, -0.16, 0.18);
+    animatronic.model.leftArm.rotation.z = MathUtils.lerp(animatronic.model.leftArm.rotation.z, -0.36, 0.18);
+    animatronic.model.rightArm.rotation.z = MathUtils.lerp(animatronic.model.rightArm.rotation.z, 0.36, 0.18);
+    if (animatronic.waitTimer > 0) {
+      return;
+    }
+
+    animatronic.state = 'wander';
+    animatronic.waitTimer = 0.8;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    animatronic.senseTimer = OFFICE_GAME_MODE_WANDER_SENSE_INTERVAL;
   }
 
   private startOfficeGameModeAnimatronicOffBalance(
@@ -7247,7 +7387,7 @@ export class Game {
       return 'none';
     }
 
-    if (yellingByVolume && distance <= OFFICE_YELL_ATTRACT_RANGE) {
+    if (this.shouldOfficeVoiceForceRush(animatronicPosition)) {
       return 'rush';
     }
 
@@ -8860,9 +9000,10 @@ export class Game {
     if (animatronic.state === 'stage') {
       this.officeChapter.setStageAnimatronicPresent(animatronic.animatronic, true);
       animatronic.model.root.visible = false;
+      const forceStageChase = noiseResponse === 'rush' && this.officePlayerVoiceLevel >= OFFICE_STAGE_YELL_LEVEL;
       if (
         noiseResponse !== 'none'
-        && canLeaveStage
+        && (canLeaveStage || forceStageChase)
         && this.shouldOfficeStageNoiseRelease(animatronic)
       ) {
         this.sendOfficeGameModeAnimatronicOffStage(animatronic);
@@ -8968,6 +9109,11 @@ export class Game {
       return false;
     }
 
+    if (animatronic.state === 'calm-watch') {
+      this.updateOfficeGameModeAnimatronicCalmWatch(animatronic, deltaSeconds, playerPosition);
+      return false;
+    }
+
     if (animatronic.state === 'chase' || animatronic.state === 'rush') {
       if (animatronic.insultChargeTimer <= 0) {
         animatronic.chaseGiveUpTimer += deltaSeconds;
@@ -8993,6 +9139,12 @@ export class Game {
       }
 
       animatronic.attackCooldown = 2.2;
+    }
+
+    if (this.canOfficeGameModeAnimatronicCalmWatch(animatronic, canSeePlayer, deltaSeconds, distanceToPlayer)) {
+      this.startOfficeGameModeAnimatronicCalmWatch(animatronic);
+      this.updateOfficeGameModeAnimatronicCalmWatch(animatronic, deltaSeconds, playerPosition);
+      return false;
     }
 
     if (canSeePlayer && animatronic.chaseCommitTimer <= 0) {
