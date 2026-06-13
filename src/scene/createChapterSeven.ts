@@ -2801,8 +2801,11 @@ export function createChapterSeven(): ChapterSevenData {
 
     const towelMaterials = [
       new MeshStandardMaterial({ color: 0xf3f1e7, roughness: 0.88, metalness: 0.01 }),
-      new MeshStandardMaterial({ color: 0x8ec7dd, roughness: 0.86, metalness: 0.01 }),
-      new MeshStandardMaterial({ color: 0xd2b7e4, roughness: 0.86, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0x1a1715, roughness: 0.9, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0x3f84cf, roughness: 0.87, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0xb83a32, roughness: 0.88, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0x7a4d31, roughness: 0.9, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0x4b8a42, roughness: 0.88, metalness: 0.01 }),
     ];
     const board = new Mesh(new BoxGeometry(3.15, 0.14, 0.42), houseTrimMaterial);
     const backLip = new Mesh(new BoxGeometry(3.22, 0.22, 0.09), furnitureWoodMaterial);
@@ -2816,11 +2819,15 @@ export function createChapterSeven(): ChapterSevenData {
       const towelStack = new Group();
       towelStack.position.set(towelX, 0.19, 0.04);
       for (let layer = 0; layer < 3; layer += 1) {
-        const towel = new Mesh(new BoxGeometry(0.52, 0.08, 0.34), towelMaterials[(index + layer) % towelMaterials.length]);
-        towel.position.set(0, layer * 0.085, 0);
-        const fold = new Mesh(new BoxGeometry(0.04, 0.086, 0.36), towelMaterials[(index + layer) % towelMaterials.length]);
-        fold.position.set(0.18, layer * 0.085 + 0.004, 0);
-        towelStack.add(towel, fold);
+        const material = towelMaterials[(index * 2 + layer) % towelMaterials.length];
+        const towel = new Mesh(new BoxGeometry(0.52, 0.08, 0.34), material);
+        towel.position.set((layer % 2) * 0.025, layer * 0.085, 0);
+        towel.rotation.y = (layer - 1) * 0.035;
+        const fold = new Mesh(new BoxGeometry(0.045, 0.088, 0.36), material);
+        fold.position.set(0.18 - layer * 0.012, layer * 0.085 + 0.004, 0);
+        const seam = new Mesh(new BoxGeometry(0.5, 0.012, 0.018), material);
+        seam.position.set(-0.015, layer * 0.085 + 0.044, 0.16);
+        towelStack.add(towel, fold, seam);
       }
       return towelStack;
     });
@@ -2831,19 +2838,66 @@ export function createChapterSeven(): ChapterSevenData {
       roughness: 0.5,
       metalness: 0.02,
     });
-    const duckBeakMaterial = new MeshStandardMaterial({ color: 0xe77a28, roughness: 0.55, metalness: 0.02 });
-    const duckBody = new Mesh(new SphereGeometry(0.22, 16, 10), duckBodyMaterial);
-    duckBody.scale.set(1.25, 0.74, 0.82);
-    duckBody.position.set(1.08, 0.31, 0.04);
-    const duckHead = new Mesh(new SphereGeometry(0.13, 14, 10), duckBodyMaterial);
-    duckHead.position.set(1.28, 0.47, 0.03);
-    const duckBeak = new Mesh(new ConeGeometry(0.06, 0.14, 8), duckBeakMaterial);
-    duckBeak.rotation.z = -Math.PI / 2;
-    duckBeak.position.set(1.39, 0.47, 0.03);
-    const duckEye = new Mesh(new SphereGeometry(0.017, 8, 8), fridgeSealMaterial);
-    duckEye.position.set(1.31, 0.5, 0.13);
+    const duckBeakMaterial = new MeshStandardMaterial({ color: 0xe77a28, roughness: 0.5, metalness: 0.02 });
+    const duckBlushMaterial = new MeshStandardMaterial({ color: 0xf0a14e, roughness: 0.65, metalness: 0.01 });
+    const duckBody = new Mesh(new SphereGeometry(0.22, 24, 14), duckBodyMaterial);
+    duckBody.scale.set(1.35, 0.76, 0.88);
+    duckBody.position.set(1.07, 0.31, 0.04);
+    const duckChest = new Mesh(new SphereGeometry(0.16, 20, 12), duckBodyMaterial);
+    duckChest.scale.set(1.05, 0.74, 0.84);
+    duckChest.position.set(1.25, 0.34, 0.04);
+    const duckHead = new Mesh(new SphereGeometry(0.135, 20, 12), duckBodyMaterial);
+    duckHead.scale.set(1, 0.92, 0.96);
+    duckHead.position.set(1.3, 0.49, 0.03);
+    const upperBeak = new Mesh(new SphereGeometry(0.065, 16, 8), duckBeakMaterial);
+    upperBeak.scale.set(1.5, 0.48, 0.68);
+    upperBeak.position.set(1.42, 0.49, 0.03);
+    const lowerBeak = upperBeak.clone();
+    lowerBeak.scale.set(1.28, 0.34, 0.58);
+    lowerBeak.position.set(1.405, 0.455, 0.03);
+    const leftEye = new Mesh(new SphereGeometry(0.017, 10, 8), fridgeSealMaterial);
+    leftEye.position.set(1.345, 0.525, 0.13);
+    const rightEye = leftEye.clone();
+    rightEye.position.z = -0.07;
+    const leftCheek = new Mesh(new SphereGeometry(0.025, 10, 8), duckBlushMaterial);
+    leftCheek.scale.set(1, 0.35, 0.9);
+    leftCheek.position.set(1.355, 0.485, 0.125);
+    const rightCheek = leftCheek.clone();
+    rightCheek.position.z = -0.065;
+    const leftWing = new Mesh(new SphereGeometry(0.1, 14, 8), duckBodyMaterial);
+    leftWing.scale.set(1.25, 0.28, 0.64);
+    leftWing.position.set(1.06, 0.33, 0.185);
+    leftWing.rotation.z = -0.24;
+    const rightWing = leftWing.clone();
+    rightWing.position.z = -0.105;
+    rightWing.rotation.z = 0.24;
+    const tail = new Mesh(new ConeGeometry(0.055, 0.14, 12), duckBodyMaterial);
+    tail.position.set(0.79, 0.38, 0.04);
+    tail.rotation.z = Math.PI / 2.8;
+    const underside = new Mesh(new SphereGeometry(0.15, 16, 8), duckBodyMaterial);
+    underside.scale.set(1.4, 0.25, 0.82);
+    underside.position.set(1.04, 0.22, 0.04);
 
-    shelf.add(board, backLip, leftBracket, rightBracket, ...towels, duckBody, duckHead, duckBeak, duckEye);
+    shelf.add(
+      board,
+      backLip,
+      leftBracket,
+      rightBracket,
+      ...towels,
+      duckBody,
+      duckChest,
+      duckHead,
+      upperBeak,
+      lowerBeak,
+      leftEye,
+      rightEye,
+      leftCheek,
+      rightCheek,
+      leftWing,
+      rightWing,
+      tail,
+      underside,
+    );
     house.add(shelf);
   };
 
