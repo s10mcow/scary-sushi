@@ -4160,7 +4160,7 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
   addOutdoorRoundTableSet(1240.54, 91.39);
-  const swingSet = addOutdoorSwingSet(1247.37, 67.2, Math.PI / 2, 1.05);
+  const swingSet = addOutdoorSwingSet(1247.37, 64.35, Math.PI / 2, 1.05);
   let swingInput = 0;
   const yardFenceStartX = HOUSE_WIDTH / 2 + HOUSE_WALL_THICKNESS / 2;
   const yardFenceLength = 20;
