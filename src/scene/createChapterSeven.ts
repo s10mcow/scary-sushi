@@ -1655,7 +1655,14 @@ export function createChapterSeven(): ChapterSevenData {
 
     table.add(top, lowerShelf, ...legs, pot, potLip, stem, ...leaves);
     house.add(table);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 2.08, 2.08);
+    const tableCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 2.08, 2.08);
+    crawlUnderTableColliders.push({
+      collider: tableCollider,
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: 2.08 / 2,
+      halfDepth: 2.08 / 2,
+    });
   };
 
   const addDiningTable = (localX: number, localZ: number): void => {
@@ -1678,7 +1685,14 @@ export function createChapterSeven(): ChapterSevenData {
 
     table.add(top, ...legs);
     house.add(table);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 5.1, 2.45);
+    const tableCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 5.1, 2.45);
+    crawlUnderTableColliders.push({
+      collider: tableCollider,
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: 5.1 / 2,
+      halfDepth: 2.45 / 2,
+    });
 
     addChair(localX, localZ - 2.25, 0);
     addChair(localX, localZ + 2.25, Math.PI);
