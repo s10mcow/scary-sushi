@@ -3110,6 +3110,13 @@ export function createChapterSeven(): ChapterSevenData {
     ovenDoorPivot.add(ovenDoorTop, ovenDoorBottom, ovenDoorLeft, ovenDoorRight, ovenWindow, ovenHandle);
     stove.add(body, cooktop, ovenBackWall, ovenLeftWall, ovenRightWall, ovenCeiling, ovenFloor, ovenOpeningDark, ovenDoorPivot, knobRow, ...burners);
     house.add(stove);
+    addCollider(
+      colliders,
+      CENTER_X + localX,
+      HOUSE_CENTER_Z + localZ + cavityCenterZ - cavityDepth / 2 + 0.04,
+      cavityWidth,
+      0.1,
+    );
     const stoveCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.08, depth + 0.08);
     counterSurfaces.push({
       centerX: CENTER_X + localX,
