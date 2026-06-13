@@ -3090,6 +3090,8 @@ export function createChapterSeven(): ChapterSevenData {
     ovenDoorRight.position.x = windowWidth / 2 + sidePanelWidth / 2;
     const ovenWindow = new Mesh(new BoxGeometry(windowWidth, windowHeight, 0.035), ovenDoorGlassMaterial);
     ovenWindow.position.set(0, 0.39, 0.05);
+    const ovenOpeningDark = new Mesh(new BoxGeometry(doorWidth - 0.08, doorHeight - 0.08, 0.035), ovenInteriorMaterial);
+    ovenOpeningDark.position.set(0, 0.75, depth / 2 + 0.012);
     const ovenHandle = new Mesh(new BoxGeometry(width - 0.36, 0.06, 0.07), fridgeSealMaterial);
     ovenHandle.position.set(0, 0.68, 0.09);
     const knobRow = new Mesh(new BoxGeometry(width - 0.26, 0.14, 0.07), fridgeSealMaterial);
@@ -3106,7 +3108,7 @@ export function createChapterSeven(): ChapterSevenData {
     });
 
     ovenDoorPivot.add(ovenDoorTop, ovenDoorBottom, ovenDoorLeft, ovenDoorRight, ovenWindow, ovenHandle);
-    stove.add(body, cooktop, ovenBackWall, ovenLeftWall, ovenRightWall, ovenCeiling, ovenFloor, ovenDoorPivot, knobRow, ...burners);
+    stove.add(body, cooktop, ovenBackWall, ovenLeftWall, ovenRightWall, ovenCeiling, ovenFloor, ovenOpeningDark, ovenDoorPivot, knobRow, ...burners);
     house.add(stove);
     const stoveCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.08, depth + 0.08);
     counterSurfaces.push({
