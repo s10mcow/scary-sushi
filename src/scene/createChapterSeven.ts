@@ -334,6 +334,13 @@ export function createChapterSeven(): ChapterSevenData {
   const colliders: CollisionBox[] = [];
   const counterSurfaces: ChapterSevenCounterSurface[] = [];
   const bedSurfaces: ChapterSevenBedSurface[] = [];
+  const crawlUnderTableColliders: Array<{
+    collider: CollisionBox;
+    centerX: number;
+    centerZ: number;
+    halfWidth: number;
+    halfDepth: number;
+  }> = [];
   let forestTime = 0;
 
   const random = createRandom(707);
@@ -1716,7 +1723,14 @@ export function createChapterSeven(): ChapterSevenData {
     foot.position.y = 0.05;
     table.add(top, pedestal, foot);
     root.add(table);
-    addCollider(colliders, worldX, worldZ, 2.78, 2.78);
+    const tableCollider = addCollider(colliders, worldX, worldZ, 2.78, 2.78);
+    crawlUnderTableColliders.push({
+      collider: tableCollider,
+      centerX: worldX,
+      centerZ: worldZ,
+      halfWidth: 2.78 / 2,
+      halfDepth: 2.78 / 2,
+    });
 
     const chairDistance = 2.06;
     const chairAngles = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6];
@@ -4320,6 +4334,9 @@ export function createChapterSeven(): ChapterSevenData {
             collider.enabled = true;
           });
         });
+        crawlUnderTableColliders.forEach((table) => {
+          table.collider.enabled = true;
+        });
         return null;
       }
 
@@ -4347,6 +4364,12 @@ export function createChapterSeven(): ChapterSevenData {
         fixture.wallColliders.forEach((collider) => {
           collider.enabled = !(nearTub && (highEnoughToClearTub || insideTub));
         });
+      });
+
+      crawlUnderTableColliders.forEach((table) => {
+        const nearTable = Math.abs(position.x - table.centerX) <= table.halfWidth + GAME_CONFIG.player.radius + 0.28
+          && Math.abs(position.z - table.centerZ) <= table.halfDepth + GAME_CONFIG.player.radius + 0.28;
+        table.collider.enabled = !(crawling && nearTable);
       });
 
       const insideOven = Math.abs(position.x - houseOven.centerX) <= houseOven.halfWidth - 0.1
@@ -4627,6 +4650,9 @@ export function createChapterSeven(): ChapterSevenData {
         if (surface.collider) {
           surface.collider.enabled = true;
         }
+      });
+      crawlUnderTableColliders.forEach((table) => {
+        table.collider.enabled = true;
       });
       houseFridge.open = false;
       houseFridge.openAmount = 0;
