@@ -585,6 +585,7 @@ const OFFICE_STAGE_YELL_LEVEL = 0.48;
 const OFFICE_YELL_ATTRACT_RANGE = 34;
 const OFFICE_STAGE_VOICE_RELEASE_COOLDOWN = 2.4;
 const OFFICE_STAGE_YELL_RELEASE_CHANCE = 0.25;
+const OFFICE_CHARACTER_SPEECH_RANGE = 9.5;
 const OFFICE_CHASE_GIVE_UP_SECONDS = 14;
 const OFFICE_CALM_WATCH_CHANCE_PER_SECOND = 0.24;
 const OFFICE_CALM_WATCH_MIN_SECONDS = 2.1;
@@ -649,6 +650,47 @@ const OFFICE_INSULT_PHRASES = [
   'damn',
   'crap',
   'hell',
+  'foxy woxy',
+  'quacky wacky',
+  'bori boring',
+  'fluffle fluff',
+] as const;
+const OFFICE_FOXY_PIRATE_APPROVAL_PHRASES = [
+  'ahoy',
+  'matey',
+  'captain',
+  'sir',
+  'captain foxy',
+  'mister foxy',
+  'mr foxy',
+  'pirate',
+  'yar',
+  'yarr',
+  'arr',
+  'arrr',
+  'treasure',
+  'ship',
+  'sail',
+  'sea',
+  'crew',
+  'hello foxy',
+  'hi foxy',
+  'hey foxy',
+  'please',
+  'thank you',
+  'nice',
+  'cool',
+] as const;
+const OFFICE_FOXY_ADDRESSING_PHRASES = [
+  'foxy',
+  'fox',
+  'pirate',
+  'you',
+  "you're",
+  'your',
+  'hey',
+  'hi',
+  'hello',
 ] as const;
 const OFFICE_DOOR_BREACH_CHANCE = 0.5;
 const OFFICE_DOOR_BREACH_SECONDS = 4.75;
@@ -1876,9 +1918,7 @@ export class Game {
       for (let index = event.resultIndex; index < event.results.length; index += 1) {
         const result = event.results[index];
         const transcript = result?.[0]?.transcript ?? '';
-        if (this.isOfficeInsultTranscript(transcript)) {
-          this.handleOfficeProvocativeSpeech(transcript);
-        }
+        this.handleOfficeRecognizedSpeech(transcript);
       }
     };
     recognition.onerror = () => {
@@ -1922,19 +1962,121 @@ export class Game {
     }
   }
 
-  private isOfficeInsultTranscript(transcript: string): boolean {
-    const normalized = transcript
+  private normalizeOfficeSpeechTranscript(transcript: string): string {
+    return transcript
       .toLowerCase()
       .replace(/[^a-z'\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  private isOfficeInsultNormalized(normalized: string): boolean {
     return OFFICE_INSULT_PHRASES.some((phrase) => {
       const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       return new RegExp(`\\b${escaped}\\b`).test(normalized);
     });
   }
 
-  private handleOfficeProvocativeSpeech(transcript: string): void {
+  private officeSpeechIncludesAny(normalized: string, phrases: readonly string[]): boolean {
+    return phrases.some((phrase) => {
+      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\b${escaped}\\b`).test(normalized);
+    });
+  }
+
+  private getOfficeSpeechAnimatronicPosition(animatronic: OfficeGameModeAnimatronicState): Vector3 {
+    return animatronic.state === 'stage'
+      ? animatronic.route[0] ?? animatronic.model.root.position
+      : animatronic.model.root.position;
+  }
+
+  private getOfficeSpeechMentionedAnimatronic(normalized: string): OfficeJumpscareAnimatronic | null {
+    if (/\b(quacky|duck)\b/.test(normalized)) {
+      return 'quacky';
+    }
+    if (/\b(fluffle|bunny|rabbit)\b/.test(normalized)) {
+      return 'fluffle';
+    }
+    if (/\b(bori|boris|bear)\b/.test(normalized)) {
+      return 'bori';
+    }
+    if (/\b(foxy|fox|pirate)\b/.test(normalized)) {
+      return 'foxy';
+    }
+    return null;
+  }
+
+  private getOfficeSpeechTarget(normalized: string): OfficeGameModeAnimatronicState | null {
+    const playerPosition = this.player.getPosition();
+    const mentioned = this.getOfficeSpeechMentionedAnimatronic(normalized);
+    const candidates = this.officeGameModeAnimatronics
+      .filter((animatronic) => (
+        animatronic.state !== 'door-breach'
+        && animatronic.state !== 'foxy-leap'
+        && animatronic.state !== 'vent-chase'
+        && animatronic.state !== 'off-balance'
+      ))
+      .map((animatronic) => ({
+        animatronic,
+        distance: this.getOfficeSpeechAnimatronicPosition(animatronic).distanceTo(playerPosition),
+      }))
+      .filter(({ distance }) => distance <= OFFICE_CHARACTER_SPEECH_RANGE)
+      .sort((a, b) => a.distance - b.distance);
+
+    if (mentioned) {
+      return candidates.find(({ animatronic }) => animatronic.animatronic === mentioned)?.animatronic ?? null;
+    }
+
+    return candidates[0]?.animatronic ?? null;
+  }
+
+  private getOfficeSpeechDislikeReason(
+    target: OfficeGameModeAnimatronicState,
+    normalized: string,
+    insulted: boolean,
+  ): string | null {
+    if (insulted) {
+      return 'that sounded rude';
+    }
+
+    if (target.animatronic !== 'foxy') {
+      return null;
+    }
+
+    const addressedFoxy = this.officeSpeechIncludesAny(normalized, OFFICE_FOXY_ADDRESSING_PHRASES);
+    if (!addressedFoxy) {
+      return null;
+    }
+
+    const pirateApproved = this.officeSpeechIncludesAny(normalized, OFFICE_FOXY_PIRATE_APPROVAL_PHRASES);
+    if (pirateApproved) {
+      return null;
+    }
+
+    return 'Foxy wanted pirate talk or respectful words';
+  }
+
+  private handleOfficeRecognizedSpeech(transcript: string): void {
+    const normalized = this.normalizeOfficeSpeechTranscript(transcript);
+    if (!normalized) {
+      return;
+    }
+
+    const insulted = this.isOfficeInsultNormalized(normalized);
+    const target = this.getOfficeSpeechTarget(normalized);
+    const dislikeReason = target ? this.getOfficeSpeechDislikeReason(target, normalized, insulted) : null;
+    if (!insulted && !dislikeReason) {
+      return;
+    }
+
+    this.handleOfficeProvocativeSpeech(transcript, target, dislikeReason ?? 'that sounded wrong');
+  }
+
+  private handleOfficeProvocativeSpeech(
+    transcript: string,
+    forcedTarget: OfficeGameModeAnimatronicState | null = null,
+    reason = 'that sounded rude',
+  ): void {
     if (!this.officeChapterActive || !this.officeGameModeActive || this.officeGameModePowerOut) {
       return;
     }
@@ -1954,7 +2096,7 @@ export class Game {
       && animatronic.state !== 'off-balance'
     ));
     const stageFallback = this.officeGameModeAnimatronics.find((animatronic) => animatronic.state === 'stage') ?? null;
-    const target = available
+    const target = forcedTarget ?? available
       .sort((a, b) => a.model.root.position.distanceTo(playerPosition) - b.model.root.position.distanceTo(playerPosition))[0]
       ?? stageFallback;
     if (!target) {
@@ -1970,8 +2112,8 @@ export class Game {
     const cleaned = transcript.trim();
     this.pushStatus(
       cleaned
-        ? `${target.label} heard "${cleaned}" and turns toward you.`
-        : `${target.label} heard that and turns toward you.`,
+        ? `${target.label} heard "${cleaned}" (${reason}) and turns toward you.`
+        : `${target.label} heard ${reason} and turns toward you.`,
       2.8,
     );
   }
@@ -7669,6 +7811,7 @@ export class Game {
     const snap = innerOpen * Math.max(0, Math.sin(this.elapsed * 13.5 + animatronic.walkCyclePhase));
     const jawTarget = -1.34 * beakOpen + snap * 0.08;
     animatronic.model.jaw.rotation.x = MathUtils.lerp(animatronic.model.jaw.rotation.x, jawTarget, scareActive ? 0.34 : 0.18);
+    this.updateOfficeQuackyNestedJaws(animatronic.model.head, innerOpen, snap, 0.32);
 
     const innerJaw = animatronic.model.head.getObjectByName('quacky-inner-jaw');
     if (innerJaw) {
@@ -7684,6 +7827,26 @@ export class Game {
     if (tinyMetalJaw) {
       tinyMetalJaw.rotation.x = MathUtils.lerp(tinyMetalJaw.rotation.x, (0.16 + snap * 0.42) * innerOpen, 0.38);
       tinyMetalJaw.position.y = MathUtils.lerp(tinyMetalJaw.position.y, -0.012 + snap * 0.018 * innerOpen, 0.32);
+    }
+  }
+
+  private updateOfficeQuackyNestedJaws(head: Object3D, openAmount: number, snap: number, blend: number): void {
+    const innerUpper = head.getObjectByName('quacky-inner-upper-jaw');
+    const innerLower = head.getObjectByName('quacky-inner-lower-jaw');
+    if (innerUpper) {
+      innerUpper.rotation.x = MathUtils.lerp(innerUpper.rotation.x, -0.42 * openAmount, blend);
+    }
+    if (innerLower) {
+      innerLower.rotation.x = MathUtils.lerp(innerLower.rotation.x, (0.48 + snap * 0.18) * openAmount, blend);
+    }
+
+    const metalUpper = head.getObjectByName('quacky-metal-upper-jaw');
+    const metalLower = head.getObjectByName('quacky-metal-lower-jaw');
+    if (metalUpper) {
+      metalUpper.rotation.x = MathUtils.lerp(metalUpper.rotation.x, -0.28 * openAmount, blend);
+    }
+    if (metalLower) {
+      metalLower.rotation.x = MathUtils.lerp(metalLower.rotation.x, (0.34 + snap * 0.34) * openAmount, blend);
     }
   }
 
@@ -7792,6 +7955,7 @@ export class Game {
       innerJaw.rotation.set(0, 0, 0);
       innerJaw.scale.set(1, 1, 1);
     }
+    this.updateOfficeQuackyNestedJaws(animatronic.model.head, 0, 0, 1);
     const tinyMetalJaw = animatronic.model.head.getObjectByName('quacky-tiny-metal-jaw');
     if (tinyMetalJaw) {
       tinyMetalJaw.rotation.set(0, 0, 0);
@@ -12743,6 +12907,7 @@ export class Game {
       cutscene.jaw.rotation.x = Math.min(cutscene.jaw.rotation.x, -1.58 * visibleScream);
       const innerJaw = cutscene.head.getObjectByName('quacky-inner-jaw');
       const tinyMetalJaw = cutscene.head.getObjectByName('quacky-tiny-metal-jaw');
+      this.updateOfficeQuackyNestedJaws(cutscene.head, visibleScream, Math.max(0, Math.sin(cutscene.elapsed * 13.5)), 0.72);
       if (innerJaw) {
         innerJaw.rotation.x = Math.sin(cutscene.elapsed * 9.5) * 0.18 * visibleScream;
       }
@@ -12832,6 +12997,7 @@ export class Game {
         cutscene.jaw.rotation.x = -1.82 * scream;
         const innerJaw = cutscene.head.getObjectByName('quacky-inner-jaw');
         const tinyMetalJaw = cutscene.head.getObjectByName('quacky-tiny-metal-jaw');
+        this.updateOfficeQuackyNestedJaws(cutscene.head, scream, Math.max(0, Math.sin(cutscene.elapsed * 13.5)), 0.62);
         if (innerJaw) {
           innerJaw.rotation.x = Math.sin(cutscene.elapsed * 9.5) * 0.22 * scream;
           innerJaw.scale.setScalar(1 + scream * 0.14);
