@@ -2655,8 +2655,8 @@ select {
 .hud__crouch-instructions {
   left: 1.2rem;
   bottom: 1.05rem;
-  z-index: 4;
-  width: min(15rem, calc(100% - 2.4rem));
+  z-index: 8;
+  width: min(20rem, calc(100% - 2.4rem));
   padding: 0.62rem 0.72rem;
   border-color: rgba(94, 72, 54, 0.36);
   background: linear-gradient(180deg, rgba(236, 218, 194, 0.9), rgba(160, 104, 62, 0.78));

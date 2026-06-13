@@ -10952,7 +10952,6 @@ export class Game {
       && this.chapterFourGreenJumpscareTimer <= 0
       && this.chapterFourLockerId === null;
     const chapterSevenCrawlInstructionsActive = this.chapterSevenActive
-      && locked
       && !this.chapterMenuOpen
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen;
