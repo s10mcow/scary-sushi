@@ -5002,6 +5002,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const backstageHallSouthZ = partyRoomNorthZ;
   const backstageHallNorthZ = backstageHallSouthZ - backstageHallLength;
   const backstageHallCenterZ = (backstageHallSouthZ + backstageHallNorthZ) / 2;
+  const backstageHallExtensionLength = abandonedStraightHalls ? 0 : 3.6;
+  const backstageHallExtensionNorthZ = backstageHallNorthZ - backstageHallExtensionLength;
+  const backstageHallExtensionCenterZ = backstageHallNorthZ - backstageHallExtensionLength / 2;
   const backstageStorageMinX = backstageHallMaxX;
   const backstageStorageMaxX = backstageStorageMinX + backstageStorageWidth;
   const backstageStorageMinZ = backstageHallNorthZ;
@@ -5306,10 +5309,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       ceilingHeight: WALL_HEIGHT,
     }, materials),
   );
+  if (backstageHallExtensionLength > 0.05) {
+    root.add(createFloor({
+      width: backstageHallWidth,
+      depth: backstageHallExtensionLength,
+      center: [backstageHallCenterX, backstageHallExtensionCenterZ],
+      ceilingHeight: WALL_HEIGHT,
+    }, materials));
+  }
   const backstageHallEastWallDepth = backstageHallSouthZ - backstageStorageMaxZ;
   const backstageWalls: WallDefinition[] = [
     {
-      position: [backstageHallCenterX, WALL_HEIGHT / 2, backstageHallNorthZ + WALL_THICKNESS / 2],
+      position: [backstageHallCenterX, WALL_HEIGHT / 2, backstageHallExtensionNorthZ + WALL_THICKNESS / 2],
       size: [backstageHallWidth, WALL_HEIGHT, WALL_THICKNESS],
     },
     {
@@ -5331,6 +5342,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [WALL_THICKNESS, WALL_HEIGHT, backstageHallLength],
     });
   } else {
+    if (backstageHallExtensionLength > 0.05) {
+      backstageWalls.push(
+        {
+          position: [backstageHallMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, backstageHallExtensionCenterZ],
+          size: [WALL_THICKNESS, WALL_HEIGHT, backstageHallExtensionLength],
+        },
+        {
+          position: [backstageHallMaxX - WALL_THICKNESS / 2, WALL_HEIGHT / 2, backstageHallExtensionCenterZ],
+          size: [WALL_THICKNESS, WALL_HEIGHT, backstageHallExtensionLength],
+        },
+      );
+    }
     ([
       [backstageHallNorthZ, storageClosetDoorMinZ],
       [storageClosetDoorMaxZ, backstageHallSouthZ],
