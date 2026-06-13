@@ -205,6 +205,22 @@ export interface OfficeChapterEmployeeOnlyDoor {
   targetOpenAmount: number;
 }
 
+export interface OfficeChapterEmployeeElevator {
+  label: string;
+  root: Group;
+  platform: Group;
+  interactPosition: Vector3;
+  topPosition: Vector3;
+  lowerPosition: Vector3;
+  lowerLookTarget: Vector3;
+  button: Mesh;
+  buttonRestX: number;
+  cables: Mesh[];
+  cableTopY: number;
+  cableBaseLength: number;
+  platformHomeY: number;
+}
+
 export type OfficeChapterStorageFuseWireColor = 'green' | 'blue' | 'red';
 
 export interface OfficeChapterStorageFuseBoxWire {
@@ -349,6 +365,7 @@ export interface OfficeChapterData {
   backstageStorageDoor: OfficeChapterBackstageStorageDoor;
   storageClosetDoor: OfficeChapterStorageClosetDoor;
   employeeOnlyDoor: OfficeChapterEmployeeOnlyDoor;
+  employeeElevator: OfficeChapterEmployeeElevator;
   storageFuseBox: OfficeChapterStorageFuseBox;
   kitchenEntranceDoor: OfficeChapterKitchenEntranceDoor;
   kitchenGlassShelves: OfficeChapterKitchenGlassShelf[];
@@ -3856,6 +3873,8 @@ function createStageAnimatronic(
     });
     const mouthCavity = new Mesh(new BoxGeometry(0.32, 0.06, 0.05), mouthCavityMaterial);
     mouthCavity.position.set(0, -0.17, -0.42);
+    const upperJaw = new Mesh(new BoxGeometry(0.36, 0.06, 0.11), muzzleMaterial);
+    upperJaw.position.set(0, -0.13, -0.405);
     mouthJaw = new Group();
     mouthJaw.position.set(0, -0.21, -0.41);
     mouthBasePosition = mouthJaw.position.clone();
@@ -3873,7 +3892,7 @@ function createStageAnimatronic(
       headGroup.add(upperTooth);
       jawGroup.add(lowerTooth);
     });
-    headGroup.add(uprightEar, danglingEar, mouthCavity, jawGroup);
+    headGroup.add(uprightEar, danglingEar, mouthCavity, upperJaw, jawGroup);
   } else if (kind === 'bear') {
     [-0.26, 0.26].forEach((earX) => {
       const ear = new Mesh(new SphereGeometry(0.14, 12, 10), bodyMaterial);
@@ -3890,6 +3909,9 @@ function createStageAnimatronic(
     const mouthCavity = new Mesh(new BoxGeometry(0.25, 0.055, 0.026), mouthCavityMaterial);
     mouthCavity.position.set(0, -0.17, -0.438);
     mouthCavity.rotation.x = -0.04;
+    const upperJaw = new Mesh(new BoxGeometry(0.27, 0.064, 0.064), muzzleMaterial);
+    upperJaw.position.set(0, -0.12, -0.405);
+    upperJaw.rotation.x = -0.04;
     mouthJaw = new Group();
     mouthJaw.position.set(0, -0.205, -0.43);
     mouthBasePosition = mouthJaw.position.clone();
@@ -3899,7 +3921,7 @@ function createStageAnimatronic(
     const jawShadow = new Mesh(new BoxGeometry(0.2, 0.014, 0.02), mouthCavityMaterial);
     jawShadow.position.set(0, 0.04, -0.018);
     jawGroup.add(lowerJaw, jawShadow);
-    headGroup.add(mouthCavity, jawGroup);
+    headGroup.add(mouthCavity, upperJaw, jawGroup);
   } else {
     const crest = new Mesh(new BoxGeometry(0.12, 0.34, 0.08), accentMaterial);
     crest.position.set(0, 0.36, 0.04);
@@ -3914,6 +3936,9 @@ function createStageAnimatronic(
     const mouthCavity = new Mesh(new SphereGeometry(0.18, 14, 8), mouthCavityMaterial);
     mouthCavity.scale.set(1.55, 0.26, 0.54);
     mouthCavity.position.set(0, -0.155, -0.39);
+    const upperBeak = new Mesh(new SphereGeometry(0.2, 18, 10), muzzleMaterial);
+    upperBeak.scale.set(1.58, 0.32, 0.78);
+    upperBeak.position.set(0, -0.105, -0.392);
     mouthJaw = new Group();
     mouthJaw.position.set(0, -0.19, -0.35);
     mouthBasePosition = mouthJaw.position.clone();
@@ -3939,7 +3964,7 @@ function createStageAnimatronic(
       jawGroup.add(lowerTooth);
     });
     jawGroup.add(lowerBeak);
-    headGroup.add(crest, mouthCavity, jawGroup);
+    headGroup.add(crest, mouthCavity, upperBeak, jawGroup);
   }
 
   const leftArmPose: StageArmPose = includePerformanceProps && kind === 'bunny'
@@ -4327,6 +4352,8 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
     });
     const foxyLowerJaw = new Mesh(new BoxGeometry(0.26, 0.075, 0.17), foxyJawMaterial);
     foxyLowerJaw.position.set(0, -0.02, -0.06);
+    const foxyUpperJaw = new Mesh(new BoxGeometry(0.28, 0.07, 0.15), foxyJawMaterial);
+    foxyUpperJaw.position.set(0, -0.13, -0.49);
     const foxyMouthDark = new Mesh(new BoxGeometry(0.22, 0.03, 0.035), foxyMouthMaterial);
     foxyMouthDark.position.set(0, 0.02, -0.15);
     [-0.13, -0.065, 0, 0.065, 0.13].forEach((toothX) => {
@@ -4339,6 +4366,7 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
       head.add(upperTooth);
       jaw.add(lowerTooth);
     });
+    head.add(foxyUpperJaw);
     jaw.add(foxyLowerJaw, foxyMouthDark);
     leftArm = parts.leftArm.root;
     rightArm = parts.rightArm.root;
@@ -4482,6 +4510,8 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
       });
       jaw.clear();
       jaw.position.set(0, -0.18, -0.42);
+      const upperJaw = new Mesh(new BoxGeometry(0.28, 0.064, 0.095), lowerJawMaterial);
+      upperJaw.position.set(0, -0.115, -0.505);
       const lowerJaw = new Mesh(new BoxGeometry(0.26, 0.07, 0.1), lowerJawMaterial);
       lowerJaw.position.set(0, -0.01, -0.04);
       const mouthDark = new Mesh(new BoxGeometry(0.22, 0.028, 0.032), mouthMaterial);
@@ -4496,6 +4526,7 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
         head.add(upperTooth);
         jaw.add(lowerTooth);
       });
+      head.add(upperJaw);
       jaw.add(lowerJaw, mouthDark);
     }
     if (animatronic === 'bori') {
@@ -5074,6 +5105,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const employeeRoomCenterX = (employeeRoomMinX + employeeRoomMaxX) / 2;
   const employeeRoomCenterZ = (employeeRoomMinZ + employeeRoomMaxZ) / 2;
   const employeeRoomDepth = employeeRoomMaxZ - employeeRoomMinZ;
+  const employeeElevatorLowerRoomWidth = 5.8;
+  const employeeElevatorLowerRoomDepth = 5.8;
+  const employeeElevatorLowerRoomCenterX = employeeRoomMinX - 9.2;
+  const employeeElevatorLowerRoomCenterZ = employeeRoomCenterZ;
+  const employeeElevatorLowerRoomMinX = employeeElevatorLowerRoomCenterX - employeeElevatorLowerRoomWidth / 2;
+  const employeeElevatorLowerRoomMaxX = employeeElevatorLowerRoomCenterX + employeeElevatorLowerRoomWidth / 2;
+  const employeeElevatorLowerRoomMinZ = employeeElevatorLowerRoomCenterZ - employeeElevatorLowerRoomDepth / 2;
+  const employeeElevatorLowerRoomMaxZ = employeeElevatorLowerRoomCenterZ + employeeElevatorLowerRoomDepth / 2;
   const backstageStorageMinX = backstageHallMaxX;
   const backstageStorageMaxX = backstageStorageMinX + backstageStorageWidth;
   const backstageStorageMinZ = backstageHallNorthZ;
@@ -5393,6 +5432,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       center: [employeeRoomCenterX, employeeRoomCenterZ],
       ceilingHeight: WALL_HEIGHT,
     }, materials));
+    root.add(createFloor({
+      width: employeeElevatorLowerRoomWidth,
+      depth: employeeElevatorLowerRoomDepth,
+      center: [employeeElevatorLowerRoomCenterX, employeeElevatorLowerRoomCenterZ],
+      ceilingHeight: WALL_HEIGHT,
+    }, materials));
   }
   const backstageHallEastWallDepth = backstageHallSouthZ - backstageStorageMaxZ;
   const backstageWalls: WallDefinition[] = [
@@ -5458,6 +5503,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       {
         position: [employeeRoomCenterX, WALL_HEIGHT / 2, employeeRoomMaxZ - WALL_THICKNESS / 2],
         size: [employeeRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+      },
+      {
+        position: [employeeElevatorLowerRoomMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, employeeElevatorLowerRoomCenterZ],
+        size: [WALL_THICKNESS, WALL_HEIGHT, employeeElevatorLowerRoomDepth],
+      },
+      {
+        position: [employeeElevatorLowerRoomMaxX - WALL_THICKNESS / 2, WALL_HEIGHT / 2, employeeElevatorLowerRoomCenterZ],
+        size: [WALL_THICKNESS, WALL_HEIGHT, employeeElevatorLowerRoomDepth],
+      },
+      {
+        position: [employeeElevatorLowerRoomCenterX, WALL_HEIGHT / 2, employeeElevatorLowerRoomMinZ + WALL_THICKNESS / 2],
+        size: [employeeElevatorLowerRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+      },
+      {
+        position: [employeeElevatorLowerRoomCenterX, WALL_HEIGHT / 2, employeeElevatorLowerRoomMaxZ - WALL_THICKNESS / 2],
+        size: [employeeElevatorLowerRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
       },
     );
     backstageWalls.push(
@@ -6128,6 +6189,131 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     open: false,
     openAmount: 0,
     targetOpenAmount: 0,
+  };
+
+  const employeeElevatorRoot = new Group();
+  employeeElevatorRoot.visible = !abandonedStraightHalls;
+  const elevatorMetalMaterial = new MeshStandardMaterial({
+    color: 0x6d747c,
+    emissive: 0x090d10,
+    emissiveIntensity: 0.1,
+    roughness: 0.48,
+    metalness: 0.52,
+  });
+  const elevatorDarkMaterial = new MeshStandardMaterial({
+    color: 0x090b0d,
+    emissive: 0x010203,
+    emissiveIntensity: 0.08,
+    roughness: 0.92,
+    metalness: 0.12,
+  });
+  const elevatorCableMaterial = new MeshStandardMaterial({
+    color: 0x1a1d20,
+    emissive: 0x050607,
+    emissiveIntensity: 0.1,
+    roughness: 0.34,
+    metalness: 0.78,
+  });
+  const elevatorButtonMaterial = new MeshStandardMaterial({
+    color: 0xb31318,
+    emissive: 0x8f0507,
+    emissiveIntensity: 0.65,
+    roughness: 0.32,
+    metalness: 0.18,
+  });
+  const employeeElevatorPlatformSize = 2.55;
+  const employeeElevatorCenterX = employeeRoomCenterX - 0.48;
+  const employeeElevatorCenterZ = employeeRoomCenterZ;
+  const employeeElevatorPlatformHomeY = 0.055;
+  const employeeElevatorPlatform = new Group();
+  employeeElevatorPlatform.position.set(employeeElevatorCenterX, employeeElevatorPlatformHomeY, employeeElevatorCenterZ);
+  const elevatorShaftDark = new Mesh(
+    new BoxGeometry(employeeElevatorPlatformSize + 0.42, 0.035, employeeElevatorPlatformSize + 0.42),
+    elevatorDarkMaterial,
+  );
+  elevatorShaftDark.position.set(0, -0.012, 0);
+  const elevatorPatch = new Mesh(
+    new BoxGeometry(employeeElevatorPlatformSize, 0.08, employeeElevatorPlatformSize),
+    elevatorMetalMaterial,
+  );
+  elevatorPatch.position.set(0, 0.035, 0);
+  elevatorPatch.receiveShadow = true;
+  const elevatorEdgeMaterial = new MeshStandardMaterial({
+    color: 0x2e3338,
+    emissive: 0x030506,
+    emissiveIntensity: 0.12,
+    roughness: 0.52,
+    metalness: 0.7,
+  });
+  [
+    { x: 0, z: -employeeElevatorPlatformSize / 2 - 0.055, sx: employeeElevatorPlatformSize + 0.18, sz: 0.09 },
+    { x: 0, z: employeeElevatorPlatformSize / 2 + 0.055, sx: employeeElevatorPlatformSize + 0.18, sz: 0.09 },
+    { x: -employeeElevatorPlatformSize / 2 - 0.055, z: 0, sx: 0.09, sz: employeeElevatorPlatformSize + 0.18 },
+    { x: employeeElevatorPlatformSize / 2 + 0.055, z: 0, sx: 0.09, sz: employeeElevatorPlatformSize + 0.18 },
+  ].forEach((edge) => {
+    const rail = new Mesh(new BoxGeometry(edge.sx, 0.12, edge.sz), elevatorEdgeMaterial);
+    rail.position.set(edge.x, 0.12, edge.z);
+    employeeElevatorPlatform.add(rail);
+  });
+  employeeElevatorPlatform.add(elevatorShaftDark, elevatorPatch);
+  employeeElevatorRoot.add(employeeElevatorPlatform);
+
+  const cableTopY = WALL_HEIGHT - 0.08;
+  const cableBaseLength = cableTopY - 0.22;
+  const employeeElevatorCables: Mesh[] = [];
+  const cableOffset = employeeElevatorPlatformSize / 2 - 0.17;
+  ([
+    [-cableOffset, -cableOffset],
+    [cableOffset, -cableOffset],
+    [-cableOffset, cableOffset],
+    [cableOffset, cableOffset],
+  ] as Array<[number, number]>).forEach(([offsetX, offsetZ]) => {
+    const cable = new Mesh(new CylinderGeometry(0.025, 0.025, 1, 8), elevatorCableMaterial);
+    cable.position.set(employeeElevatorCenterX + offsetX, cableTopY - cableBaseLength / 2, employeeElevatorCenterZ + offsetZ);
+    cable.scale.y = cableBaseLength;
+    employeeElevatorCables.push(cable);
+    employeeElevatorRoot.add(cable);
+    const ceilingAnchor = new Mesh(new CylinderGeometry(0.085, 0.085, 0.055, 12), elevatorMetalMaterial);
+    ceilingAnchor.position.set(employeeElevatorCenterX + offsetX, cableTopY + 0.025, employeeElevatorCenterZ + offsetZ);
+    employeeElevatorRoot.add(ceilingAnchor);
+  });
+
+  const elevatorPoleX = employeeElevatorCenterX - employeeElevatorPlatformSize / 2 - 0.42;
+  const elevatorPoleZ = employeeElevatorCenterZ;
+  const elevatorPole = new Mesh(new CylinderGeometry(0.055, 0.07, 1.28, 12), elevatorMetalMaterial);
+  elevatorPole.position.set(elevatorPoleX, 0.7, elevatorPoleZ);
+  const elevatorButton = new Mesh(new CylinderGeometry(0.12, 0.12, 0.08, 18), elevatorButtonMaterial);
+  elevatorButton.rotation.z = Math.PI / 2;
+  elevatorButton.position.set(elevatorPoleX + 0.08, 1.18, elevatorPoleZ);
+  const elevatorButtonPlate = new Mesh(new BoxGeometry(0.05, 0.42, 0.42), elevatorEdgeMaterial);
+  elevatorButtonPlate.position.set(elevatorPoleX + 0.025, 1.18, elevatorPoleZ);
+  employeeElevatorRoot.add(elevatorPole, elevatorButtonPlate, elevatorButton);
+
+  const lowerElevatorPad = new Mesh(
+    new BoxGeometry(employeeElevatorPlatformSize, 0.08, employeeElevatorPlatformSize),
+    elevatorMetalMaterial,
+  );
+  lowerElevatorPad.position.set(employeeElevatorLowerRoomCenterX, 0.06, employeeElevatorLowerRoomCenterZ);
+  const lowerRoomFixture = new Mesh(new BoxGeometry(0.78, 0.08, 0.36), panelMaterial);
+  lowerRoomFixture.position.set(employeeElevatorLowerRoomCenterX, WALL_HEIGHT - 0.16, employeeElevatorLowerRoomCenterZ);
+  const lowerRoomGlow = new PointLight(0xffd8ac, 0.78, 8.2, 1.8);
+  lowerRoomGlow.position.set(employeeElevatorLowerRoomCenterX, WALL_HEIGHT - 0.78, employeeElevatorLowerRoomCenterZ);
+  employeeElevatorRoot.add(lowerElevatorPad, lowerRoomFixture, lowerRoomGlow);
+  root.add(employeeElevatorRoot);
+  const employeeElevator: OfficeChapterEmployeeElevator = {
+    label: 'Employees Only Elevator',
+    root: employeeElevatorRoot,
+    platform: employeeElevatorPlatform,
+    interactPosition: new Vector3(elevatorPoleX + 0.48, 1.18, elevatorPoleZ),
+    topPosition: new Vector3(employeeElevatorCenterX, GAME_CONFIG.player.height, employeeElevatorCenterZ),
+    lowerPosition: new Vector3(employeeElevatorLowerRoomCenterX, GAME_CONFIG.player.height, employeeElevatorLowerRoomCenterZ),
+    lowerLookTarget: new Vector3(employeeElevatorLowerRoomCenterX + 2.2, GAME_CONFIG.player.height, employeeElevatorLowerRoomCenterZ),
+    button: elevatorButton,
+    buttonRestX: elevatorButton.position.x,
+    cables: employeeElevatorCables,
+    cableTopY,
+    cableBaseLength,
+    platformHomeY: employeeElevatorPlatformHomeY,
   };
 
   const storageClosetShelfMaterial = new MeshStandardMaterial({
@@ -8213,6 +8399,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeOnlyDoor.targetOpenAmount = 0;
     employeeOnlyDoor.doorPivot.rotation.y = 0;
     employeeOnlyDoor.collider.enabled = !abandonedStraightHalls;
+    employeeElevator.platform.position.y = employeeElevator.platformHomeY;
+    employeeElevator.button.position.x = employeeElevator.buttonRestX;
+    employeeElevator.cables.forEach((cable) => {
+      cable.scale.y = employeeElevator.cableBaseLength;
+      cable.position.y = employeeElevator.cableTopY - employeeElevator.cableBaseLength / 2;
+    });
     storageFuseBox.open = false;
     storageFuseBox.openAmount = 0;
     storageFuseBox.targetOpenAmount = 0;
@@ -8256,6 +8448,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     backstageStorageDoor,
     storageClosetDoor,
     employeeOnlyDoor,
+    employeeElevator,
     storageFuseBox,
     kitchenEntranceDoor,
     kitchenGlassShelves,

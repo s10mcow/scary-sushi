@@ -361,6 +361,14 @@ interface ActiveOfficeVentDrop {
   openingLabel: string;
 }
 
+interface ActiveOfficeEmployeeElevatorRide {
+  elapsed: number;
+  duration: number;
+  startPosition: Vector3;
+  endPosition: Vector3;
+  lookTarget: Vector3;
+}
+
 interface ActiveOfficeBallPitSlide {
   elapsed: number;
   duration: number;
@@ -871,6 +879,7 @@ const PERFORMANCE_RENDER_PIXEL_RATIO = 1;
 const OFFICE_VENT_GRATE_DROP_RADIUS = 0.34;
 const OFFICE_VENT_GRATE_DROP_OPEN_AMOUNT = 0.86;
 const OFFICE_VENT_DROP_DURATION = 0.82;
+const OFFICE_EMPLOYEE_ELEVATOR_RIDE_DURATION = 5.2;
 const CHAPTER_THREE_HUD_SYNC_INTERVAL = 1 / 8;
 
 type ChapterSevenInteractable =
@@ -1092,6 +1101,7 @@ export class Game {
   private officeBallPitSlide: ActiveOfficeBallPitSlide | null = null;
   private officeVentActive = false;
   private officeVentDrop: ActiveOfficeVentDrop | null = null;
+  private officeEmployeeElevatorRide: ActiveOfficeEmployeeElevatorRide | null = null;
   private officeVentChasePendingTimer = 0;
   private officeVentChasePendingAnimatronic: OfficeGameModeAnimatronicState | null = null;
   private officeJumpscareMenuOpen = false;
@@ -2330,6 +2340,8 @@ export class Game {
     const officeBallPitSliding = this.officeChapterActive && this.officeBallPitSlide !== null;
     const officeVentActive = this.officeChapterActive && this.officeVentActive;
     const officeVentDropping = this.officeChapterActive && this.officeVentDrop !== null;
+    const officeEmployeeElevatorRiding = this.officeChapterActive && this.officeEmployeeElevatorRide !== null;
+    const officeScriptedMoving = officeVentDropping || officeEmployeeElevatorRiding;
     const chapterFourBoxHiding = this.chapterFourActive && this.chapterFourBoxActive;
     const chapterFourLockerHiding = this.chapterFourActive && this.chapterFourLockerId !== null;
     this.zombieFireCooldown = Math.max(0, this.zombieFireCooldown - deltaSeconds);
@@ -2339,13 +2351,13 @@ export class Game {
     if (chapterMenuToggle) {
       if (this.chapterMenuOpen) {
         this.setChapterMenuOpen(false);
-      } else if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding) {
+      } else if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding) {
         this.setChapterMenuOpen(true);
       }
     }
 
     const officeJumpscareMenuToggle = this.input.consumeOfficeJumpscareMenuToggle();
-    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && this.officeChapterActive && !this.officeModeMenuOpen && officeJumpscareMenuToggle) {
+    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && this.officeChapterActive && !this.officeModeMenuOpen && officeJumpscareMenuToggle) {
       if (this.officeJumpscareMenuOpen) {
         this.setOfficeJumpscareMenuOpen(false);
       } else {
@@ -2358,7 +2370,7 @@ export class Game {
     }
 
     const modeOrToolToggle = this.input.consumePlacementToolToggle();
-    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && modeOrToolToggle) {
+    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && modeOrToolToggle) {
       if (this.officeChapterActive) {
         this.setOfficeModeMenuOpen(!this.officeModeMenuOpen);
       } else if (this.chapterEightActive && !this.chapterMenuOpen) {
@@ -2377,7 +2389,7 @@ export class Game {
     }
 
     const hotbarSlot = this.input.consumeHotbarSlot();
-    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterEightActive) && hotbarSlot) {
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterEightActive) && hotbarSlot) {
       if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.selectOfficeTabletCameraBySlot(hotbarSlot);
       } else if (this.microphoneSoundToolActive) {
@@ -2395,7 +2407,7 @@ export class Game {
     }
 
     const itemCycle = this.input.consumeItemCycle();
-    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && itemCycle !== 0) {
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && itemCycle !== 0) {
       if (this.officeChapterActive) {
         if (this.officeTabletCameraFeedActive) {
           this.cycleOfficeTabletCamera(itemCycle);
@@ -2468,7 +2480,7 @@ export class Game {
       && !officeBallPitHiding
       && !officeBallPitSliding
       && !officeVentActive
-      && !officeVentDropping
+      && !officeScriptedMoving
       && !chapterFourBoxHiding
       && !chapterFourLockerHiding
       && !this.chapterSevenBoxHidden
@@ -2478,7 +2490,7 @@ export class Game {
     const isTryingToMove = movementState.forward !== 0 || movementState.strafe !== 0;
     const hasSprintStamina = this.officeChapterActive || this.stamina > 0.5;
     const sprinting = this.doomModeActive
-      ? this.player.isLocked() && !jumpscareLocked && !chapterTwoSeated && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeSeated && !officeTabletViewing && !officeBallPitHiding && !officeVentActive && !officeVentDropping && isTryingToMove
+      ? this.player.isLocked() && !jumpscareLocked && !chapterTwoSeated && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeSeated && !officeTabletViewing && !officeBallPitHiding && !officeVentActive && !officeScriptedMoving && isTryingToMove
       : this.player.isLocked()
         && !jumpscareLocked
         && !chapterTwoBearRefusing
@@ -2491,7 +2503,7 @@ export class Game {
         && !officeBallPitHiding
         && !officeBallPitSliding
         && !officeVentActive
-        && !officeVentDropping
+        && !officeScriptedMoving
         && !chapterFourBoxHiding
         && !chapterFourLockerHiding
         && !this.chapterFourCrouching
@@ -2522,7 +2534,7 @@ export class Game {
         ? { forward: 0, strafe: 0, sprint: false }
       : officeBallPitSliding
         ? { forward: 0, strafe: 0, sprint: false }
-      : officeVentDropping
+      : officeScriptedMoving
         ? { forward: 0, strafe: 0, sprint: false }
       : officeVentActive
         ? { ...movementState, sprint: false }
@@ -2552,7 +2564,7 @@ export class Game {
         ? movementState
         : { ...movementState, sprint: false };
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeDrop()) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumeDrop()) {
       if (this.microphoneSoundToolActive) {
         void this.saveMicrophoneSound();
       } else if (this.cameraToolActive) {
@@ -2562,7 +2574,7 @@ export class Game {
       }
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeUseItem()) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumeUseItem()) {
       if (this.chapterFourActive && this.player.isLocked() && !this.activeJumpscare) {
         this.toggleChapterFourBox();
       } else {
@@ -2570,7 +2582,7 @@ export class Game {
       }
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumePlacementMarkerDelete() && (this.placementToolActive || this.microphoneSoundToolActive || this.cameraToolActive)) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumePlacementMarkerDelete() && (this.placementToolActive || this.microphoneSoundToolActive || this.cameraToolActive)) {
       if (this.microphoneSoundToolActive) {
         this.deleteMicrophoneSound();
       } else if (this.cameraToolActive) {
@@ -2581,7 +2593,7 @@ export class Game {
     }
 
     const chapterSixPickupRequested = this.input.consumePickup();
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && chapterSixPickupRequested && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && chapterSixPickupRequested && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
       if (this.chapterSix.pickUpLookedAtPossum()) {
         this.startChapterSixPossumPickupAnimation();
         this.pushStatus('You pick up the possum. It is now in the selected hotbar slot.', 2.4);
@@ -2592,9 +2604,9 @@ export class Game {
     }
 
     const secondaryFireRequested = this.input.consumeSecondaryFire();
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && secondaryFireRequested && this.chapterEightActive && this.player.isLocked() && !this.placementToolActive) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && secondaryFireRequested && this.chapterEightActive && this.player.isLocked() && !this.placementToolActive) {
       this.handleChapterEightSecondaryFire();
-    } else if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && secondaryFireRequested && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
+    } else if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && secondaryFireRequested && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
       if (this.chapterSix.petLookedAtPossum()) {
         this.pushStatus('You lean down and pet the possum. It flips over for belly rubs.', 2.8);
         this.syncHud();
@@ -2611,7 +2623,7 @@ export class Game {
       this.syncHud();
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && !chapterFourLockerHiding && this.input.consumeFire()) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumeFire()) {
       if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.toggleOfficeTabletCameraFeed();
       } else if (this.microphoneSoundToolActive) {
@@ -2698,7 +2710,7 @@ export class Game {
         deltaSeconds,
         effectiveMovement,
         jumpRequested,
-        !officeVentActive && !officeVentDropping,
+        !officeVentActive && !officeScriptedMoving,
         movementSpeedScale,
         true,
         this.chapterSixActive ? 1.34 : 1,
@@ -2728,6 +2740,9 @@ export class Game {
     }
     if (officeVentDropping) {
       this.updateOfficeVentDropAnimation(deltaSeconds);
+    }
+    if (officeEmployeeElevatorRiding) {
+      this.updateOfficeEmployeeElevatorRide(deltaSeconds);
     }
     if (officeBallPitSliding) {
       this.updateOfficeBallPitSlideAnimation(deltaSeconds);
@@ -2792,7 +2807,7 @@ export class Game {
       this.updateMachineJobs(deltaSeconds);
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeVentDropping && this.input.consumeInteract()) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeScriptedMoving && this.input.consumeInteract()) {
       this.handleInteract();
     }
 
@@ -5831,6 +5846,7 @@ export class Game {
     this.officeBallPitSlide = null;
     this.officeVentActive = false;
     this.officeVentDrop = null;
+    this.officeEmployeeElevatorRide = null;
     this.clearOfficePendingVentChase();
     this.officeJumpscareMenuOpen = false;
     this.stopOfficeJumpscare();
@@ -6402,6 +6418,7 @@ export class Game {
     this.officeBallPitSlide = null;
     this.officeVentActive = false;
     this.officeVentDrop = null;
+    this.officeEmployeeElevatorRide = null;
     this.clearOfficePendingVentChase();
     this.officeTabletCameraFeedActive = false;
     this.officeTabletHeld = false;
@@ -6473,6 +6490,7 @@ export class Game {
     this.officeBallPitSlide = null;
     this.officeVentActive = false;
     this.officeVentDrop = null;
+    this.officeEmployeeElevatorRide = null;
     this.clearOfficePendingVentChase();
     this.clearOfficeDoorSparks();
     this.officeGameModeAnimatronics.forEach((animatronic) => {
@@ -12366,6 +12384,7 @@ export class Game {
   private returnToOfficeAfterGameModeJumpscare(): void {
     this.officeVentActive = false;
     this.officeVentDrop = null;
+    this.officeEmployeeElevatorRide = null;
     this.officeBallPitHidden = false;
     this.officeBallPitSlide = null;
     this.officeChapterSeated = false;
@@ -15764,6 +15783,7 @@ export class Game {
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
+      const employeeElevator = this.getNearestOfficeEmployeeElevator();
       const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
@@ -15838,6 +15858,10 @@ export class Game {
         return employeeOnlyDoor.open
           ? 'Press E to close the employees-only danger door.'
           : 'Press E to open the employees-only danger door.';
+      }
+
+      if (employeeElevator) {
+        return 'Press E to press the red elevator button.';
       }
 
       if (storageFuseBox) {
@@ -16486,6 +16510,7 @@ export class Game {
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
+      const employeeElevator = this.getNearestOfficeEmployeeElevator();
       const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
@@ -16572,6 +16597,10 @@ export class Game {
         return employeeOnlyDoor.open
           ? 'The employees-only danger door is open. Press E to close it.'
           : 'The employees-only danger door is closed. Press E to open it.';
+      }
+
+      if (employeeElevator) {
+        return 'The red elevator button waits beside the gray cable platform. Press E to lower it.';
       }
 
       if (storageFuseBox) {
@@ -18039,6 +18068,89 @@ export class Game {
     );
   }
 
+  private getNearestOfficeEmployeeElevator(): OfficeChapterData['employeeElevator'] | null {
+    const elevator = this.officeChapter.employeeElevator;
+    if (!elevator.root.visible) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toButton = elevator.interactPosition.clone().sub(playerPosition);
+    const along = toButton.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.1) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toButton.sub(projected).length();
+    return lateral <= 1.15 ? elevator : null;
+  }
+
+  private startOfficeEmployeeElevatorRide(): void {
+    const elevator = this.officeChapter.employeeElevator;
+    if (this.officeEmployeeElevatorRide || !elevator.root.visible) {
+      return;
+    }
+
+    this.resetOfficeTabletState();
+    this.officeVentActive = false;
+    this.officeVentDrop = null;
+    this.clearOfficePendingVentChase();
+    this.officeBallPitHidden = false;
+    this.officeEmployeeElevatorRide = {
+      elapsed: 0,
+      duration: OFFICE_EMPLOYEE_ELEVATOR_RIDE_DURATION,
+      startPosition: elevator.topPosition.clone(),
+      endPosition: elevator.lowerPosition.clone(),
+      lookTarget: elevator.lowerLookTarget.clone(),
+    };
+    elevator.platform.position.y = elevator.platformHomeY;
+    elevator.button.position.x = elevator.buttonRestX - 0.04;
+    elevator.cables.forEach((cable) => {
+      cable.scale.y = elevator.cableBaseLength;
+      cable.position.y = elevator.cableTopY - elevator.cableBaseLength / 2;
+    });
+    this.player.teleport(elevator.topPosition);
+    this.player.lookToward(elevator.interactPosition.clone().add(new Vector3(0, 0.1, 0)), 0.8);
+    this.gameplaySfxAudio.playSmallPanel(true);
+    this.pushStatus('The employees-only elevator lowers into the hidden shaft.', 3.2);
+  }
+
+  private updateOfficeEmployeeElevatorRide(deltaSeconds: number): void {
+    if (!this.officeEmployeeElevatorRide) {
+      return;
+    }
+
+    const ride = this.officeEmployeeElevatorRide;
+    const elevator = this.officeChapter.employeeElevator;
+    ride.elapsed = Math.min(ride.elapsed + deltaSeconds, ride.duration);
+    const rawProgress = MathUtils.clamp(ride.elapsed / ride.duration, 0, 1);
+    const loweredProgress = MathUtils.smootherstep(rawProgress, 0, 1);
+    const visualDrop = loweredProgress * 7.25;
+    elevator.platform.position.y = elevator.platformHomeY - visualDrop;
+    elevator.button.position.x = elevator.buttonRestX - Math.max(0, 1 - rawProgress * 5) * 0.04;
+    elevator.cables.forEach((cable) => {
+      const cableLength = elevator.cableBaseLength + visualDrop;
+      cable.scale.y = cableLength;
+      cable.position.y = elevator.cableTopY - cableLength / 2;
+    });
+
+    const ridePosition = ride.startPosition.clone();
+    ridePosition.y = ride.startPosition.y - visualDrop;
+    this.player.teleport(ridePosition);
+    this.player.lookToward(ride.startPosition.clone().add(new Vector3(-2.8, -visualDrop * 0.35, 0)), 0.035);
+
+    if (rawProgress < 1) {
+      return;
+    }
+
+    this.officeEmployeeElevatorRide = null;
+    this.player.teleport(ride.endPosition);
+    this.player.lookToward(ride.lookTarget, 0.75);
+    this.pushStatus('The elevator settles into a small room below the employees-only area.', 2.8);
+  }
+
   private getNearestOfficeStorageClosetDoor(): OfficeChapterData['storageClosetDoor'] | null {
     const playerPosition = this.player.getPosition();
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
@@ -18243,6 +18355,7 @@ export class Game {
     this.resetOfficeTabletState();
     this.officeVentActive = true;
     this.officeVentDrop = null;
+    this.officeEmployeeElevatorRide = null;
     this.officeBallPitHidden = false;
     this.player.teleport(this.officeChapter.ventSystem.ladderEntryPosition);
     this.player.lookToward(
@@ -18256,6 +18369,7 @@ export class Game {
   private exitOfficeVentSystem(exitPosition: Vector3, openingLabel = ''): void {
     this.officeVentActive = false;
     this.officeVentDrop = null;
+    this.officeEmployeeElevatorRide = null;
     this.clearOfficePendingVentChase();
     this.player.teleport(exitPosition);
     this.player.lookToward(exitPosition.clone().add(new Vector3(0, 0, 3)), 1);
@@ -18380,6 +18494,11 @@ export class Game {
           : 'The employees-only danger door swings shut.',
         2.4,
       );
+      return;
+    }
+
+    if (this.getNearestOfficeEmployeeElevator()) {
+      this.startOfficeEmployeeElevatorRide();
       return;
     }
 
