@@ -1232,6 +1232,34 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(window);
   };
 
+  const addSideWallWindow = (
+    localX: number,
+    localZ: number,
+    centerY: number,
+    width: number,
+    height: number,
+  ): void => {
+    const window = new Group();
+    window.position.set(localX, centerY, localZ);
+
+    const glass = new Mesh(new BoxGeometry(0.055, height, width), slidingGlassMaterial);
+    const trimTop = new Mesh(new BoxGeometry(0.12, 0.16, width + 0.28), houseTrimMaterial);
+    trimTop.position.y = height / 2 + 0.08;
+    const trimBottom = trimTop.clone();
+    trimBottom.position.y = -height / 2 - 0.08;
+    const trimLeft = new Mesh(new BoxGeometry(0.12, height + 0.28, 0.16), houseTrimMaterial);
+    trimLeft.position.z = -width / 2 - 0.08;
+    const trimRight = trimLeft.clone();
+    trimRight.position.z = width / 2 + 0.08;
+    const centerMullion = new Mesh(new BoxGeometry(0.14, height * 0.92, 0.1), houseTrimMaterial);
+    const centerRail = new Mesh(new BoxGeometry(0.14, 0.1, width * 0.9), houseTrimMaterial);
+    const sill = new Mesh(new BoxGeometry(0.28, 0.18, width + 0.56), houseTrimMaterial);
+    sill.position.y = -height / 2 - 0.24;
+
+    window.add(glass, trimTop, trimBottom, trimLeft, trimRight, centerMullion, centerRail, sill);
+    house.add(window);
+  };
+
   const addPictureFrame = (
     localX: number,
     localY: number,
@@ -3659,8 +3687,52 @@ export function createChapterSeven(): ChapterSevenData {
   const sideGlassDoorEndZ = sideGlassDoorZ + sideGlassDoorWidth / 2;
   const rightBackWallDepth = sideGlassDoorStartZ + HOUSE_DEPTH / 2;
   const rightFrontWallDepth = HOUSE_DEPTH / 2 - sideGlassDoorEndZ;
-  const rightBackWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, rightBackWallDepth), houseWallMaterial);
-  rightBackWall.position.set(HOUSE_WIDTH / 2, HOUSE_HEIGHT / 2, -HOUSE_DEPTH / 2 + rightBackWallDepth / 2);
+  const rightWallWindowZ = 73.23 - HOUSE_CENTER_Z;
+  const rightWallWindowCenterY = 2.36;
+  const rightWallWindowWidth = 4.2;
+  const rightWallWindowHeight = 2.35;
+  const addRightWallVisualSegment = (
+    centerZ: number,
+    centerY: number,
+    depth: number,
+    height: number,
+  ): void => {
+    if (depth <= 0.05 || height <= 0.05) {
+      return;
+    }
+
+    const wall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, height, depth), houseWallMaterial);
+    wall.position.set(HOUSE_WIDTH / 2, centerY, centerZ);
+    house.add(wall);
+  };
+  const rightBackWallMinZ = -HOUSE_DEPTH / 2;
+  const rightBackWallMaxZ = sideGlassDoorStartZ;
+  const rightWindowMinZ = rightWallWindowZ - rightWallWindowWidth / 2;
+  const rightWindowMaxZ = rightWallWindowZ + rightWallWindowWidth / 2;
+  const rightWindowMinY = rightWallWindowCenterY - rightWallWindowHeight / 2;
+  const rightWindowMaxY = rightWallWindowCenterY + rightWallWindowHeight / 2;
+  [
+    [rightBackWallMinZ, Math.max(rightBackWallMinZ, rightWindowMinZ)],
+    [Math.min(rightBackWallMaxZ, rightWindowMaxZ), rightBackWallMaxZ],
+  ].forEach(([startZ, endZ]) => {
+    addRightWallVisualSegment((startZ + endZ) / 2, HOUSE_HEIGHT / 2, endZ - startZ, HOUSE_HEIGHT);
+  });
+  const windowColumnMinZ = Math.max(rightBackWallMinZ, rightWindowMinZ);
+  const windowColumnMaxZ = Math.min(rightBackWallMaxZ, rightWindowMaxZ);
+  if (windowColumnMaxZ > windowColumnMinZ) {
+    addRightWallVisualSegment(
+      (windowColumnMinZ + windowColumnMaxZ) / 2,
+      rightWindowMinY / 2,
+      windowColumnMaxZ - windowColumnMinZ,
+      rightWindowMinY,
+    );
+    addRightWallVisualSegment(
+      (windowColumnMinZ + windowColumnMaxZ) / 2,
+      rightWindowMaxY + (HOUSE_HEIGHT - rightWindowMaxY) / 2,
+      windowColumnMaxZ - windowColumnMinZ,
+      HOUSE_HEIGHT - rightWindowMaxY,
+    );
+  }
   const rightFrontWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, rightFrontWallDepth), houseWallMaterial);
   rightFrontWall.position.set(HOUSE_WIDTH / 2, HOUSE_HEIGHT / 2, sideGlassDoorEndZ + rightFrontWallDepth / 2);
   const rightWallHeader = new Mesh(
@@ -3672,7 +3744,7 @@ export function createChapterSeven(): ChapterSevenData {
     sideGlassDoorHeight + (HOUSE_HEIGHT - sideGlassDoorHeight) / 2,
     sideGlassDoorZ,
   );
-  house.add(rightBackWall, rightFrontWall, rightWallHeader);
+  house.add(rightFrontWall, rightWallHeader);
   addCollider(
     colliders,
     CENTER_X + HOUSE_WIDTH / 2,
@@ -3686,6 +3758,13 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_CENTER_Z + sideGlassDoorEndZ + rightFrontWallDepth / 2,
     HOUSE_WALL_THICKNESS,
     rightFrontWallDepth,
+  );
+  addSideWallWindow(
+    HOUSE_WIDTH / 2 - HOUSE_WALL_THICKNESS / 2 - 0.04,
+    rightWallWindowZ,
+    rightWallWindowCenterY,
+    rightWallWindowWidth,
+    rightWallWindowHeight,
   );
 
   const frontWallSegmentWidth = (HOUSE_WIDTH - HOUSE_DOOR_WIDTH) / 2;
@@ -3887,7 +3966,8 @@ export function createChapterSeven(): ChapterSevenData {
     0,
   );
   addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
-  addSmallPlantTable(1225.65 - CENTER_X, 95.78 - HOUSE_CENTER_Z);
+  addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
+  addBookshelf(1221.05 - CENTER_X, 96.06 - HOUSE_CENTER_Z, Math.PI, 0.84, 0.96);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
   const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
   const frontBedroomOldWoodenCloset = addOldWoodenCloset(
@@ -3908,6 +3988,7 @@ export function createChapterSeven(): ChapterSevenData {
   addPictureFrame(1197.89 - CENTER_X, 2.46, 83.77 - HOUSE_CENTER_Z, -1, catPortraitMaterial);
   addPictureFrame(1196.01 - CENTER_X, 2.66, 75.77 - HOUSE_CENTER_Z, -1, treePortraitMaterial);
   addSidePictureFrame(1217.94 - CENTER_X, 2.03, 92.24 - HOUSE_CENTER_Z, -1, babyPortraitMaterial);
+  addSidePictureFrame(1218.56 - CENTER_X, 2.15, 86.42 - HOUSE_CENTER_Z, 1, treePortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
@@ -4161,7 +4242,7 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
   addOutdoorRoundTableSet(1240.54, 91.39);
-  const swingSet = addOutdoorSwingSet(1247.37, 64.35, Math.PI / 2, 1.05);
+  const swingSet = addOutdoorSwingSet(1246.8, 62.24, 0, 1.05);
   let swingInput = 0;
   const yardFenceStartX = HOUSE_WIDTH / 2 + HOUSE_WALL_THICKNESS / 2;
   const yardFenceLength = 20;
