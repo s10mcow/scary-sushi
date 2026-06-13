@@ -950,6 +950,68 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
   const treePortraitMaterial = createTreePictureMaterial();
+  const createSquirrelPictureMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const skyGradient = context.createLinearGradient(0, 0, 0, 100);
+      skyGradient.addColorStop(0, '#9fc8ef');
+      skyGradient.addColorStop(1, '#e7f3ff');
+      context.fillStyle = skyGradient;
+      context.fillRect(0, 0, canvas.width, 108);
+      context.fillStyle = '#83b35b';
+      context.fillRect(0, 108, canvas.width, 68);
+      context.fillStyle = '#6d4226';
+      context.beginPath();
+      context.ellipse(92, 112, 30, 38, -0.12, 0, Math.PI * 2);
+      context.ellipse(126, 78, 24, 22, 0, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#8a5c33';
+      context.beginPath();
+      context.ellipse(58, 88, 30, 54, -0.55, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#5b351f';
+      context.beginPath();
+      context.ellipse(116, 62, 8, 16, -0.4, 0, Math.PI * 2);
+      context.ellipse(136, 62, 8, 16, 0.4, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#24140c';
+      context.beginPath();
+      context.arc(134, 78, 3.8, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = '#3e2415';
+      context.lineWidth = 5;
+      context.lineCap = 'round';
+      context.beginPath();
+      context.moveTo(119, 116);
+      context.lineTo(151, 114);
+      context.moveTo(110, 121);
+      context.lineTo(149, 124);
+      context.stroke();
+      context.fillStyle = '#9a6a32';
+      context.beginPath();
+      context.ellipse(164, 116, 15, 21, 0.2, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#5b351f';
+      context.beginPath();
+      context.ellipse(164, 94, 17, 8, 0, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = 'rgba(255,255,255,0.45)';
+      context.lineWidth = 8;
+      context.strokeRect(18, 14, canvas.width - 36, canvas.height - 28);
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  };
+  const squirrelPortraitMaterial = createSquirrelPictureMaterial();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -2739,6 +2801,59 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(shelf);
   };
 
+  const addTowelDuckShelf = (localX: number, localY: number, localZ: number, normalX: 1 | -1): void => {
+    const shelf = new Group();
+    shelf.position.set(localX + normalX * 0.16, localY, localZ);
+    shelf.rotation.y = normalX > 0 ? Math.PI / 2 : -Math.PI / 2;
+
+    const towelMaterials = [
+      new MeshStandardMaterial({ color: 0xf3f1e7, roughness: 0.88, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0x8ec7dd, roughness: 0.86, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0xd2b7e4, roughness: 0.86, metalness: 0.01 }),
+    ];
+    const board = new Mesh(new BoxGeometry(3.15, 0.14, 0.42), houseTrimMaterial);
+    const backLip = new Mesh(new BoxGeometry(3.22, 0.22, 0.09), furnitureWoodMaterial);
+    backLip.position.set(0, 0.16, -0.2);
+    const leftBracket = new Mesh(new BoxGeometry(0.1, 0.52, 0.12), furnitureWoodMaterial);
+    leftBracket.position.set(-1.16, -0.28, -0.08);
+    leftBracket.rotation.x = -0.4;
+    const rightBracket = leftBracket.clone();
+    rightBracket.position.x = 1.16;
+    const towels = [-0.82, -0.2, 0.42].map((towelX, index) => {
+      const towelStack = new Group();
+      towelStack.position.set(towelX, 0.19, 0.04);
+      for (let layer = 0; layer < 3; layer += 1) {
+        const towel = new Mesh(new BoxGeometry(0.52, 0.08, 0.34), towelMaterials[(index + layer) % towelMaterials.length]);
+        towel.position.set(0, layer * 0.085, 0);
+        const fold = new Mesh(new BoxGeometry(0.04, 0.086, 0.36), towelMaterials[(index + layer) % towelMaterials.length]);
+        fold.position.set(0.18, layer * 0.085 + 0.004, 0);
+        towelStack.add(towel, fold);
+      }
+      return towelStack;
+    });
+    const duckBodyMaterial = new MeshStandardMaterial({
+      color: 0xf5cf37,
+      emissive: 0x2d2200,
+      emissiveIntensity: 0.08,
+      roughness: 0.5,
+      metalness: 0.02,
+    });
+    const duckBeakMaterial = new MeshStandardMaterial({ color: 0xe77a28, roughness: 0.55, metalness: 0.02 });
+    const duckBody = new Mesh(new SphereGeometry(0.22, 16, 10), duckBodyMaterial);
+    duckBody.scale.set(1.25, 0.74, 0.82);
+    duckBody.position.set(1.08, 0.31, 0.04);
+    const duckHead = new Mesh(new SphereGeometry(0.13, 14, 10), duckBodyMaterial);
+    duckHead.position.set(1.28, 0.47, 0.03);
+    const duckBeak = new Mesh(new ConeGeometry(0.06, 0.14, 8), duckBeakMaterial);
+    duckBeak.rotation.z = -Math.PI / 2;
+    duckBeak.position.set(1.39, 0.47, 0.03);
+    const duckEye = new Mesh(new SphereGeometry(0.017, 8, 8), fridgeSealMaterial);
+    duckEye.position.set(1.31, 0.5, 0.13);
+
+    shelf.add(board, backLip, leftBracket, rightBracket, ...towels, duckBody, duckHead, duckBeak, duckEye);
+    house.add(shelf);
+  };
+
   const addCabinetCookies = (
     root: Group,
     localX: number,
@@ -3683,6 +3798,7 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addLaundryBasket(1202.82 - CENTER_X, 59.07 - HOUSE_CENTER_Z, -0.12);
   addWallShelf(1215.95 - CENTER_X, 2.06, 65.92 - HOUSE_CENTER_Z, 1);
+  addTowelDuckShelf(1217.07 - CENTER_X, 2.1, 52.16 - HOUSE_CENTER_Z, -1);
 
   const leftWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, HOUSE_DEPTH), houseWallMaterial);
   leftWall.position.set(-HOUSE_WIDTH / 2, HOUSE_HEIGHT / 2, 0);
@@ -3997,7 +4113,7 @@ export function createChapterSeven(): ChapterSevenData {
   addPictureFrame(1197.89 - CENTER_X, 2.46, 83.77 - HOUSE_CENTER_Z, -1, catPortraitMaterial);
   addPictureFrame(1196.01 - CENTER_X, 2.66, 75.77 - HOUSE_CENTER_Z, -1, treePortraitMaterial);
   addSidePictureFrame(1217.94 - CENTER_X, 2.03, 92.24 - HOUSE_CENTER_Z, -1, babyPortraitMaterial);
-  addSidePictureFrame(1218.56 - CENTER_X, 2.15, 86.42 - HOUSE_CENTER_Z, 1, treePortraitMaterial);
+  addSidePictureFrame(1218.56 - CENTER_X, 2.15, 86.42 - HOUSE_CENTER_Z, 1, squirrelPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
