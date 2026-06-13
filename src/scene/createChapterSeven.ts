@@ -1149,13 +1149,6 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.94,
     metalness: 0.02,
   });
-  const ovenFloorMaterial = new MeshStandardMaterial({
-    color: 0x000000,
-    emissive: 0x000000,
-    emissiveIntensity: 0,
-    roughness: 0.98,
-    metalness: 0,
-  });
   const laundryBasketMaterial = new MeshStandardMaterial({
     color: 0xe8dfcf,
     emissive: 0x11100c,
@@ -3565,10 +3558,8 @@ export function createChapterSeven(): ChapterSevenData {
     ovenRightWall.position.x = cavityWidth / 2 - 0.04;
     const ovenCeiling = new Mesh(new BoxGeometry(cavityWidth, 0.08, cavityDepth), ovenInteriorMaterial);
     ovenCeiling.position.set(0, cavityCenterY + cavityHeight / 2 - 0.04, cavityCenterZ);
-    const ovenFloor = new Mesh(new BoxGeometry(cavityWidth + 0.16, 0.09, cavityDepth + 0.22), ovenFloorMaterial);
-    ovenFloor.position.set(0, cavityCenterY - cavityHeight / 2 + 0.045, cavityCenterZ + 0.04);
-    const ovenFrontFloorLip = new Mesh(new BoxGeometry(cavityWidth + 0.14, 0.16, 0.18), ovenFloorMaterial);
-    ovenFrontFloorLip.position.set(0, cavityCenterY - cavityHeight / 2 + 0.09, cavityCenterZ + cavityDepth / 2 + 0.01);
+    const ovenFloor = ovenCeiling.clone();
+    ovenFloor.position.y = cavityCenterY - cavityHeight / 2 + 0.04;
     const ovenDoorPivot = new Group();
     ovenDoorPivot.position.set(0, 0.36, depth / 2 + 0.055);
     const doorWidth = width - 0.2;
@@ -3604,7 +3595,7 @@ export function createChapterSeven(): ChapterSevenData {
     });
 
     ovenDoorPivot.add(ovenDoorTop, ovenDoorBottom, ovenDoorLeft, ovenDoorRight, ovenWindow, ovenHandle);
-    stove.add(body, cooktop, ovenBackWall, ovenLeftWall, ovenRightWall, ovenCeiling, ovenFloor, ovenFrontFloorLip, ovenDoorPivot, knobRow, ...burners);
+    stove.add(body, cooktop, ovenBackWall, ovenLeftWall, ovenRightWall, ovenCeiling, ovenFloor, ovenDoorPivot, knobRow, ...burners);
     house.add(stove);
     addCollider(
       colliders,
