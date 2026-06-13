@@ -278,6 +278,13 @@ function addRotatedCollider(
   return addCollider(colliders, CENTER_X + center.x, HOUSE_CENTER_Z + center.z, colliderWidth, colliderDepth);
 }
 
+function getRotatedBounds(width: number, depth: number, rotationY: number): { width: number; depth: number } {
+  return {
+    width: Math.abs(Math.cos(rotationY)) * width + Math.abs(Math.sin(rotationY)) * depth,
+    depth: Math.abs(Math.sin(rotationY)) * width + Math.abs(Math.cos(rotationY)) * depth,
+  };
+}
+
 function createRandom(seedStart: number): () => number {
   let seed = seedStart;
   return () => {
@@ -937,20 +944,6 @@ export function createChapterSeven(): ChapterSevenData {
     emissive: 0x080706,
     emissiveIntensity: 0.04,
     roughness: 0.82,
-    metalness: 0.01,
-  });
-  const trashBagMaterial = new MeshStandardMaterial({
-    color: 0x2f6f37,
-    emissive: 0x061507,
-    emissiveIntensity: 0.06,
-    roughness: 0.5,
-    metalness: 0.02,
-  });
-  const trashBagCreaseMaterial = new MeshStandardMaterial({
-    color: 0x1f4f28,
-    emissive: 0x040c05,
-    emissiveIntensity: 0.04,
-    roughness: 0.62,
     metalness: 0.01,
   });
   const laundryClothMaterials = [
@@ -2206,7 +2199,16 @@ export function createChapterSeven(): ChapterSevenData {
     });
 
     house.add(basket);
-    addRotatedFurnitureCollider(localX, localZ, width + 0.2, depth + 0.2, rotationY);
+    const basketCollider = addRotatedCollider(colliders, localX, localZ, rotationY, 0, 0, width + 0.2, depth + 0.2);
+    const basketBounds = getRotatedBounds(width + 0.2, depth + 0.2, rotationY);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: basketBounds.width / 2,
+      halfDepth: basketBounds.depth / 2,
+      floorY: height + 0.08,
+      collider: basketCollider,
+    });
   };
 
   const addTrashCanFixture = (localX: number, localZ: number, rotationY = 0): ChapterSevenRearFixture => {
@@ -2217,33 +2219,115 @@ export function createChapterSeven(): ChapterSevenData {
     const width = 1.05;
     const depth = 0.92;
     const height = 1.08;
-    const body = new Mesh(new CylinderGeometry(width / 2, width * 0.42, height, 24), trashBagMaterial);
-    body.scale.z = depth / width;
+    const trashCanMaterial = new MeshStandardMaterial({
+      color: 0x73777a,
+      emissive: 0x080909,
+      emissiveIntensity: 0.04,
+      roughness: 0.58,
+      metalness: 0.18,
+    });
+    const trashCanDarkMaterial = new MeshStandardMaterial({
+      color: 0x3d4144,
+      emissive: 0x030404,
+      emissiveIntensity: 0.04,
+      roughness: 0.72,
+      metalness: 0.12,
+    });
+    const trashPaperMaterial = new MeshStandardMaterial({ color: 0xd7d0bd, roughness: 0.86, metalness: 0.01 });
+    const chipsBagMaterial = new MeshStandardMaterial({ color: 0xe0b13f, roughness: 0.58, metalness: 0.08 });
+    const appleMaterial = new MeshStandardMaterial({ color: 0x8b1f21, roughness: 0.72, metalness: 0.01 });
+    const appleCoreMaterial = new MeshStandardMaterial({ color: 0xe7d9ad, roughness: 0.82, metalness: 0.01 });
+    const bananaPeelMaterial = new MeshStandardMaterial({ color: 0xd4bd3a, roughness: 0.78, metalness: 0.01 });
+    const rottenFishMaterial = new MeshStandardMaterial({ color: 0x627166, roughness: 0.72, metalness: 0.02 });
+
+    const body = new Mesh(new BoxGeometry(width, height, depth), trashCanMaterial);
     body.position.y = height / 2;
-    const rim = new Mesh(new CylinderGeometry(width / 2 + 0.05, width / 2 + 0.05, 0.08, 24), trashBagCreaseMaterial);
-    rim.scale.z = depth / width;
+    const frontSlab = new Mesh(new BoxGeometry(width * 0.56, 0.34, 0.045), trashCanMaterial);
+    frontSlab.position.set(0, 0.46, depth / 2 + 0.028);
+    const frontSlabInset = new Mesh(new BoxGeometry(width * 0.42, 0.2, 0.052), trashCanDarkMaterial);
+    frontSlabInset.position.set(0, 0.46, depth / 2 + 0.056);
+    const rim = new Mesh(new BoxGeometry(width + 0.1, 0.08, depth + 0.1), trashCanDarkMaterial);
     rim.position.y = height + 0.04;
-    const inside = new Mesh(new CylinderGeometry(width * 0.37, width * 0.34, 0.1, 18), ovenInteriorMaterial);
-    inside.scale.z = depth / width;
+    const inside = new Mesh(new BoxGeometry(width - 0.18, 0.12, depth - 0.18), ovenInteriorMaterial);
     inside.position.y = height + 0.02;
-    const foot = new Mesh(new CylinderGeometry(width * 0.36, width * 0.4, 0.12, 20), trashBagCreaseMaterial);
-    foot.scale.z = depth / width;
+    const foot = new Mesh(new BoxGeometry(width * 0.8, 0.12, depth * 0.78), trashCanDarkMaterial);
     foot.position.y = 0.06;
 
     const lidPivot = new Group();
     lidPivot.position.set(0, height + 0.1, -depth / 2 + 0.06);
-    const lid = new Mesh(new BoxGeometry(width + 0.16, 0.1, depth + 0.12), trashBagMaterial);
+    const lid = new Mesh(new BoxGeometry(width + 0.16, 0.1, depth + 0.12), trashCanMaterial);
     lid.position.set(0, 0.02, depth / 2 - 0.06);
-    const lidLip = new Mesh(new BoxGeometry(width + 0.26, 0.06, 0.08), trashBagCreaseMaterial);
+    const lidLip = new Mesh(new BoxGeometry(width + 0.26, 0.06, 0.08), trashCanDarkMaterial);
     lidLip.position.set(0, -0.01, depth + 0.02);
-    const handle = new Mesh(new BoxGeometry(0.42, 0.08, 0.08), trashBagCreaseMaterial);
+    const handle = new Mesh(new BoxGeometry(0.42, 0.08, 0.08), trashCanDarkMaterial);
     handle.position.set(0, 0.1, depth / 2 - 0.04);
     lidPivot.add(lid, lidLip, handle);
 
-    trashCan.add(body, rim, inside, foot, lidPivot);
+    const chipsBag = new Mesh(new BoxGeometry(0.32, 0.07, 0.24), chipsBagMaterial);
+    chipsBag.position.set(-0.22, height + 0.11, 0.06);
+    chipsBag.rotation.set(0.3, -0.42, 0.12);
+    const chipsBagFold = new Mesh(new BoxGeometry(0.28, 0.035, 0.08), trashCanDarkMaterial);
+    chipsBagFold.position.set(-0.22, height + 0.17, 0);
+    chipsBagFold.rotation.set(0.3, -0.42, 0.12);
+    const apple = new Mesh(new SphereGeometry(0.13, 14, 10), appleMaterial);
+    apple.position.set(0.1, height + 0.1, 0.16);
+    apple.scale.set(1, 0.82, 1);
+    const appleBite = new Mesh(new SphereGeometry(0.07, 10, 8), appleCoreMaterial);
+    appleBite.position.set(0.18, height + 0.13, 0.1);
+    appleBite.scale.set(0.9, 0.7, 0.9);
+    const fishBody = new Mesh(new SphereGeometry(0.17, 14, 8), rottenFishMaterial);
+    fishBody.position.set(0.2, height + 0.08, -0.16);
+    fishBody.scale.set(1.55, 0.38, 0.56);
+    fishBody.rotation.y = 0.34;
+    const fishTail = new Mesh(new ConeGeometry(0.1, 0.16, 3), rottenFishMaterial);
+    fishTail.position.set(0.42, height + 0.08, -0.23);
+    fishTail.rotation.set(0, 0.34, Math.PI / 2);
+    const bananaPeels = [-0.16, 0, 0.16].map((peelX, index) => {
+      const peel = new Mesh(new BoxGeometry(0.06, 0.035, 0.34), bananaPeelMaterial);
+      peel.position.set(peelX - 0.08, height + 0.13 + index * 0.012, -0.08 + index * 0.05);
+      peel.rotation.set(0.2 + index * 0.08, index * 0.46, (index - 1) * 0.45);
+      return peel;
+    });
+    const papers = [
+      [-0.36, height + 0.09, -0.16, 0.2, -0.2],
+      [0, height + 0.16, -0.02, -0.14, 0.28],
+      [0.34, height + 0.12, 0.12, 0.18, -0.36],
+    ].map(([paperX, paperY, paperZ, rotX, rotZ]) => {
+      const paper = new Mesh(new BoxGeometry(0.24, 0.035, 0.18), trashPaperMaterial);
+      paper.position.set(paperX, paperY, paperZ);
+      paper.rotation.set(rotX, 0.28, rotZ);
+      return paper;
+    });
+
+    trashCan.add(
+      body,
+      frontSlab,
+      frontSlabInset,
+      rim,
+      inside,
+      foot,
+      chipsBag,
+      chipsBagFold,
+      apple,
+      appleBite,
+      fishBody,
+      fishTail,
+      ...bananaPeels,
+      ...papers,
+      lidPivot,
+    );
     house.add(trashCan);
 
     const collider = addRotatedCollider(colliders, localX, localZ, rotationY, 0, 0, width + 0.16, depth + 0.16);
+    const trashBounds = getRotatedBounds(width + 0.16, depth + 0.16, rotationY);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: trashBounds.width / 2,
+      halfDepth: trashBounds.depth / 2,
+      floorY: height + 0.18,
+      collider,
+    });
     const interactPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.72);
     const aimPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, 0.18);
     return {
@@ -2611,6 +2695,15 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(toilet);
 
     const collider = addRotatedCollider(colliders, localX, localZ, rotationY, 0, 0, 1.55, 1.72);
+    const toiletBounds = getRotatedBounds(1.55, 1.72, rotationY);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: toiletBounds.width / 2,
+      halfDepth: toiletBounds.depth / 2,
+      floorY: 1.02,
+      collider,
+    });
     const interactPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, 1.22);
     const aimPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, 0.16);
     return {
@@ -4124,7 +4217,7 @@ export function createChapterSeven(): ChapterSevenData {
             fixture.waterSurface.position.y = 0.25 + fixture.waterFillAmount * 0.55;
           }
         } else if (fixture.animation === 'trash-lid') {
-          fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.68;
+          fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.56;
         } else {
           fixture.doorPivots[0].rotation.y = -fixture.openAmount * Math.PI * 0.58;
         }
