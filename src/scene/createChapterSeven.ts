@@ -156,6 +156,7 @@ export interface ChapterSevenRearFixture {
   waterStream?: Mesh;
   waterSurface?: Mesh;
   waterSplash?: Mesh[];
+  trashContents?: Group;
   waterFillAmount?: number;
   wallColliders?: CollisionBox[];
   tubBounds?: {
@@ -2298,14 +2299,9 @@ export function createChapterSeven(): ChapterSevenData {
       paper.rotation.set(rotX, 0.28, rotZ);
       return paper;
     });
-
-    trashCan.add(
-      body,
-      frontSlab,
-      frontSlabInset,
-      rim,
-      inside,
-      foot,
+    const trashContents = new Group();
+    trashContents.visible = false;
+    trashContents.add(
       chipsBag,
       chipsBagFold,
       apple,
@@ -2314,6 +2310,16 @@ export function createChapterSeven(): ChapterSevenData {
       fishTail,
       ...bananaPeels,
       ...papers,
+    );
+
+    trashCan.add(
+      body,
+      frontSlab,
+      frontSlabInset,
+      rim,
+      inside,
+      foot,
+      trashContents,
       lidPivot,
     );
     house.add(trashCan);
@@ -2338,6 +2344,7 @@ export function createChapterSeven(): ChapterSevenData {
       doorPivots: [lidPivot],
       collider,
       animation: 'trash-lid',
+      trashContents,
       open: false,
       openAmount: 0,
       targetOpenAmount: 0,
@@ -4225,6 +4232,9 @@ export function createChapterSeven(): ChapterSevenData {
           }
         } else if (fixture.animation === 'trash-lid') {
           fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.56;
+          if (fixture.trashContents) {
+            fixture.trashContents.visible = fixture.openAmount > 0.55;
+          }
         } else {
           fixture.doorPivots[0].rotation.y = -fixture.openAmount * Math.PI * 0.58;
         }
@@ -4308,6 +4318,9 @@ export function createChapterSeven(): ChapterSevenData {
         if (fixture.waterStream) {
           fixture.waterStream.visible = false;
           fixture.waterStream.scale.y = 0.01;
+        }
+        if (fixture.trashContents) {
+          fixture.trashContents.visible = false;
         }
         fixture.waterSplash?.forEach((drop) => {
           drop.visible = false;
