@@ -18151,6 +18151,11 @@ export class Game {
       cable.scale.y = elevator.cableBaseLength;
       cable.position.y = elevator.cableTopY - elevator.cableBaseLength / 2;
     });
+    elevator.shaftWalls.forEach((wall) => {
+      wall.visible = false;
+      wall.scale.y = 0.001;
+      wall.position.y = elevator.shaftWallTopY;
+    });
     this.player.teleport(elevator.topPosition);
     this.player.lookToward(elevator.interactPosition.clone().add(new Vector3(0, 0.1, 0)), 0.8);
     this.gameplaySfxAudio.playSmallPanel(true);
@@ -18176,6 +18181,13 @@ export class Game {
       cable.scale.y = cableLength;
       cable.position.y = elevator.cableTopY - cableLength / 2;
     });
+    const revealedShaftHeight = MathUtils.clamp(visualDrop + 0.28, 0.001, elevator.shaftWallHeight);
+    const shaftScaleY = revealedShaftHeight / elevator.shaftWallHeight;
+    elevator.shaftWalls.forEach((wall) => {
+      wall.visible = revealedShaftHeight > 0.12;
+      wall.scale.y = shaftScaleY;
+      wall.position.y = elevator.shaftWallTopY - revealedShaftHeight / 2;
+    });
 
     const ridePosition = ride.startPosition.clone();
     ridePosition.y = ride.startPosition.y - visualDrop;
@@ -18188,7 +18200,11 @@ export class Game {
 
     this.officeEmployeeElevatorRide = null;
     this.officeEmployeeElevatorBasementActive = true;
-    this.player.teleport(ride.endPosition);
+    elevator.shaftWalls.forEach((wall) => {
+      wall.visible = true;
+      wall.scale.y = 1;
+      wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
+    });
     this.player.lookToward(ride.lookTarget, 0.75);
     this.pushStatus('The elevator settles onto the basement floor below the employees-only area.', 2.8);
   }

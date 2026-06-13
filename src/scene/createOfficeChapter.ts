@@ -218,6 +218,9 @@ export interface OfficeChapterEmployeeElevator {
   button: Mesh;
   buttonRestX: number;
   cables: Mesh[];
+  shaftWalls: Mesh[];
+  shaftWallHeight: number;
+  shaftWallTopY: number;
   cableTopY: number;
   cableBaseLength: number;
   platformHomeY: number;
@@ -6299,10 +6302,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     elevatorMetalMaterial,
   );
   basementPad.position.set(employeeElevatorCenterX, employeeElevatorBasementFloorY + 0.045, employeeElevatorCenterZ);
-  const shaftWallHeight = WALL_HEIGHT - employeeElevatorBasementFloorY;
+  const shaftWallTopY = 0.02;
+  const shaftWallHeight = shaftWallTopY - employeeElevatorBasementFloorY;
   const shaftWallCenterY = employeeElevatorBasementFloorY + shaftWallHeight / 2;
   const shaftInnerSize = employeeElevatorPlatformSize + 0.5;
   const shaftWallThickness = 0.18;
+  const employeeElevatorShaftWalls: Mesh[] = [];
   [
     { x: employeeElevatorCenterX, z: employeeElevatorCenterZ - shaftInnerSize / 2, sx: shaftInnerSize + shaftWallThickness * 2, sz: shaftWallThickness },
     { x: employeeElevatorCenterX, z: employeeElevatorCenterZ + shaftInnerSize / 2, sx: shaftInnerSize + shaftWallThickness * 2, sz: shaftWallThickness },
@@ -6311,6 +6316,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   ].forEach((wall) => {
     const shaftWall = new Mesh(new BoxGeometry(wall.sx, shaftWallHeight, wall.sz), elevatorDarkMaterial);
     shaftWall.position.set(wall.x, shaftWallCenterY, wall.z);
+    shaftWall.visible = false;
+    employeeElevatorShaftWalls.push(shaftWall);
     employeeElevatorRoot.add(shaftWall);
   });
   const basementFixture = new Mesh(new BoxGeometry(0.78, 0.08, 0.36), panelMaterial);
@@ -6332,6 +6339,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     button: elevatorButton,
     buttonRestX: elevatorButton.position.x,
     cables: employeeElevatorCables,
+    shaftWalls: employeeElevatorShaftWalls,
+    shaftWallHeight,
+    shaftWallTopY,
     cableTopY,
     cableBaseLength,
     platformHomeY: employeeElevatorPlatformHomeY,
@@ -8425,6 +8435,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeElevator.cables.forEach((cable) => {
       cable.scale.y = employeeElevator.cableBaseLength;
       cable.position.y = employeeElevator.cableTopY - employeeElevator.cableBaseLength / 2;
+    });
+    employeeElevator.shaftWalls.forEach((wall) => {
+      wall.visible = false;
+      wall.scale.y = 0.001;
+      wall.position.y = employeeElevator.shaftWallTopY;
     });
     storageFuseBox.open = false;
     storageFuseBox.openAmount = 0;
