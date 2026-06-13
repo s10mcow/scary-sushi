@@ -3842,23 +3842,6 @@ function createStageAnimatronic(
     lowerJaw.position.set(0, 0, 0);
     const jawShadow = new Mesh(new BoxGeometry(0.2, 0.014, 0.02), mouthCavityMaterial);
     jawShadow.position.set(0, 0.04, -0.018);
-    const toothMaterial = new MeshStandardMaterial({
-      color: 0xe9dfc8,
-      emissive: 0x181006,
-      emissiveIntensity: 0.08,
-      roughness: 0.5,
-      metalness: 0.02,
-    });
-    [-0.15, -0.09, -0.03, 0.03, 0.09, 0.15].forEach((toothX) => {
-      const upperTooth = new Mesh(new ConeGeometry(0.018, 0.062, 7), toothMaterial);
-      upperTooth.position.set(toothX, -0.155, -0.455);
-      upperTooth.rotation.x = Math.PI;
-      const lowerTooth = new Mesh(new ConeGeometry(0.014, 0.052, 7), toothMaterial);
-      lowerTooth.position.set(toothX, 0.032, -0.035);
-      lowerTooth.rotation.x = 0.1;
-      headGroup.add(upperTooth);
-      jawGroup.add(lowerTooth);
-    });
     jawGroup.add(lowerJaw, jawShadow);
     headGroup.add(mouthCavity, jawGroup);
   } else {
@@ -4461,13 +4444,6 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
     }
     if (animatronic === 'bori') {
       const mouthMaterial = new MeshBasicMaterial({ color: 0x050000 });
-      const toothMaterial = new MeshStandardMaterial({
-        color: 0xe8dcc3,
-        emissive: 0x1c1308,
-        emissiveIntensity: 0.08,
-        roughness: 0.5,
-        metalness: 0.03,
-      });
       const smileCenter = new Mesh(new BoxGeometry(0.3, 0.028, 0.024), mouthMaterial);
       smileCenter.position.set(0, -0.105, -0.562);
       const smileLeft = new Mesh(new BoxGeometry(0.13, 0.026, 0.024), mouthMaterial);
@@ -4476,21 +4452,6 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
       const smileRight = new Mesh(new BoxGeometry(0.13, 0.026, 0.024), mouthMaterial);
       smileRight.position.set(0.17, -0.085, -0.562);
       smileRight.rotation.z = -0.56;
-      [-0.11, -0.055, 0, 0.055, 0.11].forEach((toothX) => {
-        const grinTooth = new Mesh(new BoxGeometry(0.026, 0.045, 0.018), toothMaterial);
-        grinTooth.position.set(toothX, -0.128, -0.582);
-        smile.add(grinTooth);
-      });
-      [-0.15, -0.075, 0, 0.075, 0.15].forEach((toothX) => {
-        const upperTooth = new Mesh(new CylinderGeometry(0.012, 0.028, 0.09, 8), toothMaterial);
-        upperTooth.position.set(toothX, -0.205, -0.47);
-        upperTooth.rotation.x = Math.PI;
-        const lowerTooth = new Mesh(new CylinderGeometry(0.011, 0.025, 0.075, 8), toothMaterial);
-        lowerTooth.position.set(toothX, 0.02, -0.035);
-        lowerTooth.rotation.x = 0.08;
-        head.add(upperTooth);
-        jaw.add(lowerTooth);
-      });
       smile.add(smileCenter, smileLeft, smileRight);
     }
 

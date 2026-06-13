@@ -12605,23 +12605,6 @@ export class Game {
       nose.position.set(0, -0.055, 0.48);
       const mouthCavity = new Mesh(new BoxGeometry(0.25, 0.055, 0.026), mouthMaterial);
       mouthCavity.position.set(0, -0.17, 0.435);
-      const toothMaterial = new MeshStandardMaterial({
-        color: 0xe8dcc3,
-        emissive: 0x1c1308,
-        emissiveIntensity: 0.08,
-        roughness: 0.5,
-        metalness: 0.03,
-      });
-      [-0.15, -0.075, 0, 0.075, 0.15].forEach((toothX) => {
-        const upperTooth = new Mesh(new CylinderGeometry(0.012, 0.028, 0.09, 8), toothMaterial);
-        upperTooth.position.set(toothX, -0.205, 0.475);
-        upperTooth.rotation.x = Math.PI;
-        const lowerTooth = new Mesh(new CylinderGeometry(0.011, 0.025, 0.075, 8), toothMaterial);
-        lowerTooth.position.set(toothX, 0.02, 0.12);
-        lowerTooth.rotation.x = 0.08;
-        head.add(upperTooth);
-        jaw.add(lowerTooth);
-      });
       const smileCenter = new Mesh(new BoxGeometry(0.3, 0.028, 0.024), mouthMaterial);
       smileCenter.position.set(0, -0.105, 0.506);
       const smileLeft = new Mesh(new BoxGeometry(0.13, 0.026, 0.024), mouthMaterial);
@@ -12630,11 +12613,6 @@ export class Game {
       const smileRight = new Mesh(new BoxGeometry(0.13, 0.026, 0.024), mouthMaterial);
       smileRight.position.set(0.17, -0.085, 0.506);
       smileRight.rotation.z = -0.56;
-      [-0.11, -0.055, 0, 0.055, 0.11].forEach((toothX) => {
-        const grinTooth = new Mesh(new BoxGeometry(0.026, 0.045, 0.018), toothMaterial);
-        grinTooth.position.set(toothX, -0.128, 0.522);
-        smile.add(grinTooth);
-      });
       smile.add(smileCenter, smileLeft, smileRight);
       const bow = new Mesh(new BoxGeometry(0.34, 0.1, 0.08), boriMuzzleMaterial);
       bow.position.set(0, 0.18, 0.47);
