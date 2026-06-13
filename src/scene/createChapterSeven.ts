@@ -2801,7 +2801,7 @@ export function createChapterSeven(): ChapterSevenData {
 
     const towelMaterials = [
       new MeshStandardMaterial({ color: 0xf3f1e7, roughness: 0.88, metalness: 0.01 }),
-      new MeshStandardMaterial({ color: 0x1a1715, roughness: 0.9, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0xf1cf45, roughness: 0.88, metalness: 0.01 }),
       new MeshStandardMaterial({ color: 0x3f84cf, roughness: 0.87, metalness: 0.01 }),
       new MeshStandardMaterial({ color: 0xb83a32, roughness: 0.88, metalness: 0.01 }),
       new MeshStandardMaterial({ color: 0x7a4d31, roughness: 0.9, metalness: 0.01 }),
@@ -2899,6 +2899,50 @@ export function createChapterSeven(): ChapterSevenData {
       underside,
     );
     house.add(shelf);
+  };
+
+  const addToiletPaperHolder = (localX: number, localY: number, localZ: number, normalZ: 1 | -1): void => {
+    const holder = new Group();
+    holder.position.set(localX, localY, localZ + normalZ * 0.08);
+    holder.rotation.y = normalZ > 0 ? 0 : Math.PI;
+
+    const paperMaterial = new MeshStandardMaterial({
+      color: 0xf7f5ed,
+      emissive: 0x10100d,
+      emissiveIntensity: 0.025,
+      roughness: 0.92,
+      metalness: 0.01,
+    });
+    const paperEdgeMaterial = new MeshStandardMaterial({
+      color: 0xded9cb,
+      roughness: 0.94,
+      metalness: 0.01,
+    });
+
+    const wallPlate = new Mesh(new BoxGeometry(0.86, 0.42, 0.08), faucetMaterial);
+    wallPlate.position.set(0, 0, 0);
+    const leftArm = new Mesh(new BoxGeometry(0.08, 0.12, 0.34), faucetMaterial);
+    leftArm.position.set(-0.38, -0.02, normalZ * 0.19);
+    const rightArm = leftArm.clone();
+    rightArm.position.x = 0.38;
+    const spindle = new Mesh(new CylinderGeometry(0.035, 0.035, 0.82, 12), faucetMaterial);
+    spindle.rotation.z = Math.PI / 2;
+    spindle.position.set(0, -0.02, normalZ * 0.34);
+
+    const roll = new Mesh(new CylinderGeometry(0.24, 0.24, 0.58, 28), paperMaterial);
+    roll.rotation.z = Math.PI / 2;
+    roll.position.set(0, -0.02, normalZ * 0.34);
+    const innerTube = new Mesh(new CylinderGeometry(0.09, 0.09, 0.6, 20), paperEdgeMaterial);
+    innerTube.rotation.z = Math.PI / 2;
+    innerTube.position.copy(roll.position);
+
+    const looseSheet = new Mesh(new BoxGeometry(0.42, 0.5, 0.025), paperMaterial);
+    looseSheet.position.set(0.02, -0.34, normalZ * 0.39);
+    const sheetEnd = new Mesh(new BoxGeometry(0.42, 0.035, 0.03), paperEdgeMaterial);
+    sheetEnd.position.set(0.02, -0.61, normalZ * 0.4);
+
+    holder.add(wallPlate, leftArm, rightArm, spindle, roll, innerTube, looseSheet, sheetEnd);
+    house.add(holder);
   };
 
   const addCabinetCookies = (
@@ -3844,6 +3888,7 @@ export function createChapterSeven(): ChapterSevenData {
   addLaundryBasket(1202.82 - CENTER_X, 59.07 - HOUSE_CENTER_Z, -0.12);
   addWallShelf(1215.95 - CENTER_X, 2.06, 65.92 - HOUSE_CENTER_Z, 1);
   addTowelDuckShelf(1217.07 - CENTER_X, 2.1, 52.16 - HOUSE_CENTER_Z, -1);
+  addToiletPaperHolder(1211.82 - CENTER_X, 0.92, 47.62 - HOUSE_CENTER_Z, 1);
 
   const leftWall = new Mesh(new BoxGeometry(HOUSE_WALL_THICKNESS, HOUSE_HEIGHT, HOUSE_DEPTH), houseWallMaterial);
   leftWall.position.set(-HOUSE_WIDTH / 2, HOUSE_HEIGHT / 2, 0);
