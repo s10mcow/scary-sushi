@@ -720,12 +720,21 @@ export function createChapterSeven(): ChapterSevenData {
         context.fill();
         context.fillStyle = '#fff7ed';
         context.beginPath();
-        context.ellipse(103, 116, 32, 18, -0.1, 0, Math.PI * 2);
+        context.moveTo(78, 106);
+        context.quadraticCurveTo(104, 92, 134, 105);
+        context.quadraticCurveTo(129, 127, 108, 132);
+        context.quadraticCurveTo(91, 130, 80, 120);
+        context.closePath();
         context.fill();
         context.strokeStyle = '#d9c6af';
         context.lineWidth = 2;
+        context.stroke();
+        context.strokeStyle = '#e6d4bd';
         context.beginPath();
-        context.arc(118, 108, 3, 0, Math.PI * 2);
+        context.moveTo(86, 112);
+        context.quadraticCurveTo(100, 119, 115, 114);
+        context.moveTo(102, 130);
+        context.quadraticCurveTo(111, 120, 127, 124);
         context.stroke();
 
         context.fillStyle = '#f6cfae';
@@ -3185,6 +3194,20 @@ export function createChapterSeven(): ChapterSevenData {
       HOUSE_CENTER_Z + localZ + cavityCenterZ - cavityDepth / 2 + 0.04,
       cavityWidth,
       0.1,
+    );
+    addCollider(
+      colliders,
+      CENTER_X + localX - cavityWidth / 2 + 0.04,
+      HOUSE_CENTER_Z + localZ + cavityCenterZ,
+      0.1,
+      cavityDepth,
+    );
+    addCollider(
+      colliders,
+      CENTER_X + localX + cavityWidth / 2 - 0.04,
+      HOUSE_CENTER_Z + localZ + cavityCenterZ,
+      0.1,
+      cavityDepth,
     );
     const stoveCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.08, depth + 0.08);
     counterSurfaces.push({
