@@ -2343,6 +2343,8 @@ export function createChapterSeven(): ChapterSevenData {
       paper.rotation.set(rotX, 0.28, rotZ);
       return paper;
     });
+    const trashCookie = new Group();
+    addCookie(trashCookie, -0.02, height + 0.1, 0.26, 0.74);
     const trashContents = new Group();
     trashContents.visible = false;
     trashContents.add(
@@ -2354,6 +2356,7 @@ export function createChapterSeven(): ChapterSevenData {
       fishTail,
       ...bananaPeels,
       ...papers,
+      trashCookie,
     );
 
     trashCan.add(
@@ -2525,7 +2528,15 @@ export function createChapterSeven(): ChapterSevenData {
     fridge.add(doorPivot);
 
     house.add(fridge);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.18, depth + 0.18);
+    const fridgeCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, width + 0.18, depth + 0.18);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: (width + 0.18) / 2,
+      halfDepth: (depth + 0.18) / 2,
+      floorY: height + 0.12,
+      collider: fridgeCollider,
+    });
 
     return {
       label: 'Fridge',
@@ -2999,7 +3010,7 @@ export function createChapterSeven(): ChapterSevenData {
 
     const width = 1.82;
     const depth = 1.34;
-    const height = 1.88;
+    const height = 2.0;
     const body = new Mesh(new BoxGeometry(width, height, depth), applianceWhiteMaterial);
     body.position.y = height / 2;
     const top = new Mesh(new BoxGeometry(width + 0.08, 0.1, depth + 0.08), porcelainMaterial);
@@ -3080,6 +3091,15 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(appliance);
 
     const collider = addRotatedCollider(colliders, localX, localZ, rotationY, 0, 0, width + 0.12, depth + 0.12);
+    const applianceBounds = getRotatedBounds(width + 0.12, depth + 0.12, rotationY);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: applianceBounds.width / 2,
+      halfDepth: applianceBounds.depth / 2,
+      floorY: height + 0.1,
+      collider,
+    });
     const interactPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.82);
     const aimPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.08);
     return {
@@ -4067,19 +4087,22 @@ export function createChapterSeven(): ChapterSevenData {
         && crawling
         && nearOven
       );
+      const currentStandingFloorY = Math.max(0, position.y - GAME_CONFIG.player.height);
+      const surfaceJumpReach = 1.75;
 
       for (const surface of counterSurfaces) {
+        const surfaceReachable = surface.floorY <= currentStandingFloorY + surfaceJumpReach;
         if (surface.collider) {
           const nearSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth + GAME_CONFIG.player.radius + 0.28
             && Math.abs(position.z - surface.centerZ) <= surface.halfDepth + GAME_CONFIG.player.radius + 0.28;
-          const highEnoughToClearSurface = position.y > GAME_CONFIG.player.height + 0.24;
+          const highEnoughToClearSurface = surfaceReachable && position.y > GAME_CONFIG.player.height + 0.24;
           surface.collider.enabled = surface.collider === houseOven.collider
             ? !canCrawlIntoOven && !(nearSurface && highEnoughToClearSurface)
             : !(nearSurface && highEnoughToClearSurface);
         }
         const onSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth
           && Math.abs(position.z - surface.centerZ) <= surface.halfDepth;
-        if (onSurface && position.y > GAME_CONFIG.player.height + 0.18) {
+        if (surfaceReachable && onSurface && position.y > GAME_CONFIG.player.height + 0.18) {
           return GAME_CONFIG.player.height + surface.floorY;
         }
       }
