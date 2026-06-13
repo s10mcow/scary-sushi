@@ -7687,6 +7687,23 @@ export class Game {
     }
   }
 
+  private updateOfficeAnimatronicMouthMotion(animatronic: OfficeGameModeAnimatronicState, seesPlayer: boolean): void {
+    if (animatronic.animatronic === 'quacky' && seesPlayer) {
+      return;
+    }
+
+    const activeChase = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'creep';
+    const idlePulse = Math.max(0, Math.sin(this.elapsed * 0.82 + animatronic.walkCyclePhase));
+    const chatterPulse = Math.max(0, Math.sin(this.elapsed * (activeChase ? 8.5 : 4.2) + animatronic.walkCyclePhase * 1.7));
+    const occasionalOpen = idlePulse > 0.82 ? MathUtils.smoothstep(idlePulse, 0.82, 1) : 0;
+    const chaseOpen = activeChase ? chatterPulse * 0.42 : 0;
+    const openAmount = Math.max(occasionalOpen, chaseOpen);
+    const target = animatronic.animatronic === 'quacky'
+      ? -0.55 * openAmount
+      : 0.62 * openAmount;
+    animatronic.model.jaw.rotation.x = MathUtils.lerp(animatronic.model.jaw.rotation.x, target, 0.16);
+  }
+
   private isOfficePlayerNearDodgeThreat(): boolean {
     if (!this.officeChapterActive || !this.officeGameModeActive || this.officeGameModePowerOut) {
       return false;
@@ -9030,6 +9047,7 @@ export class Game {
           : OFFICE_GAME_MODE_WANDER_SENSE_INTERVAL;
     }
     this.updateOfficeQuackySeenJaw(animatronic, canSeePlayer, deltaSeconds);
+    this.updateOfficeAnimatronicMouthMotion(animatronic, canSeePlayer);
     if (this.updateOfficeGameModeCalmProximity(animatronic, deltaSeconds, playerPosition, canSeePlayer)) {
       return true;
     }
@@ -10923,18 +10941,26 @@ export class Game {
         : 0,
     );
     this.hud.setBallPitHidden(this.officeChapterActive && this.officeBallPitHidden);
+    const chapterFourCrouchInstructionsActive = this.chapterFourActive
+      && locked
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen
+      && !this.chapterFourBoxActive
+      && this.chapterFourPurpleJumpscareTimer <= 0
+      && this.chapterFourBlueJumpscareTimer <= 0
+      && this.chapterFourGreenJumpscareTimer <= 0
+      && this.chapterFourLockerId === null;
+    const chapterSevenCrawlInstructionsActive = this.chapterSevenActive
+      && locked
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen;
     this.hud.setCrouchInstructions(
-      this.chapterFourActive
-        && locked
-        && !this.chapterMenuOpen
-        && !this.officeJumpscareMenuOpen
-        && !this.officeModeMenuOpen
-        && !this.chapterFourBoxActive
-        && this.chapterFourPurpleJumpscareTimer <= 0
-        && this.chapterFourBlueJumpscareTimer <= 0
-        && this.chapterFourGreenJumpscareTimer <= 0
-        && this.chapterFourLockerId === null,
-      this.chapterFourCrouching,
+      chapterFourCrouchInstructionsActive || chapterSevenCrawlInstructionsActive,
+      this.chapterSevenActive ? this.chapterSevenCrawling : this.chapterFourCrouching,
+      chapterSevenCrawlInstructionsActive ? 'Hold Space Bar for 3 seconds to crawl.' : undefined,
+      chapterSevenCrawlInstructionsActive ? 'Crawl' : undefined,
     );
     this.level.stationAnimator.setPlateState({
       holdingPlate: this.holdingPlate,

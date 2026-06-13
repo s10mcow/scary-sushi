@@ -123,7 +123,7 @@ export interface HudController {
   setCameraTool(active: boolean, body: string): void;
   setPrompt(text: string): void;
   setActionPrompt(text: string): void;
-  setCrouchInstructions(active: boolean, crouched: boolean): void;
+  setCrouchInstructions(active: boolean, crouched: boolean, text?: string, title?: string): void;
   setTabletCameras(active: boolean, activeLabel: string, cameras: TabletCameraSlotView[]): void;
   setBallPitHidden(active: boolean): void;
   setNightModeAttack(active: boolean, armProgress: number, blackout: number): void;
@@ -2654,12 +2654,13 @@ export function createHud(host: HTMLElement): HudController {
       actionPrompt.dataset.active = String(text.length > 0);
       actionPrompt.textContent = text;
     },
-    setCrouchInstructions(active, crouched): void {
+    setCrouchInstructions(active, crouched, text, title = 'Crouch Instructions'): void {
       crouchInstructions.dataset.active = String(active);
       crouchInstructions.dataset.crouched = String(crouched);
-      crouchText.textContent = crouched
+      crouchTitle.textContent = title;
+      crouchText.textContent = text ?? (crouched
         ? 'Crouching: purple hands cannot get you in the mist.'
-        : 'Hold Spacebar';
+        : 'Hold Spacebar');
     },
     setTabletCameras(active, activeLabel, cameras): void {
       tabletCameraPanel.dataset.active = String(active);

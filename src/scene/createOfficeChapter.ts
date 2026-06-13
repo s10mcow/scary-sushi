@@ -3067,12 +3067,28 @@ function createFoxPirateStage(x: number, z: number): Group {
   belly.position.set(0, 1.04, -0.42);
   const headGroup = new Group();
   headGroup.position.set(0, 2.1, -0.02);
-  const head = new Mesh(new SphereGeometry(0.38, 18, 14), foxMaterial);
-  head.scale.set(0.9, 0.92, 1.04);
+  const head = new Mesh(new SphereGeometry(0.38, 22, 14), foxMaterial);
+  head.scale.set(1.02, 0.72, 0.92);
+  const jawline = new Mesh(new SphereGeometry(0.28, 18, 10), bellyMaterial);
+  jawline.scale.set(1.45, 0.26, 0.48);
+  jawline.position.set(0, -0.2, -0.34);
   const snout = new Mesh(new BoxGeometry(0.28, 0.16, 0.38), bellyMaterial);
   snout.position.set(0, -0.08, -0.34);
   const mouthLine = new Mesh(new BoxGeometry(0.18, 0.028, 0.026), darkMaterial);
   mouthLine.position.set(0, -0.17, -0.545);
+  const toothMaterial = new MeshStandardMaterial({
+    color: 0xe9dfc8,
+    emissive: 0x181006,
+    emissiveIntensity: 0.08,
+    roughness: 0.5,
+    metalness: 0.02,
+  });
+  [-0.15, -0.09, -0.03, 0.03, 0.09, 0.15].forEach((toothX) => {
+    const tooth = new Mesh(new ConeGeometry(0.017, 0.06, 7), toothMaterial);
+    tooth.position.set(toothX, -0.17, -0.568);
+    tooth.rotation.x = Math.PI;
+    headGroup.add(tooth);
+  });
   [-0.2, 0.2].forEach((earX) => {
     const ear = new Mesh(new CylinderGeometry(0.02, 0.14, 0.44, 3), foxMaterial);
     ear.position.set(earX, 0.34, 0.05);
@@ -3093,7 +3109,7 @@ function createFoxPirateStage(x: number, z: number): Group {
   const patchStrap = new Mesh(new BoxGeometry(0.5, 0.025, 0.02), darkMaterial);
   patchStrap.position.set(0, 0.1, -0.34);
   patchStrap.rotation.z = -0.28;
-  headGroup.add(head, snout, mouthLine, visibleEye, eyePatch, patchStrap);
+  headGroup.add(head, jawline, snout, mouthLine, visibleEye, eyePatch, patchStrap);
 
   const leftArm = createStageJointedArm(-1, 'relaxed', foxMaterial, jointMaterial, bellyMaterial);
   const rightArm = createStageJointedArm(1, 'relaxed', foxMaterial, jointMaterial, bellyMaterial);
@@ -3734,9 +3750,12 @@ function createStageAnimatronic(
   belly.position.set(0, 1.04, -0.42);
   const headGroup = new Group();
   headGroup.position.set(0, 2.1, -0.02);
-  const head = new Mesh(new SphereGeometry(0.38, 18, 14), bodyMaterial);
-  head.scale.set(kind === 'duck' ? 1.06 : 0.96, 0.9, 0.92);
+  const head = new Mesh(new SphereGeometry(0.38, 22, 14), bodyMaterial);
+  head.scale.set(kind === 'duck' ? 1.18 : 1.08, 0.72, 0.8);
   head.position.set(0, 0, 0);
+  const jawline = new Mesh(new SphereGeometry(kind === 'duck' ? 0.34 : 0.28, 18, 10), muzzleMaterial);
+  jawline.scale.set(kind === 'duck' ? 1.36 : 1.42, 0.28, kind === 'duck' ? 0.46 : 0.38);
+  jawline.position.set(0, -0.2, -0.3);
   const muzzle = new Mesh(
     kind === 'duck'
       ? new SphereGeometry(0.24, 18, 12)
@@ -3749,7 +3768,7 @@ function createStageAnimatronic(
   } else {
     muzzle.scale.set(1.25, 0.78, 0.56);
   }
-  headGroup.add(head, muzzle);
+  headGroup.add(head, jawline, muzzle);
   let mouthJaw: Group | undefined;
   let mouthBasePosition: Vector3 | undefined;
 
@@ -3765,7 +3784,40 @@ function createStageAnimatronic(
     const danglingEar = createBunnyEar(1, true, bodyMaterial, accentMaterial, jointMaterial);
     danglingEar.rotation.z = 0.1;
     danglingEar.rotation.x = -0.08;
-    headGroup.add(uprightEar, danglingEar);
+    const mouthCavityMaterial = new MeshStandardMaterial({
+      color: 0x050104,
+      emissive: 0x120414,
+      emissiveIntensity: 0.18,
+      roughness: 0.58,
+      metalness: 0.02,
+    });
+    const toothMaterial = new MeshStandardMaterial({
+      color: 0xe9dfc8,
+      emissive: 0x181006,
+      emissiveIntensity: 0.08,
+      roughness: 0.5,
+      metalness: 0.02,
+    });
+    const mouthCavity = new Mesh(new BoxGeometry(0.32, 0.06, 0.05), mouthCavityMaterial);
+    mouthCavity.position.set(0, -0.17, -0.42);
+    mouthJaw = new Group();
+    mouthJaw.position.set(0, -0.21, -0.41);
+    mouthBasePosition = mouthJaw.position.clone();
+    const jawGroup = mouthJaw;
+    const lowerJaw = new Mesh(new BoxGeometry(0.34, 0.055, 0.095), muzzleMaterial);
+    lowerJaw.position.set(0, 0.005, -0.025);
+    jawGroup.add(lowerJaw);
+    [-0.15, -0.09, -0.03, 0.03, 0.09, 0.15].forEach((toothX) => {
+      const upperTooth = new Mesh(new ConeGeometry(0.018, 0.06, 7), toothMaterial);
+      upperTooth.position.set(toothX, -0.145, -0.455);
+      upperTooth.rotation.x = Math.PI;
+      const lowerTooth = new Mesh(new ConeGeometry(0.014, 0.052, 7), toothMaterial);
+      lowerTooth.position.set(toothX, 0.032, -0.045);
+      lowerTooth.rotation.x = 0.1;
+      headGroup.add(upperTooth);
+      jawGroup.add(lowerTooth);
+    });
+    headGroup.add(uprightEar, danglingEar, mouthCavity, jawGroup);
   } else if (kind === 'bear') {
     [-0.26, 0.26].forEach((earX) => {
       const ear = new Mesh(new SphereGeometry(0.14, 12, 10), bodyMaterial);
@@ -3785,12 +3837,30 @@ function createStageAnimatronic(
     mouthJaw = new Group();
     mouthJaw.position.set(0, -0.205, -0.43);
     mouthBasePosition = mouthJaw.position.clone();
+    const jawGroup = mouthJaw;
     const lowerJaw = new Mesh(new BoxGeometry(0.23, 0.064, 0.052), muzzleMaterial);
     lowerJaw.position.set(0, 0, 0);
     const jawShadow = new Mesh(new BoxGeometry(0.2, 0.014, 0.02), mouthCavityMaterial);
     jawShadow.position.set(0, 0.04, -0.018);
-    mouthJaw.add(lowerJaw, jawShadow);
-    headGroup.add(mouthCavity, mouthJaw);
+    const toothMaterial = new MeshStandardMaterial({
+      color: 0xe9dfc8,
+      emissive: 0x181006,
+      emissiveIntensity: 0.08,
+      roughness: 0.5,
+      metalness: 0.02,
+    });
+    [-0.15, -0.09, -0.03, 0.03, 0.09, 0.15].forEach((toothX) => {
+      const upperTooth = new Mesh(new ConeGeometry(0.018, 0.062, 7), toothMaterial);
+      upperTooth.position.set(toothX, -0.155, -0.455);
+      upperTooth.rotation.x = Math.PI;
+      const lowerTooth = new Mesh(new ConeGeometry(0.014, 0.052, 7), toothMaterial);
+      lowerTooth.position.set(toothX, 0.032, -0.035);
+      lowerTooth.rotation.x = 0.1;
+      headGroup.add(upperTooth);
+      jawGroup.add(lowerTooth);
+    });
+    jawGroup.add(lowerJaw, jawShadow);
+    headGroup.add(mouthCavity, jawGroup);
   } else {
     const crest = new Mesh(new BoxGeometry(0.12, 0.34, 0.08), accentMaterial);
     crest.position.set(0, 0.36, 0.04);
@@ -3808,11 +3878,29 @@ function createStageAnimatronic(
     mouthJaw = new Group();
     mouthJaw.position.set(0, -0.19, -0.35);
     mouthBasePosition = mouthJaw.position.clone();
+    const jawGroup = mouthJaw;
     const lowerBeak = new Mesh(new SphereGeometry(0.2, 18, 10), muzzleMaterial);
     lowerBeak.scale.set(1.5, 0.33, 0.76);
     lowerBeak.position.set(0, -0.015, -0.06);
-    mouthJaw.add(lowerBeak);
-    headGroup.add(crest, mouthCavity, mouthJaw);
+    const toothMaterial = new MeshStandardMaterial({
+      color: 0xe9dfc8,
+      emissive: 0x221407,
+      emissiveIntensity: 0.08,
+      roughness: 0.48,
+      metalness: 0.03,
+    });
+    [-0.18, -0.11, -0.04, 0.04, 0.11, 0.18].forEach((toothX) => {
+      const upperTooth = new Mesh(new ConeGeometry(0.021, 0.068, 8), toothMaterial);
+      upperTooth.position.set(toothX, -0.15, -0.455);
+      upperTooth.rotation.x = Math.PI;
+      const lowerTooth = new Mesh(new ConeGeometry(0.017, 0.056, 8), toothMaterial);
+      lowerTooth.position.set(toothX, 0.028, -0.11);
+      lowerTooth.rotation.x = 0.1;
+      headGroup.add(upperTooth);
+      jawGroup.add(lowerTooth);
+    });
+    jawGroup.add(lowerBeak);
+    headGroup.add(crest, mouthCavity, jawGroup);
   }
 
   const leftArmPose: StageArmPose = includePerformanceProps && kind === 'bunny'
@@ -4191,10 +4279,27 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
       metalness: 0.04,
     });
     const foxyMouthMaterial = new MeshBasicMaterial({ color: 0x050000 });
+    const foxyToothMaterial = new MeshStandardMaterial({
+      color: 0xe9dfc8,
+      emissive: 0x181006,
+      emissiveIntensity: 0.08,
+      roughness: 0.5,
+      metalness: 0.02,
+    });
     const foxyLowerJaw = new Mesh(new BoxGeometry(0.26, 0.075, 0.17), foxyJawMaterial);
     foxyLowerJaw.position.set(0, -0.02, -0.06);
     const foxyMouthDark = new Mesh(new BoxGeometry(0.22, 0.03, 0.035), foxyMouthMaterial);
     foxyMouthDark.position.set(0, 0.02, -0.15);
+    [-0.13, -0.065, 0, 0.065, 0.13].forEach((toothX) => {
+      const upperTooth = new Mesh(new ConeGeometry(0.015, 0.06, 7), foxyToothMaterial);
+      upperTooth.position.set(toothX, -0.05, -0.18);
+      upperTooth.rotation.x = Math.PI;
+      const lowerTooth = new Mesh(new ConeGeometry(0.012, 0.048, 7), foxyToothMaterial);
+      lowerTooth.position.set(toothX, 0.025, -0.07);
+      lowerTooth.rotation.x = 0.1;
+      head.add(upperTooth);
+      jaw.add(lowerTooth);
+    });
     jaw.add(foxyLowerJaw, foxyMouthDark);
     leftArm = parts.leftArm.root;
     rightArm = parts.rightArm.root;
@@ -4309,11 +4414,29 @@ export function createOfficeJumpscareStageModel(animatronic: 'quacky' | 'fluffle
         metalness: 0.04,
       });
       const mouthMaterial = new MeshBasicMaterial({ color: 0x050000 });
+      const toothMaterial = new MeshStandardMaterial({
+        color: 0xe9dfc8,
+        emissive: 0x181006,
+        emissiveIntensity: 0.08,
+        roughness: 0.5,
+        metalness: 0.02,
+      });
+      jaw.clear();
       jaw.position.set(0, -0.18, -0.42);
       const lowerJaw = new Mesh(new BoxGeometry(0.26, 0.07, 0.1), lowerJawMaterial);
       lowerJaw.position.set(0, -0.01, -0.04);
       const mouthDark = new Mesh(new BoxGeometry(0.22, 0.028, 0.032), mouthMaterial);
       mouthDark.position.set(0, 0.02, -0.098);
+      [-0.13, -0.065, 0, 0.065, 0.13].forEach((toothX) => {
+        const upperTooth = new Mesh(new ConeGeometry(0.015, 0.06, 7), toothMaterial);
+        upperTooth.position.set(toothX, -0.045, -0.18);
+        upperTooth.rotation.x = Math.PI;
+        const lowerTooth = new Mesh(new ConeGeometry(0.012, 0.048, 7), toothMaterial);
+        lowerTooth.position.set(toothX, 0.03, -0.06);
+        lowerTooth.rotation.x = 0.1;
+        head.add(upperTooth);
+        jaw.add(lowerTooth);
+      });
       jaw.add(lowerJaw, mouthDark);
     }
     if (animatronic === 'bori') {
