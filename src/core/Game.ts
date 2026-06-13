@@ -3858,21 +3858,6 @@ export class Game {
       depthWrite: false,
       side: DoubleSide,
     });
-    const glassMaterial = new MeshBasicMaterial({
-      color: 0x8fb6c4,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-    const metalEdgeMaterial = new MeshBasicMaterial({
-      color: 0x141414,
-      transparent: true,
-      opacity: 0.98,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-
     const leftWall = new Mesh(new BoxGeometry(0.14, 1.12, 0.88), ovenWallMaterial);
     leftWall.position.set(-0.55, -0.02, -0.18);
     const rightWall = leftWall.clone();
@@ -3882,43 +3867,13 @@ export class Game {
     const bottomWall = topWall.clone();
     bottomWall.position.y = -0.54;
 
-    const doorPanelTop = new Mesh(new BoxGeometry(1.08, 0.31, 0.085), ovenWallMaterial);
-    doorPanelTop.position.set(0, 0.295, -0.525);
-    const doorPanelBottom = doorPanelTop.clone();
-    doorPanelBottom.position.y = -0.375;
-    const doorPanelLeft = new Mesh(new BoxGeometry(0.3, 0.36, 0.085), ovenWallMaterial);
-    doorPanelLeft.position.set(-0.39, -0.04, -0.525);
-    const doorPanelRight = doorPanelLeft.clone();
-    doorPanelRight.position.x = 0.39;
-    const doorFrameTop = new Mesh(new BoxGeometry(0.54, 0.045, 0.09), metalEdgeMaterial);
-    doorFrameTop.position.set(0, 0.18, -0.515);
-    const doorFrameBottom = doorFrameTop.clone();
-    doorFrameBottom.position.y = -0.26;
-    const doorFrameLeft = new Mesh(new BoxGeometry(0.045, 0.48, 0.09), metalEdgeMaterial);
-    doorFrameLeft.position.set(-0.29, -0.04, -0.515);
-    const doorFrameRight = doorFrameLeft.clone();
-    doorFrameRight.position.x = 0.29;
-    const glassWindow = new Mesh(new PlaneGeometry(0.48, 0.36), glassMaterial);
-    glassWindow.position.set(0, -0.04, -0.545);
     this.chapterSevenOvenDoorOverlay.visible = false;
-    this.chapterSevenOvenDoorOverlay.add(
-      doorPanelTop,
-      doorPanelBottom,
-      doorPanelLeft,
-      doorPanelRight,
-      doorFrameTop,
-      doorFrameBottom,
-      doorFrameLeft,
-      doorFrameRight,
-      glassWindow,
-    );
 
     this.chapterSevenOvenHideAnchor.add(
       leftWall,
       rightWall,
       topWall,
       bottomWall,
-      this.chapterSevenOvenDoorOverlay,
     );
   }
 
@@ -9931,8 +9886,7 @@ export class Game {
       && !this.chapterMenuOpen
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen;
-    this.chapterSevenOvenDoorOverlay.visible = this.chapterSevenOvenHideAnchor.visible
-      && this.chapterSevenOvenHidden;
+    this.chapterSevenOvenDoorOverlay.visible = false;
   }
 
   private updateChapterFourBlueJumpscareModel(): void {
@@ -18327,7 +18281,7 @@ export class Game {
     oven.open = false;
     oven.collider.enabled = false;
     this.chapterSevenOvenHideAnchor.visible = true;
-    this.chapterSevenOvenDoorOverlay.visible = true;
+    this.chapterSevenOvenDoorOverlay.visible = false;
     this.gameplaySfxAudio.playClosetDoor(false);
     this.pushStatus('You pull the oven door closed. You can look out through the glass. Press E to open it again.', 2.8);
   }
