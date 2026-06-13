@@ -720,21 +720,14 @@ export function createChapterSeven(): ChapterSevenData {
         context.fill();
         context.fillStyle = '#fff7ed';
         context.beginPath();
-        context.moveTo(78, 106);
-        context.quadraticCurveTo(104, 92, 134, 105);
-        context.quadraticCurveTo(129, 127, 108, 132);
-        context.quadraticCurveTo(91, 130, 80, 120);
-        context.closePath();
+        context.ellipse(86, 115, 31, 19, -0.12, 0, Math.PI * 2);
         context.fill();
         context.strokeStyle = '#d9c6af';
         context.lineWidth = 2;
-        context.stroke();
-        context.strokeStyle = '#e6d4bd';
         context.beginPath();
-        context.moveTo(86, 112);
-        context.quadraticCurveTo(100, 119, 115, 114);
-        context.moveTo(102, 130);
-        context.quadraticCurveTo(111, 120, 127, 124);
+        context.arc(101, 109, 3, 0, Math.PI * 2);
+        context.moveTo(63, 113);
+        context.quadraticCurveTo(80, 121, 104, 116);
         context.stroke();
 
         context.fillStyle = '#f6cfae';
@@ -849,6 +842,64 @@ export function createChapterSeven(): ChapterSevenData {
   };
   const babyPortraitMaterial = createFamilyPictureMaterial('baby');
   const swingPortraitMaterial = createFamilyPictureMaterial('swing');
+  const createTreePictureMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const skyGradient = context.createLinearGradient(0, 0, 0, 122);
+      skyGradient.addColorStop(0, '#8fc6ef');
+      skyGradient.addColorStop(1, '#e3f5ff');
+      context.fillStyle = skyGradient;
+      context.fillRect(0, 0, canvas.width, 124);
+      context.fillStyle = '#73ad55';
+      context.fillRect(0, 120, canvas.width, 56);
+      context.fillStyle = 'rgba(255,255,255,0.72)';
+      context.beginPath();
+      context.ellipse(58, 38, 34, 10, -0.08, 0, Math.PI * 2);
+      context.ellipse(188, 34, 42, 12, 0.06, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#6c4428';
+      context.beginPath();
+      context.moveTo(115, 142);
+      context.lineTo(139, 142);
+      context.lineTo(135, 86);
+      context.quadraticCurveTo(128, 78, 120, 86);
+      context.closePath();
+      context.fill();
+      context.strokeStyle = '#4f3320';
+      context.lineWidth = 5;
+      context.lineCap = 'round';
+      context.beginPath();
+      context.moveTo(128, 92);
+      context.lineTo(102, 68);
+      context.moveTo(130, 92);
+      context.lineTo(154, 64);
+      context.stroke();
+      context.fillStyle = '#3f7d38';
+      context.beginPath();
+      context.ellipse(96, 70, 32, 25, -0.18, 0, Math.PI * 2);
+      context.ellipse(132, 54, 42, 30, 0.06, 0, Math.PI * 2);
+      context.ellipse(166, 74, 34, 27, 0.12, 0, Math.PI * 2);
+      context.ellipse(130, 88, 48, 29, 0, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#5a9b45';
+      context.beginPath();
+      context.ellipse(112, 55, 16, 9, -0.2, 0, Math.PI * 2);
+      context.ellipse(151, 88, 20, 10, 0.18, 0, Math.PI * 2);
+      context.fill();
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  };
+  const treePortraitMaterial = createTreePictureMaterial();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -2468,7 +2519,7 @@ export function createChapterSeven(): ChapterSevenData {
     fridge.position.set(localX, 0, localZ);
 
     const width = 1.54;
-    const height = 3.58;
+    const height = 3.32;
     const depth = 1.06;
 
     const back = new Mesh(new BoxGeometry(width, height, 0.18), fridgeInteriorMaterial);
@@ -3276,6 +3327,13 @@ export function createChapterSeven(): ChapterSevenData {
     cupboard.add(leftDoorPivot, rightDoorPivot);
 
     house.add(cupboard);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: width / 2,
+      halfDepth: depth / 2,
+      floorY: 4.02 + height,
+    });
     const interactPosition = new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + depth / 2 + 0.9);
     return {
       label,
@@ -3633,6 +3691,7 @@ export function createChapterSeven(): ChapterSevenData {
   const oldWoodenClosets = [oldWoodenCloset, frontBedroomOldWoodenCloset, rearBedroomOldWoodenCloset];
   addPictureFrame(1193.33 - CENTER_X, 2.4, 84.23 - HOUSE_CENTER_Z, 1, dogPortraitMaterial);
   addPictureFrame(1197.89 - CENTER_X, 2.46, 83.77 - HOUSE_CENTER_Z, -1, catPortraitMaterial);
+  addPictureFrame(1196.01 - CENTER_X, 2.66, 75.77 - HOUSE_CENTER_Z, -1, treePortraitMaterial);
   addSidePictureFrame(1217.94 - CENTER_X, 2.03, 92.24 - HOUSE_CENTER_Z, -1, babyPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
@@ -4111,7 +4170,7 @@ export function createChapterSeven(): ChapterSevenData {
         && nearOven
       );
       const currentStandingFloorY = Math.max(0, position.y - GAME_CONFIG.player.height);
-      const surfaceJumpReach = 1.75;
+      const surfaceJumpReach = 3.0;
 
       for (const surface of counterSurfaces) {
         const surfaceReachable = surface.floorY <= currentStandingFloorY + surfaceJumpReach;
