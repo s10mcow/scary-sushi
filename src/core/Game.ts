@@ -857,7 +857,7 @@ const CHAPTER_FOUR_BOX_CAMERA_DISTANCE = 4.1;
 const CHAPTER_FOUR_BOX_CAMERA_HEIGHT = 2.35;
 const CHAPTER_FOUR_BOX_CAMERA_RADIUS = 0.22;
 const CHAPTER_FOUR_CROUCH_DROP = 0.52;
-const CHAPTER_SEVEN_CRAWL_DROP = 0.96;
+const CHAPTER_SEVEN_CRAWL_DROP = 1.18;
 const CHAPTER_SEVEN_CRAWL_SPEED_MULTIPLIER = 0.42;
 const CHAPTER_SEVEN_CRAWL_HOLD_MS = 2000;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_DURATION = 2.35;
@@ -11310,6 +11310,14 @@ export class Game {
       }
 
       const interactable = this.getLookedAtChapterSevenInteractable();
+      const nearestSwing = interactable?.kind === 'swing'
+        ? interactable.item
+        : this.getNearestChapterSevenSwing();
+      if (!interactable && nearestSwing) {
+        this.enterChapterSevenSwing();
+        return;
+      }
+
       const nearestBathtubFaucet = interactable?.kind === 'rear-fixture' && interactable.item.kind === 'bathtub'
         ? interactable.item
         : this.getNearestChapterSevenBathtubFaucet();
@@ -16436,6 +16444,10 @@ export class Game {
           : 'The oven is closed. Press E to open it.';
       }
 
+      if (this.getNearestChapterSevenSwing()) {
+        return 'Press E to swing on the swing set.';
+      }
+
       const door = this.getNearestChapterSevenHouseDoor();
       if (door) {
         if (door.interactionMode === 'manual') {
@@ -18836,6 +18848,20 @@ export class Game {
     }
 
     return best;
+  }
+
+  private getNearestChapterSevenSwing(): ChapterSevenData['swingSet'] | null {
+    if (!this.chapterSevenActive || this.chapterSevenBoxHidden || this.chapterSevenOvenHidden || this.chapterSevenCrawling) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const swing = this.chapterSeven.swingSet;
+    const distance = Math.hypot(
+      playerPosition.x - swing.interactPosition.x,
+      playerPosition.z - swing.interactPosition.z,
+    );
+    return distance <= GAME_CONFIG.player.interactionRange + 0.9 ? swing : null;
   }
 
   private getNearestChapterFourLocker(): ChapterFourData['lockers'][number] | null {

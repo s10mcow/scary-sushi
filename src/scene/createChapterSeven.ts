@@ -1708,17 +1708,17 @@ export function createChapterSeven(): ChapterSevenData {
     const table = new Group();
     table.position.set(worldX, 0, worldZ);
 
-    const top = new Mesh(new CylinderGeometry(1, 1, 0.16, 32), furnitureWoodMaterial);
-    top.position.y = 2.0;
-    const pedestal = new Mesh(new CylinderGeometry(0.18, 0.24, 1.92, 14), furnitureWoodMaterial);
-    pedestal.position.y = 1.02;
-    const foot = new Mesh(new CylinderGeometry(0.62, 0.68, 0.1, 20), furnitureWoodMaterial);
+    const top = new Mesh(new CylinderGeometry(1.35, 1.35, 0.14, 32), furnitureWoodMaterial);
+    top.position.y = 1.05;
+    const pedestal = new Mesh(new CylinderGeometry(0.18, 0.24, 0.98, 14), furnitureWoodMaterial);
+    pedestal.position.y = 0.52;
+    const foot = new Mesh(new CylinderGeometry(0.68, 0.74, 0.1, 20), furnitureWoodMaterial);
     foot.position.y = 0.05;
     table.add(top, pedestal, foot);
     root.add(table);
-    addCollider(colliders, worldX, worldZ, 2.08, 2.08);
+    addCollider(colliders, worldX, worldZ, 2.78, 2.78);
 
-    const chairDistance = 1.78;
+    const chairDistance = 2.06;
     const chairAngles = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6];
     chairAngles.forEach((angle) => {
       const chairX = worldX + Math.cos(angle) * chairDistance;
@@ -4132,7 +4132,7 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
   addOutdoorRoundTableSet(1240.54, 91.39);
-  const swingSet = addOutdoorSwingSet(1247.37, 67.97, Math.PI / 2, 1.05);
+  const swingSet = addOutdoorSwingSet(1247.37, 64.35, Math.PI / 2, 1.05);
   let swingInput = 0;
   const yardFenceStartX = HOUSE_WIDTH / 2 + HOUSE_WALL_THICKNESS / 2;
   const yardFenceLength = 20;
