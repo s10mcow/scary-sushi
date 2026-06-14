@@ -807,7 +807,7 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
   const ductBottomY = OFFICE_VENT_DUCT_FLOOR_Y;
   const ductHeight = 1.62;
   const ductCenterY = ductBottomY + ductHeight / 2;
-  const ladderExitPosition = new Vector3(ladderX, GAME_CONFIG.player.height, ladderZ + 0.88);
+  const ladderExitPosition = new Vector3(ladderX, GAME_CONFIG.player.height, ladderZ + 1.72);
   const ladderEntryPosition = new Vector3(ladderX, floorY, ladderZ + 0.88);
   const segments: OfficeChapterVentSegment[] = [];
 
