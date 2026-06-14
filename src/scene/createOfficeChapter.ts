@@ -6320,46 +6320,58 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     canvas.height = 128;
     const context = canvas.getContext('2d');
     if (context) {
-      context.fillStyle = '#899197';
+      context.fillStyle = '#4a3c2f';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      context.fillStyle = '#6d767c';
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#5a4a39';
+      for (let patch = 0; patch < 34; patch += 1) {
+        const x = (patch * 53) % canvas.width;
+        const y = (patch * 29) % canvas.height;
+        const width = 18 + (patch * 7) % 34;
+        const height = 5 + (patch * 11) % 18;
+        context.globalAlpha = 0.18 + (patch % 4) * 0.035;
+        context.fillRect(x, y, width, height);
+      }
+      context.globalAlpha = 1;
       const brickHeight = 34;
-      const brickWidth = 96;
-      for (let row = 0; row < 5; row += 1) {
-        const y = row * brickHeight - 3;
-        const offset = row % 2 === 0 ? -brickWidth * 0.12 : -brickWidth * 0.62;
-        for (let column = 0; column < 5; column += 1) {
-          const x = offset + column * brickWidth;
-          const shade = (row + column) % 3;
-          context.fillStyle = shade === 0 ? '#8f989e' : shade === 1 ? '#778188' : '#9ca5aa';
-          context.fillRect(x + 4, y + 4, brickWidth - 8, brickHeight - 8);
-          context.fillStyle = 'rgba(228, 235, 235, 0.12)';
-          context.fillRect(x + 10, y + 7, brickWidth - 20, 3);
-          context.fillStyle = 'rgba(30, 38, 42, 0.16)';
-          context.fillRect(x + 8, y + brickHeight - 8, brickWidth - 16, 3);
-          context.fillStyle = 'rgba(35, 44, 48, 0.13)';
-          for (let speck = 0; speck < 9; speck += 1) {
-            const speckSeed = (row * 31 + column * 17 + speck * 13) % 97;
-            const speckX = x + 9 + (speckSeed * 13) % (brickWidth - 18);
-            const speckY = y + 7 + (speckSeed * 7) % (brickHeight - 14);
-            context.fillRect(speckX, speckY, 2, 1);
-          }
-          context.fillStyle = 'rgba(71, 62, 48, 0.12)';
-          if ((row + column) % 4 === 0) {
-            context.fillRect(x + brickWidth * 0.18, y + brickHeight * 0.36, brickWidth * 0.38, 5);
-          }
+      const brickWidth = 74;
+      const sparseBricks: Array<[number, number, number, number]> = [
+        [12, 8, brickWidth, brickHeight],
+        [136, 16, brickWidth * 0.9, brickHeight * 0.88],
+        [70, 52, brickWidth * 0.92, brickHeight],
+        [184, 60, brickWidth * 0.78, brickHeight * 0.92],
+        [22, 94, brickWidth * 0.86, brickHeight * 0.82],
+        [122, 100, brickWidth * 0.98, brickHeight * 0.76],
+      ];
+      sparseBricks.forEach(([x, y, width, height], index) => {
+        context.fillStyle = index % 3 === 0 ? '#596166' : index % 3 === 1 ? '#4d565b' : '#687075';
+        context.fillRect(x, y, width, height);
+        context.fillStyle = 'rgba(19, 24, 27, 0.34)';
+        context.fillRect(x, y + height - 5, width, 5);
+        context.fillStyle = 'rgba(209, 214, 210, 0.08)';
+        context.fillRect(x + 7, y + 5, width - 14, 3);
+        context.fillStyle = 'rgba(25, 29, 30, 0.42)';
+        context.fillRect(x + width * 0.22, y + 8, 3, height * 0.55);
+        context.fillRect(x + width * 0.54, y + height * 0.38, width * 0.34, 3);
+        context.fillStyle = 'rgba(28, 22, 17, 0.3)';
+        context.fillRect(x - 4, y + height + 1, width + 8, 4);
+        for (let speck = 0; speck < 12; speck += 1) {
+          const speckSeed = (index * 37 + speck * 19) % 101;
+          const speckX = x + 6 + (speckSeed * 11) % Math.max(8, width - 12);
+          const speckY = y + 6 + (speckSeed * 7) % Math.max(8, height - 12);
+          context.fillStyle = speck % 2 === 0 ? 'rgba(16, 18, 18, 0.28)' : 'rgba(123, 117, 99, 0.2)';
+          context.fillRect(speckX, speckY, 2, 1);
         }
-      }
-      context.fillStyle = 'rgba(48, 57, 62, 0.5)';
-      for (let y = brickHeight - 1; y < canvas.height; y += brickHeight) {
-        context.fillRect(0, y, canvas.width, 4);
-      }
-      for (let row = 0; row < 5; row += 1) {
-        const offset = row % 2 === 0 ? 0 : brickWidth / 2;
-        for (let x = offset; x < canvas.width; x += brickWidth) {
-          context.fillRect(x - 2, row * brickHeight, 4, brickHeight);
+      });
+      context.strokeStyle = 'rgba(34, 26, 18, 0.56)';
+      context.lineWidth = 2;
+      for (let root = 0; root < 9; root += 1) {
+        const startX = (root * 31 + 14) % canvas.width;
+        context.beginPath();
+        context.moveTo(startX, 0);
+        for (let step = 1; step <= 4; step += 1) {
+          context.lineTo(startX + Math.sin(root + step) * 15, step * 33);
         }
+        context.stroke();
       }
       context.fillStyle = 'rgba(55, 49, 39, 0.12)';
       context.fillRect(0, canvas.height - 18, canvas.width, 18);
@@ -6373,9 +6385,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     texture.repeat.set(1.05, 1.25);
     return new MeshStandardMaterial({
       map: texture,
-      color: 0xaeb6bb,
-      emissive: 0x151a1d,
-      emissiveIntensity: 0.07,
+      color: 0x8f877a,
+      emissive: 0x120d09,
+      emissiveIntensity: 0.08,
       roughness: 0.96,
       metalness: 0.02,
     });
@@ -6557,6 +6569,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     roughness: 0.9,
     metalness: 0,
   });
+  const oldVineMaterial = new MeshStandardMaterial({
+    color: 0x1f2f1e,
+    emissive: 0x020501,
+    emissiveIntensity: 0.08,
+    roughness: 0.86,
+    metalness: 0,
+  });
+  const rootStrandMaterial = new MeshStandardMaterial({
+    color: 0x2c2118,
+    emissive: 0x030201,
+    emissiveIntensity: 0.08,
+    roughness: 0.92,
+    metalness: 0,
+  });
   const basementWallMinX = employeeElevatorCenterX - employeeElevatorBasementRoomWidth / 2;
   const basementWallMaxX = employeeElevatorCenterX + employeeElevatorBasementRoomWidth / 2;
   const basementWallMinZ = employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2;
@@ -6611,6 +6637,72 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ['east', employeeElevatorCenterZ + 1.15, employeeElevatorBasementFloorY + 1.22, 1.08, 0.42],
   ].forEach(([side, along, y, width, height]) => {
     addMissingCinderBlock(side as 'north' | 'south' | 'west' | 'east', along as number, y as number, width as number, height as number);
+  });
+  const getBasementWallPoint = (
+    side: 'north' | 'south' | 'west' | 'east',
+    along: number,
+    y: number,
+    offset = 0.106,
+  ): Vector3 => {
+    if (side === 'north') {
+      return new Vector3(along, y, basementWallMinZ + offset);
+    }
+    if (side === 'south') {
+      return new Vector3(along, y, basementWallMaxZ - offset);
+    }
+    if (side === 'west') {
+      return new Vector3(basementWallMinX + offset, y, along);
+    }
+    return new Vector3(basementWallMaxX - offset, y, along);
+  };
+  const addBasementVine = (
+    side: 'north' | 'south' | 'west' | 'east',
+    points: Array<[number, number]>,
+    radius: number,
+    material: MeshStandardMaterial,
+  ): void => {
+    const curve = new CatmullRomCurve3(points.map(([along, y]) => getBasementWallPoint(side, along, y)));
+    const vine = new Mesh(new TubeGeometry(curve, 24, radius, 7, false), material);
+    employeeElevatorRoot.add(vine);
+  };
+  addBasementVine('north', [
+    [employeeElevatorCenterX - 2.58, employeeElevatorBasementFloorY + 2.8],
+    [employeeElevatorCenterX - 2.2, employeeElevatorBasementFloorY + 2.16],
+    [employeeElevatorCenterX - 1.58, employeeElevatorBasementFloorY + 1.6],
+    [employeeElevatorCenterX - 0.84, employeeElevatorBasementFloorY + 1.02],
+  ], 0.035, oldVineMaterial);
+  addBasementVine('north', [
+    [employeeElevatorCenterX - 2.22, employeeElevatorBasementFloorY + 2.1],
+    [employeeElevatorCenterX - 2.68, employeeElevatorBasementFloorY + 1.68],
+    [employeeElevatorCenterX - 2.36, employeeElevatorBasementFloorY + 1.16],
+  ], 0.022, rootStrandMaterial);
+  addBasementVine('south', [
+    [employeeElevatorCenterX + 2.55, employeeElevatorBasementFloorY + 2.72],
+    [employeeElevatorCenterX + 1.92, employeeElevatorBasementFloorY + 2.2],
+    [employeeElevatorCenterX + 1.52, employeeElevatorBasementFloorY + 1.46],
+    [employeeElevatorCenterX + 0.74, employeeElevatorBasementFloorY + 0.94],
+  ], 0.04, oldVineMaterial);
+  addBasementVine('west', [
+    [employeeElevatorCenterZ + 2.18, employeeElevatorBasementFloorY + 2.84],
+    [employeeElevatorCenterZ + 1.54, employeeElevatorBasementFloorY + 2.25],
+    [employeeElevatorCenterZ + 1.82, employeeElevatorBasementFloorY + 1.62],
+    [employeeElevatorCenterZ + 1.12, employeeElevatorBasementFloorY + 1.02],
+  ], 0.032, oldVineMaterial);
+  addBasementVine('east', [
+    [employeeElevatorCenterZ - 2.18, employeeElevatorBasementFloorY + 2.78],
+    [employeeElevatorCenterZ - 1.68, employeeElevatorBasementFloorY + 2.08],
+    [employeeElevatorCenterZ - 2.08, employeeElevatorBasementFloorY + 1.44],
+    [employeeElevatorCenterZ - 1.36, employeeElevatorBasementFloorY + 0.88],
+  ], 0.03, rootStrandMaterial);
+  [
+    ['north', employeeElevatorCenterX - 1.36, employeeElevatorBasementFloorY + 1.36],
+    ['south', employeeElevatorCenterX + 1.72, employeeElevatorBasementFloorY + 1.86],
+    ['west', employeeElevatorCenterZ + 1.68, employeeElevatorBasementFloorY + 1.88],
+  ].forEach(([side, along, y]) => {
+    const leaf = new Mesh(new SphereGeometry(0.055, 8, 6), oldVineMaterial);
+    leaf.scale.set(1.35, 0.48, 0.72);
+    leaf.position.copy(getBasementWallPoint(side as 'north' | 'south' | 'west', along as number, y as number, 0.14));
+    employeeElevatorRoot.add(leaf);
   });
   const basementPad = new Mesh(
     new BoxGeometry(employeeElevatorPlatformSize + 0.18, 0.08, employeeElevatorPlatformSize + 0.18),
