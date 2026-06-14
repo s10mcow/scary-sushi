@@ -716,6 +716,8 @@ const OFFICE_FOXY_LEAP_CHANCE = 0.5;
 const OFFICE_VENT_CHASE_CHANCE = 0.5;
 const OFFICE_VENT_CHASE_DELAY_SECONDS = 5;
 const OFFICE_VENT_CHASE_SPEED = 1.32;
+const OFFICE_VENT_TOXICITY_GRACE_SECONDS = 30;
+const OFFICE_VENT_TOXICITY_DAMAGE_PER_SECOND = 5;
 const OFFICE_ANIMATRONIC_DOOR_LAUGH_RECORDING_ID = '003';
 const OFFICE_DEATH_DIED_NOTICE_SECONDS = 1.45;
 const OFFICE_DEATH_FIRED_NOTICE_SECONDS = 4.8;
@@ -1102,6 +1104,8 @@ export class Game {
   private officeBallPitHidden = false;
   private officeBallPitSlide: ActiveOfficeBallPitSlide | null = null;
   private officeVentActive = false;
+  private officeVentToxicitySeconds = 0;
+  private officeVentToxicityDamageNoticeCooldown = 0;
   private officeVentDrop: ActiveOfficeVentDrop | null = null;
   private officeEmployeeElevatorRide: ActiveOfficeEmployeeElevatorRide | null = null;
   private officeEmployeeElevatorBasementActive = false;
@@ -2812,6 +2816,7 @@ export class Game {
     } else {
       this.updateMonster(deltaSeconds);
     }
+    this.updateOfficeVentToxicity(deltaSeconds);
     this.updateHealth(deltaSeconds);
     this.updateAtmosphere();
     if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
@@ -3173,6 +3178,35 @@ export class Game {
 
   private updateCoffeeBoost(deltaSeconds: number): void {
     this.coffeeBoostRemaining = Math.max(0, this.coffeeBoostRemaining - deltaSeconds);
+  }
+
+  private updateOfficeVentToxicity(deltaSeconds: number): void {
+    if (!this.officeChapterActive || !this.officeVentActive) {
+      this.officeVentToxicitySeconds = 0;
+      this.officeVentToxicityDamageNoticeCooldown = 0;
+      return;
+    }
+
+    const previousSeconds = this.officeVentToxicitySeconds;
+    this.officeVentToxicitySeconds += deltaSeconds;
+    this.officeVentToxicityDamageNoticeCooldown = Math.max(0, this.officeVentToxicityDamageNoticeCooldown - deltaSeconds);
+
+    if (
+      previousSeconds < OFFICE_VENT_TOXICITY_GRACE_SECONDS
+      && this.officeVentToxicitySeconds >= OFFICE_VENT_TOXICITY_GRACE_SECONDS
+    ) {
+      this.pushStatus('The vent air is stale and toxic. Leave the ducts or you will keep taking damage.', 3.2);
+    }
+
+    if (this.officeVentToxicitySeconds < OFFICE_VENT_TOXICITY_GRACE_SECONDS || this.health <= 0) {
+      return;
+    }
+
+    this.health = Math.max(0, this.health - OFFICE_VENT_TOXICITY_DAMAGE_PER_SECOND * deltaSeconds);
+    if (this.officeVentToxicityDamageNoticeCooldown <= 0) {
+      this.officeVentToxicityDamageNoticeCooldown = 4;
+      this.pushStatus('Toxic vent air burns your lungs. Get out of the vents.', 2.4);
+    }
   }
 
   private updateOfficePrizeTimers(deltaSeconds: number): void {
@@ -10537,6 +10571,14 @@ export class Game {
       }
     }
 
+    if (
+      this.officeChapterActive
+      && this.officeVentActive
+      && this.officeVentToxicitySeconds >= OFFICE_VENT_TOXICITY_GRACE_SECONDS
+    ) {
+      return;
+    }
+
     if (this.isPlayerSafe()) {
       this.health = Math.min(
         GAME_CONFIG.player.healthMax,
@@ -11123,6 +11165,13 @@ export class Game {
       this.doomModeActive
         ? this.doomArmor / 100
         : this.stamina / GAME_CONFIG.player.staminaMax,
+    );
+    this.hud.setToxicity(
+      this.officeChapterActive && this.officeVentActive,
+      MathUtils.clamp(this.officeVentToxicitySeconds / OFFICE_VENT_TOXICITY_GRACE_SECONDS, 0, 1),
+      this.officeVentToxicitySeconds >= OFFICE_VENT_TOXICITY_GRACE_SECONDS
+        ? 'Damage'
+        : `${Math.max(0, Math.ceil(OFFICE_VENT_TOXICITY_GRACE_SECONDS - this.officeVentToxicitySeconds))}s`,
     );
     this.hud.setHotbar(hideChapterFourInventory ? [] : this.getHotbarSlots());
     this.hud.setJumpscare(this.getHudJumpScareVariant(), this.getHudJumpScareIntensity());

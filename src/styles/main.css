@@ -4449,6 +4449,15 @@ select {
   background: linear-gradient(90deg, rgba(166, 212, 138, 0.95), var(--stamina));
 }
 
+.hud__fill--toxicity {
+  background: linear-gradient(90deg, rgba(137, 218, 190, 0.95), rgba(231, 193, 79, 0.96), rgba(189, 54, 62, 0.98));
+}
+
+.hud__meter[data-danger="true"] .hud__label,
+.hud__meter[data-danger="true"] .hud__hint {
+  color: var(--danger);
+}
+
 .hud__slot {
   min-height: 3.7rem;
   padding: 0.36rem 0.38rem 0.42rem;

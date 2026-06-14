@@ -424,6 +424,7 @@ const OFFICE_WIDTH = 13;
 const OFFICE_DEPTH = 11;
 const WALL_HEIGHT = 4.1;
 const OFFICE_VENT_FLOOR_Y = WALL_HEIGHT + 1.16;
+const OFFICE_VENT_DUCT_FLOOR_Y = WALL_HEIGHT + 0.08;
 const BALL_PIT_ROOM_HEIGHT = WALL_HEIGHT;
 const WALL_THICKNESS = 0.45;
 const DOOR_MOVE_SPEED = 8.4;
@@ -803,7 +804,7 @@ function createSwivelingSecurityCamera(
 function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapterVentSystem {
   const root = new Group();
   const floorY = OFFICE_VENT_FLOOR_Y;
-  const ductBottomY = WALL_HEIGHT + 0.08;
+  const ductBottomY = OFFICE_VENT_DUCT_FLOOR_Y;
   const ductHeight = 1.62;
   const ductCenterY = ductBottomY + ductHeight / 2;
   const ladderExitPosition = new Vector3(ladderX, GAME_CONFIG.player.height, ladderZ + 0.88);
@@ -6222,7 +6223,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
 
   const employeeKeyBriefcaseRoot = new Group();
-  employeeKeyBriefcaseRoot.position.set(-243.99, 4.2, 148.55);
+  employeeKeyBriefcaseRoot.position.set(-243.99, OFFICE_VENT_DUCT_FLOOR_Y + 0.005, 148.55);
   employeeKeyBriefcaseRoot.rotation.y = Math.PI / 2;
   employeeKeyBriefcaseRoot.visible = !abandonedStraightHalls;
   const briefcaseMaterial = new MeshStandardMaterial({
@@ -6295,7 +6296,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const employeeKeyBriefcase: OfficeChapterEmployeeKeyBriefcase = {
     label: 'Metal Briefcase',
     root: employeeKeyBriefcaseRoot,
-    interactPosition: new Vector3(-243.99, 4.72, 148.55),
+    interactPosition: new Vector3(-243.99, OFFICE_VENT_DUCT_FLOOR_Y + 0.52, 148.55),
     lidPivot: briefcaseLidPivot,
     keyRoot: briefcaseKeyRoot,
     open: false,

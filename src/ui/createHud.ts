@@ -140,6 +140,7 @@ export interface HudController {
   setHealthLabel(text: string): void;
   setStamina(ratio: number): void;
   setStaminaLabel(text: string): void;
+  setToxicity(active: boolean, ratio: number, valueText?: string): void;
   setHotbar(slots: HotbarSlotView[]): void;
   setJumpscare(variant: HudJumpScareVariant | null, intensity: number): void;
   destroy(): void;
@@ -713,8 +714,10 @@ export function createHud(host: HTMLElement): HudController {
 
   const healthMeter = createMeter('Health', 'hud__fill--health');
   const staminaMeter = createMeter('Stamina', 'hud__fill--stamina');
+  const toxicityMeter = createMeter('Toxicity', 'hud__fill--toxicity');
+  toxicityMeter.root.hidden = true;
 
-  meterPanel.append(healthMeter.root, staminaMeter.root);
+  meterPanel.append(healthMeter.root, staminaMeter.root, toxicityMeter.root);
 
   const storyNotice = document.createElement('section');
   storyNotice.className = 'hud__story';
@@ -2737,6 +2740,13 @@ export function createHud(host: HTMLElement): HudController {
     },
     setStaminaLabel(text): void {
       staminaMeter.label.textContent = text;
+    },
+    setToxicity(active, ratio, valueText): void {
+      const clampedRatio = Math.max(0, Math.min(1, ratio));
+      toxicityMeter.root.hidden = !active;
+      toxicityMeter.root.dataset.danger = String(clampedRatio >= 1);
+      toxicityMeter.fill.style.setProperty('--fill-ratio', `${clampedRatio}`);
+      toxicityMeter.value.textContent = valueText ?? `${Math.round(clampedRatio * 100)}%`;
     },
     setHotbar(slots): void {
       hotbar.hidden = slots.length === 0;
