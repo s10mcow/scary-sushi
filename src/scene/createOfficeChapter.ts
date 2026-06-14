@@ -6651,7 +6651,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       minX: southBasementHallwayMinX + 0.2,
       maxX: southBasementHallwayMaxX - 0.2,
       minZ: basementWallMaxZ - 0.62,
-      maxZ: southBasementHallwayEndZ - 1.75,
+      maxZ: southBasementHallwayEndZ - 4.15,
     },
   ];
   let basementFlickerTime = 0;
@@ -6735,6 +6735,35 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     1,
     Math.max(1, southBasementHallwayLength / employeeElevatorBasementRoomDepth) * 1.2,
   );
+  const blockedBasementRoomWidth = 10.4;
+  const blockedBasementRoomDepth = 8.8;
+  const blockedBasementRoomHallLength = 5.4;
+  const blockedBasementRoomMinX = southBasementHallwayCenterX - blockedBasementRoomWidth / 2;
+  const blockedBasementRoomMaxX = southBasementHallwayCenterX + blockedBasementRoomWidth / 2;
+  const blockedBasementRoomMinZ = southBasementHallwayEndZ + blockedBasementRoomHallLength;
+  const blockedBasementRoomMaxZ = blockedBasementRoomMinZ + blockedBasementRoomDepth;
+  const blockedBasementRoomCenterZ = (blockedBasementRoomMinZ + blockedBasementRoomMaxZ) / 2;
+  const blockedHallwayCenterZ = southBasementHallwayEndZ + blockedBasementRoomHallLength / 2;
+  const blockedHallwayFloorMaterial = createHallwayRepeatedMaterial(
+    basementFloorMaterial,
+    1,
+    1.4,
+  );
+  const blockedHallwayCeilingMaterial = createHallwayRepeatedMaterial(
+    basementCeilingMaterial,
+    1,
+    1.2,
+  );
+  const blockedRoomFloorMaterial = createHallwayRepeatedMaterial(
+    basementFloorMaterial,
+    2.6,
+    2.2,
+  );
+  const blockedRoomCeilingMaterial = createHallwayRepeatedMaterial(
+    basementCeilingMaterial,
+    2.2,
+    1.8,
+  );
   const addSegmentedHallwayWall = (x: number, startZ: number, endZ: number): void => {
     const segmentLength = employeeElevatorBasementRoomDepth;
     let cursorZ = startZ;
@@ -6816,11 +6845,63 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     southHallwayCeilingMaterial,
   );
   southHallwayCeiling.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight, southBasementHallwayCenterZ);
-  employeeElevatorRoot.add(hallwayFloor, hallwayCeiling, southHallwayHeader, southHallwayFloor, southHallwayCeiling);
+  const blockedHallwayFloor = new Mesh(
+    new BoxGeometry(southBasementHallwayWidth, 0.1, blockedBasementRoomHallLength),
+    blockedHallwayFloorMaterial,
+  );
+  blockedHallwayFloor.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY - 0.055, blockedHallwayCenterZ);
+  blockedHallwayFloor.receiveShadow = true;
+  const blockedHallwayCeiling = new Mesh(
+    new BoxGeometry(southBasementHallwayWidth, 0.08, blockedBasementRoomHallLength),
+    blockedHallwayCeilingMaterial,
+  );
+  blockedHallwayCeiling.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight, blockedHallwayCenterZ);
+  const blockedRoomFloor = new Mesh(
+    new BoxGeometry(blockedBasementRoomWidth, 0.1, blockedBasementRoomDepth),
+    blockedRoomFloorMaterial,
+  );
+  blockedRoomFloor.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY - 0.055, blockedBasementRoomCenterZ);
+  blockedRoomFloor.receiveShadow = true;
+  const blockedRoomCeiling = new Mesh(
+    new BoxGeometry(blockedBasementRoomWidth, 0.08, blockedBasementRoomDepth),
+    blockedRoomCeilingMaterial,
+  );
+  blockedRoomCeiling.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight, blockedBasementRoomCenterZ);
+  employeeElevatorRoot.add(
+    hallwayFloor,
+    hallwayCeiling,
+    southHallwayHeader,
+    southHallwayFloor,
+    southHallwayCeiling,
+    blockedHallwayFloor,
+    blockedHallwayCeiling,
+    blockedRoomFloor,
+    blockedRoomCeiling,
+  );
   addSegmentedHallwayWall(basementHallwayMinX, basementHallwayStartZ, basementHallwayEndZ);
   addSegmentedHallwayWall(basementHallwayMaxX, basementHallwayStartZ, basementHallwayEndZ);
   addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayStartZ, southBasementHallwayEndZ);
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayStartZ, southBasementHallwayEndZ);
+  addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
+  addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
+  const blockedRoomSideWallDepth = blockedBasementRoomDepth;
+  [
+    { x: blockedBasementRoomMinX, z: blockedBasementRoomCenterZ, sx: 0.14, sz: blockedRoomSideWallDepth },
+    { x: blockedBasementRoomMaxX, z: blockedBasementRoomCenterZ, sx: 0.14, sz: blockedRoomSideWallDepth },
+    { x: southBasementHallwayCenterX, z: blockedBasementRoomMaxZ, sx: blockedBasementRoomWidth, sz: 0.14 },
+    {
+      x: blockedBasementRoomMinX + (southBasementHallwayMinX - blockedBasementRoomMinX) / 2,
+      z: blockedBasementRoomMinZ,
+      sx: southBasementHallwayMinX - blockedBasementRoomMinX,
+      sz: 0.14,
+    },
+    {
+      x: southBasementHallwayMaxX + (blockedBasementRoomMaxX - southBasementHallwayMaxX) / 2,
+      z: blockedBasementRoomMinZ,
+      sx: blockedBasementRoomMaxX - southBasementHallwayMaxX,
+      sz: 0.14,
+    },
+  ].forEach(addBasementWallSegment);
   const northHallwayEndWall = new Mesh(new BoxGeometry(basementHallwayWidth, basementWallHeight, 0.16), basementWallMaterial);
   northHallwayEndWall.position.set(-255.88, basementWallCenterY, 92.82);
   employeeElevatorRoot.add(northHallwayEndWall);
@@ -6855,6 +6936,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       15.2,
     );
   });
+  addBasementFlickerFixture(southBasementHallwayCenterX, blockedBasementRoomCenterZ, 1.1, 4.85, 13.5);
   const rubbleMaterial = new MeshStandardMaterial({
     color: 0x55514a,
     emissive: 0x060504,
