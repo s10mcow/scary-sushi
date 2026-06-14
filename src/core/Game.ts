@@ -2729,7 +2729,7 @@ export class Game {
         deltaSeconds,
         effectiveMovement,
         jumpRequested,
-        !officeVentActive && !officeScriptedMoving,
+        !officeVentActive && !officeScriptedMoving && !this.officeEmployeeElevatorBasementActive,
         movementSpeedScale,
         true,
         this.chapterSixActive ? 1.34 : 1,

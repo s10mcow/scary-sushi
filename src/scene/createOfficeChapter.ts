@@ -6651,11 +6651,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }
     return material;
   };
-  const hallwayWallMaterial = createHallwayRepeatedMaterial(
-    basementWallMaterial,
-    1.15,
-    Math.max(1, basementHallwayLength / employeeElevatorBasementRoomDepth) * 1.25,
-  );
   const hallwayFloorMaterial = createHallwayRepeatedMaterial(
     basementFloorMaterial,
     1,
@@ -6666,6 +6661,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     1,
     Math.max(1, basementHallwayLength / employeeElevatorBasementRoomDepth) * 1.2,
   );
+  const addSegmentedHallwayWall = (x: number): void => {
+    const segmentLength = employeeElevatorBasementRoomDepth;
+    let cursorZ = basementHallwayStartZ;
+    while (cursorZ < basementHallwayEndZ - 0.02) {
+      const nextZ = Math.min(cursorZ + segmentLength, basementHallwayEndZ);
+      const length = nextZ - cursorZ;
+      const segment = new Mesh(new BoxGeometry(0.14, basementWallHeight, length), basementWallMaterial);
+      segment.position.set(x, basementWallCenterY, cursorZ + length / 2);
+      employeeElevatorRoot.add(segment);
+      cursorZ = nextZ;
+    }
+  };
   const addBasementWallSegment = (wall: { x: number; z: number; sx: number; sz: number }): void => {
     const basementWall = new Mesh(new BoxGeometry(wall.sx, basementWallHeight, wall.sz), basementWallMaterial);
     basementWall.position.set(wall.x, basementWallCenterY, wall.z);
@@ -6703,13 +6710,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   );
   hallwayFloor.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY - 0.055, basementHallwayCenterZ);
   hallwayFloor.receiveShadow = true;
-  const hallwayLeftWall = new Mesh(new BoxGeometry(0.14, basementWallHeight, basementHallwayLength), hallwayWallMaterial);
-  hallwayLeftWall.position.set(basementHallwayMinX, basementWallCenterY, basementHallwayCenterZ);
-  const hallwayRightWall = hallwayLeftWall.clone();
-  hallwayRightWall.position.x = basementHallwayMaxX;
   const hallwayCeiling = new Mesh(new BoxGeometry(basementHallwayWidth, 0.08, basementHallwayLength), hallwayCeilingMaterial);
   hallwayCeiling.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight, basementHallwayCenterZ);
-  employeeElevatorRoot.add(hallwayFloor, hallwayLeftWall, hallwayRightWall, hallwayCeiling);
+  employeeElevatorRoot.add(hallwayFloor, hallwayCeiling);
+  addSegmentedHallwayWall(basementHallwayMinX);
+  addSegmentedHallwayWall(basementHallwayMaxX);
   const rubbleMaterial = new MeshStandardMaterial({
     color: 0x55514a,
     emissive: 0x060504,
