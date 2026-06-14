@@ -6642,14 +6642,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const southBasementHallwayCenterZ = (southBasementHallwayStartZ + southBasementHallwayEndZ) / 2;
   const basementHallwayBounds = [
     {
-      minX: basementHallwayMinX + 0.2,
-      maxX: basementHallwayMaxX - 0.2,
+      minX: basementHallwayMinX + 0.5,
+      maxX: basementHallwayMaxX - 0.5,
       minZ: basementHallwayStartZ + 1.75,
       maxZ: basementWallMinZ + 0.62,
     },
     {
-      minX: southBasementHallwayMinX + 0.2,
-      maxX: southBasementHallwayMaxX - 0.2,
+      minX: southBasementHallwayMinX + 0.5,
+      maxX: southBasementHallwayMaxX - 0.5,
       minZ: basementWallMaxZ - 0.62,
       maxZ: southBasementHallwayEndZ - 4.15,
     },
@@ -6902,9 +6902,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       sz: 0.14,
     },
   ].forEach(addBasementWallSegment);
-  const northHallwayEndWall = new Mesh(new BoxGeometry(basementHallwayWidth, basementWallHeight, 0.16), basementWallMaterial);
-  northHallwayEndWall.position.set(-255.88, basementWallCenterY, 92.82);
-  employeeElevatorRoot.add(northHallwayEndWall);
   addBasementFlickerFixture(employeeElevatorCenterX + 1.3, employeeElevatorCenterZ - 1.7, 1.85, 0.2, 15.5);
   [
     basementWallMinZ - 5.5,
@@ -7166,8 +7163,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     topPosition: new Vector3(employeeElevatorCenterX, GAME_CONFIG.player.height, employeeElevatorCenterZ),
     lowerPosition: new Vector3(employeeElevatorCenterX, employeeElevatorLowerEyeY, employeeElevatorCenterZ),
     lowerLookTarget: new Vector3(employeeElevatorCenterX, employeeElevatorLowerEyeY, employeeElevatorCenterZ + 4),
-    lowerHalfWidth: employeeElevatorBasementRoomWidth / 2 - 0.42,
-    lowerHalfDepth: employeeElevatorBasementRoomDepth / 2 - 0.42,
+    lowerHalfWidth: employeeElevatorBasementRoomWidth / 2 - 0.72,
+    lowerHalfDepth: employeeElevatorBasementRoomDepth / 2 - 0.72,
     lowerHallwayBounds: basementHallwayBounds,
     button: elevatorButton,
     buttonRestX: elevatorButton.position.x,
