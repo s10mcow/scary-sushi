@@ -12899,23 +12899,38 @@ export class Game {
   } {
     switch (cutscene.definition.animatronic) {
       case 'foxy':
-        return { y: -1.1, z: -0.3, scale: 3.08 };
+        return { y: -1.48, z: -0.22, scale: 3.54 };
       case 'bori':
         return {
-          y: cutscene.definition.id === 'bori-2' ? -1.18 : -1.24,
-          z: cutscene.definition.id === 'bori-3' ? -0.28 : -0.3,
-          scale: cutscene.definition.id === 'bori-3' ? 3.28 : 3.18,
+          y: cutscene.definition.id === 'bori-2' ? -1.56 : -1.6,
+          z: cutscene.definition.id === 'bori-3' ? -0.22 : -0.23,
+          scale: cutscene.definition.id === 'bori-3' ? 3.72 : 3.62,
         };
       case 'fluffle':
         return {
-          y: cutscene.definition.id === 'fluffle-2' ? -1.16 : -1.08,
-          z: cutscene.definition.id === 'fluffle-2' ? -0.28 : -0.31,
-          scale: cutscene.definition.id === 'fluffle-2' ? 3.02 : 2.96,
+          y: cutscene.definition.id === 'fluffle-2' ? -1.46 : -1.42,
+          z: cutscene.definition.id === 'fluffle-2' ? -0.22 : -0.24,
+          scale: cutscene.definition.id === 'fluffle-2' ? 3.42 : 3.36,
         };
       case 'quacky':
       default:
-        return { y: -1.12, z: -0.31, scale: 2.94 };
+        return { y: -1.44, z: -0.24, scale: 3.36 };
     }
+  }
+
+  private centerOfficeJumpscareFaceInView(cutscene: ActiveOfficeJumpscare, strength: number): void {
+    const clampedStrength = MathUtils.clamp(strength, 0, 1);
+    if (clampedStrength <= 0.001) {
+      return;
+    }
+
+    cutscene.root.updateMatrixWorld(true);
+    const headPosition = cutscene.head.getWorldPosition(new Vector3());
+    cutscene.root.worldToLocal(headPosition);
+    const targetX = 0;
+    const targetY = cutscene.definition.animatronic === 'foxy' ? 0.03 : 0.02;
+    cutscene.modelRoot.position.x += (targetX - headPosition.x) * 0.9 * clampedStrength;
+    cutscene.modelRoot.position.y += (targetY - headPosition.y) * 0.9 * clampedStrength;
   }
 
   private getOfficeJumpscareAlreadyPresentPose(cutscene: ActiveOfficeJumpscare): {
@@ -13287,6 +13302,9 @@ export class Game {
       const boriBiteClose = cutscene.definition.id === 'bori-3' ? MathUtils.smoothstep(progress, 0.82, 0.96) : 0;
       const boriBiteJaw = MathUtils.lerp(1.68, 0.16, boriBiteClose) * boriBiteOpen;
       const boriRoarJaw = isBoriCutscene && cutscene.definition.id !== 'bori-3' ? 1.24 * closeHold : 0;
+      const faceLock = MathUtils.smoothstep(progress, 0.72, 0.9);
+      const mouthTerror = MathUtils.smoothstep(progress, 0.7, 0.86);
+      const violentHeadShake = Math.sin(cutscene.elapsed * 72) * 0.16 * faceLock;
       model.position.x = MathUtils.lerp(model.position.x, 0, closeHold * 0.82);
       model.position.y = MathUtils.lerp(
         model.position.y,
@@ -13301,11 +13319,11 @@ export class Game {
       cutscene.head.rotation.x += (isBoriCutscene ? 0.05 : isBrokenCrawl ? 0.03 : 0.18) * closeHold;
       const screamHold = MathUtils.smoothstep(progress, 0.76, 0.96);
       const headTwitch = Math.sin(cutscene.elapsed * 46) * 0.1 * closeHold;
-      cutscene.head.rotation.y += headTwitch;
-      cutscene.head.rotation.z += Math.cos(cutscene.elapsed * 39) * 0.075 * closeHold;
+      cutscene.head.rotation.y += headTwitch + violentHeadShake;
+      cutscene.head.rotation.z += Math.cos(cutscene.elapsed * 39) * 0.075 * closeHold + Math.cos(cutscene.elapsed * 64) * 0.1 * faceLock;
       if (isBoriCutscene) {
         cutscene.head.rotation.y += cutscene.definition.id === 'bori-2' ? Math.sin(progress * Math.PI * 9) * 0.08 * closeHold : 0;
-        cutscene.jaw.rotation.x = Math.max(cutscene.jaw.rotation.x, boriBiteJaw, boriRoarJaw, 1.46 * screamHold);
+        cutscene.jaw.rotation.x = Math.max(cutscene.jaw.rotation.x, boriBiteJaw, boriRoarJaw, 1.72 * mouthTerror, 1.46 * screamHold);
         if (cutscene.definition.id === 'bori-3') {
           const biteSnap = boriBiteOpen * boriBiteClose;
           model.position.z = MathUtils.lerp(model.position.z, -0.34, biteSnap * 0.75);
@@ -13313,8 +13331,8 @@ export class Game {
         }
       } else {
         cutscene.jaw.rotation.x = cutscene.definition.animatronic === 'quacky'
-          ? Math.min(cutscene.jaw.rotation.x, -1.34 * screamHold)
-          : Math.max(cutscene.jaw.rotation.x, 1.34 * screamHold);
+          ? Math.min(cutscene.jaw.rotation.x, -1.72 * mouthTerror, -1.34 * screamHold)
+          : Math.max(cutscene.jaw.rotation.x, 1.72 * mouthTerror, 1.34 * screamHold);
       }
       if (isBoriCutscene) {
         if (cutscene.definition.id === 'bori-1') {
@@ -13349,6 +13367,7 @@ export class Game {
         cutscene.leftArm.rotation.z = MathUtils.lerp(cutscene.leftArm.rotation.z, 1.42, closeHold);
         cutscene.rightArm.rotation.z = MathUtils.lerp(cutscene.rightArm.rotation.z, -1.42, closeHold);
       }
+      this.centerOfficeJumpscareFaceInView(cutscene, faceLock);
     }
 
     if (progress >= 1) {
