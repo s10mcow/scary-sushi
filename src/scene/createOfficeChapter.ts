@@ -6320,61 +6320,101 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     canvas.height = 128;
     const context = canvas.getContext('2d');
     if (context) {
-      context.fillStyle = '#8a7b70';
+      context.fillStyle = '#899197';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      context.fillStyle = '#74645b';
+      context.fillStyle = '#6d767c';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      const brickHeight = 24;
-      const brickWidth = 64;
-      for (let row = 0; row < 6; row += 1) {
-        const y = row * brickHeight;
-        const offset = row % 2 === 0 ? 0 : -brickWidth / 2;
-        for (let column = 0; column < 6; column += 1) {
+      const brickHeight = 34;
+      const brickWidth = 96;
+      for (let row = 0; row < 5; row += 1) {
+        const y = row * brickHeight - 3;
+        const offset = row % 2 === 0 ? -brickWidth * 0.12 : -brickWidth * 0.62;
+        for (let column = 0; column < 5; column += 1) {
           const x = offset + column * brickWidth;
           const shade = (row + column) % 3;
-          context.fillStyle = shade === 0 ? '#948174' : shade === 1 ? '#7f6e65' : '#9f8a79';
-          context.fillRect(x + 2, y + 2, brickWidth - 4, brickHeight - 4);
-          context.fillStyle = 'rgba(240, 226, 205, 0.08)';
-          context.fillRect(x + 6, y + 5, brickWidth - 12, 3);
-          context.fillStyle = 'rgba(62, 48, 43, 0.16)';
-          context.fillRect(x + 5, y + brickHeight - 6, brickWidth - 10, 3);
-          context.fillStyle = 'rgba(48, 42, 39, 0.08)';
-          for (let speck = 0; speck < 6; speck += 1) {
+          context.fillStyle = shade === 0 ? '#8f989e' : shade === 1 ? '#778188' : '#9ca5aa';
+          context.fillRect(x + 4, y + 4, brickWidth - 8, brickHeight - 8);
+          context.fillStyle = 'rgba(228, 235, 235, 0.12)';
+          context.fillRect(x + 10, y + 7, brickWidth - 20, 3);
+          context.fillStyle = 'rgba(30, 38, 42, 0.16)';
+          context.fillRect(x + 8, y + brickHeight - 8, brickWidth - 16, 3);
+          context.fillStyle = 'rgba(35, 44, 48, 0.13)';
+          for (let speck = 0; speck < 9; speck += 1) {
             const speckSeed = (row * 31 + column * 17 + speck * 13) % 97;
-            const speckX = x + 7 + (speckSeed * 11) % (brickWidth - 15);
-            const speckY = y + 5 + (speckSeed * 7) % (brickHeight - 10);
+            const speckX = x + 9 + (speckSeed * 13) % (brickWidth - 18);
+            const speckY = y + 7 + (speckSeed * 7) % (brickHeight - 14);
             context.fillRect(speckX, speckY, 2, 1);
           }
         }
       }
-      context.fillStyle = 'rgba(88, 78, 72, 0.42)';
+      context.fillStyle = 'rgba(48, 57, 62, 0.5)';
       for (let y = brickHeight - 1; y < canvas.height; y += brickHeight) {
-        context.fillRect(0, y, canvas.width, 3);
+        context.fillRect(0, y, canvas.width, 4);
       }
-      for (let row = 0; row < 6; row += 1) {
+      for (let row = 0; row < 5; row += 1) {
         const offset = row % 2 === 0 ? 0 : brickWidth / 2;
         for (let x = offset; x < canvas.width; x += brickWidth) {
-          context.fillRect(x - 1, row * brickHeight, 3, brickHeight);
+          context.fillRect(x - 2, row * brickHeight, 4, brickHeight);
         }
       }
-      context.fillStyle = 'rgba(210, 204, 190, 0.1)';
+      context.fillStyle = 'rgba(235, 239, 232, 0.08)';
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     const texture = new CanvasTexture(canvas);
     texture.wrapS = RepeatWrapping;
     texture.wrapT = RepeatWrapping;
-    texture.repeat.set(1.8, 2.2);
+    texture.repeat.set(1.05, 1.25);
     return new MeshStandardMaterial({
       map: texture,
-      color: 0xd8cec0,
-      emissive: 0x2a2019,
-      emissiveIntensity: 0.11,
+      color: 0xc4cbd0,
+      emissive: 0x151a1d,
+      emissiveIntensity: 0.09,
       roughness: 0.96,
       metalness: 0.02,
     });
   };
   const elevatorBrickMaterial = createElevatorBrickMaterial();
+  const createBasementCeilingMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#3b3c39';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      for (let strip = 0; strip < 8; strip += 1) {
+        const x = strip * 32;
+        context.fillStyle = strip % 2 === 0 ? '#5b5144' : '#464943';
+        context.fillRect(x, 0, 30, canvas.height);
+        context.fillStyle = 'rgba(20, 18, 16, 0.42)';
+        context.fillRect(x + 29, 0, 3, canvas.height);
+        context.fillStyle = 'rgba(226, 213, 185, 0.08)';
+        context.fillRect(x + 5, 0, 4, canvas.height);
+      }
+      context.fillStyle = 'rgba(95, 101, 103, 0.5)';
+      for (let y = 18; y < canvas.height; y += 32) {
+        context.fillRect(0, y, canvas.width, 3);
+      }
+      context.fillStyle = 'rgba(12, 13, 14, 0.24)';
+      context.fillRect(0, 0, canvas.width, 8);
+      context.fillRect(0, canvas.height - 10, canvas.width, 10);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.repeat.set(1.25, 0.85);
+    return new MeshStandardMaterial({
+      map: texture,
+      color: 0x9a9184,
+      emissive: 0x0f1010,
+      emissiveIntensity: 0.08,
+      roughness: 0.84,
+      metalness: 0.18,
+    });
+  };
+  const basementCeilingMaterial = createBasementCeilingMaterial();
   const elevatorShaftLightMaterial = new MeshStandardMaterial({
     color: 0xffe3a2,
     emissive: 0xffb64d,
@@ -6510,7 +6550,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       return;
     }
 
-    const ceilingSegment = new Mesh(new BoxGeometry(width, 0.08, depth), basementWallMaterial);
+    const ceilingSegment = new Mesh(new BoxGeometry(width, 0.08, depth), basementCeilingMaterial);
     ceilingSegment.position.set((minX + maxX) / 2, basementCeilingY, (minZ + maxZ) / 2);
     employeeElevatorRoot.add(ceilingSegment);
   };
