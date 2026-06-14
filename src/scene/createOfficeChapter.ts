@@ -6343,10 +6343,52 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     elevatorMetalMaterial,
   );
   basementPad.position.set(employeeElevatorCenterX, employeeElevatorBasementFloorY + 0.045, employeeElevatorCenterZ);
+  const basementCeilingY = employeeElevatorBasementFloorY + basementWallHeight;
   const shaftWallTopY = 0.02;
-  const shaftWallHeight = shaftWallTopY - employeeElevatorBasementFloorY;
-  const shaftWallCenterY = employeeElevatorBasementFloorY + shaftWallHeight / 2;
   const shaftInnerSize = employeeElevatorPlatformSize + 0.5;
+  const basementShaftOpeningSize = shaftInnerSize + 0.26;
+  const basementOpeningMinX = employeeElevatorCenterX - basementShaftOpeningSize / 2;
+  const basementOpeningMaxX = employeeElevatorCenterX + basementShaftOpeningSize / 2;
+  const basementOpeningMinZ = employeeElevatorCenterZ - basementShaftOpeningSize / 2;
+  const basementOpeningMaxZ = employeeElevatorCenterZ + basementShaftOpeningSize / 2;
+  const addBasementCeilingSegment = (minX: number, maxX: number, minZ: number, maxZ: number): void => {
+    const width = maxX - minX;
+    const depth = maxZ - minZ;
+    if (width <= 0.05 || depth <= 0.05) {
+      return;
+    }
+
+    const ceilingSegment = new Mesh(new BoxGeometry(width, 0.08, depth), basementWallMaterial);
+    ceilingSegment.position.set((minX + maxX) / 2, basementCeilingY, (minZ + maxZ) / 2);
+    employeeElevatorRoot.add(ceilingSegment);
+  };
+  addBasementCeilingSegment(
+    employeeElevatorCenterX - employeeElevatorBasementRoomWidth / 2,
+    basementOpeningMinX,
+    employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2,
+    employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2,
+  );
+  addBasementCeilingSegment(
+    basementOpeningMaxX,
+    employeeElevatorCenterX + employeeElevatorBasementRoomWidth / 2,
+    employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2,
+    employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2,
+  );
+  addBasementCeilingSegment(
+    basementOpeningMinX,
+    basementOpeningMaxX,
+    employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2,
+    basementOpeningMinZ,
+  );
+  addBasementCeilingSegment(
+    basementOpeningMinX,
+    basementOpeningMaxX,
+    basementOpeningMaxZ,
+    employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2,
+  );
+  const shaftWallBottomY = basementCeilingY;
+  const shaftWallHeight = shaftWallTopY - shaftWallBottomY;
+  const shaftWallCenterY = shaftWallBottomY + shaftWallHeight / 2;
   const shaftWallThickness = 0.18;
   const employeeElevatorShaftWalls: Mesh[] = [];
   [
@@ -6365,13 +6407,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { x: employeeElevatorCenterX + shaftInnerSize / 2 - 0.04, z: employeeElevatorCenterZ + shaftInnerSize / 2 - 0.06, sx: 0.035, sz: 0.045 },
   ].map((strip) => {
     const lightStrip = new Mesh(new BoxGeometry(strip.sx, shaftWallHeight - 0.72, strip.sz), elevatorShaftLightMaterial);
-    lightStrip.position.set(strip.x, employeeElevatorBasementFloorY + shaftWallHeight / 2 + 0.12, strip.z);
+    lightStrip.position.set(strip.x, shaftWallBottomY + shaftWallHeight / 2 + 0.12, strip.z);
     return lightStrip;
   });
   const shaftGlowTop = new PointLight(0xffd8a4, 0.72, 7.8, 1.7);
   shaftGlowTop.position.set(employeeElevatorCenterX, -1.45, employeeElevatorCenterZ);
   const shaftGlowLower = new PointLight(0xffd8a4, 0.62, 7.2, 1.8);
-  shaftGlowLower.position.set(employeeElevatorCenterX, employeeElevatorBasementFloorY + 2.4, employeeElevatorCenterZ);
+  shaftGlowLower.position.set(employeeElevatorCenterX, shaftWallBottomY + 0.72, employeeElevatorCenterZ);
   const basementFixture = new Mesh(new BoxGeometry(0.78, 0.08, 0.36), panelMaterial);
   basementFixture.position.set(employeeElevatorCenterX + 2.2, employeeElevatorBasementFloorY + 2.7, employeeElevatorCenterZ - 2.3);
   const basementGlow = new PointLight(0xffd8ac, 1.05, 8.6, 1.7);
