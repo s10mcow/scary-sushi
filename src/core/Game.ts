@@ -18144,7 +18144,10 @@ export class Game {
 
     const playerPosition = this.player.getPosition();
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
-    const toButton = elevator.interactPosition.clone().sub(playerPosition);
+    const buttonPosition = this.isPlayerInOfficeEmployeeElevatorBasement(playerPosition)
+      ? elevator.lowerInteractPosition
+      : elevator.interactPosition;
+    const toButton = buttonPosition.clone().sub(playerPosition);
     const along = toButton.dot(forward);
     if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.1) {
       return null;
@@ -18166,29 +18169,42 @@ export class Game {
     this.officeVentDrop = null;
     this.clearOfficePendingVentChase();
     this.officeBallPitHidden = false;
+    const ridingUp = this.isPlayerInOfficeEmployeeElevatorBasement();
+    const startPosition = ridingUp ? elevator.lowerPosition.clone() : elevator.topPosition.clone();
+    const endPosition = ridingUp ? elevator.topPosition.clone() : elevator.lowerPosition.clone();
     this.officeEmployeeElevatorBasementActive = false;
     this.officeEmployeeElevatorRide = {
       elapsed: 0,
       duration: OFFICE_EMPLOYEE_ELEVATOR_RIDE_DURATION,
-      startPosition: elevator.topPosition.clone(),
-      endPosition: elevator.lowerPosition.clone(),
-      lookTarget: elevator.lowerLookTarget.clone(),
+      startPosition,
+      endPosition,
+      lookTarget: ridingUp
+        ? elevator.topPosition.clone().add(new Vector3(0, 0, 4))
+        : elevator.lowerLookTarget.clone(),
     };
-    elevator.platform.position.y = elevator.platformHomeY;
-    elevator.button.position.x = elevator.buttonRestX - 0.04;
+    const startPlatformDrop = elevator.topPosition.y - startPosition.y;
+    elevator.platform.position.y = elevator.platformHomeY - startPlatformDrop;
+    elevator.button.position.x = ridingUp ? elevator.buttonRestX : elevator.buttonRestX - 0.04;
+    elevator.lowerButton.position.x = ridingUp ? elevator.lowerButtonRestX - 0.04 : elevator.lowerButtonRestX;
     elevator.cables.forEach((cable) => {
-      cable.scale.y = elevator.cableBaseLength;
-      cable.position.y = elevator.cableTopY - elevator.cableBaseLength / 2;
+      const cableLength = elevator.cableBaseLength + startPlatformDrop;
+      cable.scale.y = cableLength;
+      cable.position.y = elevator.cableTopY - cableLength / 2;
     });
     elevator.shaftWalls.forEach((wall) => {
       wall.visible = true;
       wall.scale.y = 1;
       wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
-    this.player.teleport(elevator.topPosition);
-    this.player.lookToward(elevator.topPosition.clone().add(new Vector3(0, 0, 4)), 0.8);
+    this.player.teleport(startPosition);
+    this.player.lookToward(startPosition.clone().add(new Vector3(0, 0, 4)), 0.8);
     this.gameplaySfxAudio.playSmallPanel(true);
-    this.pushStatus('The employees-only elevator lowers into the hidden shaft.', 3.2);
+    this.pushStatus(
+      ridingUp
+        ? 'The employees-only elevator rises back toward the upper room.'
+        : 'The employees-only elevator lowers into the hidden shaft.',
+      3.2,
+    );
   }
 
   private updateOfficeEmployeeElevatorRide(deltaSeconds: number): void {
@@ -18201,12 +18217,16 @@ export class Game {
     ride.elapsed = Math.min(ride.elapsed + deltaSeconds, ride.duration);
     const rawProgress = MathUtils.clamp(ride.elapsed / ride.duration, 0, 1);
     const loweredProgress = MathUtils.smootherstep(rawProgress, 0, 1);
-    const descentDistance = ride.startPosition.y - ride.endPosition.y;
-    const visualDrop = loweredProgress * descentDistance;
-    elevator.platform.position.y = elevator.platformHomeY - visualDrop;
-    elevator.button.position.x = elevator.buttonRestX - Math.max(0, 1 - rawProgress * 5) * 0.04;
+    const ridePosition = ride.startPosition.clone().lerp(ride.endPosition, loweredProgress);
+    const platformDrop = elevator.topPosition.y - ridePosition.y;
+    elevator.platform.position.y = elevator.platformHomeY - platformDrop;
+    const ridingUp = ride.endPosition.y > ride.startPosition.y;
+    elevator.button.position.x = ridingUp ? elevator.buttonRestX : elevator.buttonRestX - Math.max(0, 1 - rawProgress * 5) * 0.04;
+    elevator.lowerButton.position.x = ridingUp
+      ? elevator.lowerButtonRestX - Math.max(0, 1 - rawProgress * 5) * 0.04
+      : elevator.lowerButtonRestX;
     elevator.cables.forEach((cable) => {
-      const cableLength = elevator.cableBaseLength + visualDrop;
+      const cableLength = elevator.cableBaseLength + platformDrop;
       cable.scale.y = cableLength;
       cable.position.y = elevator.cableTopY - cableLength / 2;
     });
@@ -18216,8 +18236,6 @@ export class Game {
       wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
 
-    const ridePosition = ride.startPosition.clone();
-    ridePosition.y = ride.startPosition.y - visualDrop;
     this.player.teleport(ridePosition);
     this.player.lookToward(ridePosition.clone().add(new Vector3(0, 0, 4)), 0.035);
 
@@ -18226,14 +18244,21 @@ export class Game {
     }
 
     this.officeEmployeeElevatorRide = null;
-    this.officeEmployeeElevatorBasementActive = true;
+    this.officeEmployeeElevatorBasementActive = ride.endPosition.y < elevator.topPosition.y - 0.5;
+    elevator.button.position.x = elevator.buttonRestX;
+    elevator.lowerButton.position.x = elevator.lowerButtonRestX;
     elevator.shaftWalls.forEach((wall) => {
       wall.visible = true;
       wall.scale.y = 1;
       wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
     this.player.lookToward(ride.lookTarget, 0.75);
-    this.pushStatus('The elevator settles onto the basement floor below the employees-only area.', 2.8);
+    this.pushStatus(
+      this.officeEmployeeElevatorBasementActive
+        ? 'The elevator settles onto the basement floor below the employees-only area.'
+        : 'The elevator returns to the employees-only room.',
+      2.8,
+    );
   }
 
   private getNearestOfficeStorageClosetDoor(): OfficeChapterData['storageClosetDoor'] | null {

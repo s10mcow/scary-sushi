@@ -211,6 +211,7 @@ export interface OfficeChapterEmployeeElevator {
   root: Group;
   platform: Group;
   interactPosition: Vector3;
+  lowerInteractPosition: Vector3;
   topPosition: Vector3;
   lowerPosition: Vector3;
   lowerLookTarget: Vector3;
@@ -218,6 +219,8 @@ export interface OfficeChapterEmployeeElevator {
   lowerHalfDepth: number;
   button: Mesh;
   buttonRestX: number;
+  lowerButton: Mesh;
+  lowerButtonRestX: number;
   cables: Mesh[];
   shaftWalls: Mesh[];
   shaftWallHeight: number;
@@ -6217,9 +6220,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     canvas.height = 128;
     const context = canvas.getContext('2d');
     if (context) {
-      context.fillStyle = '#8b6253';
+      context.fillStyle = '#8a7b70';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      context.fillStyle = '#5f3e35';
+      context.fillStyle = '#74645b';
       context.fillRect(0, 0, canvas.width, canvas.height);
       const brickHeight = 24;
       const brickWidth = 64;
@@ -6229,15 +6232,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
         for (let column = 0; column < 6; column += 1) {
           const x = offset + column * brickWidth;
           const shade = (row + column) % 3;
-          context.fillStyle = shade === 0 ? '#9b715f' : shade === 1 ? '#805848' : '#a57962';
+          context.fillStyle = shade === 0 ? '#948174' : shade === 1 ? '#7f6e65' : '#9f8a79';
           context.fillRect(x + 2, y + 2, brickWidth - 4, brickHeight - 4);
-          context.fillStyle = 'rgba(255, 224, 185, 0.18)';
+          context.fillStyle = 'rgba(240, 226, 205, 0.08)';
           context.fillRect(x + 6, y + 5, brickWidth - 12, 3);
-          context.fillStyle = 'rgba(45, 25, 20, 0.22)';
+          context.fillStyle = 'rgba(62, 48, 43, 0.16)';
           context.fillRect(x + 5, y + brickHeight - 6, brickWidth - 10, 3);
+          context.fillStyle = 'rgba(48, 42, 39, 0.08)';
+          for (let speck = 0; speck < 6; speck += 1) {
+            const speckSeed = (row * 31 + column * 17 + speck * 13) % 97;
+            const speckX = x + 7 + (speckSeed * 11) % (brickWidth - 15);
+            const speckY = y + 5 + (speckSeed * 7) % (brickHeight - 10);
+            context.fillRect(speckX, speckY, 2, 1);
+          }
         }
       }
-      context.fillStyle = 'rgba(35, 24, 22, 0.52)';
+      context.fillStyle = 'rgba(88, 78, 72, 0.42)';
       for (let y = brickHeight - 1; y < canvas.height; y += brickHeight) {
         context.fillRect(0, y, canvas.width, 3);
       }
@@ -6247,6 +6257,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
           context.fillRect(x - 1, row * brickHeight, 3, brickHeight);
         }
       }
+      context.fillStyle = 'rgba(210, 204, 190, 0.1)';
+      context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     const texture = new CanvasTexture(canvas);
@@ -6255,10 +6267,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     texture.repeat.set(1.8, 2.2);
     return new MeshStandardMaterial({
       map: texture,
-      color: 0xffffff,
-      emissive: 0x18100c,
-      emissiveIntensity: 0.08,
-      roughness: 0.9,
+      color: 0xd8cec0,
+      emissive: 0x2a2019,
+      emissiveIntensity: 0.11,
+      roughness: 0.96,
       metalness: 0.02,
     });
   };
@@ -6483,6 +6495,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     root: employeeElevatorRoot,
     platform: employeeElevatorPlatform,
     interactPosition: new Vector3(elevatorPoleX + 0.48, 1.18, elevatorPoleZ),
+    lowerInteractPosition: new Vector3(elevatorPoleX + 0.48, employeeElevatorBasementFloorY + 1.18, elevatorPoleZ),
     topPosition: new Vector3(employeeElevatorCenterX, GAME_CONFIG.player.height, employeeElevatorCenterZ),
     lowerPosition: new Vector3(employeeElevatorCenterX, employeeElevatorLowerEyeY, employeeElevatorCenterZ),
     lowerLookTarget: new Vector3(employeeElevatorCenterX, employeeElevatorLowerEyeY, employeeElevatorCenterZ + 4),
@@ -6490,6 +6503,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     lowerHalfDepth: employeeElevatorBasementRoomDepth / 2 - 0.42,
     button: elevatorButton,
     buttonRestX: elevatorButton.position.x,
+    lowerButton: basementElevatorButton,
+    lowerButtonRestX: basementElevatorButton.position.x,
     cables: employeeElevatorCables,
     shaftWalls: employeeElevatorShaftWalls,
     shaftWallHeight,
@@ -8593,6 +8608,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       wall.scale.y = 1;
       wall.position.y = employeeElevator.shaftWallTopY - employeeElevator.shaftWallHeight / 2;
     });
+    employeeElevator.lowerButton.position.x = employeeElevator.lowerButtonRestX;
     storageFuseBox.open = false;
     storageFuseBox.openAmount = 0;
     storageFuseBox.targetOpenAmount = 0;
