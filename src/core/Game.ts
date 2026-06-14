@@ -15898,7 +15898,9 @@ export class Game {
       }
 
       if (employeeElevator) {
-        return 'Press E to press the red elevator button.';
+        return this.isPlayerInOfficeEmployeeElevatorBasement()
+          ? 'Press E to press the red elevator button and ride back up.'
+          : 'Press E to press the red elevator button.';
       }
 
       if (storageFuseBox) {
@@ -16637,7 +16639,9 @@ export class Game {
       }
 
       if (employeeElevator) {
-        return 'The red elevator button waits beside the gray cable platform. Press E to lower it.';
+        return this.isPlayerInOfficeEmployeeElevatorBasement()
+          ? 'The basement red elevator button waits beside the platform. Press E to ride back up.'
+          : 'The red elevator button waits beside the gray cable platform. Press E to lower it.';
       }
 
       if (storageFuseBox) {
@@ -18143,11 +18147,18 @@ export class Game {
     }
 
     const playerPosition = this.player.getPosition();
+    const inBasement = this.isPlayerInOfficeEmployeeElevatorBasement(playerPosition);
+    if (inBasement) {
+      const horizontalDistance = Math.hypot(
+        playerPosition.x - elevator.lowerInteractPosition.x,
+        playerPosition.z - elevator.lowerInteractPosition.z,
+      );
+      const verticalDistance = Math.abs(playerPosition.y - elevator.lowerInteractPosition.y);
+      return horizontalDistance <= 2.2 && verticalDistance <= 1.4 ? elevator : null;
+    }
+
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
-    const buttonPosition = this.isPlayerInOfficeEmployeeElevatorBasement(playerPosition)
-      ? elevator.lowerInteractPosition
-      : elevator.interactPosition;
-    const toButton = buttonPosition.clone().sub(playerPosition);
+    const toButton = elevator.interactPosition.clone().sub(playerPosition);
     const along = toButton.dot(forward);
     if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.1) {
       return null;
