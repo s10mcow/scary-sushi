@@ -6362,17 +6362,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
           context.fillRect(speckX, speckY, 2, 1);
         }
       });
-      context.strokeStyle = 'rgba(34, 26, 18, 0.56)';
-      context.lineWidth = 2;
-      for (let root = 0; root < 9; root += 1) {
-        const startX = (root * 31 + 14) % canvas.width;
-        context.beginPath();
-        context.moveTo(startX, 0);
-        for (let step = 1; step <= 4; step += 1) {
-          context.lineTo(startX + Math.sin(root + step) * 15, step * 33);
-        }
-        context.stroke();
-      }
       context.fillStyle = 'rgba(55, 49, 39, 0.12)';
       context.fillRect(0, canvas.height - 18, canvas.width, 18);
       context.fillStyle = 'rgba(235, 239, 232, 0.06)';
@@ -6528,10 +6517,47 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   elevatorButtonPlate.position.set(elevatorPoleX + 0.025, 1.18, elevatorPoleZ);
   employeeElevatorRoot.add(elevatorPole, elevatorButtonPlate, elevatorButton);
 
-  const basementFloorMaterial = materials.floor.clone();
-  basementFloorMaterial.color.setHex(0x535961);
-  basementFloorMaterial.emissive.setHex(0x030506);
-  basementFloorMaterial.emissiveIntensity = 0.08;
+  const createBasementDirtFloorMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#3e3023';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      for (let patch = 0; patch < 80; patch += 1) {
+        const x = (patch * 47) % canvas.width;
+        const y = (patch * 83) % canvas.height;
+        const width = 8 + (patch * 11) % 28;
+        const height = 4 + (patch * 7) % 20;
+        context.fillStyle = patch % 3 === 0 ? 'rgba(91, 73, 52, 0.28)' : patch % 3 === 1 ? 'rgba(38, 29, 21, 0.32)' : 'rgba(122, 105, 77, 0.18)';
+        context.fillRect(x, y, width, height);
+      }
+      for (let rock = 0; rock < 90; rock += 1) {
+        const x = (rock * 61 + 13) % canvas.width;
+        const y = (rock * 37 + 29) % canvas.height;
+        const size = 1 + (rock % 4);
+        context.fillStyle = rock % 2 === 0 ? 'rgba(122, 119, 105, 0.42)' : 'rgba(31, 29, 26, 0.35)';
+        context.fillRect(x, y, size + 1, size);
+      }
+      context.fillStyle = 'rgba(10, 8, 6, 0.16)';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.repeat.set(2.4, 2.4);
+    return new MeshStandardMaterial({
+      map: texture,
+      color: 0x7a6347,
+      emissive: 0x080504,
+      emissiveIntensity: 0.07,
+      roughness: 0.98,
+      metalness: 0,
+    });
+  };
+  const basementFloorMaterial = createBasementDirtFloorMaterial();
   const basementWallMaterial = elevatorBrickMaterial;
   const basementFloor = new Mesh(
     new BoxGeometry(employeeElevatorBasementRoomWidth, 0.12, employeeElevatorBasementRoomDepth),
@@ -6539,6 +6565,25 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   );
   basementFloor.position.set(employeeElevatorCenterX, employeeElevatorBasementFloorY - 0.06, employeeElevatorCenterZ);
   basementFloor.receiveShadow = true;
+  const floorPebbleMaterials = [
+    new MeshStandardMaterial({ color: 0x756d5c, emissive: 0x050403, emissiveIntensity: 0.04, roughness: 0.94, metalness: 0.02 }),
+    new MeshStandardMaterial({ color: 0x4e463a, emissive: 0x030302, emissiveIntensity: 0.04, roughness: 0.96, metalness: 0.01 }),
+    new MeshStandardMaterial({ color: 0x87775d, emissive: 0x060403, emissiveIntensity: 0.04, roughness: 0.92, metalness: 0.01 }),
+  ];
+  for (let rock = 0; rock < 18; rock += 1) {
+    const rockX = employeeElevatorCenterX - employeeElevatorBasementRoomWidth / 2 + 0.72 + ((rock * 1.17) % (employeeElevatorBasementRoomWidth - 1.44));
+    const rockZ = employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2 + 0.62 + ((rock * 0.91) % (employeeElevatorBasementRoomDepth - 1.24));
+    if (Math.abs(rockX - employeeElevatorCenterX) < employeeElevatorPlatformSize * 0.62 && Math.abs(rockZ - employeeElevatorCenterZ) < employeeElevatorPlatformSize * 0.62) {
+      continue;
+    }
+    const pebble = new Mesh(
+      new BoxGeometry(0.08 + (rock % 3) * 0.035, 0.025 + (rock % 2) * 0.012, 0.055 + (rock % 4) * 0.02),
+      floorPebbleMaterials[rock % floorPebbleMaterials.length],
+    );
+    pebble.position.set(rockX, employeeElevatorBasementFloorY + 0.015, rockZ);
+    pebble.rotation.set(0.08 * (rock % 3), (rock * 0.73) % Math.PI, 0.04 * (rock % 5));
+    employeeElevatorRoot.add(pebble);
+  }
   const basementWallHeight = 3.15;
   const basementWallCenterY = employeeElevatorBasementFloorY + basementWallHeight / 2;
   const basementDirtMaterial = new MeshStandardMaterial({
@@ -6642,7 +6687,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     side: 'north' | 'south' | 'west' | 'east',
     along: number,
     y: number,
-    offset = 0.106,
+    offset = 0.24,
   ): Vector3 => {
     if (side === 'north') {
       return new Vector3(along, y, basementWallMinZ + offset);
@@ -6671,37 +6716,25 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     [employeeElevatorCenterX - 1.58, employeeElevatorBasementFloorY + 1.6],
     [employeeElevatorCenterX - 0.84, employeeElevatorBasementFloorY + 1.02],
   ], 0.035, oldVineMaterial);
-  addBasementVine('north', [
-    [employeeElevatorCenterX - 2.22, employeeElevatorBasementFloorY + 2.1],
-    [employeeElevatorCenterX - 2.68, employeeElevatorBasementFloorY + 1.68],
-    [employeeElevatorCenterX - 2.36, employeeElevatorBasementFloorY + 1.16],
-  ], 0.022, rootStrandMaterial);
   addBasementVine('south', [
     [employeeElevatorCenterX + 2.55, employeeElevatorBasementFloorY + 2.72],
     [employeeElevatorCenterX + 1.92, employeeElevatorBasementFloorY + 2.2],
     [employeeElevatorCenterX + 1.52, employeeElevatorBasementFloorY + 1.46],
     [employeeElevatorCenterX + 0.74, employeeElevatorBasementFloorY + 0.94],
   ], 0.04, oldVineMaterial);
-  addBasementVine('west', [
-    [employeeElevatorCenterZ + 2.18, employeeElevatorBasementFloorY + 2.84],
-    [employeeElevatorCenterZ + 1.54, employeeElevatorBasementFloorY + 2.25],
-    [employeeElevatorCenterZ + 1.82, employeeElevatorBasementFloorY + 1.62],
-    [employeeElevatorCenterZ + 1.12, employeeElevatorBasementFloorY + 1.02],
-  ], 0.032, oldVineMaterial);
   addBasementVine('east', [
     [employeeElevatorCenterZ - 2.18, employeeElevatorBasementFloorY + 2.78],
     [employeeElevatorCenterZ - 1.68, employeeElevatorBasementFloorY + 2.08],
     [employeeElevatorCenterZ - 2.08, employeeElevatorBasementFloorY + 1.44],
     [employeeElevatorCenterZ - 1.36, employeeElevatorBasementFloorY + 0.88],
-  ], 0.03, rootStrandMaterial);
+  ], 0.024, rootStrandMaterial);
   [
     ['north', employeeElevatorCenterX - 1.36, employeeElevatorBasementFloorY + 1.36],
     ['south', employeeElevatorCenterX + 1.72, employeeElevatorBasementFloorY + 1.86],
-    ['west', employeeElevatorCenterZ + 1.68, employeeElevatorBasementFloorY + 1.88],
   ].forEach(([side, along, y]) => {
     const leaf = new Mesh(new SphereGeometry(0.055, 8, 6), oldVineMaterial);
     leaf.scale.set(1.35, 0.48, 0.72);
-    leaf.position.copy(getBasementWallPoint(side as 'north' | 'south' | 'west', along as number, y as number, 0.14));
+    leaf.position.copy(getBasementWallPoint(side as 'north' | 'south', along as number, y as number, 0.3));
     employeeElevatorRoot.add(leaf);
   });
   const basementPad = new Mesh(
