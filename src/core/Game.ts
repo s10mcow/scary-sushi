@@ -15820,6 +15820,7 @@ export class Game {
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
+      const employeeKeyBriefcase = this.getNearestOfficeEmployeeKeyBriefcase();
       const employeeElevator = this.getNearestOfficeEmployeeElevator();
       const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
@@ -15891,9 +15892,23 @@ export class Game {
           : 'Press E to open the backstage suit storage door.';
       }
 
+      if (employeeKeyBriefcase) {
+        if (!employeeKeyBriefcase.open) {
+          return 'Press E to open the metal briefcase.';
+        }
+        return employeeKeyBriefcase.keyCollected
+          ? 'Press E to close the empty metal briefcase.'
+          : 'Press E to take the elevator room key.';
+      }
+
       if (employeeOnlyDoor) {
+        if (employeeOnlyDoor.locked) {
+          return this.officeChapter.employeeKeyBriefcase.keyCollected
+            ? 'Press E to unlock and open the employees-only elevator room.'
+            : 'The employees-only elevator room is locked. Find the key first.';
+        }
         return employeeOnlyDoor.open
-          ? 'Press E to close the employees-only danger door.'
+          ? 'Press E to close and lock the employees-only danger door.'
           : 'Press E to open the employees-only danger door.';
       }
 
@@ -16549,6 +16564,7 @@ export class Game {
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
+      const employeeKeyBriefcase = this.getNearestOfficeEmployeeKeyBriefcase();
       const employeeElevator = this.getNearestOfficeEmployeeElevator();
       const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
@@ -16632,9 +16648,23 @@ export class Game {
           : 'The backstage suit storage door is closed. Press E to open it.';
       }
 
+      if (employeeKeyBriefcase) {
+        if (!employeeKeyBriefcase.open) {
+          return 'A locked-looking metal briefcase rests here. Press E to open it.';
+        }
+        return employeeKeyBriefcase.keyCollected
+          ? 'The metal briefcase is open and empty.'
+          : 'A small key is inside the open briefcase. Press E to collect it.';
+      }
+
       if (employeeOnlyDoor) {
+        if (employeeOnlyDoor.locked) {
+          return this.officeChapter.employeeKeyBriefcase.keyCollected
+            ? 'The employees-only elevator room is locked. Press E to use the key and open it.'
+            : 'The employees-only elevator room is locked. The key is hidden nearby.';
+        }
         return employeeOnlyDoor.open
-          ? 'The employees-only danger door is open. Press E to close it.'
+          ? 'The employees-only danger door is open. Press E to close and lock it.'
           : 'The employees-only danger door is closed. Press E to open it.';
       }
 
@@ -18308,6 +18338,25 @@ export class Game {
     return lateral <= 1.05 ? this.officeChapter.employeeOnlyDoor : null;
   }
 
+  private getNearestOfficeEmployeeKeyBriefcase(): OfficeChapterData['employeeKeyBriefcase'] | null {
+    const briefcase = this.officeChapter.employeeKeyBriefcase;
+    if (!briefcase.root.visible) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toBriefcase = briefcase.interactPosition.clone().sub(playerPosition);
+    const along = toBriefcase.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.25) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toBriefcase.sub(projected).length();
+    return lateral <= 1.4 ? briefcase : null;
+  }
+
   private getNearestOfficeStorageFuseBox(): OfficeChapterData['storageFuseBox'] | null {
     return null;
   }
@@ -18614,15 +18663,64 @@ export class Game {
       return;
     }
 
+    const employeeKeyBriefcase = this.getNearestOfficeEmployeeKeyBriefcase();
+    if (employeeKeyBriefcase) {
+      if (!employeeKeyBriefcase.open) {
+        employeeKeyBriefcase.targetOpenAmount = 1;
+        employeeKeyBriefcase.open = true;
+        this.gameplaySfxAudio.playSmallPanel(true);
+        this.pushStatus('The metal briefcase clicks open. A small key is inside.', 2.4);
+        return;
+      }
+
+      if (!employeeKeyBriefcase.keyCollected) {
+        employeeKeyBriefcase.keyCollected = true;
+        employeeKeyBriefcase.keyRoot.visible = false;
+        this.gameplaySfxAudio.playSmallPanel(true);
+        this.pushStatus('You take the elevator room key from the briefcase.', 2.4);
+        return;
+      }
+
+      employeeKeyBriefcase.targetOpenAmount = 0;
+      employeeKeyBriefcase.open = false;
+      this.gameplaySfxAudio.playSmallPanel(false);
+      this.pushStatus('The empty metal briefcase snaps shut.', 1.8);
+      return;
+    }
+
     const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
     if (employeeOnlyDoor) {
-      employeeOnlyDoor.targetOpenAmount = employeeOnlyDoor.targetOpenAmount > 0.5 ? 0 : 1;
-      employeeOnlyDoor.open = employeeOnlyDoor.targetOpenAmount > 0.5;
+      const hasEmployeeKey = this.officeChapter.employeeKeyBriefcase.keyCollected;
+      if (employeeOnlyDoor.locked) {
+        if (!hasEmployeeKey) {
+          this.gameplaySfxAudio.playSmallPanel(false);
+          this.pushStatus('The employees-only elevator room is locked. The key is inside a metal briefcase nearby.', 2.6);
+          return;
+        }
+
+        employeeOnlyDoor.locked = false;
+        employeeOnlyDoor.targetOpenAmount = 1;
+        employeeOnlyDoor.open = true;
+        this.gameplaySfxAudio.playClosetDoor(true);
+        this.pushStatus('The key turns. The employees-only elevator room unlocks and swings open.', 2.6);
+        return;
+      }
+
+      if (employeeOnlyDoor.targetOpenAmount > 0.5) {
+        employeeOnlyDoor.targetOpenAmount = 0;
+        employeeOnlyDoor.open = false;
+        employeeOnlyDoor.locked = hasEmployeeKey;
+      } else {
+        employeeOnlyDoor.targetOpenAmount = 1;
+        employeeOnlyDoor.open = true;
+      }
       this.gameplaySfxAudio.playClosetDoor(employeeOnlyDoor.open);
       this.pushStatus(
         employeeOnlyDoor.open
           ? 'The employees-only danger door swings open.'
-          : 'The employees-only danger door swings shut.',
+          : hasEmployeeKey
+            ? 'The employees-only danger door swings shut and locks.'
+            : 'The employees-only danger door swings shut.',
         2.4,
       );
       return;

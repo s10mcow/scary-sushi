@@ -204,6 +204,19 @@ export interface OfficeChapterEmployeeOnlyDoor {
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
+  locked: boolean;
+}
+
+export interface OfficeChapterEmployeeKeyBriefcase {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  lidPivot: Group;
+  keyRoot: Group;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
+  keyCollected: boolean;
 }
 
 export interface OfficeChapterEmployeeElevator {
@@ -374,6 +387,7 @@ export interface OfficeChapterData {
   backstageStorageDoor: OfficeChapterBackstageStorageDoor;
   storageClosetDoor: OfficeChapterStorageClosetDoor;
   employeeOnlyDoor: OfficeChapterEmployeeOnlyDoor;
+  employeeKeyBriefcase: OfficeChapterEmployeeKeyBriefcase;
   employeeElevator: OfficeChapterEmployeeElevator;
   storageFuseBox: OfficeChapterStorageFuseBox;
   kitchenEntranceDoor: OfficeChapterKitchenEntranceDoor;
@@ -6203,6 +6217,87 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     open: false,
     openAmount: 0,
     targetOpenAmount: 0,
+    locked: true,
+  };
+
+  const employeeKeyBriefcaseRoot = new Group();
+  employeeKeyBriefcaseRoot.position.set(-243.92, 0.18, 148.38);
+  employeeKeyBriefcaseRoot.rotation.y = Math.PI / 2;
+  employeeKeyBriefcaseRoot.visible = !abandonedStraightHalls;
+  const briefcaseMaterial = new MeshStandardMaterial({
+    color: 0x555b60,
+    emissive: 0x050607,
+    emissiveIntensity: 0.08,
+    roughness: 0.38,
+    metalness: 0.76,
+  });
+  const briefcaseEdgeMaterial = new MeshStandardMaterial({
+    color: 0x25282b,
+    emissive: 0x020303,
+    emissiveIntensity: 0.08,
+    roughness: 0.32,
+    metalness: 0.84,
+  });
+  const keyMaterial = new MeshStandardMaterial({
+    color: 0xd7b24a,
+    emissive: 0x2e2105,
+    emissiveIntensity: 0.2,
+    roughness: 0.36,
+    metalness: 0.78,
+  });
+  const briefcaseBottom = new Mesh(new BoxGeometry(1.18, 0.22, 0.74), briefcaseMaterial);
+  briefcaseBottom.position.y = 0.11;
+  const briefcaseInterior = new Mesh(new BoxGeometry(1.02, 0.035, 0.58), new MeshStandardMaterial({
+    color: 0x151719,
+    emissive: 0x010101,
+    emissiveIntensity: 0.04,
+    roughness: 0.82,
+    metalness: 0.04,
+  }));
+  briefcaseInterior.position.y = 0.24;
+  const briefcaseFrontLatch = new Mesh(new BoxGeometry(0.18, 0.08, 0.055), keyMaterial);
+  briefcaseFrontLatch.position.set(0, 0.28, 0.4);
+  const briefcaseHandle = new Mesh(new TorusGeometry(0.18, 0.018, 8, 20, Math.PI), briefcaseEdgeMaterial);
+  briefcaseHandle.position.set(0, 0.3, 0.44);
+  briefcaseHandle.rotation.x = Math.PI / 2;
+  const briefcaseLidPivot = new Group();
+  briefcaseLidPivot.position.set(0, 0.24, -0.37);
+  const briefcaseLid = new Mesh(new BoxGeometry(1.18, 0.12, 0.74), briefcaseMaterial);
+  briefcaseLid.position.set(0, 0.06, 0.37);
+  const briefcaseLidRim = new Mesh(new BoxGeometry(1.26, 0.07, 0.06), briefcaseEdgeMaterial);
+  briefcaseLidRim.position.set(0, 0.13, 0.74);
+  briefcaseLidPivot.add(briefcaseLid, briefcaseLidRim);
+  const briefcaseKeyRoot = new Group();
+  briefcaseKeyRoot.position.set(0.04, 0.31, 0.02);
+  const keyRing = new Mesh(new TorusGeometry(0.08, 0.012, 8, 18), keyMaterial);
+  keyRing.rotation.x = Math.PI / 2;
+  const keyStem = new Mesh(new BoxGeometry(0.32, 0.035, 0.035), keyMaterial);
+  keyStem.position.x = 0.18;
+  const keyToothA = new Mesh(new BoxGeometry(0.07, 0.03, 0.07), keyMaterial);
+  keyToothA.position.set(0.34, -0.002, 0.04);
+  const keyToothB = keyToothA.clone();
+  keyToothB.position.set(0.27, -0.002, -0.04);
+  briefcaseKeyRoot.add(keyRing, keyStem, keyToothA, keyToothB);
+  briefcaseKeyRoot.visible = false;
+  employeeKeyBriefcaseRoot.add(
+    briefcaseBottom,
+    briefcaseInterior,
+    briefcaseFrontLatch,
+    briefcaseHandle,
+    briefcaseLidPivot,
+    briefcaseKeyRoot,
+  );
+  root.add(employeeKeyBriefcaseRoot);
+  const employeeKeyBriefcase: OfficeChapterEmployeeKeyBriefcase = {
+    label: 'Metal Briefcase',
+    root: employeeKeyBriefcaseRoot,
+    interactPosition: new Vector3(-243.92, 0.75, 148.38),
+    lidPivot: briefcaseLidPivot,
+    keyRoot: briefcaseKeyRoot,
+    open: false,
+    openAmount: 0,
+    targetOpenAmount: 0,
+    keyCollected: false,
   };
 
   const employeeElevatorRoot = new Group();
@@ -8342,6 +8437,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeOnlyDoor.open = employeeOnlyDoor.targetOpenAmount > 0.5;
     employeeOnlyDoor.collider.enabled = !abandonedStraightHalls && employeeOnlyDoor.openAmount < 0.62;
 
+    employeeKeyBriefcase.openAmount = MathUtils.lerp(
+      employeeKeyBriefcase.openAmount,
+      employeeKeyBriefcase.targetOpenAmount,
+      utilityBlend,
+    );
+    if (Math.abs(employeeKeyBriefcase.openAmount - employeeKeyBriefcase.targetOpenAmount) < 0.001) {
+      employeeKeyBriefcase.openAmount = employeeKeyBriefcase.targetOpenAmount;
+    }
+    employeeKeyBriefcase.lidPivot.rotation.x = -employeeKeyBriefcase.openAmount * Math.PI * 0.72;
+    employeeKeyBriefcase.open = employeeKeyBriefcase.targetOpenAmount > 0.5;
+    employeeKeyBriefcase.keyRoot.visible = employeeKeyBriefcase.openAmount > 0.42 && !employeeKeyBriefcase.keyCollected;
+    employeeKeyBriefcase.keyRoot.rotation.y += deltaSeconds * 1.4;
+    employeeKeyBriefcase.keyRoot.position.y = 0.31 + Math.sin(performance.now() * 0.004) * 0.012;
+
     storageFuseBox.openAmount = MathUtils.lerp(
       storageFuseBox.openAmount,
       storageFuseBox.targetOpenAmount,
@@ -8595,8 +8704,15 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeOnlyDoor.open = false;
     employeeOnlyDoor.openAmount = 0;
     employeeOnlyDoor.targetOpenAmount = 0;
+    employeeOnlyDoor.locked = true;
     employeeOnlyDoor.doorPivot.rotation.y = 0;
     employeeOnlyDoor.collider.enabled = !abandonedStraightHalls;
+    employeeKeyBriefcase.open = false;
+    employeeKeyBriefcase.openAmount = 0;
+    employeeKeyBriefcase.targetOpenAmount = 0;
+    employeeKeyBriefcase.keyCollected = false;
+    employeeKeyBriefcase.lidPivot.rotation.x = 0;
+    employeeKeyBriefcase.keyRoot.visible = false;
     employeeElevator.platform.position.y = employeeElevator.platformHomeY;
     employeeElevator.button.position.x = employeeElevator.buttonRestX;
     employeeElevator.cables.forEach((cable) => {
@@ -8652,6 +8768,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     backstageStorageDoor,
     storageClosetDoor,
     employeeOnlyDoor,
+    employeeKeyBriefcase,
     employeeElevator,
     storageFuseBox,
     kitchenEntranceDoor,
