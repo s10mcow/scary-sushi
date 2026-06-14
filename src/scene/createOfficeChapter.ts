@@ -6222,7 +6222,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
 
   const employeeKeyBriefcaseRoot = new Group();
-  employeeKeyBriefcaseRoot.position.set(-243.92, OFFICE_VENT_FLOOR_Y + 0.02, 148.38);
+  employeeKeyBriefcaseRoot.position.set(-243.99, 4.2, 148.55);
   employeeKeyBriefcaseRoot.rotation.y = Math.PI / 2;
   employeeKeyBriefcaseRoot.visible = !abandonedStraightHalls;
   const briefcaseMaterial = new MeshStandardMaterial({
@@ -6295,7 +6295,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const employeeKeyBriefcase: OfficeChapterEmployeeKeyBriefcase = {
     label: 'Metal Briefcase',
     root: employeeKeyBriefcaseRoot,
-    interactPosition: new Vector3(-243.92, OFFICE_VENT_FLOOR_Y + 0.48, 148.38),
+    interactPosition: new Vector3(-243.99, 4.72, 148.55),
     lidPivot: briefcaseLidPivot,
     keyRoot: briefcaseKeyRoot,
     open: false,
