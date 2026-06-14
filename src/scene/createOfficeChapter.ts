@@ -6586,20 +6586,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   }
   const basementWallHeight = 3.15;
   const basementWallCenterY = employeeElevatorBasementFloorY + basementWallHeight / 2;
-  const basementDirtMaterial = new MeshStandardMaterial({
-    color: 0x4a3b2e,
-    emissive: 0x070403,
-    emissiveIntensity: 0.06,
-    roughness: 0.98,
-    metalness: 0,
-  });
-  const basementVoidMaterial = new MeshStandardMaterial({
-    color: 0x171615,
-    emissive: 0x020101,
-    emissiveIntensity: 0.08,
-    roughness: 1,
-    metalness: 0,
-  });
   const rottedBoardMaterial = new MeshStandardMaterial({
     color: 0x3f3123,
     emissive: 0x040302,
@@ -6641,47 +6627,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const basementWall = new Mesh(new BoxGeometry(wall.sx, basementWallHeight, wall.sz), basementWallMaterial);
     basementWall.position.set(wall.x, basementWallCenterY, wall.z);
     employeeElevatorRoot.add(basementWall);
-  });
-  const addMissingCinderBlock = (
-    side: 'north' | 'south' | 'west' | 'east',
-    along: number,
-    y: number,
-    width = 0.9,
-    height = 0.38,
-  ): void => {
-    const horizontal = side === 'north' || side === 'south';
-    const dirt = new Mesh(
-      new BoxGeometry(horizontal ? width : 0.035, height, horizontal ? 0.035 : width),
-      basementDirtMaterial,
-    );
-    const voidShadow = new Mesh(
-      new BoxGeometry(horizontal ? width + 0.08 : 0.025, height + 0.08, horizontal ? 0.025 : width + 0.08),
-      basementVoidMaterial,
-    );
-    const inset = 0.082;
-    if (side === 'north') {
-      dirt.position.set(along, y, basementWallMinZ + inset);
-      voidShadow.position.set(along, y, basementWallMinZ + inset - 0.012);
-    } else if (side === 'south') {
-      dirt.position.set(along, y, basementWallMaxZ - inset);
-      voidShadow.position.set(along, y, basementWallMaxZ - inset + 0.012);
-    } else if (side === 'west') {
-      dirt.position.set(basementWallMinX + inset, y, along);
-      voidShadow.position.set(basementWallMinX + inset - 0.012, y, along);
-    } else {
-      dirt.position.set(basementWallMaxX - inset, y, along);
-      voidShadow.position.set(basementWallMaxX - inset + 0.012, y, along);
-    }
-    employeeElevatorRoot.add(voidShadow, dirt);
-  };
-  [
-    ['north', employeeElevatorCenterX - 1.55, employeeElevatorBasementFloorY + 1.12, 1.02, 0.4],
-    ['north', employeeElevatorCenterX + 2.1, employeeElevatorBasementFloorY + 2.12, 0.72, 0.34],
-    ['south', employeeElevatorCenterX + 1.34, employeeElevatorBasementFloorY + 1.55, 0.96, 0.42],
-    ['west', employeeElevatorCenterZ - 1.45, employeeElevatorBasementFloorY + 2.0, 0.86, 0.36],
-    ['east', employeeElevatorCenterZ + 1.15, employeeElevatorBasementFloorY + 1.22, 1.08, 0.42],
-  ].forEach(([side, along, y, width, height]) => {
-    addMissingCinderBlock(side as 'north' | 'south' | 'west' | 'east', along as number, y as number, width as number, height as number);
   });
   const getBasementWallPoint = (
     side: 'north' | 'south' | 'west' | 'east',
