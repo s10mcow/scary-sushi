@@ -5110,9 +5110,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const employeeRoomCenterX = (employeeRoomMinX + employeeRoomMaxX) / 2;
   const employeeRoomCenterZ = (employeeRoomMinZ + employeeRoomMaxZ) / 2;
   const employeeRoomDepth = employeeRoomMaxZ - employeeRoomMinZ;
+  const employeeElevatorPlatformSize = 2.55;
+  const employeeElevatorCenterX = employeeRoomCenterX - 0.48;
+  const employeeElevatorCenterZ = employeeRoomCenterZ;
   const employeeElevatorBasementFloorY = -7.25;
-  const employeeElevatorBasementRoomWidth = 6.4;
-  const employeeElevatorBasementRoomDepth = 6.4;
+  const employeeElevatorBasementRoomWidth = employeeRoomWidth;
+  const employeeElevatorBasementRoomDepth = employeeRoomDepth;
   const backstageStorageMinX = backstageHallMaxX;
   const backstageStorageMaxX = backstageStorageMinX + backstageStorageWidth;
   const backstageStorageMinZ = backstageHallNorthZ;
@@ -5426,12 +5429,41 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }, materials));
   }
   if (!abandonedStraightHalls) {
-    root.add(createFloor({
-      width: employeeRoomWidth,
-      depth: employeeRoomDepth,
-      center: [employeeRoomCenterX, employeeRoomCenterZ],
-      ceilingHeight: WALL_HEIGHT,
-    }, materials));
+    const employeeRoomFloor = new Group();
+    const elevatorOpeningSize = employeeElevatorPlatformSize + 0.62;
+    const openingMinX = employeeElevatorCenterX - elevatorOpeningSize / 2;
+    const openingMaxX = employeeElevatorCenterX + elevatorOpeningSize / 2;
+    const openingMinZ = employeeElevatorCenterZ - elevatorOpeningSize / 2;
+    const openingMaxZ = employeeElevatorCenterZ + elevatorOpeningSize / 2;
+    const addEmployeeFloorSegment = (
+      minX: number,
+      maxX: number,
+      minZ: number,
+      maxZ: number,
+    ): void => {
+      const width = maxX - minX;
+      const depth = maxZ - minZ;
+      if (width <= 0.05 || depth <= 0.05) {
+        return;
+      }
+
+      const floorSegment = new Mesh(new PlaneGeometry(width, depth), materials.floor);
+      floorSegment.rotation.x = -Math.PI / 2;
+      floorSegment.position.set((minX + maxX) / 2, 0, (minZ + maxZ) / 2);
+      floorSegment.receiveShadow = true;
+      employeeRoomFloor.add(floorSegment);
+    };
+
+    addEmployeeFloorSegment(employeeRoomMinX, openingMinX, employeeRoomMinZ, employeeRoomMaxZ);
+    addEmployeeFloorSegment(openingMaxX, employeeRoomMaxX, employeeRoomMinZ, employeeRoomMaxZ);
+    addEmployeeFloorSegment(openingMinX, openingMaxX, employeeRoomMinZ, openingMinZ);
+    addEmployeeFloorSegment(openingMinX, openingMaxX, openingMaxZ, employeeRoomMaxZ);
+
+    const employeeRoomCeiling = new Mesh(new PlaneGeometry(employeeRoomWidth, employeeRoomDepth), materials.ceiling);
+    employeeRoomCeiling.rotation.x = Math.PI / 2;
+    employeeRoomCeiling.position.set(employeeRoomCenterX, WALL_HEIGHT, employeeRoomCenterZ);
+    employeeRoomFloor.add(employeeRoomCeiling);
+    root.add(employeeRoomFloor);
   }
   const backstageHallEastWallDepth = backstageHallSouthZ - backstageStorageMaxZ;
   const backstageWalls: WallDefinition[] = [
@@ -6178,12 +6210,19 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     roughness: 0.48,
     metalness: 0.52,
   });
-  const elevatorDarkMaterial = new MeshStandardMaterial({
-    color: 0x090b0d,
-    emissive: 0x010203,
-    emissiveIntensity: 0.08,
-    roughness: 0.92,
+  const elevatorShaftWallMaterial = new MeshStandardMaterial({
+    color: 0x4a5157,
+    emissive: 0x080c10,
+    emissiveIntensity: 0.16,
+    roughness: 0.72,
     metalness: 0.12,
+  });
+  const elevatorShaftLightMaterial = new MeshStandardMaterial({
+    color: 0xffe3a2,
+    emissive: 0xffb64d,
+    emissiveIntensity: 1.15,
+    roughness: 0.28,
+    metalness: 0.05,
   });
   const elevatorCableMaterial = new MeshStandardMaterial({
     color: 0x1a1d20,
@@ -6199,18 +6238,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     roughness: 0.32,
     metalness: 0.18,
   });
-  const employeeElevatorPlatformSize = 2.55;
-  const employeeElevatorCenterX = employeeRoomCenterX - 0.48;
-  const employeeElevatorCenterZ = employeeRoomCenterZ;
   const employeeElevatorPlatformHomeY = 0.055;
   const employeeElevatorLowerEyeY = GAME_CONFIG.player.height + employeeElevatorBasementFloorY;
   const employeeElevatorPlatform = new Group();
   employeeElevatorPlatform.position.set(employeeElevatorCenterX, employeeElevatorPlatformHomeY, employeeElevatorCenterZ);
-  const elevatorShaftOpening = new Mesh(
-    new BoxGeometry(employeeElevatorPlatformSize + 0.42, 0.035, employeeElevatorPlatformSize + 0.42),
-    elevatorDarkMaterial,
-  );
-  elevatorShaftOpening.position.set(employeeElevatorCenterX, 0.006, employeeElevatorCenterZ);
   const elevatorPatch = new Mesh(
     new BoxGeometry(employeeElevatorPlatformSize, 0.08, employeeElevatorPlatformSize),
     elevatorMetalMaterial,
@@ -6245,7 +6276,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeElevatorPlatform.add(rail);
   });
   employeeElevatorPlatform.add(elevatorPatch);
-  employeeElevatorRoot.add(elevatorShaftOpening, employeeElevatorPlatform);
+  employeeElevatorRoot.add(employeeElevatorPlatform);
 
   const cableTopY = WALL_HEIGHT - 0.08;
   const cableBaseLength = cableTopY - 0.22;
@@ -6324,17 +6355,28 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { x: employeeElevatorCenterX - shaftInnerSize / 2, z: employeeElevatorCenterZ, sx: shaftWallThickness, sz: shaftInnerSize },
     { x: employeeElevatorCenterX + shaftInnerSize / 2, z: employeeElevatorCenterZ, sx: shaftWallThickness, sz: shaftInnerSize },
   ].forEach((wall) => {
-    const shaftWall = new Mesh(new BoxGeometry(wall.sx, shaftWallHeight, wall.sz), elevatorDarkMaterial);
+    const shaftWall = new Mesh(new BoxGeometry(wall.sx, shaftWallHeight, wall.sz), elevatorShaftWallMaterial);
     shaftWall.position.set(wall.x, shaftWallCenterY, wall.z);
-    shaftWall.visible = false;
     employeeElevatorShaftWalls.push(shaftWall);
     employeeElevatorRoot.add(shaftWall);
   });
+  const shaftLightStrips = [
+    { x: employeeElevatorCenterX - shaftInnerSize / 2 + 0.04, z: employeeElevatorCenterZ - shaftInnerSize / 2 + 0.06, sx: 0.035, sz: 0.045 },
+    { x: employeeElevatorCenterX + shaftInnerSize / 2 - 0.04, z: employeeElevatorCenterZ + shaftInnerSize / 2 - 0.06, sx: 0.035, sz: 0.045 },
+  ].map((strip) => {
+    const lightStrip = new Mesh(new BoxGeometry(strip.sx, shaftWallHeight - 0.72, strip.sz), elevatorShaftLightMaterial);
+    lightStrip.position.set(strip.x, employeeElevatorBasementFloorY + shaftWallHeight / 2 + 0.12, strip.z);
+    return lightStrip;
+  });
+  const shaftGlowTop = new PointLight(0xffd8a4, 0.72, 7.8, 1.7);
+  shaftGlowTop.position.set(employeeElevatorCenterX, -1.45, employeeElevatorCenterZ);
+  const shaftGlowLower = new PointLight(0xffd8a4, 0.62, 7.2, 1.8);
+  shaftGlowLower.position.set(employeeElevatorCenterX, employeeElevatorBasementFloorY + 2.4, employeeElevatorCenterZ);
   const basementFixture = new Mesh(new BoxGeometry(0.78, 0.08, 0.36), panelMaterial);
   basementFixture.position.set(employeeElevatorCenterX + 2.2, employeeElevatorBasementFloorY + 2.7, employeeElevatorCenterZ - 2.3);
-  const basementGlow = new PointLight(0xffd8ac, 0.82, 7.2, 1.8);
+  const basementGlow = new PointLight(0xffd8ac, 1.05, 8.6, 1.7);
   basementGlow.position.set(employeeElevatorCenterX + 1.8, employeeElevatorBasementFloorY + 2.22, employeeElevatorCenterZ - 1.9);
-  employeeElevatorRoot.add(basementFloor, basementPad, basementFixture, basementGlow);
+  employeeElevatorRoot.add(basementFloor, basementPad, ...shaftLightStrips, shaftGlowTop, shaftGlowLower, basementFixture, basementGlow);
   root.add(employeeElevatorRoot);
   const employeeElevator: OfficeChapterEmployeeElevator = {
     label: 'Employees Only Elevator',
@@ -8447,9 +8489,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       cable.position.y = employeeElevator.cableTopY - employeeElevator.cableBaseLength / 2;
     });
     employeeElevator.shaftWalls.forEach((wall) => {
-      wall.visible = false;
-      wall.scale.y = 0.001;
-      wall.position.y = employeeElevator.shaftWallTopY;
+      wall.visible = true;
+      wall.scale.y = 1;
+      wall.position.y = employeeElevator.shaftWallTopY - employeeElevator.shaftWallHeight / 2;
     });
     storageFuseBox.open = false;
     storageFuseBox.openAmount = 0;

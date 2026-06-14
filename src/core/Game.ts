@@ -18162,9 +18162,9 @@ export class Game {
       cable.position.y = elevator.cableTopY - elevator.cableBaseLength / 2;
     });
     elevator.shaftWalls.forEach((wall) => {
-      wall.visible = false;
-      wall.scale.y = 0.001;
-      wall.position.y = elevator.shaftWallTopY;
+      wall.visible = true;
+      wall.scale.y = 1;
+      wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
     this.player.teleport(elevator.topPosition);
     this.player.lookToward(elevator.interactPosition.clone().add(new Vector3(0, 0.1, 0)), 0.8);
@@ -18191,12 +18191,10 @@ export class Game {
       cable.scale.y = cableLength;
       cable.position.y = elevator.cableTopY - cableLength / 2;
     });
-    const revealedShaftHeight = MathUtils.clamp(visualDrop + 0.28, 0.001, elevator.shaftWallHeight);
-    const shaftScaleY = revealedShaftHeight / elevator.shaftWallHeight;
     elevator.shaftWalls.forEach((wall) => {
-      wall.visible = revealedShaftHeight > 0.12;
-      wall.scale.y = shaftScaleY;
-      wall.position.y = elevator.shaftWallTopY - revealedShaftHeight / 2;
+      wall.visible = true;
+      wall.scale.y = 1;
+      wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
 
     const ridePosition = ride.startPosition.clone();
