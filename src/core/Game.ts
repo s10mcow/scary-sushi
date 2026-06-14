@@ -751,6 +751,7 @@ const OFFICE_GLASS_SHARD_VISIBLE_SECONDS = 5;
 const OFFICE_TINY_BEAR_VISIBLE_SECONDS = 4.2;
 const OFFICE_LOLLIPOP_BOOST_SECONDS = 10;
 const OFFICE_LOLLIPOP_SPEED_MULTIPLIER = 2;
+const OFFICE_STARTING_LOLLIPOPS = 5;
 const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
   glass: 'Glass Cup',
   'tiny-bear': 'Tiny Bear',
@@ -5494,6 +5495,7 @@ export class Game {
 
   private resetOfficePrizeInventory(): void {
     this.officePrizeInventory.clear();
+    this.officePrizeInventory.set('lollipop', OFFICE_STARTING_LOLLIPOPS);
     this.officePrizeBonusMultiplier = 1;
     this.officeLollipopBoostRemaining = 0;
     this.officeLollipopUseTimer = 0;
