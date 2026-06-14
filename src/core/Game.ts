@@ -367,6 +367,8 @@ interface ActiveOfficeEmployeeElevatorRide {
   startPosition: Vector3;
   endPosition: Vector3;
   lookTarget: Vector3;
+  carryPlayer: boolean;
+  pressedButton: 'top' | 'bottom';
 }
 
 interface ActiveOfficeBallPitSlide {
@@ -1103,6 +1105,7 @@ export class Game {
   private officeVentDrop: ActiveOfficeVentDrop | null = null;
   private officeEmployeeElevatorRide: ActiveOfficeEmployeeElevatorRide | null = null;
   private officeEmployeeElevatorBasementActive = false;
+  private officeEmployeeElevatorAtBasement = false;
   private officeVentChasePendingTimer = 0;
   private officeVentChasePendingAnimatronic: OfficeGameModeAnimatronicState | null = null;
   private officeJumpscareMenuOpen = false;
@@ -5862,6 +5865,7 @@ export class Game {
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
     this.officeEmployeeElevatorBasementActive = false;
+    this.officeEmployeeElevatorAtBasement = false;
     this.clearOfficePendingVentChase();
     this.officeJumpscareMenuOpen = false;
     this.stopOfficeJumpscare();
@@ -6435,6 +6439,7 @@ export class Game {
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
     this.officeEmployeeElevatorBasementActive = false;
+    this.officeEmployeeElevatorAtBasement = false;
     this.clearOfficePendingVentChase();
     this.officeTabletCameraFeedActive = false;
     this.officeTabletHeld = false;
@@ -6508,6 +6513,7 @@ export class Game {
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
     this.officeEmployeeElevatorBasementActive = false;
+    this.officeEmployeeElevatorAtBasement = false;
     this.clearOfficePendingVentChase();
     this.clearOfficeDoorSparks();
     this.officeGameModeAnimatronics.forEach((animatronic) => {
@@ -12403,6 +12409,7 @@ export class Game {
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
     this.officeEmployeeElevatorBasementActive = false;
+    this.officeEmployeeElevatorAtBasement = false;
     this.officeBallPitHidden = false;
     this.officeBallPitSlide = null;
     this.officeChapterSeated = false;
@@ -15915,6 +15922,8 @@ export class Game {
       if (employeeElevator) {
         return this.isPlayerNearOfficeEmployeeElevatorLowerButton()
           ? 'Press E to press the red elevator button and ride back up.'
+          : this.officeEmployeeElevatorAtBasement
+            ? 'Press E to call the employees-only elevator back up.'
           : 'Press E to press the red elevator button.';
       }
 
@@ -16671,6 +16680,8 @@ export class Game {
       if (employeeElevator) {
         return this.isPlayerNearOfficeEmployeeElevatorLowerButton()
           ? 'The basement red elevator button waits beside the platform. Press E to ride back up.'
+          : this.officeEmployeeElevatorAtBasement
+            ? 'The elevator is down in the basement. Press E to call it back up to the first floor.'
           : 'The red elevator button waits beside the gray cable platform. Press E to lower it.';
       }
 
@@ -18203,13 +18214,20 @@ export class Game {
     return lateral <= 1.15 ? elevator : null;
   }
 
-  private startOfficeEmployeeElevatorRide(forceDirection?: 'up' | 'down'): void {
+  private startOfficeEmployeeElevatorRide(
+    forceDirection?: 'up' | 'down',
+    carryPlayer = true,
+    pressedButton: 'top' | 'bottom' = 'top',
+  ): void {
     const elevator = this.officeChapter.employeeElevator;
     if (this.officeEmployeeElevatorRide || !elevator.root.visible) {
       return;
     }
 
-    this.resetOfficeTabletState();
+    this.officeTabletHeld = false;
+    this.officeTabletCameraFeedActive = false;
+    this.officeTabletAnchor.visible = false;
+    this.clearOfficeCameraPuppetThreat();
     this.officeVentActive = false;
     this.officeVentDrop = null;
     this.clearOfficePendingVentChase();
@@ -18218,6 +18236,7 @@ export class Game {
       || (forceDirection !== 'down' && (
         this.isPlayerInOfficeEmployeeElevatorBasement()
         || this.isPlayerNearOfficeEmployeeElevatorLowerButton()
+        || this.officeEmployeeElevatorAtBasement
       ));
     const startPosition = ridingUp ? elevator.lowerPosition.clone() : elevator.topPosition.clone();
     const endPosition = ridingUp ? elevator.topPosition.clone() : elevator.lowerPosition.clone();
@@ -18230,11 +18249,13 @@ export class Game {
       lookTarget: ridingUp
         ? elevator.topPosition.clone().add(new Vector3(0, 0, 4))
         : elevator.lowerLookTarget.clone(),
+      carryPlayer,
+      pressedButton,
     };
     const startPlatformDrop = elevator.topPosition.y - startPosition.y;
     elevator.platform.position.y = elevator.platformHomeY - startPlatformDrop;
-    elevator.button.position.x = ridingUp ? elevator.buttonRestX : elevator.buttonRestX - 0.04;
-    elevator.lowerButton.position.x = ridingUp ? elevator.lowerButtonRestX - 0.04 : elevator.lowerButtonRestX;
+    elevator.button.position.x = pressedButton === 'top' ? elevator.buttonRestX - 0.04 : elevator.buttonRestX;
+    elevator.lowerButton.position.x = pressedButton === 'bottom' ? elevator.lowerButtonRestX - 0.04 : elevator.lowerButtonRestX;
     elevator.cables.forEach((cable) => {
       const cableLength = elevator.cableBaseLength + startPlatformDrop;
       cable.scale.y = cableLength;
@@ -18245,12 +18266,16 @@ export class Game {
       wall.scale.y = 1;
       wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
-    this.player.teleport(startPosition);
-    this.player.lookToward(startPosition.clone().add(new Vector3(0, 0, 4)), 0.8);
+    if (carryPlayer) {
+      this.player.teleport(startPosition);
+      this.player.lookToward(startPosition.clone().add(new Vector3(0, 0, 4)), 0.8);
+    }
     this.gameplaySfxAudio.playSmallPanel(true);
     this.pushStatus(
       ridingUp
-        ? 'The employees-only elevator rises back toward the upper room.'
+        ? carryPlayer
+          ? 'The employees-only elevator rises back toward the upper room.'
+          : 'The first-floor button calls the employees-only elevator back up.'
         : 'The employees-only elevator lowers into the hidden shaft.',
       3.2,
     );
@@ -18269,9 +18294,10 @@ export class Game {
     const ridePosition = ride.startPosition.clone().lerp(ride.endPosition, loweredProgress);
     const platformDrop = elevator.topPosition.y - ridePosition.y;
     elevator.platform.position.y = elevator.platformHomeY - platformDrop;
-    const ridingUp = ride.endPosition.y > ride.startPosition.y;
-    elevator.button.position.x = ridingUp ? elevator.buttonRestX : elevator.buttonRestX - Math.max(0, 1 - rawProgress * 5) * 0.04;
-    elevator.lowerButton.position.x = ridingUp
+    elevator.button.position.x = ride.pressedButton === 'top'
+      ? elevator.buttonRestX - Math.max(0, 1 - rawProgress * 5) * 0.04
+      : elevator.buttonRestX;
+    elevator.lowerButton.position.x = ride.pressedButton === 'bottom'
       ? elevator.lowerButtonRestX - Math.max(0, 1 - rawProgress * 5) * 0.04
       : elevator.lowerButtonRestX;
     elevator.cables.forEach((cable) => {
@@ -18285,15 +18311,18 @@ export class Game {
       wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
 
-    this.player.teleport(ridePosition);
-    this.player.lookToward(ridePosition.clone().add(new Vector3(0, 0, 4)), 0.035);
+    if (ride.carryPlayer) {
+      this.player.teleport(ridePosition);
+      this.player.lookToward(ridePosition.clone().add(new Vector3(0, 0, 4)), 0.035);
+    }
 
     if (rawProgress < 1) {
       return;
     }
 
     this.officeEmployeeElevatorRide = null;
-    this.officeEmployeeElevatorBasementActive = ride.endPosition.y < elevator.topPosition.y - 0.5;
+    this.officeEmployeeElevatorAtBasement = ride.endPosition.y < elevator.topPosition.y - 0.5;
+    this.officeEmployeeElevatorBasementActive = ride.carryPlayer && this.officeEmployeeElevatorAtBasement;
     elevator.button.position.x = elevator.buttonRestX;
     elevator.lowerButton.position.x = elevator.lowerButtonRestX;
     elevator.shaftWalls.forEach((wall) => {
@@ -18301,11 +18330,15 @@ export class Game {
       wall.scale.y = 1;
       wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
-    this.player.lookToward(ride.lookTarget, 0.75);
+    if (ride.carryPlayer) {
+      this.player.lookToward(ride.lookTarget, 0.75);
+    }
     this.pushStatus(
-      this.officeEmployeeElevatorBasementActive
+      this.officeEmployeeElevatorAtBasement
         ? 'The elevator settles onto the basement floor below the employees-only area.'
-        : 'The elevator returns to the employees-only room.',
+        : ride.carryPlayer
+          ? 'The elevator returns to the employees-only room.'
+          : 'The elevator arrives back at the first-floor employees-only room.',
       2.8,
     );
   }
@@ -18535,6 +18568,7 @@ export class Game {
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
     this.officeEmployeeElevatorBasementActive = false;
+    this.officeEmployeeElevatorAtBasement = false;
     this.officeBallPitHidden = false;
     this.player.teleport(this.officeChapter.ventSystem.ladderEntryPosition);
     this.player.lookToward(
@@ -18550,6 +18584,7 @@ export class Game {
     this.officeVentDrop = null;
     this.officeEmployeeElevatorRide = null;
     this.officeEmployeeElevatorBasementActive = false;
+    this.officeEmployeeElevatorAtBasement = false;
     this.clearOfficePendingVentChase();
     this.player.teleport(exitPosition);
     this.player.lookToward(exitPosition.clone().add(new Vector3(0, 0, 3)), 1);
@@ -18727,8 +18762,12 @@ export class Game {
     }
 
     if (this.getNearestOfficeEmployeeElevator()) {
+      const pressingBasementButton = this.isPlayerNearOfficeEmployeeElevatorLowerButton();
+      const callingUpFromFirstFloor = !pressingBasementButton && this.officeEmployeeElevatorAtBasement;
       this.startOfficeEmployeeElevatorRide(
-        this.isPlayerNearOfficeEmployeeElevatorLowerButton() ? 'up' : 'down',
+        pressingBasementButton || callingUpFromFirstFloor ? 'up' : 'down',
+        !callingUpFromFirstFloor,
+        pressingBasementButton ? 'bottom' : 'top',
       );
       return;
     }
