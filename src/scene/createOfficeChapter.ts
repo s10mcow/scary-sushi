@@ -6624,19 +6624,19 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const basementWallMaxX = employeeElevatorCenterX + employeeElevatorBasementRoomWidth / 2;
   const basementWallMinZ = employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2;
   const basementWallMaxZ = employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2;
-  const basementHallwayCenterX = -256.16;
+  const basementHallwayCenterX = -256.07;
   const basementHallwayWidth = 2.48;
-  const basementHallwayLength = GAME_CONFIG.player.sprintSpeed * 20;
+  const basementHallwayLength = GAME_CONFIG.player.sprintSpeed * 10;
   const basementHallwayMinX = basementHallwayCenterX - basementHallwayWidth / 2;
   const basementHallwayMaxX = basementHallwayCenterX + basementHallwayWidth / 2;
-  const basementHallwayStartZ = basementWallMaxZ - 0.08;
-  const basementHallwayEndZ = basementWallMaxZ + basementHallwayLength;
+  const basementHallwayStartZ = basementWallMinZ - basementHallwayLength;
+  const basementHallwayEndZ = basementWallMinZ + 0.08;
   const basementHallwayCenterZ = (basementHallwayStartZ + basementHallwayEndZ) / 2;
   const basementHallwayBounds = [{
     minX: basementHallwayMinX + 0.2,
     maxX: basementHallwayMaxX - 0.2,
-    minZ: basementWallMaxZ - 0.62,
-    maxZ: basementHallwayEndZ - 1.75,
+    minZ: basementHallwayStartZ + 1.75,
+    maxZ: basementWallMinZ + 0.62,
   }];
   let basementFlickerTime = 0;
   const basementFlickerLights: Array<{
@@ -6727,30 +6727,30 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeElevatorRoot.add(basementWall);
   };
   [
-    { x: employeeElevatorCenterX, z: basementWallMinZ, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
+    { x: employeeElevatorCenterX, z: basementWallMaxZ, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
     { x: basementWallMinX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
     { x: basementWallMaxX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
   ].forEach(addBasementWallSegment);
-  const southLeftWidth = Math.max(0, basementHallwayMinX - basementWallMinX);
-  const southRightWidth = Math.max(0, basementWallMaxX - basementHallwayMaxX);
-  if (southLeftWidth > 0.08) {
+  const northLeftWidth = Math.max(0, basementHallwayMinX - basementWallMinX);
+  const northRightWidth = Math.max(0, basementWallMaxX - basementHallwayMaxX);
+  if (northLeftWidth > 0.08) {
     addBasementWallSegment({
-      x: basementWallMinX + southLeftWidth / 2,
-      z: basementWallMaxZ,
-      sx: southLeftWidth,
+      x: basementWallMinX + northLeftWidth / 2,
+      z: basementWallMinZ,
+      sx: northLeftWidth,
       sz: 0.14,
     });
   }
-  if (southRightWidth > 0.08) {
+  if (northRightWidth > 0.08) {
     addBasementWallSegment({
-      x: basementHallwayMaxX + southRightWidth / 2,
-      z: basementWallMaxZ,
-      sx: southRightWidth,
+      x: basementHallwayMaxX + northRightWidth / 2,
+      z: basementWallMinZ,
+      sx: northRightWidth,
       sz: 0.14,
     });
   }
   const hallwayHeader = new Mesh(new BoxGeometry(basementHallwayWidth, 0.46, 0.14), basementWallMaterial);
-  hallwayHeader.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight - 0.23, basementWallMaxZ);
+  hallwayHeader.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight - 0.23, basementWallMinZ);
   employeeElevatorRoot.add(hallwayHeader);
   const hallwayFloor = new Mesh(
     new BoxGeometry(basementHallwayWidth, 0.1, basementHallwayLength),
@@ -6765,13 +6765,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   addSegmentedHallwayWall(basementHallwayMaxX);
   addBasementFlickerFixture(employeeElevatorCenterX + 1.3, employeeElevatorCenterZ - 1.7, 1.15, 0.2, 10.5);
   [
-    basementHallwayStartZ + 5.5,
-    basementHallwayStartZ + 17.5,
-    basementHallwayStartZ + 31.5,
-    basementHallwayStartZ + 47.5,
-    basementHallwayStartZ + 64.5,
-    basementHallwayStartZ + 82.5,
-  ].filter((z) => z < basementHallwayEndZ - 3).forEach((z, index) => {
+    basementWallMinZ - 5.5,
+    basementWallMinZ - 17.5,
+    basementWallMinZ - 31.5,
+    basementWallMinZ - 45.5,
+  ].filter((z) => z > basementHallwayStartZ + 3).forEach((z, index) => {
     addBasementFlickerFixture(
       basementHallwayCenterX,
       z,
@@ -6794,19 +6792,19 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     roughness: 1,
     metalness: 0,
   });
-  const caveInBack = new Mesh(new BoxGeometry(basementHallwayWidth + 0.42, 2.55, 0.58), rubbleDirtMaterial);
-  caveInBack.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + 1.25, basementHallwayEndZ - 0.32);
+  const caveInBack = new Mesh(new BoxGeometry(basementHallwayWidth + 1.35, 3.05, 1.22), rubbleDirtMaterial);
+  caveInBack.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + 1.5, basementHallwayStartZ + 0.45);
   employeeElevatorRoot.add(caveInBack);
-  for (let rock = 0; rock < 32; rock += 1) {
-    const rockWidth = 0.28 + (rock % 5) * 0.12;
-    const rockHeight = 0.18 + (rock % 4) * 0.11;
-    const rockDepth = 0.24 + (rock % 6) * 0.1;
-    const row = Math.floor(rock / 8);
+  for (let rock = 0; rock < 58; rock += 1) {
+    const rockWidth = 0.34 + (rock % 5) * 0.15;
+    const rockHeight = 0.22 + (rock % 5) * 0.13;
+    const rockDepth = 0.3 + (rock % 6) * 0.13;
+    const row = Math.floor(rock / 10);
     const rubble = new Mesh(new BoxGeometry(rockWidth, rockHeight, rockDepth), rock % 3 === 0 ? rubbleDirtMaterial : rubbleMaterial);
     rubble.position.set(
-      basementHallwayMinX + 0.34 + ((rock * 0.53) % (basementHallwayWidth - 0.68)),
-      employeeElevatorBasementFloorY + 0.12 + row * 0.32 + (rock % 2) * 0.06,
-      basementHallwayEndZ - 1.25 + ((rock * 0.37) % 1.6),
+      basementHallwayMinX - 0.25 + ((rock * 0.57) % (basementHallwayWidth + 0.5)),
+      employeeElevatorBasementFloorY + 0.14 + row * 0.28 + (rock % 2) * 0.07,
+      basementHallwayStartZ + 0.38 + ((rock * 0.43) % 2.65),
     );
     rubble.rotation.set((rock % 4) * 0.18, (rock * 0.49) % Math.PI, (rock % 5) * 0.12);
     employeeElevatorRoot.add(rubble);
