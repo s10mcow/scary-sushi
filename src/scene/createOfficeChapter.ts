@@ -423,6 +423,7 @@ const OFFICE_CENTER_Z = 184;
 const OFFICE_WIDTH = 13;
 const OFFICE_DEPTH = 11;
 const WALL_HEIGHT = 4.1;
+const OFFICE_VENT_FLOOR_Y = WALL_HEIGHT + 1.16;
 const BALL_PIT_ROOM_HEIGHT = WALL_HEIGHT;
 const WALL_THICKNESS = 0.45;
 const DOOR_MOVE_SPEED = 8.4;
@@ -801,7 +802,7 @@ function createSwivelingSecurityCamera(
 
 function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapterVentSystem {
   const root = new Group();
-  const floorY = WALL_HEIGHT + 1.16;
+  const floorY = OFFICE_VENT_FLOOR_Y;
   const ductBottomY = WALL_HEIGHT + 0.08;
   const ductHeight = 1.62;
   const ductCenterY = ductBottomY + ductHeight / 2;
@@ -6221,7 +6222,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
 
   const employeeKeyBriefcaseRoot = new Group();
-  employeeKeyBriefcaseRoot.position.set(-243.92, 0.18, 148.38);
+  employeeKeyBriefcaseRoot.position.set(-243.92, OFFICE_VENT_FLOOR_Y + 0.02, 148.38);
   employeeKeyBriefcaseRoot.rotation.y = Math.PI / 2;
   employeeKeyBriefcaseRoot.visible = !abandonedStraightHalls;
   const briefcaseMaterial = new MeshStandardMaterial({
@@ -6279,6 +6280,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   keyToothB.position.set(0.27, -0.002, -0.04);
   briefcaseKeyRoot.add(keyRing, keyStem, keyToothA, keyToothB);
   briefcaseKeyRoot.visible = false;
+  const briefcaseVentGlow = new PointLight(0xffd18a, 0.52, 4.2, 1.8);
+  briefcaseVentGlow.position.set(0, 0.5, 0.08);
   employeeKeyBriefcaseRoot.add(
     briefcaseBottom,
     briefcaseInterior,
@@ -6286,12 +6289,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     briefcaseHandle,
     briefcaseLidPivot,
     briefcaseKeyRoot,
+    briefcaseVentGlow,
   );
   root.add(employeeKeyBriefcaseRoot);
   const employeeKeyBriefcase: OfficeChapterEmployeeKeyBriefcase = {
     label: 'Metal Briefcase',
     root: employeeKeyBriefcaseRoot,
-    interactPosition: new Vector3(-243.92, 0.75, 148.38),
+    interactPosition: new Vector3(-243.92, OFFICE_VENT_FLOOR_Y + 0.48, 148.38),
     lidPivot: briefcaseLidPivot,
     keyRoot: briefcaseKeyRoot,
     open: false,

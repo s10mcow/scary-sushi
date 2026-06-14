@@ -15792,6 +15792,16 @@ export class Game {
       const ventExit = this.getNearestOfficeVentExit();
       const ventLadder = this.getNearestOfficeVentLadder();
       const openVentCoverBelow = this.getNearestOpenOfficeVentCoverFromBelow();
+      const employeeKeyBriefcase = this.getNearestOfficeEmployeeKeyBriefcase();
+      if (employeeKeyBriefcase) {
+        if (!employeeKeyBriefcase.open) {
+          return 'Press E to open the metal briefcase.';
+        }
+        return employeeKeyBriefcase.keyCollected
+          ? 'Press E to close the empty metal briefcase.'
+          : 'Press E to take the elevator room key.';
+      }
+
       if (this.officeVentActive) {
         return ventExit
           ? ventExit.coverPivot
@@ -15827,7 +15837,6 @@ export class Game {
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
-      const employeeKeyBriefcase = this.getNearestOfficeEmployeeKeyBriefcase();
       const employeeElevator = this.getNearestOfficeEmployeeElevator();
       const storageFuseBox = this.getNearestOfficeStorageFuseBox();
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
@@ -15897,15 +15906,6 @@ export class Game {
         return backstageStorageDoor.open
           ? 'Press E to close the backstage suit storage door.'
           : 'Press E to open the backstage suit storage door.';
-      }
-
-      if (employeeKeyBriefcase) {
-        if (!employeeKeyBriefcase.open) {
-          return 'Press E to open the metal briefcase.';
-        }
-        return employeeKeyBriefcase.keyCollected
-          ? 'Press E to close the empty metal briefcase.'
-          : 'Press E to take the elevator room key.';
       }
 
       if (employeeOnlyDoor) {
@@ -16605,6 +16605,15 @@ export class Game {
         return 'The office chair is right here beside the desk.';
       }
 
+      if (employeeKeyBriefcase) {
+        if (!employeeKeyBriefcase.open) {
+          return 'A locked-looking metal briefcase rests here. Press E to open it.';
+        }
+        return employeeKeyBriefcase.keyCollected
+          ? 'The metal briefcase is open and empty.'
+          : 'A small key is inside the open briefcase. Press E to collect it.';
+      }
+
       if (this.officeVentActive) {
         return ventExit
           ? ventExit.coverPivot
@@ -16655,15 +16664,6 @@ export class Game {
         return backstageStorageDoor.open
           ? 'The backstage suit storage door is open. Press E to close it.'
           : 'The backstage suit storage door is closed. Press E to open it.';
-      }
-
-      if (employeeKeyBriefcase) {
-        if (!employeeKeyBriefcase.open) {
-          return 'A locked-looking metal briefcase rests here. Press E to open it.';
-        }
-        return employeeKeyBriefcase.keyCollected
-          ? 'The metal briefcase is open and empty.'
-          : 'A small key is inside the open briefcase. Press E to collect it.';
       }
 
       if (employeeOnlyDoor) {
@@ -18390,6 +18390,35 @@ export class Game {
     return lateral <= 1.4 ? briefcase : null;
   }
 
+  private handleOfficeEmployeeKeyBriefcaseInteract(): boolean {
+    const employeeKeyBriefcase = this.getNearestOfficeEmployeeKeyBriefcase();
+    if (!employeeKeyBriefcase) {
+      return false;
+    }
+
+    if (!employeeKeyBriefcase.open) {
+      employeeKeyBriefcase.targetOpenAmount = 1;
+      employeeKeyBriefcase.open = true;
+      this.gameplaySfxAudio.playSmallPanel(true);
+      this.pushStatus('The metal briefcase clicks open. A small key is inside.', 2.4);
+      return true;
+    }
+
+    if (!employeeKeyBriefcase.keyCollected) {
+      employeeKeyBriefcase.keyCollected = true;
+      employeeKeyBriefcase.keyRoot.visible = false;
+      this.gameplaySfxAudio.playSmallPanel(true);
+      this.pushStatus('You take the elevator room key from the briefcase.', 2.4);
+      return true;
+    }
+
+    employeeKeyBriefcase.targetOpenAmount = 0;
+    employeeKeyBriefcase.open = false;
+    this.gameplaySfxAudio.playSmallPanel(false);
+    this.pushStatus('The empty metal briefcase snaps shut.', 1.8);
+    return true;
+  }
+
   private getNearestOfficeStorageFuseBox(): OfficeChapterData['storageFuseBox'] | null {
     return null;
   }
@@ -18598,6 +18627,10 @@ export class Game {
 
   private handleOfficeChapterInteract(): void {
     if (this.officeVentActive) {
+      if (this.handleOfficeEmployeeKeyBriefcaseInteract()) {
+        return;
+      }
+
       const ventExit = this.getNearestOfficeVentExit();
       if (ventExit?.exitPosition) {
         if (ventExit.coverPivot) {
@@ -18698,28 +18731,7 @@ export class Game {
       return;
     }
 
-    const employeeKeyBriefcase = this.getNearestOfficeEmployeeKeyBriefcase();
-    if (employeeKeyBriefcase) {
-      if (!employeeKeyBriefcase.open) {
-        employeeKeyBriefcase.targetOpenAmount = 1;
-        employeeKeyBriefcase.open = true;
-        this.gameplaySfxAudio.playSmallPanel(true);
-        this.pushStatus('The metal briefcase clicks open. A small key is inside.', 2.4);
-        return;
-      }
-
-      if (!employeeKeyBriefcase.keyCollected) {
-        employeeKeyBriefcase.keyCollected = true;
-        employeeKeyBriefcase.keyRoot.visible = false;
-        this.gameplaySfxAudio.playSmallPanel(true);
-        this.pushStatus('You take the elevator room key from the briefcase.', 2.4);
-        return;
-      }
-
-      employeeKeyBriefcase.targetOpenAmount = 0;
-      employeeKeyBriefcase.open = false;
-      this.gameplaySfxAudio.playSmallPanel(false);
-      this.pushStatus('The empty metal briefcase snaps shut.', 1.8);
+    if (this.handleOfficeEmployeeKeyBriefcaseInteract()) {
       return;
     }
 
