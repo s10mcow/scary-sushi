@@ -18186,7 +18186,7 @@ export class Game {
       wall.position.y = elevator.shaftWallTopY - elevator.shaftWallHeight / 2;
     });
     this.player.teleport(elevator.topPosition);
-    this.player.lookToward(elevator.interactPosition.clone().add(new Vector3(0, 0.1, 0)), 0.8);
+    this.player.lookToward(elevator.topPosition.clone().add(new Vector3(0, 0, 4)), 0.8);
     this.gameplaySfxAudio.playSmallPanel(true);
     this.pushStatus('The employees-only elevator lowers into the hidden shaft.', 3.2);
   }
@@ -18219,7 +18219,7 @@ export class Game {
     const ridePosition = ride.startPosition.clone();
     ridePosition.y = ride.startPosition.y - visualDrop;
     this.player.teleport(ridePosition);
-    this.player.lookToward(ride.startPosition.clone().add(new Vector3(-2.8, -visualDrop * 0.35, 0)), 0.035);
+    this.player.lookToward(ridePosition.clone().add(new Vector3(0, 0, 4)), 0.035);
 
     if (rawProgress < 1) {
       return;

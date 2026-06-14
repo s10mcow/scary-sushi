@@ -14,6 +14,7 @@ import {
   MeshStandardMaterial,
   PlaneGeometry,
   PointLight,
+  RepeatWrapping,
   SphereGeometry,
   TorusGeometry,
   TubeGeometry,
@@ -6210,13 +6211,58 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     roughness: 0.48,
     metalness: 0.52,
   });
-  const elevatorShaftWallMaterial = new MeshStandardMaterial({
-    color: 0x4a5157,
-    emissive: 0x080c10,
-    emissiveIntensity: 0.16,
-    roughness: 0.72,
-    metalness: 0.12,
-  });
+  const createElevatorBrickMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#8b6253';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#5f3e35';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const brickHeight = 24;
+      const brickWidth = 64;
+      for (let row = 0; row < 6; row += 1) {
+        const y = row * brickHeight;
+        const offset = row % 2 === 0 ? 0 : -brickWidth / 2;
+        for (let column = 0; column < 6; column += 1) {
+          const x = offset + column * brickWidth;
+          const shade = (row + column) % 3;
+          context.fillStyle = shade === 0 ? '#9b715f' : shade === 1 ? '#805848' : '#a57962';
+          context.fillRect(x + 2, y + 2, brickWidth - 4, brickHeight - 4);
+          context.fillStyle = 'rgba(255, 224, 185, 0.18)';
+          context.fillRect(x + 6, y + 5, brickWidth - 12, 3);
+          context.fillStyle = 'rgba(45, 25, 20, 0.22)';
+          context.fillRect(x + 5, y + brickHeight - 6, brickWidth - 10, 3);
+        }
+      }
+      context.fillStyle = 'rgba(35, 24, 22, 0.52)';
+      for (let y = brickHeight - 1; y < canvas.height; y += brickHeight) {
+        context.fillRect(0, y, canvas.width, 3);
+      }
+      for (let row = 0; row < 6; row += 1) {
+        const offset = row % 2 === 0 ? 0 : brickWidth / 2;
+        for (let x = offset; x < canvas.width; x += brickWidth) {
+          context.fillRect(x - 1, row * brickHeight, 3, brickHeight);
+        }
+      }
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.repeat.set(1.8, 2.2);
+    return new MeshStandardMaterial({
+      map: texture,
+      color: 0xffffff,
+      emissive: 0x18100c,
+      emissiveIntensity: 0.08,
+      roughness: 0.9,
+      metalness: 0.02,
+    });
+  };
+  const elevatorBrickMaterial = createElevatorBrickMaterial();
   const elevatorShaftLightMaterial = new MeshStandardMaterial({
     color: 0xffe3a2,
     emissive: 0xffb64d,
@@ -6313,13 +6359,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   basementFloorMaterial.color.setHex(0x535961);
   basementFloorMaterial.emissive.setHex(0x030506);
   basementFloorMaterial.emissiveIntensity = 0.08;
-  const basementWallMaterial = new MeshStandardMaterial({
-    color: 0x24282d,
-    emissive: 0x030506,
-    emissiveIntensity: 0.12,
-    roughness: 0.84,
-    metalness: 0.18,
-  });
+  const basementWallMaterial = elevatorBrickMaterial;
   const basementFloor = new Mesh(
     new BoxGeometry(employeeElevatorBasementRoomWidth, 0.12, employeeElevatorBasementRoomDepth),
     basementFloorMaterial,
@@ -6397,7 +6437,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { x: employeeElevatorCenterX - shaftInnerSize / 2, z: employeeElevatorCenterZ, sx: shaftWallThickness, sz: shaftInnerSize },
     { x: employeeElevatorCenterX + shaftInnerSize / 2, z: employeeElevatorCenterZ, sx: shaftWallThickness, sz: shaftInnerSize },
   ].forEach((wall) => {
-    const shaftWall = new Mesh(new BoxGeometry(wall.sx, shaftWallHeight, wall.sz), elevatorShaftWallMaterial);
+    const shaftWall = new Mesh(new BoxGeometry(wall.sx, shaftWallHeight, wall.sz), elevatorBrickMaterial);
     shaftWall.position.set(wall.x, shaftWallCenterY, wall.z);
     employeeElevatorShaftWalls.push(shaftWall);
     employeeElevatorRoot.add(shaftWall);
@@ -6418,7 +6458,25 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   basementFixture.position.set(employeeElevatorCenterX + 2.2, employeeElevatorBasementFloorY + 2.7, employeeElevatorCenterZ - 2.3);
   const basementGlow = new PointLight(0xffd8ac, 1.05, 8.6, 1.7);
   basementGlow.position.set(employeeElevatorCenterX + 1.8, employeeElevatorBasementFloorY + 2.22, employeeElevatorCenterZ - 1.9);
-  employeeElevatorRoot.add(basementFloor, basementPad, ...shaftLightStrips, shaftGlowTop, shaftGlowLower, basementFixture, basementGlow);
+  const basementElevatorPole = new Mesh(new CylinderGeometry(0.055, 0.07, 1.28, 12), elevatorMetalMaterial);
+  basementElevatorPole.position.set(elevatorPoleX, employeeElevatorBasementFloorY + 0.7, elevatorPoleZ);
+  const basementElevatorButton = new Mesh(new CylinderGeometry(0.12, 0.12, 0.08, 18), elevatorButtonMaterial);
+  basementElevatorButton.rotation.z = Math.PI / 2;
+  basementElevatorButton.position.set(elevatorPoleX + 0.08, employeeElevatorBasementFloorY + 1.18, elevatorPoleZ);
+  const basementElevatorButtonPlate = new Mesh(new BoxGeometry(0.05, 0.42, 0.42), elevatorEdgeMaterial);
+  basementElevatorButtonPlate.position.set(elevatorPoleX + 0.025, employeeElevatorBasementFloorY + 1.18, elevatorPoleZ);
+  employeeElevatorRoot.add(
+    basementFloor,
+    basementPad,
+    ...shaftLightStrips,
+    shaftGlowTop,
+    shaftGlowLower,
+    basementFixture,
+    basementGlow,
+    basementElevatorPole,
+    basementElevatorButtonPlate,
+    basementElevatorButton,
+  );
   root.add(employeeElevatorRoot);
   const employeeElevator: OfficeChapterEmployeeElevator = {
     label: 'Employees Only Elevator',
@@ -6427,7 +6485,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     interactPosition: new Vector3(elevatorPoleX + 0.48, 1.18, elevatorPoleZ),
     topPosition: new Vector3(employeeElevatorCenterX, GAME_CONFIG.player.height, employeeElevatorCenterZ),
     lowerPosition: new Vector3(employeeElevatorCenterX, employeeElevatorLowerEyeY, employeeElevatorCenterZ),
-    lowerLookTarget: new Vector3(employeeElevatorCenterX + 2.2, employeeElevatorLowerEyeY, employeeElevatorCenterZ),
+    lowerLookTarget: new Vector3(employeeElevatorCenterX, employeeElevatorLowerEyeY, employeeElevatorCenterZ + 4),
     lowerHalfWidth: employeeElevatorBasementRoomWidth / 2 - 0.42,
     lowerHalfDepth: employeeElevatorBasementRoomDepth / 2 - 0.42,
     button: elevatorButton,
