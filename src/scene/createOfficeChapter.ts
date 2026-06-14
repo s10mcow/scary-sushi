@@ -6345,6 +6345,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
             const speckY = y + 7 + (speckSeed * 7) % (brickHeight - 14);
             context.fillRect(speckX, speckY, 2, 1);
           }
+          context.fillStyle = 'rgba(71, 62, 48, 0.12)';
+          if ((row + column) % 4 === 0) {
+            context.fillRect(x + brickWidth * 0.18, y + brickHeight * 0.36, brickWidth * 0.38, 5);
+          }
         }
       }
       context.fillStyle = 'rgba(48, 57, 62, 0.5)';
@@ -6357,7 +6361,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
           context.fillRect(x - 2, row * brickHeight, 4, brickHeight);
         }
       }
-      context.fillStyle = 'rgba(235, 239, 232, 0.08)';
+      context.fillStyle = 'rgba(55, 49, 39, 0.12)';
+      context.fillRect(0, canvas.height - 18, canvas.width, 18);
+      context.fillStyle = 'rgba(235, 239, 232, 0.06)';
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
 
@@ -6367,9 +6373,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     texture.repeat.set(1.05, 1.25);
     return new MeshStandardMaterial({
       map: texture,
-      color: 0xc4cbd0,
+      color: 0xaeb6bb,
       emissive: 0x151a1d,
-      emissiveIntensity: 0.09,
+      emissiveIntensity: 0.07,
       roughness: 0.96,
       metalness: 0.02,
     });
@@ -6381,11 +6387,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     canvas.height = 128;
     const context = canvas.getContext('2d');
     if (context) {
-      context.fillStyle = '#3b3c39';
+      context.fillStyle = '#343532';
       context.fillRect(0, 0, canvas.width, canvas.height);
       for (let strip = 0; strip < 8; strip += 1) {
         const x = strip * 32;
-        context.fillStyle = strip % 2 === 0 ? '#5b5144' : '#464943';
+        context.fillStyle = strip % 2 === 0 ? '#4d4438' : '#3e403b';
         context.fillRect(x, 0, 30, canvas.height);
         context.fillStyle = 'rgba(20, 18, 16, 0.42)';
         context.fillRect(x + 29, 0, 3, canvas.height);
@@ -6396,6 +6402,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       for (let y = 18; y < canvas.height; y += 32) {
         context.fillRect(0, y, canvas.width, 3);
       }
+      context.fillStyle = 'rgba(17, 15, 12, 0.32)';
+      context.fillRect(40, 34, 46, 9);
+      context.fillRect(148, 78, 58, 7);
       context.fillStyle = 'rgba(12, 13, 14, 0.24)';
       context.fillRect(0, 0, canvas.width, 8);
       context.fillRect(0, canvas.height - 10, canvas.width, 10);
@@ -6407,7 +6416,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     texture.repeat.set(1.25, 0.85);
     return new MeshStandardMaterial({
       map: texture,
-      color: 0x9a9184,
+      color: 0x857c70,
       emissive: 0x0f1010,
       emissiveIntensity: 0.08,
       roughness: 0.84,
@@ -6520,15 +6529,88 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   basementFloor.receiveShadow = true;
   const basementWallHeight = 3.15;
   const basementWallCenterY = employeeElevatorBasementFloorY + basementWallHeight / 2;
+  const basementDirtMaterial = new MeshStandardMaterial({
+    color: 0x4a3b2e,
+    emissive: 0x070403,
+    emissiveIntensity: 0.06,
+    roughness: 0.98,
+    metalness: 0,
+  });
+  const basementVoidMaterial = new MeshStandardMaterial({
+    color: 0x171615,
+    emissive: 0x020101,
+    emissiveIntensity: 0.08,
+    roughness: 1,
+    metalness: 0,
+  });
+  const rottedBoardMaterial = new MeshStandardMaterial({
+    color: 0x3f3123,
+    emissive: 0x040302,
+    emissiveIntensity: 0.05,
+    roughness: 0.94,
+    metalness: 0.02,
+  });
+  const splinterMaterial = new MeshStandardMaterial({
+    color: 0x71583d,
+    emissive: 0x060403,
+    emissiveIntensity: 0.04,
+    roughness: 0.9,
+    metalness: 0,
+  });
+  const basementWallMinX = employeeElevatorCenterX - employeeElevatorBasementRoomWidth / 2;
+  const basementWallMaxX = employeeElevatorCenterX + employeeElevatorBasementRoomWidth / 2;
+  const basementWallMinZ = employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2;
+  const basementWallMaxZ = employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2;
   [
-    { x: employeeElevatorCenterX, z: employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
-    { x: employeeElevatorCenterX, z: employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
-    { x: employeeElevatorCenterX - employeeElevatorBasementRoomWidth / 2, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
-    { x: employeeElevatorCenterX + employeeElevatorBasementRoomWidth / 2, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
+    { x: employeeElevatorCenterX, z: basementWallMinZ, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
+    { x: employeeElevatorCenterX, z: basementWallMaxZ, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
+    { x: basementWallMinX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
+    { x: basementWallMaxX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
   ].forEach((wall) => {
     const basementWall = new Mesh(new BoxGeometry(wall.sx, basementWallHeight, wall.sz), basementWallMaterial);
     basementWall.position.set(wall.x, basementWallCenterY, wall.z);
     employeeElevatorRoot.add(basementWall);
+  });
+  const addMissingCinderBlock = (
+    side: 'north' | 'south' | 'west' | 'east',
+    along: number,
+    y: number,
+    width = 0.9,
+    height = 0.38,
+  ): void => {
+    const horizontal = side === 'north' || side === 'south';
+    const dirt = new Mesh(
+      new BoxGeometry(horizontal ? width : 0.035, height, horizontal ? 0.035 : width),
+      basementDirtMaterial,
+    );
+    const voidShadow = new Mesh(
+      new BoxGeometry(horizontal ? width + 0.08 : 0.025, height + 0.08, horizontal ? 0.025 : width + 0.08),
+      basementVoidMaterial,
+    );
+    const inset = 0.082;
+    if (side === 'north') {
+      dirt.position.set(along, y, basementWallMinZ + inset);
+      voidShadow.position.set(along, y, basementWallMinZ + inset - 0.012);
+    } else if (side === 'south') {
+      dirt.position.set(along, y, basementWallMaxZ - inset);
+      voidShadow.position.set(along, y, basementWallMaxZ - inset + 0.012);
+    } else if (side === 'west') {
+      dirt.position.set(basementWallMinX + inset, y, along);
+      voidShadow.position.set(basementWallMinX + inset - 0.012, y, along);
+    } else {
+      dirt.position.set(basementWallMaxX - inset, y, along);
+      voidShadow.position.set(basementWallMaxX - inset + 0.012, y, along);
+    }
+    employeeElevatorRoot.add(voidShadow, dirt);
+  };
+  [
+    ['north', employeeElevatorCenterX - 1.55, employeeElevatorBasementFloorY + 1.12, 1.02, 0.4],
+    ['north', employeeElevatorCenterX + 2.1, employeeElevatorBasementFloorY + 2.12, 0.72, 0.34],
+    ['south', employeeElevatorCenterX + 1.34, employeeElevatorBasementFloorY + 1.55, 0.96, 0.42],
+    ['west', employeeElevatorCenterZ - 1.45, employeeElevatorBasementFloorY + 2.0, 0.86, 0.36],
+    ['east', employeeElevatorCenterZ + 1.15, employeeElevatorBasementFloorY + 1.22, 1.08, 0.42],
+  ].forEach(([side, along, y, width, height]) => {
+    addMissingCinderBlock(side as 'north' | 'south' | 'west' | 'east', along as number, y as number, width as number, height as number);
   });
   const basementPad = new Mesh(
     new BoxGeometry(employeeElevatorPlatformSize + 0.18, 0.08, employeeElevatorPlatformSize + 0.18),
@@ -6578,6 +6660,41 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     basementOpeningMaxZ,
     employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2,
   );
+  const addRottenCeilingBoard = (
+    x: number,
+    z: number,
+    length: number,
+    width: number,
+    rotationY: number,
+    sag: number,
+  ): void => {
+    const board = new Mesh(new BoxGeometry(length, 0.045, width), rottedBoardMaterial);
+    board.position.set(x, basementCeilingY - 0.09 - sag * 0.5, z);
+    board.rotation.set(sag, rotationY, sag * 0.35);
+    const splinter = new Mesh(new BoxGeometry(length * 0.34, 0.03, width * 0.34), splinterMaterial);
+    splinter.position.set(length * 0.22, -0.035, width * 0.28);
+    splinter.rotation.y = 0.18;
+    board.add(splinter);
+    employeeElevatorRoot.add(board);
+  };
+  [
+    [employeeElevatorCenterX - 2.45, employeeElevatorCenterZ - 1.72, 1.45, 0.24, 0.05, 0.18],
+    [employeeElevatorCenterX + 2.1, employeeElevatorCenterZ - 1.9, 1.1, 0.22, -0.12, 0.28],
+    [employeeElevatorCenterX - 1.82, employeeElevatorCenterZ + 2.05, 1.25, 0.2, Math.PI / 2 + 0.08, 0.22],
+    [employeeElevatorCenterX + 1.55, employeeElevatorCenterZ + 1.72, 1.38, 0.22, Math.PI / 2 - 0.1, 0.14],
+  ].forEach(([x, z, length, width, rotationY, sag]) => {
+    addRottenCeilingBoard(x, z, length, width, rotationY, sag);
+  });
+  [
+    [employeeElevatorCenterX - 2.3, employeeElevatorCenterZ + 0.92, 1.08, 0.18, 0.42],
+    [employeeElevatorCenterX + 2.0, employeeElevatorCenterZ - 0.62, 0.82, 0.16, -0.36],
+    [employeeElevatorCenterX + 0.85, employeeElevatorCenterZ + 2.16, 0.7, 0.14, 0.12],
+  ].forEach(([x, z, length, width, rotationY]) => {
+    const debris = new Mesh(new BoxGeometry(length, 0.055, width), rottedBoardMaterial);
+    debris.position.set(x, employeeElevatorBasementFloorY + 0.035, z);
+    debris.rotation.y = rotationY;
+    employeeElevatorRoot.add(debris);
+  });
   const shaftWallBottomY = basementCeilingY;
   const shaftWallHeight = shaftWallTopY - shaftWallBottomY;
   const shaftWallCenterY = shaftWallBottomY + shaftWallHeight / 2;
