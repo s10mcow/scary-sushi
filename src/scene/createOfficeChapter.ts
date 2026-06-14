@@ -230,6 +230,12 @@ export interface OfficeChapterEmployeeElevator {
   lowerLookTarget: Vector3;
   lowerHalfWidth: number;
   lowerHalfDepth: number;
+  lowerHallwayBounds: Array<{
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+  }>;
   button: Mesh;
   buttonRestX: number;
   lowerButton: Mesh;
@@ -6618,16 +6624,95 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const basementWallMaxX = employeeElevatorCenterX + employeeElevatorBasementRoomWidth / 2;
   const basementWallMinZ = employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2;
   const basementWallMaxZ = employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2;
-  [
-    { x: employeeElevatorCenterX, z: basementWallMinZ, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
-    { x: employeeElevatorCenterX, z: basementWallMaxZ, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
-    { x: basementWallMinX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
-    { x: basementWallMaxX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
-  ].forEach((wall) => {
+  const basementHallwayCenterX = -256.16;
+  const basementHallwayWidth = 2.48;
+  const basementHallwayLength = GAME_CONFIG.player.sprintSpeed * 20;
+  const basementHallwayMinX = basementHallwayCenterX - basementHallwayWidth / 2;
+  const basementHallwayMaxX = basementHallwayCenterX + basementHallwayWidth / 2;
+  const basementHallwayStartZ = basementWallMaxZ - 0.08;
+  const basementHallwayEndZ = basementWallMaxZ + basementHallwayLength;
+  const basementHallwayCenterZ = (basementHallwayStartZ + basementHallwayEndZ) / 2;
+  const basementHallwayBounds = [{
+    minX: basementHallwayMinX + 0.2,
+    maxX: basementHallwayMaxX - 0.2,
+    minZ: basementHallwayStartZ - 0.18,
+    maxZ: basementHallwayEndZ - 1.75,
+  }];
+  const addBasementWallSegment = (wall: { x: number; z: number; sx: number; sz: number }): void => {
     const basementWall = new Mesh(new BoxGeometry(wall.sx, basementWallHeight, wall.sz), basementWallMaterial);
     basementWall.position.set(wall.x, basementWallCenterY, wall.z);
     employeeElevatorRoot.add(basementWall);
+  };
+  [
+    { x: employeeElevatorCenterX, z: basementWallMinZ, sx: employeeElevatorBasementRoomWidth, sz: 0.14 },
+    { x: basementWallMinX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
+    { x: basementWallMaxX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
+  ].forEach(addBasementWallSegment);
+  const southLeftWidth = Math.max(0, basementHallwayMinX - basementWallMinX);
+  const southRightWidth = Math.max(0, basementWallMaxX - basementHallwayMaxX);
+  if (southLeftWidth > 0.08) {
+    addBasementWallSegment({
+      x: basementWallMinX + southLeftWidth / 2,
+      z: basementWallMaxZ,
+      sx: southLeftWidth,
+      sz: 0.14,
+    });
+  }
+  if (southRightWidth > 0.08) {
+    addBasementWallSegment({
+      x: basementHallwayMaxX + southRightWidth / 2,
+      z: basementWallMaxZ,
+      sx: southRightWidth,
+      sz: 0.14,
+    });
+  }
+  const hallwayHeader = new Mesh(new BoxGeometry(basementHallwayWidth, 0.46, 0.14), basementWallMaterial);
+  hallwayHeader.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight - 0.23, basementWallMaxZ);
+  employeeElevatorRoot.add(hallwayHeader);
+  const hallwayFloor = new Mesh(
+    new BoxGeometry(basementHallwayWidth, 0.1, basementHallwayLength),
+    basementFloorMaterial,
+  );
+  hallwayFloor.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY - 0.055, basementHallwayCenterZ);
+  hallwayFloor.receiveShadow = true;
+  const hallwayLeftWall = new Mesh(new BoxGeometry(0.14, basementWallHeight, basementHallwayLength), basementWallMaterial);
+  hallwayLeftWall.position.set(basementHallwayMinX, basementWallCenterY, basementHallwayCenterZ);
+  const hallwayRightWall = hallwayLeftWall.clone();
+  hallwayRightWall.position.x = basementHallwayMaxX;
+  const hallwayCeiling = new Mesh(new BoxGeometry(basementHallwayWidth, 0.08, basementHallwayLength), basementCeilingMaterial);
+  hallwayCeiling.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight, basementHallwayCenterZ);
+  employeeElevatorRoot.add(hallwayFloor, hallwayLeftWall, hallwayRightWall, hallwayCeiling);
+  const rubbleMaterial = new MeshStandardMaterial({
+    color: 0x55514a,
+    emissive: 0x060504,
+    emissiveIntensity: 0.06,
+    roughness: 0.96,
+    metalness: 0.04,
   });
+  const rubbleDirtMaterial = new MeshStandardMaterial({
+    color: 0x3b2e22,
+    emissive: 0x050302,
+    emissiveIntensity: 0.05,
+    roughness: 1,
+    metalness: 0,
+  });
+  const caveInBack = new Mesh(new BoxGeometry(basementHallwayWidth + 0.42, 2.55, 0.58), rubbleDirtMaterial);
+  caveInBack.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + 1.25, basementHallwayEndZ - 0.32);
+  employeeElevatorRoot.add(caveInBack);
+  for (let rock = 0; rock < 32; rock += 1) {
+    const rockWidth = 0.28 + (rock % 5) * 0.12;
+    const rockHeight = 0.18 + (rock % 4) * 0.11;
+    const rockDepth = 0.24 + (rock % 6) * 0.1;
+    const row = Math.floor(rock / 8);
+    const rubble = new Mesh(new BoxGeometry(rockWidth, rockHeight, rockDepth), rock % 3 === 0 ? rubbleDirtMaterial : rubbleMaterial);
+    rubble.position.set(
+      basementHallwayMinX + 0.34 + ((rock * 0.53) % (basementHallwayWidth - 0.68)),
+      employeeElevatorBasementFloorY + 0.12 + row * 0.32 + (rock % 2) * 0.06,
+      basementHallwayEndZ - 1.25 + ((rock * 0.37) % 1.6),
+    );
+    rubble.rotation.set((rock % 4) * 0.18, (rock * 0.49) % Math.PI, (rock % 5) * 0.12);
+    employeeElevatorRoot.add(rubble);
+  }
   const getBasementWallPoint = (
     side: 'north' | 'south' | 'west' | 'east',
     along: number,
@@ -6828,6 +6913,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     lowerLookTarget: new Vector3(employeeElevatorCenterX, employeeElevatorLowerEyeY, employeeElevatorCenterZ + 4),
     lowerHalfWidth: employeeElevatorBasementRoomWidth / 2 - 0.42,
     lowerHalfDepth: employeeElevatorBasementRoomDepth / 2 - 0.42,
+    lowerHallwayBounds: basementHallwayBounds,
     button: elevatorButton,
     buttonRestX: elevatorButton.position.x,
     lowerButton: basementElevatorButton,

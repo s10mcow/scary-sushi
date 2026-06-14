@@ -18115,25 +18115,63 @@ export class Game {
 
   private isPlayerInOfficeEmployeeElevatorBasement(playerPosition = this.player.getPosition()): boolean {
     const elevator = this.officeChapter.employeeElevator;
-    return this.officeEmployeeElevatorBasementActive
-      && playerPosition.y < GAME_CONFIG.player.height - 1.2
-      && Math.abs(playerPosition.x - elevator.lowerPosition.x) <= elevator.lowerHalfWidth + GAME_CONFIG.player.radius
+    if (!this.officeEmployeeElevatorBasementActive || playerPosition.y >= GAME_CONFIG.player.height - 1.2) {
+      return false;
+    }
+
+    const inMainRoom = Math.abs(playerPosition.x - elevator.lowerPosition.x) <= elevator.lowerHalfWidth + GAME_CONFIG.player.radius
       && Math.abs(playerPosition.z - elevator.lowerPosition.z) <= elevator.lowerHalfDepth + GAME_CONFIG.player.radius;
+    if (inMainRoom) {
+      return true;
+    }
+
+    return elevator.lowerHallwayBounds.some((bounds) => (
+      playerPosition.x >= bounds.minX - GAME_CONFIG.player.radius
+      && playerPosition.x <= bounds.maxX + GAME_CONFIG.player.radius
+      && playerPosition.z >= bounds.minZ - GAME_CONFIG.player.radius
+      && playerPosition.z <= bounds.maxZ + GAME_CONFIG.player.radius
+    ));
   }
 
   private constrainOfficeEmployeeElevatorBasementPosition(): void {
     const playerPosition = this.player.getPosition();
     const elevator = this.officeChapter.employeeElevator;
-    playerPosition.x = MathUtils.clamp(
-      playerPosition.x,
-      elevator.lowerPosition.x - elevator.lowerHalfWidth,
-      elevator.lowerPosition.x + elevator.lowerHalfWidth,
-    );
-    playerPosition.z = MathUtils.clamp(
-      playerPosition.z,
-      elevator.lowerPosition.z - elevator.lowerHalfDepth,
-      elevator.lowerPosition.z + elevator.lowerHalfDepth,
-    );
+    const bounds = [
+      {
+        minX: elevator.lowerPosition.x - elevator.lowerHalfWidth,
+        maxX: elevator.lowerPosition.x + elevator.lowerHalfWidth,
+        minZ: elevator.lowerPosition.z - elevator.lowerHalfDepth,
+        maxZ: elevator.lowerPosition.z + elevator.lowerHalfDepth,
+      },
+      ...elevator.lowerHallwayBounds,
+    ];
+
+    if (bounds.some((area) => (
+      playerPosition.x >= area.minX
+      && playerPosition.x <= area.maxX
+      && playerPosition.z >= area.minZ
+      && playerPosition.z <= area.maxZ
+    ))) {
+      return;
+    }
+
+    let bestX = playerPosition.x;
+    let bestZ = playerPosition.z;
+    let bestDistance = Infinity;
+    bounds.forEach((area) => {
+      const clampedX = MathUtils.clamp(playerPosition.x, area.minX, area.maxX);
+      const clampedZ = MathUtils.clamp(playerPosition.z, area.minZ, area.maxZ);
+      const distance = Math.hypot(playerPosition.x - clampedX, playerPosition.z - clampedZ);
+      if (distance >= bestDistance) {
+        return;
+      }
+      bestDistance = distance;
+      bestX = clampedX;
+      bestZ = clampedZ;
+    });
+
+    playerPosition.x = bestX;
+    playerPosition.z = bestZ;
   }
 
   private isPlayerNearOfficeEmployeeElevatorLowerButton(playerPosition = this.player.getPosition()): boolean {
