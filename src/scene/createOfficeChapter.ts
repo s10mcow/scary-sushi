@@ -6821,6 +6821,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   addSegmentedHallwayWall(basementHallwayMaxX, basementHallwayStartZ, basementHallwayEndZ);
   addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayStartZ, southBasementHallwayEndZ);
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayStartZ, southBasementHallwayEndZ);
+  const northHallwayEndWall = new Mesh(new BoxGeometry(basementHallwayWidth, basementWallHeight, 0.16), basementWallMaterial);
+  northHallwayEndWall.position.set(-255.88, basementWallCenterY, 92.82);
+  employeeElevatorRoot.add(northHallwayEndWall);
   addBasementFlickerFixture(employeeElevatorCenterX + 1.3, employeeElevatorCenterZ - 1.7, 1.15, 0.2, 10.5);
   [
     basementWallMinZ - 5.5,
