@@ -6638,6 +6638,54 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     minZ: basementWallMaxZ - 0.62,
     maxZ: basementHallwayEndZ - 1.75,
   }];
+  let basementFlickerTime = 0;
+  const basementFlickerLights: Array<{
+    light: PointLight;
+    material: MeshStandardMaterial;
+    baseIntensity: number;
+    phase: number;
+    fault: number;
+  }> = [];
+  const basementFixtureMaterial = new MeshStandardMaterial({
+    color: 0xd8d0bf,
+    emissive: 0xffd8a4,
+    emissiveIntensity: 0.45,
+    roughness: 0.48,
+    metalness: 0.18,
+  });
+  const addBasementFlickerFixture = (
+    x: number,
+    z: number,
+    baseIntensity: number,
+    phase: number,
+    range = 11.5,
+  ): void => {
+    const material = basementFixtureMaterial.clone();
+    const fixture = new Mesh(new BoxGeometry(0.72, 0.08, 0.34), material);
+    fixture.position.set(x, employeeElevatorBasementFloorY + basementWallHeight - 0.12, z);
+    const bulb = new Mesh(
+      new SphereGeometry(0.12, 12, 8),
+      new MeshStandardMaterial({
+        color: 0xffe7bd,
+        emissive: 0xffd8a4,
+        emissiveIntensity: 0.8,
+        roughness: 0.28,
+        metalness: 0.02,
+      }),
+    );
+    bulb.position.set(0, -0.08, 0);
+    fixture.add(bulb);
+    const light = new PointLight(0xffd8ac, baseIntensity, range, 1.58);
+    light.position.set(x, employeeElevatorBasementFloorY + basementWallHeight - 0.62, z);
+    basementFlickerLights.push({
+      light,
+      material,
+      baseIntensity,
+      phase,
+      fault: 0.45 + (phase % 1.9),
+    });
+    employeeElevatorRoot.add(fixture, light);
+  };
   const createHallwayRepeatedMaterial = (
     source: MeshStandardMaterial,
     repeatX: number,
@@ -6715,6 +6763,23 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   employeeElevatorRoot.add(hallwayFloor, hallwayCeiling);
   addSegmentedHallwayWall(basementHallwayMinX);
   addSegmentedHallwayWall(basementHallwayMaxX);
+  addBasementFlickerFixture(employeeElevatorCenterX + 1.3, employeeElevatorCenterZ - 1.7, 1.15, 0.2, 10.5);
+  [
+    basementHallwayStartZ + 5.5,
+    basementHallwayStartZ + 17.5,
+    basementHallwayStartZ + 31.5,
+    basementHallwayStartZ + 47.5,
+    basementHallwayStartZ + 64.5,
+    basementHallwayStartZ + 82.5,
+  ].filter((z) => z < basementHallwayEndZ - 3).forEach((z, index) => {
+    addBasementFlickerFixture(
+      basementHallwayCenterX,
+      z,
+      0.88 + (index % 2) * 0.18,
+      0.75 + index * 0.63,
+      9.8,
+    );
+  });
   const rubbleMaterial = new MeshStandardMaterial({
     color: 0x55514a,
     emissive: 0x060504,
@@ -8725,6 +8790,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       flash.lensMaterial.emissiveIntensity = 0.06 + pulse * 0.3;
     });
 
+    basementFlickerTime += deltaSeconds;
+    basementFlickerLights.forEach((entry, index) => {
+      const buzz = Math.abs(Math.sin(basementFlickerTime * (8.2 + entry.fault) + entry.phase));
+      const slowFault = Math.sin(basementFlickerTime * (1.15 + index * 0.09) + entry.phase * 1.7);
+      const dropout = slowFault > 0.82;
+      const intensity = dropout
+        ? entry.baseIntensity * (0.14 + buzz * 0.24)
+        : entry.baseIntensity * (0.78 + buzz * 0.32);
+      entry.light.intensity = intensity;
+      entry.material.emissiveIntensity = 0.16 + intensity * 0.42;
+    });
+
     const utilityBlend = 1 - Math.exp(-OFFICE_UTILITY_OPEN_SPEED * deltaSeconds);
     utilityCloset.openAmount += (utilityCloset.targetOpenAmount - utilityCloset.openAmount) * utilityBlend;
     if (Math.abs(utilityCloset.targetOpenAmount - utilityCloset.openAmount) < 0.001) {
@@ -9026,6 +9103,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       flash.timer = 0;
       flash.light.intensity = 0;
       flash.lensMaterial.emissiveIntensity = 0.06;
+    });
+    basementFlickerTime = 0;
+    basementFlickerLights.forEach((entry) => {
+      entry.light.intensity = entry.baseIntensity;
+      entry.material.emissiveIntensity = 0.16 + entry.baseIntensity * 0.42;
     });
     utilityCloset.open = false;
     utilityCloset.openAmount = 0;

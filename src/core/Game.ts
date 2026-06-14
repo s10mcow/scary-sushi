@@ -12299,7 +12299,16 @@ export class Game {
     return null;
   }
 
+  private isOfficeBasementOrElevatorProtected(): boolean {
+    return this.officeChapterActive
+      && (this.officeEmployeeElevatorRide !== null || this.officeEmployeeElevatorBasementActive);
+  }
+
   private startOfficeJumpscare(definition: OfficeJumpscareDefinition, keepMenuOpen = false): void {
+    if (!keepMenuOpen && this.isOfficeBasementOrElevatorProtected()) {
+      return;
+    }
+
     this.stopOfficeJumpscare();
     this.officeJumpscareMenuOpen = false;
     this.placementToolActive = false;
