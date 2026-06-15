@@ -7119,10 +7119,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       openingMaxZ: doorMaxZ + basementSideRoomWallOpeningPadding,
     };
   });
-  const basementSideRoomWallOpenings = basementSideRooms.map((room) => ({
-    minZ: room.openingMinZ,
-    maxZ: room.openingMaxZ,
-  }));
   const basementHallwayBounds = [
     {
       minX: basementHallwayMinX + 0.5,
@@ -7296,31 +7292,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       segment.position.set(x, basementWallCenterY, cursorZ + length / 2);
       employeeElevatorRoot.add(segment);
       cursorZ = nextZ;
-    }
-  };
-  const addSegmentedHallwayWallWithGaps = (
-    x: number,
-    startZ: number,
-    endZ: number,
-    gaps: Array<{ minZ: number; maxZ: number }>,
-  ): void => {
-    let cursorZ = startZ;
-    gaps
-      .map((gap) => ({
-        minZ: Math.max(startZ, gap.minZ),
-        maxZ: Math.min(endZ, gap.maxZ),
-      }))
-      .filter((gap) => gap.maxZ > gap.minZ)
-      .sort((a, b) => a.minZ - b.minZ)
-      .forEach((gap) => {
-        if (gap.minZ > cursorZ + 0.04) {
-          addSegmentedHallwayWall(x, cursorZ, gap.minZ);
-        }
-        cursorZ = Math.max(cursorZ, gap.maxZ);
-      });
-
-    if (cursorZ < endZ - 0.04) {
-      addSegmentedHallwayWall(x, cursorZ, endZ);
     }
   };
   const addBasementWallSegment = (wall: { x: number; z: number; sx: number; sz: number }): void => {
@@ -7568,12 +7539,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   employeeElevatorRoot.add(northHallwayFarEndWall);
   addSegmentedHallwayWall(basementHallwayMinX, basementHallwayVisualStartZ, basementHallwayEndZ);
   addSegmentedHallwayWall(basementHallwayMaxX, basementHallwayVisualStartZ, basementHallwayEndZ);
-  addSegmentedHallwayWallWithGaps(
-    southBasementHallwayMinX,
-    southBasementHallwayStartZ,
-    southBasementHallwayEndZ,
-    basementSideRoomWallOpenings,
-  );
+  // Leave the room-side hallway wall out entirely so no wall mesh can overlap the basement room doors.
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayStartZ, southBasementHallwayEndZ);
   addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
