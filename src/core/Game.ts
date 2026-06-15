@@ -739,6 +739,8 @@ const OFFICE_VENT_CHASE_DELAY_SECONDS = 5;
 const OFFICE_VENT_CHASE_SPEED = 1.32;
 const OFFICE_VENT_TOXICITY_GRACE_SECONDS = 60;
 const OFFICE_VENT_TOXICITY_DAMAGE_PER_SECOND = 5;
+const OFFICE_VENT_TOXICITY_FRESH_AIR_RADIUS = 1.45;
+const OFFICE_VENT_TOXICITY_FRESH_AIR_RECOVER_PER_SECOND = 2.4;
 const OFFICE_ANIMATRONIC_DOOR_LAUGH_RECORDING_ID = '003';
 const OFFICE_DEATH_DIED_NOTICE_SECONDS = 1.45;
 const OFFICE_DEATH_FIRED_NOTICE_SECONDS = 4.8;
@@ -3266,7 +3268,14 @@ export class Game {
     }
 
     const previousSeconds = this.officeVentToxicitySeconds;
-    this.officeVentToxicitySeconds += deltaSeconds;
+    if (this.isPlayerNearOpenOfficeVentCoverInVents()) {
+      this.officeVentToxicitySeconds = Math.max(
+        0,
+        this.officeVentToxicitySeconds - OFFICE_VENT_TOXICITY_FRESH_AIR_RECOVER_PER_SECOND * deltaSeconds,
+      );
+    } else {
+      this.officeVentToxicitySeconds += deltaSeconds;
+    }
     this.officeVentToxicityDamageNoticeCooldown = Math.max(0, this.officeVentToxicityDamageNoticeCooldown - deltaSeconds);
 
     if (
@@ -3284,6 +3293,9 @@ export class Game {
     if (this.officeVentToxicityDamageNoticeCooldown <= 0) {
       this.officeVentToxicityDamageNoticeCooldown = 4;
       this.pushStatus('Toxic vent air burns your lungs. Get out of the vents.', 2.4);
+    }
+    if (this.health <= 0 && !this.officeDeathNoticePhase) {
+      this.startOfficeDeathNotice();
     }
   }
 
@@ -19032,6 +19044,25 @@ export class Game {
     }
 
     return closest;
+  }
+
+  private isPlayerNearOpenOfficeVentCoverInVents(): boolean {
+    if (!this.officeVentActive) {
+      return false;
+    }
+
+    const playerPosition = this.player.getPosition();
+    return this.officeChapter.ventSystem.openings.some((opening) => {
+      const openAmount = Math.max(opening.openAmount ?? 0, opening.targetOpenAmount ?? 0);
+      if (openAmount < 0.45) {
+        return false;
+      }
+
+      return Math.hypot(
+        playerPosition.x - opening.position.x,
+        playerPosition.z - opening.position.z,
+      ) <= OFFICE_VENT_TOXICITY_FRESH_AIR_RADIUS;
+    });
   }
 
   private getNearestOpenOfficeVentCoverFromBelow(): OfficeChapterData['ventSystem']['openings'][number] | null {
