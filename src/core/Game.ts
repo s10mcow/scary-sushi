@@ -10096,7 +10096,7 @@ export class Game {
 
     animatronic.model.root.rotation.x = MathUtils.lerp(
       animatronic.model.root.rotation.x,
-      -1.2 + crawlPush * 0.06,
+      1.2 - crawlPush * 0.06,
       0.36,
     );
     animatronic.model.root.rotation.z = MathUtils.lerp(
@@ -10108,7 +10108,7 @@ export class Game {
 
     animatronic.model.head.rotation.x = MathUtils.lerp(
       animatronic.model.head.rotation.x,
-      1.02 + Math.sin(crawlCycle * 0.5) * 0.05,
+      -1.02 + Math.sin(crawlCycle * 0.5) * 0.05,
       0.24,
     );
     animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 7.4 : 4.8) * animatronic.walkCycleSpeedMultiplier + animatronic.walkCyclePhase * 0.6)
