@@ -10669,12 +10669,12 @@ export class Game {
       const basementBlend = this.officeEmployeeElevatorBasementActive ? 1 : 0;
       this.lighting.ambient.intensity = MathUtils.lerp(
         MathUtils.lerp(0.76, nightLighting.ambient, nightBlend),
-        0.48,
+        0.42,
         basementBlend,
       );
       this.lighting.hemisphere.intensity = MathUtils.lerp(
         MathUtils.lerp(0.98, nightLighting.hemisphere, nightBlend),
-        0.64,
+        0.58,
         basementBlend,
       );
       this.lighting.flashlight.intensity = MathUtils.lerp(

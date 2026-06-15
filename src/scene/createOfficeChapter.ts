@@ -7098,7 +7098,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const basementSideRoomWallX = southBasementHallwayMinX;
   const basementSideRoomWidth = 7.4;
   const basementSideRoomDoorWidth = 2.72;
-  const basementSideRoomWallOpeningPadding = 1.12;
+  const basementSideRoomWallOpeningPadding = 0.22;
   const basementSideRooms = [
     { centerZ: 119.84, depth: 6.2, lightPhase: 2.35 },
     { centerZ: 129.32, depth: 5.9, lightPhase: 3.1 },
@@ -7112,8 +7112,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     maxZ: room.centerZ + room.depth / 2,
   }));
   const basementSideRoomWallOpenings = basementSideRooms.map((room) => ({
-    minZ: room.minZ - basementSideRoomWallOpeningPadding,
-    maxZ: room.maxZ + basementSideRoomWallOpeningPadding,
+    minZ: room.centerZ - basementSideRoomDoorWidth / 2 - basementSideRoomWallOpeningPadding,
+    maxZ: room.centerZ + basementSideRoomDoorWidth / 2 + basementSideRoomWallOpeningPadding,
   }));
   const basementHallwayBounds = [
     {
@@ -7130,11 +7130,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     },
   ];
   basementSideRooms.forEach((room) => {
+    const doorPassageHalfDepth = basementSideRoomDoorWidth / 2 - 0.18;
     basementHallwayBounds.push({
       minX: room.minX + 0.58,
-      maxX: room.maxX + 1.05,
+      maxX: room.maxX - 0.42,
       minZ: room.minZ + 0.36,
       maxZ: room.maxZ - 0.36,
+    });
+    basementHallwayBounds.push({
+      minX: room.maxX - 0.54,
+      maxX: southBasementHallwayMinX + 0.96,
+      minZ: room.centerZ - doorPassageHalfDepth,
+      maxZ: room.centerZ + doorPassageHalfDepth,
     });
   });
   const basementRoomDoors: OfficeChapterBasementRoomDoor[] = [];
@@ -7146,10 +7153,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     phase: number;
     fault: number;
   }> = [];
+  let basementLightVisibility = 0;
   const basementFixtureMaterial = new MeshStandardMaterial({
     color: 0xffead0,
     emissive: 0xffdfaa,
-    emissiveIntensity: 1.15,
+    emissiveIntensity: 0.96,
     roughness: 0.48,
     metalness: 0.18,
   });
@@ -7158,7 +7166,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     z: number,
     baseIntensity: number,
     phase: number,
-    range = 34,
+    range = 30,
   ): void => {
     const material = basementFixtureMaterial.clone();
     const fixture = new Mesh(new BoxGeometry(0.72, 0.08, 0.34), material);
@@ -7168,19 +7176,19 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       new MeshStandardMaterial({
         color: 0xffe7bd,
         emissive: 0xffd8a4,
-        emissiveIntensity: 2.15,
+        emissiveIntensity: 1.8,
         roughness: 0.28,
         metalness: 0.02,
       }),
     );
     bulb.position.set(0, -0.08, 0);
     fixture.add(bulb);
-    const light = new PointLight(0xffdfb8, baseIntensity * 2.45, range, 1.18);
+    const light = new PointLight(0xffdfb8, 0, range, 1.22);
     light.position.set(x, employeeElevatorBasementFloorY + basementWallHeight - 0.62, z);
     basementFlickerLights.push({
       light,
       material,
-      baseIntensity: baseIntensity * 2.45,
+      baseIntensity: baseIntensity * 2.05,
       phase,
       fault: 0.45 + (phase % 1.9),
     });
@@ -7397,7 +7405,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       addBasementWallSeamPost(x, z, 0.26);
     });
 
-    addBasementFlickerFixture(room.centerX, room.centerZ, 3.2 + index * 0.22, room.lightPhase, 30);
+    addBasementFlickerFixture(room.centerX, room.centerZ, 2.75 + index * 0.2, room.lightPhase, 27);
     basementRoomDoors.push({
       label: `Basement Room ${index + 1} Door`,
       root: doorRoot,
@@ -7566,7 +7574,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   ].forEach(([x, z]) => {
     addBasementWallSeamPost(x, z);
   });
-  addBasementFlickerFixture(employeeElevatorCenterX + 1.3, employeeElevatorCenterZ - 1.7, 4.2, 0.2, 34);
+  addBasementFlickerFixture(employeeElevatorCenterX + 1.3, employeeElevatorCenterZ - 1.7, 3.55, 0.2, 29);
   [
     basementWallMinZ - 5.5,
     basementWallMinZ - 17.5,
@@ -7576,9 +7584,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     addBasementFlickerFixture(
       basementHallwayCenterX,
       z,
-      3.35 + (index % 2) * 0.48,
+      2.9 + (index % 2) * 0.42,
       0.75 + index * 0.63,
-      34,
+      30,
     );
   });
   [
@@ -7592,12 +7600,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     addBasementFlickerFixture(
       southBasementHallwayCenterX,
       z,
-      3.45 + (index % 2) * 0.5,
+      3.0 + (index % 2) * 0.44,
       1.15 + index * 0.58,
-      36,
+      31,
     );
   });
-  addBasementFlickerFixture(southBasementHallwayCenterX, blockedBasementRoomCenterZ, 3.0, 4.85, 31);
+  addBasementFlickerFixture(southBasementHallwayCenterX, blockedBasementRoomCenterZ, 2.55, 4.85, 28);
   const rubbleMaterial = new MeshStandardMaterial({
     color: 0x55514a,
     emissive: 0x060504,
@@ -7790,14 +7798,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     lightStrip.position.set(strip.x, shaftWallBottomY + shaftWallHeight / 2 + 0.12, strip.z);
     return lightStrip;
   });
-  const shaftGlowTop = new PointLight(0xffddb0, 2.2, 17, 1.28);
+  const shaftGlowTop = new PointLight(0xffddb0, 1.35, 8.5, 1.45);
   shaftGlowTop.position.set(employeeElevatorCenterX, -1.45, employeeElevatorCenterZ);
-  const shaftGlowLower = new PointLight(0xffddb0, 2.0, 16, 1.32);
+  const shaftGlowLower = new PointLight(0xffddb0, 1.65, 11.5, 1.45);
   shaftGlowLower.position.set(employeeElevatorCenterX, shaftWallBottomY + 0.72, employeeElevatorCenterZ);
   const basementFixture = new Mesh(new BoxGeometry(0.78, 0.08, 0.36), panelMaterial);
   basementFixture.position.set(employeeElevatorCenterX + 2.2, employeeElevatorBasementFloorY + 2.7, employeeElevatorCenterZ - 2.3);
-  const basementGlow = new PointLight(0xffdfb5, 5.8, 32, 1.18);
+  const basementGlow = new PointLight(0xffdfb5, 4.65, 27, 1.22);
   basementGlow.position.set(employeeElevatorCenterX + 1.8, employeeElevatorBasementFloorY + 2.22, employeeElevatorCenterZ - 1.9);
+  const basementStaticLights = [
+    { light: shaftGlowTop, baseIntensity: 1.35 },
+    { light: shaftGlowLower, baseIntensity: 1.65 },
+    { light: basementGlow, baseIntensity: 4.65 },
+  ];
+  basementStaticLights.forEach((entry) => {
+    entry.light.intensity = 0;
+  });
   const basementElevatorPole = new Mesh(new CylinderGeometry(0.055, 0.07, 1.28, 12), elevatorMetalMaterial);
   basementElevatorPole.position.set(elevatorPoleX, employeeElevatorBasementFloorY + 0.7, elevatorPoleZ);
   const basementElevatorButton = new Mesh(new CylinderGeometry(0.12, 0.12, 0.08, 18), elevatorButtonMaterial);
@@ -9619,6 +9635,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     });
 
     basementFlickerTime += deltaSeconds;
+    const basementVisibilityTarget = playerPosition && playerPosition.y < -1.2 ? 1 : 0.035;
+    const basementVisibilityBlend = 1 - Math.exp(-deltaSeconds * 7.5);
+    basementLightVisibility += (basementVisibilityTarget - basementLightVisibility) * basementVisibilityBlend;
     basementFlickerLights.forEach((entry, index) => {
       const buzz = Math.abs(Math.sin(basementFlickerTime * (8.2 + entry.fault) + entry.phase));
       const slowFault = Math.sin(basementFlickerTime * (1.15 + index * 0.09) + entry.phase * 1.7);
@@ -9626,8 +9645,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       const intensity = dropout
         ? entry.baseIntensity * (0.82 + buzz * 0.16)
         : entry.baseIntensity * (1.18 + buzz * 0.32);
-      entry.light.intensity = intensity;
-      entry.material.emissiveIntensity = 0.58 + intensity * 0.32;
+      entry.light.intensity = intensity * basementLightVisibility;
+      entry.material.emissiveIntensity = 0.3 + intensity * basementLightVisibility * 0.28;
+    });
+    basementStaticLights.forEach((entry) => {
+      entry.light.intensity = entry.baseIntensity * basementLightVisibility;
     });
 
     const utilityBlend = 1 - Math.exp(-OFFICE_UTILITY_OPEN_SPEED * deltaSeconds);
@@ -9933,9 +9955,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       flash.lensMaterial.emissiveIntensity = 0.06;
     });
     basementFlickerTime = 0;
+    basementLightVisibility = 0;
     basementFlickerLights.forEach((entry) => {
-      entry.light.intensity = entry.baseIntensity;
-      entry.material.emissiveIntensity = 0.16 + entry.baseIntensity * 0.42;
+      entry.light.intensity = 0;
+      entry.material.emissiveIntensity = 0.3;
+    });
+    basementStaticLights.forEach((entry) => {
+      entry.light.intensity = 0;
     });
     utilityCloset.open = false;
     utilityCloset.openAmount = 0;
