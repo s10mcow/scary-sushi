@@ -7294,6 +7294,31 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       cursorZ = nextZ;
     }
   };
+  const addSegmentedHallwayWallOutsideOpenings = (
+    x: number,
+    startZ: number,
+    endZ: number,
+    openings: Array<{ minZ: number; maxZ: number }>,
+  ): void => {
+    let cursorZ = startZ;
+    openings
+      .map((opening) => ({
+        minZ: Math.max(startZ, opening.minZ),
+        maxZ: Math.min(endZ, opening.maxZ),
+      }))
+      .filter((opening) => opening.maxZ > opening.minZ)
+      .sort((a, b) => a.minZ - b.minZ)
+      .forEach((opening) => {
+        if (opening.minZ > cursorZ + 0.06) {
+          addSegmentedHallwayWall(x, cursorZ, opening.minZ);
+        }
+        cursorZ = Math.max(cursorZ, opening.maxZ);
+      });
+
+    if (cursorZ < endZ - 0.06) {
+      addSegmentedHallwayWall(x, cursorZ, endZ);
+    }
+  };
   const addBasementWallSegment = (wall: { x: number; z: number; sx: number; sz: number }): void => {
     const basementWall = new Mesh(new BoxGeometry(wall.sx, basementWallHeight, wall.sz), basementWallMaterial);
     basementWall.position.set(wall.x, basementWallCenterY, wall.z);
@@ -7539,7 +7564,15 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   employeeElevatorRoot.add(northHallwayFarEndWall);
   addSegmentedHallwayWall(basementHallwayMinX, basementHallwayVisualStartZ, basementHallwayEndZ);
   addSegmentedHallwayWall(basementHallwayMaxX, basementHallwayVisualStartZ, basementHallwayEndZ);
-  // Leave the room-side hallway wall out entirely so no wall mesh can overlap the basement room doors.
+  addSegmentedHallwayWallOutsideOpenings(
+    southBasementHallwayMinX,
+    southBasementHallwayStartZ,
+    southBasementHallwayEndZ,
+    basementSideRooms.map((room) => ({
+      minZ: room.minZ - 0.12,
+      maxZ: room.maxZ + 0.12,
+    })),
+  );
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayStartZ, southBasementHallwayEndZ);
   addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
