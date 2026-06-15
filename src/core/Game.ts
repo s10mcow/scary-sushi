@@ -2,6 +2,7 @@ import {
   ACESFilmicToneMapping,
   BoxGeometry,
   CanvasTexture,
+  CircleGeometry,
   Color,
   ConeGeometry,
   CylinderGeometry,
@@ -902,9 +903,10 @@ type ChapterSevenInteractable =
 type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'torch' | 'empty';
 
 interface PaintbrushEditRecord {
+  id: number;
   chapter: HudChapterId;
-  path: number[];
   point: [number, number, number];
+  normal: [number, number, number];
   radius: number;
 }
 
@@ -973,6 +975,7 @@ export class Game {
   private readonly officePrizeItemModels = new Map<OfficePrizeItemId, Group>();
   private readonly officeTabletAnchor = new Group();
   private readonly paintbrushAnchor = new Group();
+  private readonly paintbrushMarkRoot = new Group();
   private readonly chapterFourBoxHeldAnchor = new Group();
   private readonly chapterFourBoxHideAnchor = new Group();
   private readonly chapterFourBoxWideAnchor = new Group();
@@ -1138,6 +1141,8 @@ export class Game {
   private paintbrushSize = 3;
   private paintbrushStrokeCooldown = 0;
   private readonly paintbrushEdits: PaintbrushEditRecord[] = [];
+  private readonly paintbrushMarkMeshes = new Map<number, Mesh>();
+  private nextPaintbrushEditId = 1;
   private chapterFourBoxHeld = false;
   private chapterFourBoxActive = false;
   private chapterFourBoxViewMode: 'normal' | 'wide' = 'normal';
@@ -1357,6 +1362,7 @@ export class Game {
     this.zombieControllers.forEach((zombie) => this.scene.add(zombie.root));
     this.doomEnemies.forEach((enemy) => this.scene.add(enemy.root));
     this.scene.add(this.lighting.ambient, this.lighting.hemisphere);
+    this.scene.add(this.paintbrushMarkRoot);
     this.camera.add(this.carriedPlateAnchor);
     this.carriedPlateAnchor.position.set(0.56, -0.48, -0.98);
     this.carriedPlateAnchor.rotation.set(-0.08, -0.34, -0.14);
@@ -2625,15 +2631,19 @@ export class Game {
 
     if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumePaintbrushModeToggle() && this.paintbrushActive) {
       this.paintbrushMode = this.paintbrushMode === 'erase' ? 'paint' : 'erase';
-      this.pushStatus(`Paintbrush switched to ${this.paintbrushMode} mode. Hold left click to ${this.paintbrushMode === 'erase' ? 'erase touched parts' : 'restore erased parts'}.`, 2.2);
+      this.pushStatus('Paintbrush uses left click to project black marks. Right click restores marks.', 2.2);
       this.syncHud();
     }
 
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumePlacementMarkerDelete() && (this.placementToolActive || this.microphoneSoundToolActive || this.cameraToolActive)) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumePlacementMarkerDelete() && (this.placementToolActive || this.microphoneSoundToolActive || this.cameraToolActive || this.paintbrushActive)) {
       if (this.microphoneSoundToolActive) {
         this.deleteMicrophoneSound();
       } else if (this.cameraToolActive) {
         this.deleteCameraToolCapture();
+      } else if (this.paintbrushActive) {
+        if (this.restorePaintbrushMarkUnderBrush()) {
+          this.pushStatus(`Paintbrush restored a black mark. Size ${this.paintbrushSize}.`, 0.9);
+        }
       } else {
         this.handlePlacementToolRightClick();
       }
@@ -4660,7 +4670,7 @@ export class Game {
 
     this.pushStatus(
       active
-        ? `Paintbrush equipped. Hold left click to ${this.paintbrushMode}; press Q for ${this.paintbrushMode === 'erase' ? 'paint' : 'erase'} mode; 1-9 changes size.`
+        ? 'Paintbrush equipped. Hold left click to project black marks; right click restores them; 1-9 changes size.'
         : 'Paintbrush put away.',
       active ? 3.8 : 1.4,
     );
@@ -5698,7 +5708,7 @@ export class Game {
   private handleOfficeHotbarSlot(slot: number): void {
     if (this.paintbrushActive && slot >= 1 && slot <= 9) {
       this.paintbrushSize = slot;
-      this.pushStatus(`Paintbrush size set to ${slot}. ${this.paintbrushMode === 'erase' ? 'Erase' : 'Paint'} mode.`, 1.4);
+      this.pushStatus(`Paintbrush size set to ${slot}. Left click marks, right click restores.`, 1.4);
       this.syncHud();
       return;
     }
@@ -10235,40 +10245,6 @@ export class Game {
     return 0.12 + this.paintbrushSize * 0.18;
   }
 
-  private getPaintbrushObjectPath(root: Object3D, target: Object3D): number[] | null {
-    const path: number[] = [];
-    let current: Object3D | null = target;
-    while (current && current !== root) {
-      const parent: Object3D | null = current.parent;
-      if (!parent) {
-        return null;
-      }
-      const index = parent.children.indexOf(current);
-      if (index < 0) {
-        return null;
-      }
-      path.unshift(index);
-      current = parent;
-    }
-
-    return current === root ? path : null;
-  }
-
-  private getPaintbrushObjectByPath(root: Object3D, path: number[]): Object3D | null {
-    let current: Object3D | undefined = root;
-    for (const index of path) {
-      current = current.children[index];
-      if (!current) {
-        return null;
-      }
-    }
-    return current;
-  }
-
-  private getPaintbrushPathKey(chapter: HudChapterId, path: number[]): string {
-    return `${chapter}:${path.join('.')}`;
-  }
-
   private loadPaintbrushEdits(): void {
     this.paintbrushEdits.length = 0;
     try {
@@ -10285,24 +10261,33 @@ export class Game {
           entry
           && typeof entry === 'object'
           && 'chapter' in entry
-          && 'path' in entry
           && 'point' in entry
           && 'radius' in entry
-          && Array.isArray(entry.path)
           && Array.isArray(entry.point)
           && entry.point.length === 3
           && typeof entry.radius === 'number'
         ) {
+          const normal = 'normal' in entry && Array.isArray(entry.normal) && entry.normal.length === 3
+            ? entry.normal
+            : [0, 1, 0];
           this.paintbrushEdits.push({
+            id: 'id' in entry && typeof entry.id === 'number' && Number.isFinite(entry.id)
+              ? entry.id
+              : this.nextPaintbrushEditId,
             chapter: entry.chapter as HudChapterId,
-            path: entry.path.filter((index: unknown): index is number => typeof index === 'number' && Number.isInteger(index) && index >= 0),
             point: [
               Number(entry.point[0]),
               Number(entry.point[1]),
               Number(entry.point[2]),
             ],
+            normal: [
+              Number(normal[0]),
+              Number(normal[1]),
+              Number(normal[2]),
+            ],
             radius: Math.max(0.12, Number(entry.radius)),
           });
+          this.nextPaintbrushEditId = Math.max(this.nextPaintbrushEditId, this.paintbrushEdits[this.paintbrushEdits.length - 1].id + 1);
         }
       });
     } catch {
@@ -10312,32 +10297,62 @@ export class Game {
 
   private savePaintbrushEdits(): void {
     try {
-      window.localStorage.setItem(PAINTBRUSH_EDITS_STORAGE_KEY, JSON.stringify(this.paintbrushEdits));
+      window.localStorage.setItem(
+        PAINTBRUSH_EDITS_STORAGE_KEY,
+        JSON.stringify(this.paintbrushEdits.map((edit) => ({
+          id: edit.id,
+          chapter: edit.chapter,
+          point: edit.point,
+          normal: edit.normal,
+          radius: edit.radius,
+        }))),
+      );
     } catch {
       // The paintbrush still works for this session if browser storage is unavailable.
     }
   }
 
   private applyPaintbrushEdits(): void {
-    const rootsByChapter = new Map<HudChapterId, Object3D>([
-      ['chapter-1', this.level.root],
-      ['chapter-2', this.chapterTwo.root],
-      ['chapter-3', this.mainOfficeChapter.root],
-      ['chapter-3-copy', this.officeSandboxChapter.root],
-      ['chapter-4', this.chapterFour.root],
-      ['chapter-5', this.chapterFive.root],
-      ['chapter-6', this.chapterSix.root],
-      ['chapter-7', this.chapterSeven.root],
-      ['chapter-8', this.chapterEight.root],
-    ]);
-
     this.paintbrushEdits.forEach((edit) => {
-      const root = rootsByChapter.get(edit.chapter);
-      const object = root ? this.getPaintbrushObjectByPath(root, edit.path) : null;
-      if (object) {
-        object.visible = false;
-        object.userData.paintbrushErased = true;
-      }
+      this.createPaintbrushMarkMesh(edit);
+    });
+    this.updatePaintbrushMarkVisibility();
+  }
+
+  private createPaintbrushMarkMesh(edit: PaintbrushEditRecord): void {
+    if (this.paintbrushMarkMeshes.has(edit.id)) {
+      return;
+    }
+
+    const normal = new Vector3(edit.normal[0], edit.normal[1], edit.normal[2]);
+    if (normal.lengthSq() < 0.0001) {
+      normal.set(0, 1, 0);
+    }
+    normal.normalize();
+
+    const mark = new Mesh(
+      new CircleGeometry(edit.radius, 28),
+      new MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.96,
+        depthWrite: false,
+        side: DoubleSide,
+      }),
+    );
+    mark.name = `Paintbrush Mark ${edit.id}`;
+    mark.userData.paintbrushLocked = true;
+    mark.userData.paintbrushChapter = edit.chapter;
+    mark.position.set(edit.point[0], edit.point[1], edit.point[2]).addScaledVector(normal, 0.012);
+    mark.quaternion.setFromUnitVectors(new Vector3(0, 0, 1), normal);
+    this.paintbrushMarkRoot.add(mark);
+    this.paintbrushMarkMeshes.set(edit.id, mark);
+  }
+
+  private updatePaintbrushMarkVisibility(): void {
+    const currentChapter = this.getCurrentHudChapterId();
+    this.paintbrushMarkMeshes.forEach((mark) => {
+      mark.visible = mark.userData.paintbrushChapter === currentChapter;
     });
   }
 
@@ -10361,7 +10376,7 @@ export class Game {
     return false;
   }
 
-  private getPaintbrushTarget(): { object: Object3D; point: Vector3; root: Object3D; path: number[] } | null {
+  private getPaintbrushTarget(): { object: Object3D; point: Vector3; normal: Vector3 } | null {
     const root = this.getPaintbrushRaycastRoot();
     if (!root) {
       return null;
@@ -10378,28 +10393,20 @@ export class Game {
       if (this.isPaintbrushIgnored(hit.object)) {
         continue;
       }
-      const path = this.getPaintbrushObjectPath(root, hit.object);
-      if (!path) {
-        continue;
-      }
+      const normal = hit.face?.normal.clone() ?? new Vector3(0, 1, 0);
+      normal.transformDirection(hit.object.matrixWorld).normalize();
       return {
         object: hit.object,
         point: hit.point.clone(),
-        root,
-        path,
+        normal,
       };
     }
 
     return null;
   }
 
-  private restorePaintbrushEditUnderBrush(): boolean {
+  private restorePaintbrushMarkUnderBrush(): boolean {
     const chapter = this.getCurrentHudChapterId();
-    const root = this.getPaintbrushRaycastRoot();
-    if (!root) {
-      return false;
-    }
-
     this.camera.getWorldPosition(this.placementRayOrigin);
     this.camera.getWorldDirection(this.placementRayDirection).normalize();
     const radius = this.getPaintbrushRadius();
@@ -10429,26 +10436,31 @@ export class Game {
     }
 
     const [edit] = this.paintbrushEdits.splice(bestIndex, 1);
-    const object = this.getPaintbrushObjectByPath(root, edit.path);
-    if (object) {
-      object.visible = true;
-      object.userData.paintbrushErased = false;
+    const mark = this.paintbrushMarkMeshes.get(edit.id);
+    mark?.removeFromParent();
+    mark?.geometry.dispose();
+    if (mark && !Array.isArray(mark.material)) {
+      mark.material.dispose();
     }
+    this.paintbrushMarkMeshes.delete(edit.id);
     this.savePaintbrushEdits();
     this.gameplaySfxAudio.playSmallPanel(true);
     return true;
   }
 
+  private shouldPlacePaintbrushMark(point: Vector3, radius: number): boolean {
+    const chapter = this.getCurrentHudChapterId();
+    return !this.paintbrushEdits.some((edit) => {
+      if (edit.chapter !== chapter) {
+        return false;
+      }
+      this.paintbrushRestorePoint.set(edit.point[0], edit.point[1], edit.point[2]);
+      return this.paintbrushRestorePoint.distanceTo(point) < Math.max(0.08, radius * 0.48);
+    });
+  }
+
   private applyPaintbrushStroke(): void {
     if (!this.paintbrushActive || !this.player.isLocked() || this.chapterMenuOpen) {
-      return;
-    }
-
-    if (this.paintbrushMode === 'paint') {
-      if (!this.restorePaintbrushEditUnderBrush()) {
-        return;
-      }
-      this.pushStatus(`Paintbrush restored an erased part. Size ${this.paintbrushSize}.`, 0.9);
       return;
     }
 
@@ -10458,25 +10470,29 @@ export class Game {
     }
 
     const chapter = this.getCurrentHudChapterId();
-    const key = this.getPaintbrushPathKey(chapter, target.path);
-    if (this.paintbrushEdits.some((edit) => this.getPaintbrushPathKey(edit.chapter, edit.path) === key)) {
+    const radius = this.getPaintbrushRadius();
+    if (!this.shouldPlacePaintbrushMark(target.point, radius)) {
       return;
     }
 
-    target.object.visible = false;
-    target.object.userData.paintbrushErased = true;
-    this.paintbrushEdits.push({
+    const edit: PaintbrushEditRecord = {
+      id: this.nextPaintbrushEditId,
       chapter,
-      path: target.path,
       point: [target.point.x, target.point.y, target.point.z],
-      radius: this.getPaintbrushRadius(),
-    });
+      normal: [target.normal.x, target.normal.y, target.normal.z],
+      radius,
+    };
+    this.nextPaintbrushEditId += 1;
+    this.paintbrushEdits.push(edit);
+    this.createPaintbrushMarkMesh(edit);
+    this.updatePaintbrushMarkVisibility();
     this.savePaintbrushEdits();
     this.gameplaySfxAudio.playSmallPanel(false);
-    this.pushStatus(`Paintbrush erased the touched part. Size ${this.paintbrushSize}. Press Q to paint it back.`, 1.1);
+    this.pushStatus(`Paintbrush projected a black erase mark. Size ${this.paintbrushSize}. Right click restores marks.`, 1.1);
   }
 
   private updatePaintbrushTool(deltaSeconds: number): void {
+    this.updatePaintbrushMarkVisibility();
     const visible = this.paintbrushActive
       && this.player.isLocked()
       && !this.chapterMenuOpen
@@ -15847,7 +15863,7 @@ export class Game {
       return [
         coordinateToolSlot,
         {
-          label: `Paintbrush ${this.paintbrushActive ? `[${this.paintbrushMode} ${this.paintbrushSize}]` : '[2]'}`,
+          label: `Paintbrush ${this.paintbrushActive ? `[Size ${this.paintbrushSize}]` : '[2]'}`,
           count: this.paintbrushSize,
           filled: true,
           selected: this.paintbrushActive,
@@ -16013,7 +16029,7 @@ export class Game {
     }
 
     if (this.paintbrushActive) {
-      return `Paintbrush ${this.paintbrushMode} mode. Hold left click to ${this.paintbrushMode === 'erase' ? 'erase the front touched part' : 'paint erased parts back'}. Press Q to switch mode; 1-9 sets size (${this.paintbrushSize}).`;
+      return `Paintbrush active. Hold left click to project black erase marks. Right click restores marks. 1-9 sets size (${this.paintbrushSize}).`;
     }
 
     if (this.placementToolActive) {
