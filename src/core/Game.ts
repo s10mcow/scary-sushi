@@ -184,11 +184,11 @@ const CHAPTER_TWO_AFTERMATH_BEAR_DIALOGUE = [
   'Thanks.',
 ] as const;
 const START_IN_CHAPTER_TWO = false;
-const START_IN_CHAPTER_THREE = false;
+const START_IN_CHAPTER_THREE = true;
 const START_IN_CHAPTER_FOUR = false;
 const START_IN_CHAPTER_FIVE = false;
 const START_IN_CHAPTER_SIX = false;
-const START_IN_CHAPTER_SEVEN = true;
+const START_IN_CHAPTER_SEVEN = false;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -22396,6 +22396,10 @@ export class Game {
     this.chapterTwoBearChoicePending = false;
     this.chapterTwoBearQuestAccepted = false;
     this.chapterTwoBearRefusalTimer = 0;
+    if (!sandboxCopy) {
+      this.officeChapter.employeeKeyBriefcase.keyCollected = true;
+      this.officeChapter.employeeKeyBriefcase.keyRoot.visible = false;
+    }
     this.officeChapterTickets = 0;
     this.resetOfficePrizeInventory();
     this.officeBasketballHeld = false;
