@@ -735,7 +735,8 @@ const CAMERA_TOOL_CAPTURES_STORAGE_KEY = 'scary-sushi:camera-tool:captures';
 const CAMERA_TOOL_NEXT_PICTURE_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-picture-index';
 const CAMERA_TOOL_NEXT_VIDEO_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-video-index';
 const CAMERA_TOOL_MAX_CAPTURES = 24;
-const PAINTBRUSH_EDITS_STORAGE_KEY = 'scary-sushi:paintbrush:edits';
+const PAINTBRUSH_EDITS_STORAGE_KEY = 'scary-sushi:paintbrush:edits:v2';
+const LEGACY_PAINTBRUSH_EDITS_STORAGE_KEYS = ['scary-sushi:paintbrush:edits'];
 const OFFICE_JUMPSCARE_CAMERA_CAPTURE_ASSIGNMENTS: Partial<Record<OfficeJumpscareAnimatronic, {
   kind: CameraToolCaptureKind;
   id: string;
@@ -2642,7 +2643,7 @@ export class Game {
         this.deleteCameraToolCapture();
       } else if (this.paintbrushActive) {
         if (this.restorePaintbrushMarkUnderBrush()) {
-          this.pushStatus(`Paintbrush restored a black mark. Size ${this.paintbrushSize}.`, 0.9);
+          this.pushStatus('Paintbrush restored a black mark.', 0.9);
         }
       } else {
         this.handlePlacementToolRightClick();
@@ -4670,7 +4671,7 @@ export class Game {
 
     this.pushStatus(
       active
-        ? 'Paintbrush equipped. Hold left click to project black marks; right click restores them; 1-9 changes size.'
+        ? 'Paintbrush equipped. Hold left click to project black marks; right click restores them. Spin the mouse wheel to switch items.'
         : 'Paintbrush put away.',
       active ? 3.8 : 1.4,
     );
@@ -5706,13 +5707,6 @@ export class Game {
   }
 
   private handleOfficeHotbarSlot(slot: number): void {
-    if (this.paintbrushActive && slot >= 1 && slot <= 9) {
-      this.paintbrushSize = slot;
-      this.pushStatus(`Paintbrush size set to ${slot}. Left click marks, right click restores.`, 1.4);
-      this.syncHud();
-      return;
-    }
-
     if (slot === 1) {
       this.setPlacementToolActive(true);
       return;
@@ -10247,6 +10241,13 @@ export class Game {
 
   private loadPaintbrushEdits(): void {
     this.paintbrushEdits.length = 0;
+    LEGACY_PAINTBRUSH_EDITS_STORAGE_KEYS.forEach((key) => {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        // Ignore storage failures; the new paintbrush save slot still works for this session.
+      }
+    });
     try {
       const raw = window.localStorage.getItem(PAINTBRUSH_EDITS_STORAGE_KEY);
       if (!raw) {
@@ -10488,7 +10489,7 @@ export class Game {
     this.updatePaintbrushMarkVisibility();
     this.savePaintbrushEdits();
     this.gameplaySfxAudio.playSmallPanel(false);
-    this.pushStatus(`Paintbrush projected a black erase mark. Size ${this.paintbrushSize}. Right click restores marks.`, 1.1);
+    this.pushStatus('Paintbrush projected a black erase mark. Right click restores marks.', 1.1);
   }
 
   private updatePaintbrushTool(deltaSeconds: number): void {
@@ -15863,8 +15864,8 @@ export class Game {
       return [
         coordinateToolSlot,
         {
-          label: `Paintbrush ${this.paintbrushActive ? `[Size ${this.paintbrushSize}]` : '[2]'}`,
-          count: this.paintbrushSize,
+          label: `Paintbrush ${this.paintbrushActive ? '[Held]' : '[2]'}`,
+          count: 1,
           filled: true,
           selected: this.paintbrushActive,
         },
@@ -16029,7 +16030,7 @@ export class Game {
     }
 
     if (this.paintbrushActive) {
-      return `Paintbrush active. Hold left click to project black erase marks. Right click restores marks. 1-9 sets size (${this.paintbrushSize}).`;
+      return 'Paintbrush active. Hold left click to project black erase marks. Right click restores marks. Spin the mouse wheel to switch items.';
     }
 
     if (this.placementToolActive) {
