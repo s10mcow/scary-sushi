@@ -9117,8 +9117,8 @@ export class Game {
       return {
         ambient: 0.16,
         hemisphere: 0.2,
-        flashlightIntensity: GAME_CONFIG.flashlight.intensity * 2.35,
-        flashlightDistance: 25,
+        flashlightIntensity: GAME_CONFIG.flashlight.intensity * 2.8,
+        flashlightDistance: 34,
         flashlightAngle: GAME_CONFIG.flashlight.angle,
         flashlightPenumbra: GAME_CONFIG.flashlight.penumbra,
         fogNear: 12,
@@ -9132,10 +9132,10 @@ export class Game {
         return {
           ambient: 0.17,
           hemisphere: 0.22,
-          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 3.32,
-          flashlightDistance: 43,
-          flashlightAngle: Math.PI / 8.2,
-          flashlightPenumbra: 0.34,
+          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 3.55,
+          flashlightDistance: 52,
+          flashlightAngle: Math.PI / 7.2,
+          flashlightPenumbra: 0.44,
           fogNear: 12,
           fogFar: 60,
           fogBlend: 1,
@@ -9144,10 +9144,10 @@ export class Game {
         return {
           ambient: 0.045,
           hemisphere: 0.07,
-          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 2.75,
-          flashlightDistance: 34,
-          flashlightAngle: Math.PI / 9.4,
-          flashlightPenumbra: 0.22,
+          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 3.05,
+          flashlightDistance: 42,
+          flashlightAngle: Math.PI / 8,
+          flashlightPenumbra: 0.34,
           fogNear: 4,
           fogFar: 30,
           fogBlend: 1,
@@ -9157,10 +9157,10 @@ export class Game {
         return {
           ambient: 0.14,
           hemisphere: 0.19,
-          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 3.25,
-          flashlightDistance: 41,
-          flashlightAngle: Math.PI / 8.4,
-          flashlightPenumbra: 0.31,
+          flashlightIntensity: GAME_CONFIG.flashlight.intensity * 3.5,
+          flashlightDistance: 50,
+          flashlightAngle: Math.PI / 7.4,
+          flashlightPenumbra: 0.42,
           fogNear: 10,
           fogFar: 54,
           fogBlend: 1,
@@ -10666,16 +10666,41 @@ export class Game {
     if (this.officeChapterActive) {
       const nightBlend = this.getOfficeNightBlend();
       const nightLighting = this.getOfficeNightLightingSettings();
-      this.lighting.ambient.intensity = MathUtils.lerp(0.76, nightLighting.ambient, nightBlend);
-      this.lighting.hemisphere.intensity = MathUtils.lerp(0.98, nightLighting.hemisphere, nightBlend);
-      this.lighting.flashlight.intensity = MathUtils.lerp(
-        GAME_CONFIG.flashlight.intensity * 0.48,
-        nightLighting.flashlightIntensity,
-        nightBlend,
+      const basementBlend = this.officeEmployeeElevatorBasementActive ? 1 : 0;
+      this.lighting.ambient.intensity = MathUtils.lerp(
+        MathUtils.lerp(0.76, nightLighting.ambient, nightBlend),
+        0.34,
+        basementBlend,
       );
-      this.lighting.flashlight.distance = MathUtils.lerp(17, nightLighting.flashlightDistance, nightBlend);
-      this.lighting.flashlight.angle = MathUtils.lerp(GAME_CONFIG.flashlight.angle, nightLighting.flashlightAngle, nightBlend);
-      this.lighting.flashlight.penumbra = MathUtils.lerp(GAME_CONFIG.flashlight.penumbra, nightLighting.flashlightPenumbra, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(
+        MathUtils.lerp(0.98, nightLighting.hemisphere, nightBlend),
+        0.46,
+        basementBlend,
+      );
+      this.lighting.flashlight.intensity = MathUtils.lerp(
+        MathUtils.lerp(
+          GAME_CONFIG.flashlight.intensity * 0.74,
+          nightLighting.flashlightIntensity,
+          nightBlend,
+        ),
+        GAME_CONFIG.flashlight.intensity * 3.35,
+        basementBlend,
+      );
+      this.lighting.flashlight.distance = MathUtils.lerp(
+        MathUtils.lerp(24, nightLighting.flashlightDistance, nightBlend),
+        52,
+        basementBlend,
+      );
+      this.lighting.flashlight.angle = MathUtils.lerp(
+        MathUtils.lerp(GAME_CONFIG.flashlight.angle, nightLighting.flashlightAngle, nightBlend),
+        Math.PI / 5.6,
+        basementBlend,
+      );
+      this.lighting.flashlight.penumbra = MathUtils.lerp(
+        MathUtils.lerp(GAME_CONFIG.flashlight.penumbra, nightLighting.flashlightPenumbra, nightBlend),
+        0.62,
+        basementBlend,
+      );
 
       if (this.scene.background instanceof Color) {
         this.scene.background.copy(this.officeChapterFogColor).lerp(this.officeNightFogColor, nightBlend * nightLighting.fogBlend);
@@ -10683,8 +10708,8 @@ export class Game {
 
       if (this.scene.fog instanceof Fog) {
         this.scene.fog.color.copy(this.officeChapterFogColor).lerp(this.officeNightFogColor, nightBlend * nightLighting.fogBlend);
-        this.scene.fog.near = MathUtils.lerp(42, nightLighting.fogNear, nightBlend);
-        this.scene.fog.far = MathUtils.lerp(150, nightLighting.fogFar, nightBlend);
+        this.scene.fog.near = MathUtils.lerp(MathUtils.lerp(42, nightLighting.fogNear, nightBlend), 18, basementBlend);
+        this.scene.fog.far = MathUtils.lerp(MathUtils.lerp(150, nightLighting.fogFar, nightBlend), 92, basementBlend);
       }
 
       return;

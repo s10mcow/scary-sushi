@@ -24,10 +24,10 @@ export const GAME_CONFIG = {
     healthRecoverPerSecond: 8,
   },
   flashlight: {
-    intensity: 1.5,
-    distance: 18,
-    angle: Math.PI / 7,
-    penumbra: 0.48,
+    intensity: 2.35,
+    distance: 30,
+    angle: Math.PI / 6.2,
+    penumbra: 0.56,
   },
   monster: {
     radius: 0.4,
