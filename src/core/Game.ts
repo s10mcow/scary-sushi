@@ -572,6 +572,7 @@ const OFFICE_GAME_MODE_DAY_SECONDS = 3 * 60;
 const OFFICE_FUSE_WIRE_COLORS: OfficeFuseWireColor[] = ['green', 'blue', 'red'];
 const OFFICE_VENT_BOY_STARE_LIMIT_SECONDS = 2.65;
 const OFFICE_VENT_BOY_SPEED = 0.82;
+const OFFICE_VENT_BOY_FLOOR_OFFSET = 1.08;
 const OFFICE_GAME_MODE_CHASE_MATCH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.06;
 const OFFICE_FOXY_RUSH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.1;
 const OFFICE_PLAYER_SPRINT_SPEED_MULTIPLIER = 1.22;
@@ -8966,6 +8967,10 @@ export class Game {
       && (this.officeMode === 'night' || this.officeMode === 'game');
   }
 
+  private getOfficeVentBoyFloorY(): number {
+    return this.officeChapter.ventSystem.floorY - OFFICE_VENT_BOY_FLOOR_OFFSET;
+  }
+
   private ensureOfficeVentBoy(): OfficeVentBoyState {
     if (this.officeVentBoy) {
       return this.officeVentBoy;
@@ -8973,28 +8978,49 @@ export class Game {
 
     const root = new Group();
     root.visible = false;
-    root.scale.setScalar(0.92);
+    root.scale.setScalar(0.98);
 
     const metalMaterial = new MeshStandardMaterial({
       color: 0x9aa6ad,
       emissive: 0x0a1014,
-      emissiveIntensity: 0.12,
+      emissiveIntensity: 0.1,
       roughness: 0.42,
       metalness: 0.54,
     });
     const faceMaterial = new MeshStandardMaterial({
-      color: 0xd8c1a4,
+      color: 0xd4b38f,
       emissive: 0x1b0d08,
       emissiveIntensity: 0.1,
       roughness: 0.62,
       metalness: 0.08,
     });
-    const darkMaterial = new MeshStandardMaterial({
+    const hairMaterial = new MeshStandardMaterial({
       color: 0x07080a,
       emissive: 0x020203,
       emissiveIntensity: 0.2,
       roughness: 0.5,
       metalness: 0.28,
+    });
+    const shirtBlueMaterial = new MeshStandardMaterial({
+      color: 0x2456c9,
+      emissive: 0x03143a,
+      emissiveIntensity: 0.12,
+      roughness: 0.52,
+      metalness: 0.08,
+    });
+    const shirtRedMaterial = new MeshStandardMaterial({
+      color: 0xc8323a,
+      emissive: 0x380407,
+      emissiveIntensity: 0.12,
+      roughness: 0.5,
+      metalness: 0.08,
+    });
+    const shoeMaterial = new MeshStandardMaterial({
+      color: 0x17191d,
+      emissive: 0x020203,
+      emissiveIntensity: 0.12,
+      roughness: 0.48,
+      metalness: 0.18,
     });
     const redEyeMaterial = new MeshStandardMaterial({
       color: 0xfff0e0,
@@ -9004,47 +9030,81 @@ export class Game {
       metalness: 0.12,
     });
 
-    const torso = new Mesh(new BoxGeometry(0.42, 0.22, 0.58), metalMaterial);
-    torso.position.set(0, 0.24, 0);
+    const torso = new Mesh(new BoxGeometry(0.46, 0.24, 0.62), shirtBlueMaterial);
+    torso.position.set(0, 0.24, 0.02);
+    const chestPlate = new Mesh(new BoxGeometry(0.32, 0.035, 0.48), metalMaterial);
+    chestPlate.position.set(0, 0.37, 0.02);
+    chestPlate.scale.y = 0.55;
+    [-0.09, 0.01, 0.11].forEach((yOffset) => {
+      const stripe = new Mesh(new BoxGeometry(0.48, 0.028, 0.635), shirtRedMaterial);
+      stripe.position.set(0, 0.24 + yOffset, 0.02);
+      root.add(stripe);
+    });
     const head = new Group();
-    head.position.set(0, 0.48, -0.18);
+    head.position.set(0, 0.51, -0.2);
     const headMesh = new Mesh(new SphereGeometry(0.22, 18, 14), faceMaterial);
     headMesh.scale.set(0.92, 1.04, 0.86);
+    const hairCap = new Mesh(new SphereGeometry(0.225, 16, 10), hairMaterial);
+    hairCap.scale.set(0.98, 0.38, 0.88);
+    hairCap.position.set(0, 0.14, -0.015);
+    [-0.1, -0.035, 0.035, 0.1].forEach((xOffset, index) => {
+      const bang = new Mesh(new BoxGeometry(0.055, 0.085, 0.035), hairMaterial);
+      bang.position.set(xOffset, 0.08 - index % 2 * 0.025, -0.18);
+      bang.rotation.z = (xOffset < 0 ? -0.2 : 0.2);
+      head.add(bang);
+    });
     const leftEye = new Mesh(new SphereGeometry(0.026, 10, 8), redEyeMaterial);
     leftEye.position.set(-0.07, 0.03, -0.18);
     const rightEye = leftEye.clone();
     rightEye.position.x = 0.07;
-    const smile = new Mesh(new TorusGeometry(0.09, 0.008, 6, 18, Math.PI), darkMaterial);
+    const smile = new Mesh(new TorusGeometry(0.09, 0.008, 6, 18, Math.PI), hairMaterial);
     smile.position.set(0, -0.055, -0.19);
     smile.rotation.set(0, 0, Math.PI);
-    head.add(headMesh, leftEye, rightEye, smile);
+    head.add(headMesh, hairCap, leftEye, rightEye, smile);
 
     const propeller = new Group();
-    propeller.position.set(0, 0.75, -0.18);
-    const hatStem = new Mesh(new CylinderGeometry(0.018, 0.018, 0.12, 10), darkMaterial);
+    propeller.position.set(0, 0.78, -0.2);
+    const cap = new Mesh(new SphereGeometry(0.12, 14, 8), shirtRedMaterial);
+    cap.scale.set(1.1, 0.34, 1);
+    cap.position.y = -0.13;
+    const hatStem = new Mesh(new CylinderGeometry(0.018, 0.018, 0.12, 10), metalMaterial);
     hatStem.position.y = -0.04;
-    const bladeA = new Mesh(new BoxGeometry(0.5, 0.018, 0.055), metalMaterial);
-    const bladeB = new Mesh(new BoxGeometry(0.055, 0.018, 0.5), metalMaterial);
-    propeller.add(hatStem, bladeA, bladeB);
+    const bladeA = new Mesh(new BoxGeometry(0.5, 0.018, 0.055), shirtBlueMaterial);
+    const bladeB = new Mesh(new BoxGeometry(0.055, 0.018, 0.5), shirtRedMaterial);
+    propeller.add(cap, hatStem, bladeA, bladeB);
 
-    const makeLimb = (x: number, z: number): Group => {
+    const makeArm = (x: number): Group => {
       const limb = new Group();
-      limb.position.set(x, 0.2, z);
-      const upper = new Mesh(new CylinderGeometry(0.028, 0.034, 0.32, 10), metalMaterial);
-      upper.position.y = -0.12;
-      upper.rotation.z = x < 0 ? -0.62 : 0.62;
-      const hand = new Mesh(new SphereGeometry(0.045, 10, 8), darkMaterial);
-      hand.position.set(x < 0 ? -0.13 : 0.13, -0.27, 0.03);
-      limb.add(upper, hand);
+      limb.position.set(x, 0.22, -0.18);
+      const upper = new Mesh(new BoxGeometry(0.07, 0.08, 0.32), shirtBlueMaterial);
+      upper.position.set(0, -0.02, -0.12);
+      const elbow = new Mesh(new SphereGeometry(0.046, 10, 8), metalMaterial);
+      elbow.position.set(0, -0.02, -0.27);
+      const hand = new Mesh(new SphereGeometry(0.055, 10, 8), faceMaterial);
+      hand.scale.set(1, 0.62, 1.22);
+      hand.position.set(0, -0.075, -0.41);
+      limb.add(upper, elbow, hand);
       return limb;
     };
-    const leftArm = makeLimb(-0.25, -0.17);
-    const rightArm = makeLimb(0.25, -0.17);
-    const leftLeg = makeLimb(-0.22, 0.22);
-    const rightLeg = makeLimb(0.22, 0.22);
-    root.add(torso, head, propeller, leftArm, rightArm, leftLeg, rightLeg);
+    const makeLeg = (x: number): Group => {
+      const limb = new Group();
+      limb.position.set(x, 0.16, 0.24);
+      const thigh = new Mesh(new BoxGeometry(0.09, 0.09, 0.28), shirtRedMaterial);
+      thigh.position.set(0, 0, -0.02);
+      const knee = new Mesh(new SphereGeometry(0.055, 10, 8), metalMaterial);
+      knee.position.set(0, -0.04, 0.15);
+      const foot = new Mesh(new BoxGeometry(0.1, 0.055, 0.18), shoeMaterial);
+      foot.position.set(0, -0.07, 0.29);
+      limb.add(thigh, knee, foot);
+      return limb;
+    };
+    const leftArm = makeArm(-0.29);
+    const rightArm = makeArm(0.29);
+    const leftLeg = makeLeg(-0.17);
+    const rightLeg = makeLeg(0.17);
+    root.add(torso, chestPlate, head, propeller, leftArm, rightArm, leftLeg, rightLeg);
 
-    const floorY = this.officeChapter.ventSystem.floorY;
+    const floorY = this.getOfficeVentBoyFloorY();
     const route = [
       new Vector3(-239.29, floorY, 149.23),
       new Vector3(-239.3, floorY, 159.2),
@@ -9127,12 +9187,19 @@ export class Game {
     const canMove = !watched || forcedMove;
 
     const crawlCycle = this.elapsed * 8.2;
+    const leftReach = Math.sin(crawlCycle);
+    const rightReach = Math.sin(crawlCycle + Math.PI);
     ventBoy.propeller.rotation.y += deltaSeconds * (forcedMove ? 28 : 13);
     ventBoy.head.rotation.y = Math.sin(this.elapsed * 4.2) * 0.16;
-    ventBoy.leftArm.rotation.x = Math.sin(crawlCycle) * 0.42;
-    ventBoy.rightArm.rotation.x = Math.sin(crawlCycle + Math.PI) * 0.42;
-    ventBoy.leftLeg.rotation.x = Math.sin(crawlCycle + Math.PI) * 0.36;
-    ventBoy.rightLeg.rotation.x = Math.sin(crawlCycle) * 0.36;
+    ventBoy.root.rotation.x = Math.sin(crawlCycle * 0.5) * 0.018;
+    ventBoy.leftArm.rotation.x = -0.34 + leftReach * 0.34;
+    ventBoy.rightArm.rotation.x = -0.34 + rightReach * 0.34;
+    ventBoy.leftLeg.rotation.x = 0.2 + rightReach * 0.28;
+    ventBoy.rightLeg.rotation.x = 0.2 + leftReach * 0.28;
+    ventBoy.leftArm.position.z = -0.18 - Math.max(0, leftReach) * 0.12;
+    ventBoy.rightArm.position.z = -0.18 - Math.max(0, rightReach) * 0.12;
+    ventBoy.leftLeg.position.z = 0.24 + Math.max(0, rightReach) * 0.1;
+    ventBoy.rightLeg.position.z = 0.24 + Math.max(0, leftReach) * 0.1;
 
     if (ventBoy.waitTimer > 0) {
       ventBoy.waitTimer = Math.max(0, ventBoy.waitTimer - deltaSeconds);
@@ -9160,7 +9227,7 @@ export class Game {
     const step = Math.min(distance, OFFICE_VENT_BOY_SPEED * (forcedMove ? 1.65 : 1) * deltaSeconds);
     ventBoy.root.position.x += (dx / distance) * step;
     ventBoy.root.position.z += (dz / distance) * step;
-    ventBoy.root.position.y = this.officeChapter.ventSystem.floorY;
+    ventBoy.root.position.y = this.getOfficeVentBoyFloorY();
     ventBoy.root.rotation.y = Math.atan2(dx, dz);
   }
 
@@ -10015,76 +10082,70 @@ export class Game {
     }
 
     const running = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted';
-    const gaitSpeed = (running ? 17.5 : 7.4) * animatronic.walkCycleSpeedMultiplier;
-    const motionStrength = (running ? 1.55 : 0.62) * animatronic.walkCycleStrideMultiplier;
-    const stepCycle = this.elapsed * gaitSpeed + animatronic.walkCyclePhase;
-    const leftStep = Math.sin(stepCycle);
-    const rightStep = Math.sin(stepCycle + Math.PI);
-    const bodyBob = Math.abs(Math.sin(stepCycle)) * (running ? 0.035 : 0.018) * animatronic.walkCycleBounceMultiplier;
+    const crawlSpeed = (running ? 13.6 : 7.2) * animatronic.walkCycleSpeedMultiplier;
+    const crawlStrength = (running ? 1.22 : 0.78) * animatronic.walkCycleStrideMultiplier;
+    const crawlCycle = this.elapsed * crawlSpeed + animatronic.walkCyclePhase;
+    const leftHandAndRightKnee = Math.sin(crawlCycle);
+    const rightHandAndLeftKnee = Math.sin(crawlCycle + Math.PI);
+    const crawlPush = Math.abs(Math.sin(crawlCycle));
     const animationFloorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, animatronic.model.root.position.x, animatronic.model.root.position.z);
-    animatronic.model.root.rotation.x = MathUtils.lerp(animatronic.model.root.rotation.x, running ? 0.13 : 0, 0.35);
+    const crawlYOffset = animatronic.animatronic === 'foxy' ? -0.34 : -0.43;
+    const crawlBob = crawlPush * (running ? 0.045 : 0.026) * animatronic.walkCycleBounceMultiplier;
+
+    animatronic.model.root.rotation.x = MathUtils.lerp(
+      animatronic.model.root.rotation.x,
+      -0.96 + crawlPush * 0.055,
+      0.36,
+    );
     animatronic.model.root.rotation.z = MathUtils.lerp(
       animatronic.model.root.rotation.z,
-      running ? Math.sin(stepCycle) * 0.035 * animatronic.walkCycleBounceMultiplier : Math.sin(stepCycle) * 0.012 * animatronic.walkCycleBounceMultiplier,
-      0.35,
+      Math.sin(crawlCycle * 0.5) * (running ? 0.055 : 0.034) * animatronic.walkCycleSideMultiplier,
+      0.34,
     );
-    animatronic.model.root.position.y = animationFloorY + bodyBob;
-    animatronic.model.leftLeg.rotation.x = leftStep * (running ? 0.58 : 0.42) * motionStrength;
-    animatronic.model.rightLeg.rotation.x = rightStep * (running ? 0.58 : 0.42) * motionStrength;
-    animatronic.model.leftLegJoint.rotation.x = Math.max(0, -leftStep) * (running ? 0.74 : 0.48) * motionStrength;
-    animatronic.model.rightLegJoint.rotation.x = Math.max(0, -rightStep) * (running ? 0.74 : 0.48) * motionStrength;
-    const leftArmStride = rightStep;
-    const rightArmStride = leftStep;
-    const armSwing = (running ? 0.32 : 0.24) * animatronic.walkCycleArmMultiplier;
-    const armSide = (running ? 0.78 : 0.58) * animatronic.walkCycleSideMultiplier;
-    const armLean = running ? 0.1 : 0.02;
-    const elbowBend = (running ? 0.38 : 0.24) * animatronic.walkCycleArmMultiplier;
-    animatronic.model.leftArm.rotation.x = leftArmStride * armSwing * motionStrength - armLean;
-    animatronic.model.rightArm.rotation.x = rightArmStride * armSwing * motionStrength - armLean;
-    animatronic.model.leftArm.rotation.y = MathUtils.lerp(
-      animatronic.model.leftArm.rotation.y,
-      -0.18 - Math.max(0, leftArmStride) * 0.12,
-      0.32,
+    animatronic.model.root.position.y = animationFloorY + crawlYOffset + crawlBob;
+
+    animatronic.model.head.rotation.x = MathUtils.lerp(
+      animatronic.model.head.rotation.x,
+      0.62 + Math.sin(crawlCycle * 0.5) * 0.045,
+      0.24,
     );
-    animatronic.model.rightArm.rotation.y = MathUtils.lerp(
-      animatronic.model.rightArm.rotation.y,
-      0.18 + Math.max(0, rightArmStride) * 0.12,
-      0.32,
-    );
-    animatronic.model.leftArm.rotation.z = MathUtils.lerp(
-      animatronic.model.leftArm.rotation.z,
-      -armSide - Math.max(0, -leftArmStride) * 0.12,
-      0.38,
-    );
-    animatronic.model.rightArm.rotation.z = MathUtils.lerp(
-      animatronic.model.rightArm.rotation.z,
-      armSide + Math.max(0, -rightArmStride) * 0.12,
-      0.38,
-    );
-    animatronic.model.leftArmJoint.rotation.x = MathUtils.lerp(
-      animatronic.model.leftArmJoint.rotation.x,
-      -elbowBend - Math.max(0, leftArmStride) * 0.22,
-      0.36,
-    );
-    animatronic.model.rightArmJoint.rotation.x = MathUtils.lerp(
-      animatronic.model.rightArmJoint.rotation.x,
-      -elbowBend - Math.max(0, rightArmStride) * 0.22,
-      0.36,
-    );
-    animatronic.model.leftArmJoint.rotation.z = MathUtils.lerp(
-      animatronic.model.leftArmJoint.rotation.z,
-      -0.12 - Math.max(0, -leftArmStride) * 0.1,
-      0.36,
-    );
-    animatronic.model.rightArmJoint.rotation.z = MathUtils.lerp(
-      animatronic.model.rightArmJoint.rotation.z,
-      0.12 + Math.max(0, -rightArmStride) * 0.1,
-      0.36,
-    );
-    animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 9.4 : 5.6) * animatronic.walkCycleSpeedMultiplier + animatronic.walkCyclePhase * 0.6)
-      * 0.08
-      * (running ? 1.25 : 0.45)
+    animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 7.4 : 4.8) * animatronic.walkCycleSpeedMultiplier + animatronic.walkCyclePhase * 0.6)
+      * 0.11
+      * (running ? 1.15 : 0.62)
       * animatronic.walkCycleBounceMultiplier;
+
+    const handReach = (running ? 0.34 : 0.24) * crawlStrength * animatronic.walkCycleArmMultiplier;
+    const handPlant = (running ? 0.26 : 0.18) * crawlStrength;
+    const kneeReach = (running ? 0.25 : 0.18) * crawlStrength * animatronic.walkCycleStrideMultiplier;
+    animatronic.model.leftArm.rotation.set(
+      -1.46 + leftHandAndRightKnee * handReach,
+      0.28,
+      0.9 - Math.max(0, rightHandAndLeftKnee) * handPlant,
+    );
+    animatronic.model.rightArm.rotation.set(
+      -1.46 + rightHandAndLeftKnee * handReach,
+      -0.28,
+      -0.9 + Math.max(0, leftHandAndRightKnee) * handPlant,
+    );
+    animatronic.model.leftArmJoint.rotation.x = -0.72 - Math.max(0, leftHandAndRightKnee) * 0.32 * crawlStrength;
+    animatronic.model.rightArmJoint.rotation.x = -0.72 - Math.max(0, rightHandAndLeftKnee) * 0.32 * crawlStrength;
+    animatronic.model.leftArmJoint.rotation.z = -0.18 - Math.max(0, rightHandAndLeftKnee) * 0.12;
+    animatronic.model.rightArmJoint.rotation.z = 0.18 + Math.max(0, leftHandAndRightKnee) * 0.12;
+
+    animatronic.model.leftLeg.rotation.set(
+      1.05 + rightHandAndLeftKnee * kneeReach,
+      -0.08,
+      0.42 + Math.max(0, leftHandAndRightKnee) * 0.16,
+    );
+    animatronic.model.rightLeg.rotation.set(
+      1.05 + leftHandAndRightKnee * kneeReach,
+      0.08,
+      -0.42 - Math.max(0, rightHandAndLeftKnee) * 0.16,
+    );
+    animatronic.model.leftLegJoint.rotation.x = -1.02 + Math.max(0, rightHandAndLeftKnee) * 0.36 * crawlStrength;
+    animatronic.model.rightLegJoint.rotation.x = -1.02 + Math.max(0, leftHandAndRightKnee) * 0.36 * crawlStrength;
+    animatronic.model.leftLegJoint.rotation.z = 0.08 + Math.max(0, leftHandAndRightKnee) * 0.12;
+    animatronic.model.rightLegJoint.rotation.z = -0.08 - Math.max(0, rightHandAndLeftKnee) * 0.12;
     return false;
   }
 
