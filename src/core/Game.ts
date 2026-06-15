@@ -714,6 +714,9 @@ const OFFICE_ANIMATRONIC_JUKE_GIVE_UP_THRESHOLD = 5;
 const OFFICE_ANIMATRONIC_JUKE_GIVE_UP_RECORDING_ID = '007';
 const OFFICE_FOXY_LEAP_SECONDS = 1.18;
 const OFFICE_FOXY_LEAP_CHANCE = 0.5;
+const OFFICE_FOXY_LEAP_TOUCH_RANGE = 1.16;
+const OFFICE_FOXY_KNOCKDOWN_SECONDS = 0.88;
+const OFFICE_FOXY_KNOCKDOWN_DROP = 1.08;
 const OFFICE_VENT_CHASE_CHANCE = 0.5;
 const OFFICE_VENT_CHASE_DELAY_SECONDS = 5;
 const OFFICE_VENT_CHASE_SPEED = 1.32;
@@ -1186,6 +1189,10 @@ export class Game {
   private officeFoxyRushCooldown = 0;
   private officeFoxyClankCooldown = 0;
   private officeFoxyRushDoor: 'left' | 'right' | null = null;
+  private officeFoxyKnockdownTimer = 0;
+  private officeFoxyKnockdownStartY: number = GAME_CONFIG.player.height;
+  private officeFoxyKnockdownPendingJumpscare: OfficeJumpscareDefinition | null = null;
+  private readonly officeFoxyKnockdownLookTarget = new Vector3();
   private officePlayerNoiseLevel = 0;
   private officePlayerVoiceLevel = 0;
   private readonly officePlayerNoisePosition = new Vector3();
@@ -2362,9 +2369,11 @@ export class Game {
     this.updateOfficeDeathNotice(deltaSeconds);
     const officeDeathNoticeActive = this.officeDeathNoticePhase !== null;
     const officeJumpscareActive = this.activeOfficeJumpscare !== null || this.officeCameraPuppetPhase === 'jumpscare';
+    const officeFoxyKnockdownActive = this.officeFoxyKnockdownTimer > 0;
     const jumpscareLocked = this.activeJumpscare !== null
       || officeDeathNoticeActive
       || officeJumpscareActive
+      || officeFoxyKnockdownActive
       || this.chapterFourPurpleJumpscareTimer > 0
       || this.chapterFourBlueJumpscareTimer > 0
       || this.chapterFourGreenJumpscareTimer > 0;
@@ -2866,6 +2875,7 @@ export class Game {
       this.updateVenueLights();
     }
     this.updateOfficeGlassThrows(deltaSeconds);
+    this.updateOfficeFoxyKnockdown(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
     if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
@@ -6074,6 +6084,7 @@ export class Game {
     this.officeEmployeeElevatorBasementActive = false;
     this.officeEmployeeElevatorAtBasement = false;
     this.clearOfficePendingVentChase();
+    this.clearOfficeFoxyKnockdown();
     this.officeJumpscareMenuOpen = false;
     this.stopOfficeJumpscare();
     this.officeGlassHeld = false;
@@ -6560,6 +6571,7 @@ export class Game {
     this.officeFoxyRushCooldown = 8;
     this.officeFoxyClankCooldown = 0;
     this.officeFoxyRushDoor = null;
+    this.clearOfficeFoxyKnockdown();
     this.clearOfficePendingVentChase();
     this.clearOfficeCameraPuppetThreat();
     this.officeChapter.doors.forEach((door) => {
@@ -6638,6 +6650,7 @@ export class Game {
     this.officeFoxyRushCooldown = 0;
     this.officeFoxyClankCooldown = 0;
     this.officeFoxyRushDoor = null;
+    this.clearOfficeFoxyKnockdown();
     this.setPlacementToolActive(false);
     this.officeChapterSeated = false;
     this.officeBallPitHidden = false;
@@ -6722,6 +6735,7 @@ export class Game {
     this.officeEmployeeElevatorBasementActive = false;
     this.officeEmployeeElevatorAtBasement = false;
     this.clearOfficePendingVentChase();
+    this.clearOfficeFoxyKnockdown();
     this.clearOfficeDoorSparks();
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       animatronic.model.root.visible = false;
@@ -7688,6 +7702,10 @@ export class Game {
     deltaSeconds: number,
     playerPosition: Vector3,
   ): void {
+    if (this.officeFoxyKnockdownTimer > 0 || this.activeOfficeJumpscare) {
+      return;
+    }
+
     animatronic.foxyLeapTimer = Math.min(OFFICE_FOXY_LEAP_SECONDS, animatronic.foxyLeapTimer + deltaSeconds);
     const progress = MathUtils.clamp(animatronic.foxyLeapTimer / OFFICE_FOXY_LEAP_SECONDS, 0, 1);
     const flight = MathUtils.smoothstep(progress, 0, 0.46);
@@ -7721,6 +7739,20 @@ export class Game {
     animatronic.model.leftLegJoint.rotation.x = MathUtils.lerp(0.2, 0.52, impact) - pushUp * 0.24;
     animatronic.model.rightLegJoint.rotation.x = MathUtils.lerp(0.2, 0.52, impact) - pushUp * 0.24;
 
+    const touchesPlayer = progress >= 0.22
+      && progress <= 0.72
+      && Math.hypot(root.position.x - playerPosition.x, root.position.z - playerPosition.z) <= OFFICE_FOXY_LEAP_TOUCH_RANGE;
+    const landsOnPlayer = progress >= 0.48
+      && progress <= 0.78
+      && Math.hypot(
+        animatronic.foxyLeapTargetPosition.x - playerPosition.x,
+        animatronic.foxyLeapTargetPosition.z - playerPosition.z,
+      ) <= OFFICE_FOXY_LEAP_TOUCH_RANGE + 0.42;
+    if (touchesPlayer || landsOnPlayer) {
+      this.startOfficeFoxyLeapKnockdown(animatronic);
+      return;
+    }
+
     if (progress < 1) {
       return;
     }
@@ -7730,6 +7762,66 @@ export class Game {
     animatronic.foxyLeapTimer = 0;
     this.startOfficeGameModeAnimatronicChase(animatronic, playerPosition, 'chase');
     animatronic.attackCooldown = Math.max(animatronic.attackCooldown, 0.65);
+  }
+
+  private startOfficeFoxyLeapKnockdown(animatronic: OfficeGameModeAnimatronicState): void {
+    const definition = this.getRandomOfficeJumpscareDefinition('foxy');
+    if (!definition || this.officeFoxyKnockdownTimer > 0 || this.activeOfficeJumpscare) {
+      return;
+    }
+
+    animatronic.foxyLeapTimer = OFFICE_FOXY_LEAP_SECONDS;
+    animatronic.attackCooldown = 5.2;
+    animatronic.waitTimer = 0;
+    animatronic.lostSightTimer = 0;
+    animatronic.cachedCanSeePlayer = false;
+    animatronic.cachedNoiseResponse = 'none';
+    this.officeFoxyKnockdownTimer = OFFICE_FOXY_KNOCKDOWN_SECONDS;
+    this.officeFoxyKnockdownStartY = this.player.getPosition().y;
+    this.officeFoxyKnockdownPendingJumpscare = definition;
+    this.clearOfficeHeldPrizeItem();
+    this.officeTabletCameraFeedActive = false;
+    this.officeTabletHeld = false;
+    this.officeTabletAnchor.visible = false;
+    this.pushStatus('Foxy slams into you and knocks you to the floor.', 1.3);
+  }
+
+  private updateOfficeFoxyKnockdown(deltaSeconds: number): void {
+    if (this.officeFoxyKnockdownTimer <= 0) {
+      return;
+    }
+
+    this.officeFoxyKnockdownTimer = Math.max(0, this.officeFoxyKnockdownTimer - deltaSeconds);
+    const progress = 1 - this.officeFoxyKnockdownTimer / OFFICE_FOXY_KNOCKDOWN_SECONDS;
+    const fall = MathUtils.smoothstep(progress, 0, 0.72);
+    const playerPosition = this.player.getPosition();
+    const floorY = (this.getOfficeChapterSupportedFloorHeight() ?? GAME_CONFIG.player.height) - OFFICE_FOXY_KNOCKDOWN_DROP;
+    const fallenY = MathUtils.lerp(this.officeFoxyKnockdownStartY, floorY, fall);
+    this.player.teleport(playerPosition.set(playerPosition.x, fallenY, playerPosition.z));
+
+    const foxy = this.officeGameModeAnimatronics.find((entry) => entry.animatronic === 'foxy');
+    if (foxy) {
+      this.officeFoxyKnockdownLookTarget.set(
+        foxy.model.root.position.x,
+        foxy.model.root.position.y + 0.45,
+        foxy.model.root.position.z,
+      );
+    } else {
+      this.camera.getWorldDirection(this.officeFoxyKnockdownLookTarget);
+      this.officeFoxyKnockdownLookTarget.multiplyScalar(2.5).add(playerPosition);
+      this.officeFoxyKnockdownLookTarget.y = floorY + 0.12;
+    }
+    this.player.lookToward(this.officeFoxyKnockdownLookTarget, 0.62 + fall * 0.28);
+
+    if (this.officeFoxyKnockdownTimer > 0) {
+      return;
+    }
+
+    const definition = this.officeFoxyKnockdownPendingJumpscare;
+    this.officeFoxyKnockdownPendingJumpscare = null;
+    if (definition) {
+      this.startOfficeJumpscare(definition);
+    }
   }
 
   private startOfficeInsultRevenge(animatronic: OfficeGameModeAnimatronicState): void {
@@ -7932,6 +8024,12 @@ export class Game {
   private clearOfficePendingVentChase(): void {
     this.officeVentChasePendingTimer = 0;
     this.officeVentChasePendingAnimatronic = null;
+  }
+
+  private clearOfficeFoxyKnockdown(): void {
+    this.officeFoxyKnockdownTimer = 0;
+    this.officeFoxyKnockdownPendingJumpscare = null;
+    this.officeFoxyKnockdownStartY = GAME_CONFIG.player.height;
   }
 
   private scheduleOfficeAnimatronicVentChase(): void {
@@ -9995,7 +10093,7 @@ export class Game {
       return;
     }
 
-    if (this.officeDeathNoticePhase) {
+    if (this.officeDeathNoticePhase || this.officeFoxyKnockdownTimer > 0) {
       return;
     }
 
@@ -12795,6 +12893,7 @@ export class Game {
       return;
     }
 
+    this.clearOfficeFoxyKnockdown();
     this.stopOfficeJumpscare();
     this.officeJumpscareMenuOpen = false;
     this.placementToolActive = false;
