@@ -173,6 +173,18 @@ export interface OfficeChapterBathroomRoomDoor {
   targetOpenAmount: number;
 }
 
+export interface OfficeChapterBasementRoomDoor {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  doorPivot: Group;
+  collider: CollisionBox;
+  openDirection: -1 | 1;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
+}
+
 export interface OfficeChapterBackstageStorageDoor {
   label: string;
   root: Group;
@@ -400,6 +412,7 @@ export interface OfficeChapterData {
   kitchenGlassShelves: OfficeChapterKitchenGlassShelf[];
   bathroomEntranceDoor: OfficeChapterBathroomEntranceDoor;
   bathroomRoomDoors: OfficeChapterBathroomRoomDoor[];
+  basementRoomDoors: OfficeChapterBasementRoomDoor[];
   bathroomSinks: OfficeChapterBathroomSink[];
   bathroomStalls: OfficeChapterBathroomStall[];
   utilityCloset: OfficeChapterUtilityCloset;
@@ -7119,6 +7132,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       maxZ: room.maxZ - 0.36,
     });
   });
+  const basementRoomDoors: OfficeChapterBasementRoomDoor[] = [];
   let basementFlickerTime = 0;
   const basementFlickerLights: Array<{
     light: PointLight;
@@ -7293,13 +7307,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       roughness: 0.7,
       metalness: 0.18,
     });
-    const doorwayVoidMaterial = new MeshStandardMaterial({
-      color: 0x040302,
-      emissive: 0x010101,
-      emissiveIntensity: 0.08,
-      roughness: 0.92,
-      metalness: 0,
-    });
     const knobMaterial = new MeshStandardMaterial({
       color: 0xa47f42,
       emissive: 0x181006,
@@ -7341,8 +7348,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const frameHeight = 2.68;
     const frameCenterY = employeeElevatorBasementFloorY + frameHeight / 2;
     const frameX = room.maxX + 0.24;
-    const doorwayVoid = new Mesh(new BoxGeometry(0.06, 2.48, basementSideRoomDoorWidth + 0.22), doorwayVoidMaterial);
-    doorwayVoid.position.set(frameX + 0.035, employeeElevatorBasementFloorY + 1.24, room.centerZ);
     const northFrame = new Mesh(new BoxGeometry(0.28, frameHeight, 0.16), doorTrimMaterial);
     northFrame.position.set(frameX, frameCenterY, doorMinZ - 0.08);
     const southFrame = new Mesh(new BoxGeometry(0.28, frameHeight, 0.16), doorTrimMaterial);
@@ -7351,21 +7356,35 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     topFrame.position.set(frameX, employeeElevatorBasementFloorY + frameHeight + 0.09, room.centerZ);
     const threshold = new Mesh(new BoxGeometry(0.76, 0.045, basementSideRoomDoorWidth + 0.12), doorTrimMaterial);
     threshold.position.set(room.maxX + 0.05, employeeElevatorBasementFloorY + 0.012, room.centerZ);
-    const openDoor = new Mesh(new BoxGeometry(basementSideRoomDoorWidth * 0.82, 2.42, 0.1), doorMaterial);
-    openDoor.position.set(room.maxX - basementSideRoomDoorWidth * 0.42, employeeElevatorBasementFloorY + 1.21, doorMinZ + 0.18);
+    const doorRoot = new Group();
+    doorRoot.position.set(room.maxX + 0.08, 0, room.centerZ);
+    const doorPivot = new Group();
+    doorPivot.position.set(0, employeeElevatorBasementFloorY + 1.21, -basementSideRoomDoorWidth * 0.5 + 0.14);
+    const openDoor = new Mesh(new BoxGeometry(0.12, 2.42, basementSideRoomDoorWidth * 0.84), doorMaterial);
+    openDoor.position.set(0, 0, basementSideRoomDoorWidth * 0.42);
     const doorPanelInset = new Mesh(new BoxGeometry(basementSideRoomDoorWidth * 0.62, 1.82, 0.024), doorTrimMaterial);
-    doorPanelInset.position.set(0, 0.02, -0.062);
+    doorPanelInset.rotation.y = Math.PI / 2;
+    doorPanelInset.position.set(-0.074, 0.02, basementSideRoomDoorWidth * 0.42);
     const knob = new Mesh(new SphereGeometry(0.07, 10, 8), knobMaterial);
-    knob.position.set(basementSideRoomDoorWidth * 0.3, 0.1, -0.09);
+    knob.position.set(-0.09, 0.1, basementSideRoomDoorWidth * 0.68);
     openDoor.add(doorPanelInset, knob);
+    doorPivot.add(openDoor);
+    doorRoot.add(doorPivot);
+    const doorCollider: CollisionBox = {
+      centerX: room.maxX + 0.08,
+      centerZ: room.centerZ,
+      halfWidth: 0.16,
+      halfDepth: basementSideRoomDoorWidth / 2,
+      enabled: true,
+    };
+    colliders.push(doorCollider);
     employeeElevatorRoot.add(
-      doorwayVoid,
       doorwayHeader,
       northFrame,
       southFrame,
       topFrame,
       threshold,
-      openDoor,
+      doorRoot,
     );
     [
       [room.minX, room.minZ],
@@ -7377,6 +7396,17 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     });
 
     addBasementFlickerFixture(room.centerX, room.centerZ, 1.25 + index * 0.12, room.lightPhase, 12.5);
+    basementRoomDoors.push({
+      label: `Basement Room ${index + 1} Door`,
+      root: doorRoot,
+      interactPosition: new Vector3(room.maxX + 0.72, employeeElevatorBasementFloorY + 1.22, room.centerZ),
+      doorPivot,
+      collider: doorCollider,
+      openDirection: -1,
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    });
   };
   [
     { x: basementWallMinX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
@@ -9355,6 +9385,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       door.collider.enabled = door.openAmount < 0.62;
     });
 
+    basementRoomDoors.forEach((door) => {
+      door.openAmount = MathUtils.lerp(door.openAmount, door.targetOpenAmount, blend);
+      if (Math.abs(door.openAmount - door.targetOpenAmount) < 0.001) {
+        door.openAmount = door.targetOpenAmount;
+      }
+      door.doorPivot.rotation.y = door.openDirection * door.openAmount * Math.PI * 0.58;
+      door.open = door.targetOpenAmount > 0.5;
+      door.collider.enabled = door.openAmount < 0.62;
+    });
+
     bathroomSinks.forEach((sink) => {
       sink.waterAmount = MathUtils.lerp(sink.waterAmount, sink.waterOn ? 1 : 0, blend);
       if (!sink.waterOn && sink.waterAmount <= 0.025) {
@@ -9935,6 +9975,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeKeyBriefcase.keyCollected = false;
     employeeKeyBriefcase.lidPivot.rotation.x = 0;
     employeeKeyBriefcase.keyRoot.visible = false;
+    basementRoomDoors.forEach((door) => {
+      door.open = false;
+      door.openAmount = 0;
+      door.targetOpenAmount = 0;
+      door.doorPivot.rotation.y = 0;
+      door.collider.enabled = true;
+    });
     employeeElevator.platform.position.y = employeeElevator.platformHomeY;
     employeeElevator.button.position.x = employeeElevator.buttonRestX;
     employeeElevator.cables.forEach((cable) => {
@@ -9997,6 +10044,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     kitchenGlassShelves,
     bathroomEntranceDoor,
     bathroomRoomDoors,
+    basementRoomDoors,
     bathroomSinks,
     bathroomStalls,
     utilityCloset,

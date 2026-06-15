@@ -15905,6 +15905,7 @@ export class Game {
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
       const bathroomRoomDoor = this.getNearestOfficeBathroomRoomDoor();
+      const basementRoomDoor = this.getNearestOfficeBasementRoomDoor();
       const bathroomSink = this.getNearestOfficeBathroomSink();
       const bathroomStall = this.getNearestOfficeBathroomStall();
       const ticket = this.getNearestOfficeTicketPickup();
@@ -16021,6 +16022,12 @@ export class Game {
         return bathroomRoomDoor.open
           ? `Press E to close the ${bathroomRoomDoor.label.toLowerCase()}.`
           : `Press E to open the ${bathroomRoomDoor.label.toLowerCase()}.`;
+      }
+
+      if (basementRoomDoor) {
+        return basementRoomDoor.open
+          ? `Press E to close ${basementRoomDoor.label.toLowerCase()}.`
+          : `Press E to open ${basementRoomDoor.label.toLowerCase()}.`;
       }
 
       if (bathroomSink) {
@@ -16642,6 +16649,7 @@ export class Game {
       const storageClosetDoor = this.getNearestOfficeStorageClosetDoor();
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
       const bathroomRoomDoor = this.getNearestOfficeBathroomRoomDoor();
+      const basementRoomDoor = this.getNearestOfficeBasementRoomDoor();
       const bathroomSink = this.getNearestOfficeBathroomSink();
       const bathroomStall = this.getNearestOfficeBathroomStall();
       const ticket = this.getNearestOfficeTicketPickup();
@@ -16781,6 +16789,12 @@ export class Game {
         return bathroomRoomDoor.open
           ? `${bathroomRoomDoor.label} is open. Press E to close it.`
           : `${bathroomRoomDoor.label} is closed. Press E to open it.`;
+      }
+
+      if (basementRoomDoor) {
+        return basementRoomDoor.open
+          ? `${basementRoomDoor.label} is open. Press E to close it.`
+          : `${basementRoomDoor.label} is closed. Press E to open it.`;
       }
 
       if (bathroomSink) {
@@ -18564,6 +18578,36 @@ export class Game {
     return closest;
   }
 
+  private getNearestOfficeBasementRoomDoor(): OfficeChapterData['basementRoomDoors'][number] | null {
+    if (!this.officeEmployeeElevatorBasementActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    let closest: OfficeChapterData['basementRoomDoors'][number] | null = null;
+    let bestAlong = Infinity;
+
+    for (const door of this.officeChapter.basementRoomDoors) {
+      const toDoor = door.interactPosition.clone().sub(playerPosition);
+      const along = toDoor.dot(forward);
+      if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.2) {
+        continue;
+      }
+
+      const projected = forward.clone().multiplyScalar(along);
+      const lateral = toDoor.sub(projected).length();
+      if (lateral > 1.18 || along >= bestAlong) {
+        continue;
+      }
+
+      closest = door;
+      bestAlong = along;
+    }
+
+    return closest;
+  }
+
   private getNearestOfficeBathroomSink(): OfficeChapterData['bathroomSinks'][number] | null {
     const playerPosition = this.player.getPosition();
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
@@ -18926,6 +18970,20 @@ export class Game {
         bathroomRoomDoor.open
           ? `${bathroomRoomDoor.label} swings open.`
           : `${bathroomRoomDoor.label} swings closed.`,
+        2.1,
+      );
+      return;
+    }
+
+    const basementRoomDoor = this.getNearestOfficeBasementRoomDoor();
+    if (basementRoomDoor) {
+      basementRoomDoor.targetOpenAmount = basementRoomDoor.targetOpenAmount > 0.5 ? 0 : 1;
+      basementRoomDoor.open = basementRoomDoor.targetOpenAmount > 0.5;
+      this.gameplaySfxAudio.playClosetDoor(basementRoomDoor.open);
+      this.pushStatus(
+        basementRoomDoor.open
+          ? `${basementRoomDoor.label} swings open into the room.`
+          : `${basementRoomDoor.label} swings closed.`,
         2.1,
       );
       return;
