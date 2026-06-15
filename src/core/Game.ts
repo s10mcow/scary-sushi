@@ -353,6 +353,17 @@ interface OfficeVentBoyState {
   stareTimer: number;
 }
 
+interface ActiveOfficeVentBoyJumpscare {
+  root: Group;
+  face: Group;
+  jaw: Group;
+  leftEye: Mesh;
+  rightEye: Mesh;
+  blackoutMaterial: MeshBasicMaterial;
+  elapsed: number;
+  duration: number;
+}
+
 interface ActiveOfficeVentDrop {
   elapsed: number;
   duration: number;
@@ -573,6 +584,11 @@ const OFFICE_FUSE_WIRE_COLORS: OfficeFuseWireColor[] = ['green', 'blue', 'red'];
 const OFFICE_VENT_BOY_STARE_LIMIT_SECONDS = 2.65;
 const OFFICE_VENT_BOY_SPEED = 0.82;
 const OFFICE_VENT_BOY_FLOOR_OFFSET = 1.08;
+const OFFICE_VENT_BOY_LAUGH_RECORDING_ID = '0012';
+const OFFICE_VENT_BOY_LAUGH_MIN_DISTANCE = 1.2;
+const OFFICE_VENT_BOY_LAUGH_MAX_DISTANCE = 12;
+const OFFICE_VENT_BOY_ATTACK_RANGE = 0.78;
+const OFFICE_VENT_BOY_JUMPSCARE_SECONDS = 2.15;
 const OFFICE_GAME_MODE_CHASE_MATCH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.06;
 const OFFICE_FOXY_RUSH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.1;
 const OFFICE_PLAYER_SPRINT_SPEED_MULTIPLIER = 1.22;
@@ -1238,6 +1254,9 @@ export class Game {
   private cameraToolLibraryLoaded = false;
   private readonly cameraToolCaptures: CameraToolCapture[] = [];
   private officeVentBoy: OfficeVentBoyState | null = null;
+  private activeOfficeVentBoyJumpscare: ActiveOfficeVentBoyJumpscare | null = null;
+  private officeVentBoyLaughPlayback: HTMLAudioElement | null = null;
+  private officeVentBoyLaughFallbackCooldown = 0;
   private hudSyncTimer = 0;
   private chapterTwoCardTime = 0;
   private chapterTwoCoffeeJob: ChapterTwoCoffeeJob | null = null;
@@ -1541,6 +1560,8 @@ export class Game {
     this.powerEventAudio.destroy();
     this.voiceInput.destroy();
     this.stopOfficeSpeechRecognition();
+    this.stopOfficeVentBoyLaugh();
+    this.stopOfficeVentBoyJumpscare(false);
     this.stopMicrophoneSoundRecording(true);
     this.releaseMicrophoneSoundStream();
     this.revokeMicrophoneSoundPreviewUrl();
@@ -2375,6 +2396,7 @@ export class Game {
       || officeDeathNoticeActive
       || officeJumpscareActive
       || officeFoxyKnockdownActive
+      || this.activeOfficeVentBoyJumpscare !== null
       || this.chapterFourPurpleJumpscareTimer > 0
       || this.chapterFourBlueJumpscareTimer > 0
       || this.chapterFourGreenJumpscareTimer > 0;
@@ -2877,6 +2899,7 @@ export class Game {
     }
     this.updateOfficeGlassThrows(deltaSeconds);
     this.updateOfficeFoxyKnockdown(deltaSeconds);
+    this.updateOfficeVentBoyJumpscare(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
     if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
@@ -6086,6 +6109,8 @@ export class Game {
     this.officeEmployeeElevatorAtBasement = false;
     this.clearOfficePendingVentChase();
     this.clearOfficeFoxyKnockdown();
+    this.stopOfficeVentBoyLaugh();
+    this.stopOfficeVentBoyJumpscare(false);
     this.officeJumpscareMenuOpen = false;
     this.stopOfficeJumpscare();
     this.officeGlassHeld = false;
@@ -6721,6 +6746,8 @@ export class Game {
     this.officeFoxyClankCooldown = 0;
     this.officeFoxyRushDoor = null;
     this.clearOfficeCameraPuppetThreat();
+    this.stopOfficeVentBoyLaugh();
+    this.stopOfficeVentBoyJumpscare(false);
     this.stopOfficeDoorSound();
     this.voiceInput.stop();
     this.stopOfficeSpeechRecognition();
@@ -6737,6 +6764,8 @@ export class Game {
     this.officeEmployeeElevatorAtBasement = false;
     this.clearOfficePendingVentChase();
     this.clearOfficeFoxyKnockdown();
+    this.stopOfficeVentBoyLaugh();
+    this.stopOfficeVentBoyJumpscare(false);
     this.clearOfficeDoorSparks();
     this.officeGameModeAnimatronics.forEach((animatronic) => {
       animatronic.model.root.visible = false;
@@ -8971,6 +9000,58 @@ export class Game {
     return this.officeChapter.ventSystem.floorY - OFFICE_VENT_BOY_FLOOR_OFFSET;
   }
 
+  private canOfficeVentBoyOccupy(x: number, z: number): boolean {
+    const radius = 0.22;
+    return this.officeChapter.ventSystem.segments.some((segment) => (
+      Math.abs(x - segment.center.x) <= segment.halfWidth - radius
+      && Math.abs(z - segment.center.z) <= segment.halfDepth - radius
+    ));
+  }
+
+  private isOfficeVentBoyPathClear(startX: number, startZ: number, endX: number, endZ: number): boolean {
+    const distance = Math.hypot(endX - startX, endZ - startZ);
+    const samples = Math.max(1, Math.ceil(distance / 0.34));
+    for (let index = 1; index <= samples; index += 1) {
+      const t = index / samples;
+      if (!this.canOfficeVentBoyOccupy(
+        MathUtils.lerp(startX, endX, t),
+        MathUtils.lerp(startZ, endZ, t),
+      )) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private getOfficeVentBoyReachableTarget(ventBoy: OfficeVentBoyState): Vector3 {
+    const root = ventBoy.root;
+    const fallback = ventBoy.route[ventBoy.routeIndex] ?? ventBoy.route[0];
+    const playerTarget = this.officeVentActive
+      ? this.getNearestOfficeVentPoint(this.player.getPosition())
+      : null;
+    const desired = playerTarget ?? fallback;
+
+    if (this.isOfficeVentBoyPathClear(root.position.x, root.position.z, desired.x, desired.z)) {
+      return desired;
+    }
+
+    let bestPoint: Vector3 | null = null;
+    let bestScore = Infinity;
+    ventBoy.route.forEach((point) => {
+      if (!this.isOfficeVentBoyPathClear(root.position.x, root.position.z, point.x, point.z)) {
+        return;
+      }
+      const score = point.distanceTo(desired) + point.distanceTo(root.position) * 0.12;
+      if (score >= bestScore) {
+        return;
+      }
+      bestPoint = point;
+      bestScore = score;
+    });
+
+    return bestPoint ?? fallback;
+  }
+
   private ensureOfficeVentBoy(): OfficeVentBoyState {
     if (this.officeVentBoy) {
       return this.officeVentBoy;
@@ -9035,6 +9116,11 @@ export class Game {
     const chestPlate = new Mesh(new BoxGeometry(0.32, 0.035, 0.48), metalMaterial);
     chestPlate.position.set(0, 0.37, 0.02);
     chestPlate.scale.y = 0.55;
+    const bellyPlate = new Mesh(new BoxGeometry(0.24, 0.04, 0.28), metalMaterial);
+    bellyPlate.position.set(0, 0.12, 0.1);
+    const neckJoint = new Mesh(new CylinderGeometry(0.07, 0.07, 0.12, 14), metalMaterial);
+    neckJoint.position.set(0, 0.41, -0.15);
+    neckJoint.rotation.x = Math.PI / 2;
     [-0.09, 0.01, 0.11].forEach((yOffset) => {
       const stripe = new Mesh(new BoxGeometry(0.48, 0.028, 0.635), shirtRedMaterial);
       stripe.position.set(0, 0.24 + yOffset, 0.02);
@@ -9048,8 +9134,8 @@ export class Game {
     hairCap.scale.set(0.98, 0.38, 0.88);
     hairCap.position.set(0, 0.14, -0.015);
     [-0.1, -0.035, 0.035, 0.1].forEach((xOffset, index) => {
-      const bang = new Mesh(new BoxGeometry(0.055, 0.085, 0.035), hairMaterial);
-      bang.position.set(xOffset, 0.08 - index % 2 * 0.025, -0.18);
+      const bang = new Mesh(new BoxGeometry(0.052, 0.052, 0.032), hairMaterial);
+      bang.position.set(xOffset, 0.125 - index % 2 * 0.012, -0.18);
       bang.rotation.z = (xOffset < 0 ? -0.2 : 0.2);
       head.add(bang);
     });
@@ -9102,7 +9188,7 @@ export class Game {
     const rightArm = makeArm(0.29);
     const leftLeg = makeLeg(-0.17);
     const rightLeg = makeLeg(0.17);
-    root.add(torso, chestPlate, head, propeller, leftArm, rightArm, leftLeg, rightLeg);
+    root.add(torso, chestPlate, bellyPlate, neckJoint, head, propeller, leftArm, rightArm, leftLeg, rightLeg);
 
     const floorY = this.getOfficeVentBoyFloorY();
     const route = [
@@ -9174,11 +9260,13 @@ export class Game {
       if (this.officeVentBoy) {
         this.officeVentBoy.root.visible = false;
       }
+      this.stopOfficeVentBoyLaugh();
       return;
     }
 
     const ventBoy = this.ensureOfficeVentBoy();
     ventBoy.root.visible = true;
+    this.updateOfficeVentBoyLaugh(deltaSeconds, ventBoy);
     const watched = this.isPlayerWatchingOfficeVentBoy(ventBoy);
     ventBoy.stareTimer = watched
       ? ventBoy.stareTimer + deltaSeconds
@@ -9210,9 +9298,23 @@ export class Game {
       return;
     }
 
-    const target = this.officeVentActive
-      ? this.player.getPosition()
-      : ventBoy.route[ventBoy.routeIndex] ?? ventBoy.route[0];
+    const playerPosition = this.player.getPosition();
+    const distanceToPlayer = Math.hypot(
+      playerPosition.x - ventBoy.root.position.x,
+      playerPosition.z - ventBoy.root.position.z,
+    );
+    const nearestPlayerVentPoint = this.officeVentActive ? this.getNearestOfficeVentPoint(playerPosition) : null;
+    if (
+      nearestPlayerVentPoint
+      && distanceToPlayer <= OFFICE_VENT_BOY_ATTACK_RANGE
+      && this.isOfficeVentBoyPathClear(ventBoy.root.position.x, ventBoy.root.position.z, nearestPlayerVentPoint.x, nearestPlayerVentPoint.z)
+      && !this.activeOfficeVentBoyJumpscare
+    ) {
+      this.triggerOfficeVentBoyJumpscare();
+      return;
+    }
+
+    const target = this.getOfficeVentBoyReachableTarget(ventBoy);
     const dx = target.x - ventBoy.root.position.x;
     const dz = target.z - ventBoy.root.position.z;
     const distance = Math.hypot(dx, dz);
@@ -9225,10 +9327,207 @@ export class Game {
     }
 
     const step = Math.min(distance, OFFICE_VENT_BOY_SPEED * (forcedMove ? 1.65 : 1) * deltaSeconds);
-    ventBoy.root.position.x += (dx / distance) * step;
-    ventBoy.root.position.z += (dz / distance) * step;
+    const nextX = ventBoy.root.position.x + (dx / distance) * step;
+    const nextZ = ventBoy.root.position.z + (dz / distance) * step;
+    if (!this.canOfficeVentBoyOccupy(nextX, nextZ)) {
+      ventBoy.waitTimer = 0.18;
+      return;
+    }
+
+    ventBoy.root.position.x = nextX;
+    ventBoy.root.position.z = nextZ;
     ventBoy.root.position.y = this.getOfficeVentBoyFloorY();
     ventBoy.root.rotation.y = Math.atan2(dx, dz) + Math.PI;
+  }
+
+  private updateOfficeVentBoyLaugh(deltaSeconds: number, ventBoy: OfficeVentBoyState): void {
+    this.officeVentBoyLaughFallbackCooldown = Math.max(0, this.officeVentBoyLaughFallbackCooldown - deltaSeconds);
+    if (!this.officeVentActive || this.activeOfficeVentBoyJumpscare) {
+      this.stopOfficeVentBoyLaugh();
+      return;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const distance = Math.hypot(
+      playerPosition.x - ventBoy.root.position.x,
+      playerPosition.z - ventBoy.root.position.z,
+    );
+    if (distance > OFFICE_VENT_BOY_LAUGH_MAX_DISTANCE) {
+      this.stopOfficeVentBoyLaugh();
+      return;
+    }
+
+    const closeness = MathUtils.clamp(
+      1 - (distance - OFFICE_VENT_BOY_LAUGH_MIN_DISTANCE) / (OFFICE_VENT_BOY_LAUGH_MAX_DISTANCE - OFFICE_VENT_BOY_LAUGH_MIN_DISTANCE),
+      0,
+      1,
+    );
+    const volume = MathUtils.clamp(0.08 + closeness * 0.92, 0.08, 1);
+    const recording = this.getMicrophoneSoundRecordingById(OFFICE_VENT_BOY_LAUGH_RECORDING_ID);
+    if (!recording) {
+      if (this.officeVentBoyLaughFallbackCooldown <= 0) {
+        this.gameplaySfxAudio.playOfficeJumpscareCue('beak-clack');
+        this.officeVentBoyLaughFallbackCooldown = MathUtils.lerp(2.4, 0.75, closeness);
+      }
+      return;
+    }
+
+    if (!this.officeVentBoyLaughPlayback || this.officeVentBoyLaughPlayback.src !== recording.dataUrl) {
+      this.stopOfficeVentBoyLaugh();
+      const audio = new Audio(recording.dataUrl);
+      audio.loop = true;
+      audio.volume = volume;
+      this.officeVentBoyLaughPlayback = audio;
+      void audio.play().catch(() => {
+        if (this.officeVentBoyLaughPlayback === audio) {
+          this.stopOfficeVentBoyLaugh();
+        }
+      });
+      return;
+    }
+
+    this.officeVentBoyLaughPlayback.volume = volume;
+  }
+
+  private stopOfficeVentBoyLaugh(): void {
+    this.officeVentBoyLaughPlayback?.pause();
+    this.officeVentBoyLaughPlayback = null;
+    this.officeVentBoyLaughFallbackCooldown = 0;
+  }
+
+  private triggerOfficeVentBoyJumpscare(): void {
+    if (this.activeOfficeVentBoyJumpscare || this.activeOfficeJumpscare || !this.officeVentActive) {
+      return;
+    }
+
+    this.stopOfficeVentBoyLaugh();
+    this.officeTabletCameraFeedActive = false;
+    this.officeTabletHeld = false;
+    this.officeTabletAnchor.visible = false;
+    this.clearOfficeHeldPrizeItem();
+    this.clearCameraToolState();
+    this.clearPaintbrushState();
+    this.placementToolActive = false;
+    this.placementPreview.visible = false;
+
+    const root = new Group();
+    root.position.set(0, -0.04, -2.45);
+    const blackoutMaterial = new MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: false,
+    });
+    const blackout = new Mesh(new PlaneGeometry(32, 20), blackoutMaterial);
+    blackout.position.set(0, 0, -0.35);
+    blackout.renderOrder = 46;
+    root.add(blackout);
+
+    const face = new Group();
+    const skinMaterial = new MeshBasicMaterial({ color: 0xd2aa83 });
+    const hairMaterial = new MeshBasicMaterial({ color: 0x050506 });
+    const redEyeMaterial = new MeshBasicMaterial({ color: 0xff160c });
+    const mouthMaterial = new MeshBasicMaterial({ color: 0x050000 });
+    const metalMaterial = new MeshBasicMaterial({ color: 0x9aa8ad });
+    const shirtRedMaterial = new MeshBasicMaterial({ color: 0xb9242e });
+    const shirtBlueMaterial = new MeshBasicMaterial({ color: 0x214fd0 });
+
+    const head = new Mesh(new SphereGeometry(0.56, 24, 18), skinMaterial);
+    head.scale.set(0.96, 1.06, 0.82);
+    const hair = new Mesh(new SphereGeometry(0.58, 18, 10), hairMaterial);
+    hair.position.y = 0.28;
+    hair.scale.set(1, 0.32, 0.82);
+    const leftEye = new Mesh(new SphereGeometry(0.075, 12, 8), redEyeMaterial);
+    leftEye.position.set(-0.2, 0.08, 0.45);
+    const rightEye = leftEye.clone();
+    rightEye.position.x = 0.2;
+    const smile = new Mesh(new TorusGeometry(0.2, 0.022, 8, 24, Math.PI), mouthMaterial);
+    smile.position.set(0, -0.17, 0.46);
+    smile.rotation.z = Math.PI;
+    const jaw = new Group();
+    jaw.position.set(0, -0.24, 0.42);
+    const jawPlate = new Mesh(new BoxGeometry(0.34, 0.085, 0.1), metalMaterial);
+    jaw.add(jawPlate);
+    face.add(head, hair, leftEye, rightEye, smile, jaw);
+
+    const body = new Mesh(new BoxGeometry(0.78, 0.42, 0.35), shirtBlueMaterial);
+    body.position.set(0, -0.82, 0.05);
+    const stripe = new Mesh(new BoxGeometry(0.82, 0.11, 0.38), shirtRedMaterial);
+    stripe.position.set(0, -0.82, 0.07);
+    const neck = new Mesh(new CylinderGeometry(0.1, 0.1, 0.22, 12), metalMaterial);
+    neck.position.set(0, -0.48, 0.01);
+    neck.rotation.x = Math.PI / 2;
+    face.add(neck, body, stripe);
+
+    const propeller = new Group();
+    propeller.position.set(0, 0.78, 0.02);
+    const cap = new Mesh(new SphereGeometry(0.24, 14, 8), shirtRedMaterial);
+    cap.scale.set(1.1, 0.32, 1);
+    const bladeA = new Mesh(new BoxGeometry(1, 0.035, 0.12), shirtBlueMaterial);
+    const bladeB = new Mesh(new BoxGeometry(0.12, 0.035, 1), shirtRedMaterial);
+    propeller.add(cap, bladeA, bladeB);
+    face.add(propeller);
+
+    face.position.set(0, -0.02, 0);
+    face.scale.setScalar(0.72);
+    root.add(face);
+    this.camera.add(root);
+    this.activeOfficeVentBoyJumpscare = {
+      root,
+      face,
+      jaw,
+      leftEye,
+      rightEye,
+      blackoutMaterial,
+      elapsed: 0,
+      duration: OFFICE_VENT_BOY_JUMPSCARE_SECONDS,
+    };
+
+    if (!this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playOfficeJumpscareCue('broken-crawl'), OFFICE_VENT_BOY_LAUGH_RECORDING_ID)) {
+      this.gameplaySfxAudio.playOfficeJumpscareCue('broken-crawl');
+    }
+    this.pushStatus('Balloon Boy crawls into your face.', 1.8);
+  }
+
+  private updateOfficeVentBoyJumpscare(deltaSeconds: number): void {
+    if (!this.activeOfficeVentBoyJumpscare) {
+      return;
+    }
+
+    const scare = this.activeOfficeVentBoyJumpscare;
+    scare.elapsed = Math.min(scare.duration, scare.elapsed + deltaSeconds);
+    const progress = MathUtils.clamp(scare.elapsed / scare.duration, 0, 1);
+    const lunge = MathUtils.smoothstep(progress, 0.03, 0.52);
+    const shake = Math.sin(scare.elapsed * 62) * Math.max(0, 1 - progress * 0.45);
+    scare.root.position.z = MathUtils.lerp(-2.45, -0.72, lunge);
+    scare.root.position.x = shake * 0.035;
+    scare.root.position.y = -0.05 + Math.abs(Math.sin(scare.elapsed * 38)) * 0.035 * lunge;
+    scare.face.rotation.set(0.08 + lunge * 0.18, shake * 0.08, shake * 0.05);
+    scare.face.scale.setScalar(0.72 + lunge * 0.72 + Math.max(0, Math.sin(progress * Math.PI * 14)) * 0.08);
+    scare.jaw.rotation.x = 0.1 + lunge * 0.95 + Math.max(0, Math.sin(scare.elapsed * 24)) * 0.2;
+    const eyePulse = 1 + Math.max(0, Math.sin(scare.elapsed * 35)) * 0.55;
+    scare.leftEye.scale.setScalar(eyePulse);
+    scare.rightEye.scale.setScalar(eyePulse);
+    scare.blackoutMaterial.opacity = MathUtils.smoothstep(progress, 0.86, 1);
+
+    if (progress < 1) {
+      return;
+    }
+
+    this.stopOfficeVentBoyJumpscare(true);
+  }
+
+  private stopOfficeVentBoyJumpscare(showDeathNotice: boolean): void {
+    if (!this.activeOfficeVentBoyJumpscare) {
+      return;
+    }
+
+    this.activeOfficeVentBoyJumpscare.root.removeFromParent();
+    this.activeOfficeVentBoyJumpscare = null;
+    if (showDeathNotice && this.officeGameModeActive) {
+      this.startOfficeDeathNotice();
+    }
   }
 
   private updateOfficeGameModePower(deltaSeconds: number): void {
@@ -10156,7 +10455,7 @@ export class Game {
       return;
     }
 
-    if (this.officeDeathNoticePhase || this.officeFoxyKnockdownTimer > 0) {
+    if (this.officeDeathNoticePhase || this.officeFoxyKnockdownTimer > 0 || this.activeOfficeVentBoyJumpscare) {
       return;
     }
 
