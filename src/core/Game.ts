@@ -351,8 +351,6 @@ interface OfficeVentBoyState {
   routeIndex: number;
   waitTimer: number;
   stareTimer: number;
-  tauntBoostTimer: number;
-  tauntCooldown: number;
 }
 
 interface ActiveOfficeVentBoyJumpscare {
@@ -587,27 +585,8 @@ const OFFICE_VENT_BOY_STARE_LIMIT_SECONDS = 2.65;
 const OFFICE_VENT_BOY_SPEED = 0.82;
 const OFFICE_VENT_BOY_SEARCH_SPEED_MULTIPLIER = 3.15;
 const OFFICE_VENT_BOY_WATCHED_SPEED_MULTIPLIER = 0.72;
-const OFFICE_VENT_BOY_TAUNT_SPEED_MULTIPLIER = 2;
-const OFFICE_VENT_BOY_TAUNT_BOOST_SECONDS = 9;
-const OFFICE_VENT_BOY_TAUNT_COOLDOWN_SECONDS = 4.5;
 const OFFICE_VENT_BOY_FLOOR_OFFSET = 1.08;
 const OFFICE_VENT_BOY_SOUND_RECORDING_IDS = ['013', '014', '016', '017', '018'];
-const OFFICE_VENT_BOY_TAUNT_RECORDING_ID = '019';
-const OFFICE_VENT_BOY_TAUNT_PHRASES = [
-  'bozo',
-  'dum dum',
-  'dumdum',
-  'dumb dumb',
-  'weirdo',
-  'freaky aw guy',
-  'freaky ah guy',
-  'freaky guy',
-  'what do you mean by that',
-  'what do you mean by that you weirdo',
-  'why did you just say that',
-  'why did you just say that you weirdo',
-  'any benefits',
-];
 const OFFICE_VENT_BOY_SOUND_MIN_DISTANCE = 1.2;
 const OFFICE_VENT_BOY_SOUND_MAX_DISTANCE = 12;
 const OFFICE_VENT_BOY_ATTACK_RANGE = 0.78;
@@ -2168,10 +2147,6 @@ export class Game {
       return;
     }
 
-    if (this.handleOfficeVentBoyTauntSpeech(normalized, transcript)) {
-      return;
-    }
-
     const insulted = this.isOfficeInsultNormalized(normalized);
     const target = this.getOfficeSpeechTarget(normalized);
     const dislikeReason = target ? this.getOfficeSpeechDislikeReason(target, normalized, insulted) : null;
@@ -2180,40 +2155,6 @@ export class Game {
     }
 
     this.handleOfficeProvocativeSpeech(transcript, target, dislikeReason ?? 'that sounded wrong');
-  }
-
-  private handleOfficeVentBoyTauntSpeech(normalized: string, transcript: string): boolean {
-    if (
-      !this.officeChapterActive
-      || !this.officeGameModeActive
-      || this.officeGameModePowerOut
-      || !this.isOfficeVentBoyActive()
-      || !this.officeSpeechIncludesAny(normalized, OFFICE_VENT_BOY_TAUNT_PHRASES)
-    ) {
-      return false;
-    }
-
-    const ventBoy = this.ensureOfficeVentBoy();
-    if (ventBoy.tauntCooldown > 0) {
-      return true;
-    }
-
-    ventBoy.tauntBoostTimer = OFFICE_VENT_BOY_TAUNT_BOOST_SECONDS;
-    ventBoy.tauntCooldown = OFFICE_VENT_BOY_TAUNT_COOLDOWN_SECONDS;
-    ventBoy.waitTimer = 0;
-    ventBoy.stareTimer = OFFICE_VENT_BOY_STARE_LIMIT_SECONDS;
-    this.officePlayerNoisePosition.copy(this.player.getPosition());
-    this.officePlayerVoiceLevel = Math.max(this.officePlayerVoiceLevel, OFFICE_STAGE_YELL_LEVEL);
-    this.officePlayerNoiseLevel = Math.max(this.officePlayerNoiseLevel, 1);
-    this.playMicrophoneSoundEffect(undefined, OFFICE_VENT_BOY_TAUNT_RECORDING_ID);
-    const cleaned = transcript.trim();
-    this.pushStatus(
-      cleaned
-        ? `Balloon Boy heard "${cleaned}" and charges through the vents.`
-        : 'Balloon Boy heard that and charges through the vents.',
-      2.6,
-    );
-    return true;
   }
 
   private handleOfficeProvocativeSpeech(
@@ -9367,8 +9308,6 @@ export class Game {
       routeIndex: 1,
       waitTimer: 0,
       stareTimer: 0,
-      tauntBoostTimer: 0,
-      tauntCooldown: 0,
     };
     this.resetOfficeVentBoy();
     return this.officeVentBoy;
@@ -9387,8 +9326,6 @@ export class Game {
     this.officeVentBoy.routeIndex = (spawnIndex + 1) % this.officeVentBoy.route.length;
     this.officeVentBoy.waitTimer = 0.9 + Math.random() * 1.2;
     this.officeVentBoy.stareTimer = 0;
-    this.officeVentBoy.tauntBoostTimer = 0;
-    this.officeVentBoy.tauntCooldown = 0;
   }
 
   private isPlayerWatchingOfficeVentBoy(ventBoy: OfficeVentBoyState): boolean {
@@ -9419,8 +9356,6 @@ export class Game {
 
     const ventBoy = this.ensureOfficeVentBoy();
     ventBoy.root.visible = true;
-    ventBoy.tauntBoostTimer = Math.max(0, ventBoy.tauntBoostTimer - deltaSeconds);
-    ventBoy.tauntCooldown = Math.max(0, ventBoy.tauntCooldown - deltaSeconds);
     this.updateOfficeVentBoyLaugh(deltaSeconds, ventBoy);
     const watched = this.isPlayerWatchingOfficeVentBoy(ventBoy);
     ventBoy.stareTimer = watched
@@ -9428,12 +9363,10 @@ export class Game {
       : 0;
     const forcedMove = ventBoy.stareTimer >= OFFICE_VENT_BOY_STARE_LIMIT_SECONDS;
     const chasingVentPlayer = this.officeVentActive;
-    const tauntBoostActive = ventBoy.tauntBoostTimer > 0;
     const canMove = chasingVentPlayer || !watched || forcedMove;
-    const baseSpeedMultiplier = chasingVentPlayer
+    const speedMultiplier = chasingVentPlayer
       ? (watched ? OFFICE_VENT_BOY_WATCHED_SPEED_MULTIPLIER : OFFICE_VENT_BOY_SEARCH_SPEED_MULTIPLIER)
       : (forcedMove ? 1.65 : 1);
-    const speedMultiplier = baseSpeedMultiplier * (tauntBoostActive ? OFFICE_VENT_BOY_TAUNT_SPEED_MULTIPLIER : 1);
 
     const crawlCycle = this.elapsed * 8.2;
     const leftReach = Math.sin(crawlCycle);
