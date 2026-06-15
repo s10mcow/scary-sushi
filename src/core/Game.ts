@@ -584,9 +584,9 @@ const OFFICE_FUSE_WIRE_COLORS: OfficeFuseWireColor[] = ['green', 'blue', 'red'];
 const OFFICE_VENT_BOY_STARE_LIMIT_SECONDS = 2.65;
 const OFFICE_VENT_BOY_SPEED = 0.82;
 const OFFICE_VENT_BOY_FLOOR_OFFSET = 1.08;
-const OFFICE_VENT_BOY_LAUGH_RECORDING_ID = '0012';
-const OFFICE_VENT_BOY_LAUGH_MIN_DISTANCE = 1.2;
-const OFFICE_VENT_BOY_LAUGH_MAX_DISTANCE = 12;
+const OFFICE_VENT_BOY_SOUND_RECORDING_IDS = ['013', '014', '016'];
+const OFFICE_VENT_BOY_SOUND_MIN_DISTANCE = 1.2;
+const OFFICE_VENT_BOY_SOUND_MAX_DISTANCE = 12;
 const OFFICE_VENT_BOY_ATTACK_RANGE = 0.78;
 const OFFICE_VENT_BOY_JUMPSCARE_SECONDS = 2.15;
 const OFFICE_GAME_MODE_CHASE_MATCH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.06;
@@ -1255,8 +1255,8 @@ export class Game {
   private readonly cameraToolCaptures: CameraToolCapture[] = [];
   private officeVentBoy: OfficeVentBoyState | null = null;
   private activeOfficeVentBoyJumpscare: ActiveOfficeVentBoyJumpscare | null = null;
-  private officeVentBoyLaughPlayback: HTMLAudioElement | null = null;
-  private officeVentBoyLaughFallbackCooldown = 0;
+  private officeVentBoySoundPlayback: HTMLAudioElement | null = null;
+  private officeVentBoySoundCooldown = 0;
   private hudSyncTimer = 0;
   private chapterTwoCardTime = 0;
   private chapterTwoCoffeeJob: ChapterTwoCoffeeJob | null = null;
@@ -9229,12 +9229,13 @@ export class Game {
       return;
     }
 
-    const home = this.officeVentBoy.route[0];
+    const spawnIndex = Math.floor(Math.random() * this.officeVentBoy.route.length);
+    const home = this.officeVentBoy.route[spawnIndex] ?? this.officeVentBoy.route[0];
     this.officeVentBoy.root.position.copy(home);
     this.officeVentBoy.root.rotation.set(0, Math.PI, 0);
     this.officeVentBoy.root.visible = this.isOfficeVentBoyActive();
-    this.officeVentBoy.routeIndex = 1;
-    this.officeVentBoy.waitTimer = 1.4;
+    this.officeVentBoy.routeIndex = (spawnIndex + 1) % this.officeVentBoy.route.length;
+    this.officeVentBoy.waitTimer = 0.9 + Math.random() * 1.2;
     this.officeVentBoy.stareTimer = 0;
   }
 
@@ -9341,7 +9342,7 @@ export class Game {
   }
 
   private updateOfficeVentBoyLaugh(deltaSeconds: number, ventBoy: OfficeVentBoyState): void {
-    this.officeVentBoyLaughFallbackCooldown = Math.max(0, this.officeVentBoyLaughFallbackCooldown - deltaSeconds);
+    this.officeVentBoySoundCooldown = Math.max(0, this.officeVentBoySoundCooldown - deltaSeconds);
     if (!this.officeVentActive || this.activeOfficeVentBoyJumpscare) {
       this.stopOfficeVentBoyLaugh();
       return;
@@ -9352,47 +9353,69 @@ export class Game {
       playerPosition.x - ventBoy.root.position.x,
       playerPosition.z - ventBoy.root.position.z,
     );
-    if (distance > OFFICE_VENT_BOY_LAUGH_MAX_DISTANCE) {
+    if (distance > OFFICE_VENT_BOY_SOUND_MAX_DISTANCE) {
       this.stopOfficeVentBoyLaugh();
       return;
     }
 
     const closeness = MathUtils.clamp(
-      1 - (distance - OFFICE_VENT_BOY_LAUGH_MIN_DISTANCE) / (OFFICE_VENT_BOY_LAUGH_MAX_DISTANCE - OFFICE_VENT_BOY_LAUGH_MIN_DISTANCE),
+      1 - (distance - OFFICE_VENT_BOY_SOUND_MIN_DISTANCE) / (OFFICE_VENT_BOY_SOUND_MAX_DISTANCE - OFFICE_VENT_BOY_SOUND_MIN_DISTANCE),
       0,
       1,
     );
     const volume = MathUtils.clamp(0.08 + closeness * 0.92, 0.08, 1);
-    const recording = this.getMicrophoneSoundRecordingById(OFFICE_VENT_BOY_LAUGH_RECORDING_ID);
-    if (!recording) {
-      if (this.officeVentBoyLaughFallbackCooldown <= 0) {
-        this.gameplaySfxAudio.playOfficeJumpscareCue('beak-clack');
-        this.officeVentBoyLaughFallbackCooldown = MathUtils.lerp(2.4, 0.75, closeness);
+
+    if (this.officeVentBoySoundPlayback) {
+      this.officeVentBoySoundPlayback.volume = volume;
+      if (!this.officeVentBoySoundPlayback.ended) {
+        return;
       }
+      this.officeVentBoySoundPlayback = null;
+    }
+
+    if (this.officeVentBoySoundCooldown > 0) {
       return;
     }
 
-    if (!this.officeVentBoyLaughPlayback || this.officeVentBoyLaughPlayback.src !== recording.dataUrl) {
-      this.stopOfficeVentBoyLaugh();
-      const audio = new Audio(recording.dataUrl);
-      audio.loop = true;
-      audio.volume = volume;
-      this.officeVentBoyLaughPlayback = audio;
-      void audio.play().catch(() => {
-        if (this.officeVentBoyLaughPlayback === audio) {
-          this.stopOfficeVentBoyLaugh();
-        }
-      });
-      return;
-    }
-
-    this.officeVentBoyLaughPlayback.volume = volume;
+    this.playOfficeVentBoySound(volume);
+    this.officeVentBoySoundCooldown = MathUtils.lerp(3.2, 0.85, closeness);
   }
 
   private stopOfficeVentBoyLaugh(): void {
-    this.officeVentBoyLaughPlayback?.pause();
-    this.officeVentBoyLaughPlayback = null;
-    this.officeVentBoyLaughFallbackCooldown = 0;
+    this.officeVentBoySoundPlayback?.pause();
+    this.officeVentBoySoundPlayback = null;
+    this.officeVentBoySoundCooldown = 0;
+  }
+
+  private getOfficeVentBoySoundRecordings(): MicrophoneSoundRecording[] {
+    return OFFICE_VENT_BOY_SOUND_RECORDING_IDS
+      .map((recordingId) => this.getMicrophoneSoundRecordingById(recordingId))
+      .filter((recording): recording is MicrophoneSoundRecording => recording !== null);
+  }
+
+  private playOfficeVentBoySound(volume: number): boolean {
+    const recordings = this.getOfficeVentBoySoundRecordings();
+    if (recordings.length === 0) {
+      return false;
+    }
+
+    const recording = recordings[Math.floor(Math.random() * recordings.length)];
+    this.officeVentBoySoundPlayback?.pause();
+    const audio = new Audio(recording.dataUrl);
+    audio.loop = false;
+    audio.volume = MathUtils.clamp(volume, 0, 1);
+    this.officeVentBoySoundPlayback = audio;
+    audio.addEventListener('ended', () => {
+      if (this.officeVentBoySoundPlayback === audio) {
+        this.officeVentBoySoundPlayback = null;
+      }
+    }, { once: true });
+    void audio.play().catch(() => {
+      if (this.officeVentBoySoundPlayback === audio) {
+        this.officeVentBoySoundPlayback = null;
+      }
+    });
+    return true;
   }
 
   private triggerOfficeVentBoyJumpscare(): void {
@@ -9484,9 +9507,7 @@ export class Game {
       duration: OFFICE_VENT_BOY_JUMPSCARE_SECONDS,
     };
 
-    if (!this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playOfficeJumpscareCue('broken-crawl'), OFFICE_VENT_BOY_LAUGH_RECORDING_ID)) {
-      this.gameplaySfxAudio.playOfficeJumpscareCue('broken-crawl');
-    }
+    this.playOfficeVentBoySound(1);
     this.pushStatus('Balloon Boy crawls into your face.', 1.8);
   }
 
