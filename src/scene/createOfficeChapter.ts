@@ -3737,6 +3737,238 @@ function createStageJointedLeg(
   };
 }
 
+function createSandboxQuackyReplacementAnimatronic(
+  x: number,
+  y: number,
+  z: number,
+  includePerformanceProps = true,
+): StageAnimatronicRefs {
+  const root = new Group();
+  root.position.set(x, y, z);
+  root.rotation.y = Math.PI;
+  root.scale.y = 1.05;
+
+  const shellMaterial = new MeshStandardMaterial({
+    color: 0xc88a26,
+    emissive: 0x190802,
+    emissiveIntensity: 0.13,
+    roughness: 0.58,
+    metalness: 0.16,
+  });
+  const panelMaterial = new MeshStandardMaterial({
+    color: 0xf0bf4b,
+    emissive: 0x1d0e02,
+    emissiveIntensity: 0.1,
+    roughness: 0.72,
+    metalness: 0.08,
+  });
+  const beakMaterial = new MeshStandardMaterial({
+    color: 0xe56b1f,
+    emissive: 0x210601,
+    emissiveIntensity: 0.1,
+    roughness: 0.62,
+    metalness: 0.06,
+  });
+  const metalMaterial = new MeshStandardMaterial({
+    color: 0x5d554d,
+    emissive: 0x080706,
+    emissiveIntensity: 0.12,
+    roughness: 0.34,
+    metalness: 0.78,
+  });
+  const mouthMaterial = new MeshStandardMaterial({
+    color: 0x030101,
+    emissive: 0x130101,
+    emissiveIntensity: 0.2,
+    roughness: 0.42,
+    metalness: 0.08,
+  });
+  const toothMaterial = new MeshStandardMaterial({
+    color: 0xddd2b8,
+    emissive: 0x140c04,
+    emissiveIntensity: 0.08,
+    roughness: 0.46,
+    metalness: 0.04,
+  });
+  const eyeGlowMaterial = new MeshBasicMaterial({ color: 0xff2f20 });
+  const bibMaterial = new MeshStandardMaterial({
+    color: 0xeef4ec,
+    emissive: 0x0a1010,
+    emissiveIntensity: 0.08,
+    roughness: 0.78,
+    metalness: 0.02,
+  });
+  const bibTrimMaterial = new MeshStandardMaterial({
+    color: 0x4cb7e9,
+    emissive: 0x041a25,
+    emissiveIntensity: 0.18,
+    roughness: 0.46,
+    metalness: 0.08,
+  });
+
+  const torso = new Group();
+  const chest = new Mesh(new SphereGeometry(0.48, 22, 16), shellMaterial);
+  chest.scale.set(0.82, 1.36, 0.58);
+  chest.position.set(0, 1.08, 0);
+  const frontPlate = new Mesh(new SphereGeometry(0.34, 18, 12), panelMaterial);
+  frontPlate.scale.set(0.92, 1.08, 0.2);
+  frontPlate.position.set(0, 1.08, -0.43);
+  const centerSeam = new Mesh(new BoxGeometry(0.038, 0.78, 0.028), metalMaterial);
+  centerSeam.position.set(0, 1.1, -0.57);
+  const shoulderBar = new Mesh(new BoxGeometry(0.82, 0.055, 0.055), metalMaterial);
+  shoulderBar.position.set(0, 1.55, -0.1);
+  const waistRing = new Mesh(new TorusGeometry(0.32, 0.012, 8, 24), metalMaterial);
+  waistRing.scale.x = 1.28;
+  waistRing.position.set(0, 0.55, -0.02);
+  waistRing.rotation.x = Math.PI / 2;
+  torso.add(chest, frontPlate, centerSeam, shoulderBar, waistRing);
+
+  const bib = new Group();
+  const bibPanel = new Mesh(new PlaneGeometry(0.54, 0.52), bibMaterial);
+  bibPanel.position.set(0, 1.16, -0.615);
+  const bibTop = new Mesh(new BoxGeometry(0.46, 0.035, 0.025), bibTrimMaterial);
+  bibTop.position.set(0, 1.43, -0.625);
+  const bibBottom = new Mesh(new BoxGeometry(0.38, 0.035, 0.025), bibTrimMaterial);
+  bibBottom.position.set(0, 0.9, -0.625);
+  [-0.2, 0.2].forEach((buttonX) => {
+    const button = new Mesh(new SphereGeometry(0.035, 10, 8), bibTrimMaterial);
+    button.scale.set(1, 0.45, 1);
+    button.position.set(buttonX, 1.29, -0.64);
+    bib.add(button);
+  });
+  bib.add(bibPanel, bibTop, bibBottom);
+
+  const headGroup = new Group();
+  headGroup.position.set(0, 2.09, -0.02);
+  const headShell = new Mesh(new SphereGeometry(0.38, 24, 14), shellMaterial);
+  headShell.scale.set(1.18, 0.76, 0.78);
+  const cheekPlate = new Mesh(new SphereGeometry(0.3, 18, 10), panelMaterial);
+  cheekPlate.scale.set(1.42, 0.48, 0.22);
+  cheekPlate.position.set(0, -0.02, -0.36);
+  const brow = new Mesh(new BoxGeometry(0.52, 0.055, 0.045), metalMaterial);
+  brow.position.set(0, 0.15, -0.43);
+  brow.rotation.x = -0.07;
+  [-0.13, 0, 0.13].forEach((crestX, index) => {
+    const feather = new Mesh(new ConeGeometry(0.055 - index * 0.005, 0.34 - index * 0.025, 10), panelMaterial);
+    feather.position.set(crestX, 0.42 + index * 0.01, -0.01);
+    feather.rotation.set(-0.4, 0, -crestX * 1.7);
+    headGroup.add(feather);
+  });
+  [-0.17, 0.17].forEach((eyeX) => {
+    const socket = new Mesh(new TorusGeometry(0.075, 0.014, 8, 18), metalMaterial);
+    socket.position.set(eyeX, 0.055, -0.39);
+    socket.rotation.x = Math.PI / 2;
+    const eye = new Mesh(new SphereGeometry(0.052, 10, 10), eyeGlowMaterial);
+    eye.scale.set(1, 0.78, 0.44);
+    eye.position.set(eyeX, 0.055, -0.44);
+    const glow = new PointLight(0xff2f20, 0.5, 1.55);
+    glow.position.set(eyeX, 0.055, -0.48);
+    headGroup.add(socket, eye, glow);
+  });
+
+  const mouthCavity = new Mesh(new SphereGeometry(0.2, 14, 8), mouthMaterial);
+  mouthCavity.scale.set(1.62, 0.36, 0.54);
+  mouthCavity.position.set(0, -0.15, -0.43);
+  const upperBeak = new Mesh(new SphereGeometry(0.21, 20, 10), beakMaterial);
+  upperBeak.scale.set(1.72, 0.34, 0.84);
+  upperBeak.position.set(0, -0.1, -0.43);
+  const mouthJaw = new Group();
+  mouthJaw.position.set(0, -0.19, -0.36);
+  const lowerBeak = new Mesh(new SphereGeometry(0.2, 20, 10), beakMaterial);
+  lowerBeak.scale.set(1.62, 0.34, 0.82);
+  lowerBeak.position.set(0, -0.012, -0.07);
+  mouthJaw.add(lowerBeak);
+
+  const innerUpperJaw = new Group();
+  innerUpperJaw.name = 'quacky-inner-upper-jaw';
+  innerUpperJaw.position.set(0, -0.13, -0.5);
+  innerUpperJaw.add(new Mesh(new BoxGeometry(0.36, 0.04, 0.085), metalMaterial));
+  const innerLowerJaw = new Group();
+  innerLowerJaw.name = 'quacky-inner-lower-jaw';
+  innerLowerJaw.position.set(0, -0.02, -0.5);
+  const innerLowerPlate = new Mesh(new BoxGeometry(0.32, 0.04, 0.08), metalMaterial);
+  innerLowerPlate.position.set(0, -0.04, 0.02);
+  innerLowerJaw.add(innerLowerPlate);
+  const metalUpperJaw = new Group();
+  metalUpperJaw.name = 'quacky-metal-upper-jaw';
+  metalUpperJaw.position.set(0, -0.12, -0.56);
+  metalUpperJaw.add(new Mesh(new BoxGeometry(0.22, 0.032, 0.06), metalMaterial));
+  const metalLowerJaw = new Group();
+  metalLowerJaw.name = 'quacky-metal-lower-jaw';
+  metalLowerJaw.position.set(0, -0.045, -0.56);
+  const metalLowerPlate = new Mesh(new BoxGeometry(0.2, 0.032, 0.055), metalMaterial);
+  metalLowerPlate.position.set(0, -0.03, 0.01);
+  metalLowerJaw.add(metalLowerPlate);
+  const innerJawRoot = new Group();
+  innerJawRoot.name = 'quacky-inner-jaw';
+  innerJawRoot.add(innerUpperJaw, innerLowerJaw);
+  const tinyMetalJaw = new Group();
+  tinyMetalJaw.name = 'quacky-tiny-metal-jaw';
+  tinyMetalJaw.add(metalUpperJaw, metalLowerJaw);
+
+  [-0.2, -0.13, -0.06, 0.02, 0.1, 0.18].forEach((toothX) => {
+    const upperTooth = new Mesh(new ConeGeometry(0.021, 0.07, 8), toothMaterial);
+    upperTooth.position.set(toothX, -0.145, -0.51);
+    upperTooth.rotation.x = Math.PI;
+    const lowerTooth = new Mesh(new ConeGeometry(0.017, 0.058, 8), toothMaterial);
+    lowerTooth.position.set(toothX * 0.92, 0.022, -0.13);
+    lowerTooth.rotation.x = 0.1;
+    headGroup.add(upperTooth);
+    mouthJaw.add(lowerTooth);
+  });
+  [-0.13, -0.065, 0, 0.065, 0.13].forEach((toothX) => {
+    const innerTooth = new Mesh(new ConeGeometry(0.012, 0.046, 7), toothMaterial);
+    innerTooth.position.set(toothX, -0.017, -0.56);
+    innerTooth.rotation.x = Math.PI;
+    innerUpperJaw.add(innerTooth);
+    const metalTooth = new Mesh(new ConeGeometry(0.009, 0.034, 6), toothMaterial);
+    metalTooth.position.set(toothX * 0.62, -0.05, -0.03);
+    metalLowerJaw.add(metalTooth);
+  });
+
+  headGroup.add(headShell, cheekPlate, brow, mouthCavity, upperBeak, mouthJaw, innerJawRoot, tinyMetalJaw);
+
+  const leftArm = createStageJointedArm(-1, 'relaxed', shellMaterial, metalMaterial, panelMaterial);
+  const rightArm = createStageJointedArm(1, includePerformanceProps ? 'plate' : 'relaxed', shellMaterial, metalMaterial, panelMaterial);
+  const leftLeg = createStageJointedLeg(-1, shellMaterial, metalMaterial, beakMaterial);
+  const rightLeg = createStageJointedLeg(1, shellMaterial, metalMaterial, beakMaterial);
+
+  let propGroup: Group | undefined;
+  if (includePerformanceProps) {
+    propGroup = new Group();
+    const plate = new Mesh(new CylinderGeometry(0.22, 0.25, 0.04, 24), new MeshStandardMaterial({ color: 0xf6f0df, roughness: 0.58, metalness: 0.04 }));
+    plate.position.set(0.62, 1.14, -0.62);
+    const cupcake = new Mesh(new CylinderGeometry(0.1, 0.12, 0.16, 16), new MeshStandardMaterial({ color: 0xb9433b, roughness: 0.62, metalness: 0.04 }));
+    cupcake.position.set(0.62, 1.24, -0.62);
+    const frosting = new Mesh(new SphereGeometry(0.11, 12, 10), new MeshStandardMaterial({ color: 0xffd7e8, emissive: 0x3d0d20, emissiveIntensity: 0.08, roughness: 0.7, metalness: 0.02 }));
+    frosting.scale.set(1, 0.58, 1);
+    frosting.position.set(0.62, 1.34, -0.62);
+    const candle = new Mesh(new CylinderGeometry(0.012, 0.012, 0.18, 8), panelMaterial);
+    candle.position.set(0.62, 1.46, -0.62);
+    propGroup.add(plate, cupcake, frosting, candle);
+  }
+
+  root.add(torso, bib, headGroup, leftArm.root, rightArm.root, leftLeg.root, rightLeg.root);
+  if (propGroup) {
+    root.add(propGroup);
+  }
+
+  return {
+    kind: 'duck',
+    root,
+    head: headGroup,
+    leftArm,
+    rightArm,
+    leftLeg,
+    rightLeg,
+    propGroup,
+    mouth: mouthJaw,
+    mouthBasePosition: mouthJaw.position.clone(),
+    homePosition: new Vector3(x, y, z),
+    homeRotationY: Math.PI,
+  };
+}
+
 function createBunnyEar(
   side: -1 | 1,
   dangling: boolean,
@@ -3792,6 +4024,10 @@ function createStageAnimatronic(
   includePerformanceProps = true,
   sandboxQuackyDesign = false,
 ): StageAnimatronicRefs {
+  if (kind === 'duck' && sandboxQuackyDesign) {
+    return createSandboxQuackyReplacementAnimatronic(x, y, z, includePerformanceProps);
+  }
+
   const root = new Group();
   root.position.set(x, y, z);
   root.rotation.y = Math.PI;
