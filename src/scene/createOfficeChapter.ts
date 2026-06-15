@@ -7098,6 +7098,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const basementSideRoomWallX = southBasementHallwayMinX;
   const basementSideRoomWidth = 7.4;
   const basementSideRoomDoorWidth = 2.72;
+  const basementSideRoomWallOpeningPadding = 1.12;
   const basementSideRooms = [
     { centerZ: 119.84, depth: 6.2, lightPhase: 2.35 },
     { centerZ: 129.32, depth: 5.9, lightPhase: 3.1 },
@@ -7109,6 +7110,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     centerX: basementSideRoomWallX - basementSideRoomWidth / 2,
     minZ: room.centerZ - room.depth / 2,
     maxZ: room.centerZ + room.depth / 2,
+  }));
+  const basementSideRoomWallOpenings = basementSideRooms.map((room) => ({
+    minZ: room.minZ - basementSideRoomWallOpeningPadding,
+    maxZ: room.maxZ + basementSideRoomWallOpeningPadding,
   }));
   const basementHallwayBounds = [
     {
@@ -7343,8 +7348,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const doorMinZ = room.centerZ - basementSideRoomDoorWidth / 2;
     const doorMaxZ = room.centerZ + basementSideRoomDoorWidth / 2;
 
-    const doorwayHeader = new Mesh(new BoxGeometry(0.16, 0.44, basementSideRoomDoorWidth), basementWallMaterial);
-    doorwayHeader.position.set(room.maxX + 0.16, employeeElevatorBasementFloorY + basementWallHeight - 0.22, room.centerZ);
     const frameHeight = 2.68;
     const frameCenterY = employeeElevatorBasementFloorY + frameHeight / 2;
     const frameX = room.maxX + 0.24;
@@ -7379,7 +7382,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     };
     colliders.push(doorCollider);
     employeeElevatorRoot.add(
-      doorwayHeader,
       northFrame,
       southFrame,
       topFrame,
@@ -7528,10 +7530,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     southBasementHallwayMinX,
     southBasementHallwayStartZ,
     southBasementHallwayEndZ,
-    basementSideRooms.map((room) => ({
-      minZ: room.minZ - 0.42,
-      maxZ: room.maxZ + 0.42,
-    })),
+    basementSideRoomWallOpenings,
   );
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayStartZ, southBasementHallwayEndZ);
   addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
