@@ -422,6 +422,7 @@ export interface OfficeChapterData {
 
 interface OfficeChapterOptions {
   abandonedStraightHalls?: boolean;
+  sandboxQuackyDesign?: boolean;
 }
 
 const OFFICE_CENTER_X = -240;
@@ -3789,23 +3790,25 @@ function createStageAnimatronic(
   z: number,
   includeNamePlate = true,
   includePerformanceProps = true,
+  sandboxQuackyDesign = false,
 ): StageAnimatronicRefs {
   const root = new Group();
   root.position.set(x, y, z);
   root.rotation.y = Math.PI;
   root.scale.y = 1.05;
+  const detailedDuck = kind === 'duck' && sandboxQuackyDesign;
 
   const bodyColor = kind === 'duck'
-    ? 0xc28f32
+    ? detailedDuck ? 0xd5a02e : 0xc28f32
     : kind === 'bunny'
       ? 0x9b8eb1
       : 0x6e4a35;
   const accentColor = kind === 'duck'
-    ? 0xe8bd56
+    ? detailedDuck ? 0xf1c95f : 0xe8bd56
     : kind === 'bunny'
       ? 0xc7bfd4
       : 0xb0825a;
-  const muzzleColor = kind === 'duck' ? 0xd18432 : 0xc9b493;
+  const muzzleColor = kind === 'duck' ? detailedDuck ? 0xf07a22 : 0xd18432 : 0xc9b493;
   const bodyMaterial = new MeshStandardMaterial({
     color: bodyColor,
     emissive: 0x100808,
@@ -3855,10 +3858,10 @@ function createStageAnimatronic(
   const headGroup = new Group();
   headGroup.position.set(0, 2.1, -0.02);
   const head = new Mesh(new SphereGeometry(0.38, 22, 14), bodyMaterial);
-  head.scale.set(kind === 'duck' ? 1.18 : 1.08, 0.72, 0.8);
+  head.scale.set(kind === 'duck' ? detailedDuck ? 1.24 : 1.18 : 1.08, detailedDuck ? 0.76 : 0.72, detailedDuck ? 0.86 : 0.8);
   head.position.set(0, 0, 0);
   const jawline = new Mesh(new SphereGeometry(kind === 'duck' ? 0.34 : 0.28, 18, 10), muzzleMaterial);
-  jawline.scale.set(kind === 'duck' ? 1.36 : 1.42, 0.28, kind === 'duck' ? 0.46 : 0.38);
+  jawline.scale.set(kind === 'duck' ? detailedDuck ? 1.48 : 1.36 : 1.42, detailedDuck ? 0.32 : 0.28, kind === 'duck' ? detailedDuck ? 0.52 : 0.46 : 0.38);
   jawline.position.set(0, -0.2, -0.3);
   const muzzle = new Mesh(
     kind === 'duck'
@@ -3868,11 +3871,67 @@ function createStageAnimatronic(
   );
   muzzle.position.set(0, -0.08, -0.32);
   if (kind === 'duck') {
-    muzzle.scale.set(1.42, 0.42, 0.82);
+    muzzle.scale.set(detailedDuck ? 1.62 : 1.42, detailedDuck ? 0.46 : 0.42, detailedDuck ? 0.92 : 0.82);
   } else {
     muzzle.scale.set(1.25, 0.78, 0.56);
   }
   headGroup.add(head, jawline, muzzle);
+  if (detailedDuck) {
+    const facePlateMaterial = new MeshStandardMaterial({
+      color: 0xf4d36f,
+      emissive: 0x201203,
+      emissiveIntensity: 0.08,
+      roughness: 0.68,
+      metalness: 0.05,
+    });
+    const blushMaterial = new MeshStandardMaterial({
+      color: 0xff8f5f,
+      emissive: 0x2a0502,
+      emissiveIntensity: 0.12,
+      roughness: 0.7,
+      metalness: 0.02,
+    });
+    const seamMaterial = new MeshStandardMaterial({
+      color: 0x6f431d,
+      emissive: 0x100602,
+      emissiveIntensity: 0.1,
+      roughness: 0.46,
+      metalness: 0.42,
+    });
+    const nostrilMaterial = new MeshBasicMaterial({ color: 0x100402 });
+
+    const facePlate = new Mesh(new SphereGeometry(0.31, 18, 10), facePlateMaterial);
+    facePlate.scale.set(1.36, 0.5, 0.28);
+    facePlate.position.set(0, -0.045, -0.365);
+    const browBar = new Mesh(new BoxGeometry(0.46, 0.055, 0.035), seamMaterial);
+    browBar.position.set(0, 0.15, -0.385);
+    browBar.rotation.x = -0.06;
+    const centerFaceSeam = new Mesh(new BoxGeometry(0.028, 0.42, 0.026), seamMaterial);
+    centerFaceSeam.position.set(0, -0.03, -0.405);
+    centerFaceSeam.rotation.x = -0.06;
+    [-0.23, 0.23].forEach((side) => {
+      const cheek = new Mesh(new SphereGeometry(0.07, 12, 8), blushMaterial);
+      cheek.scale.set(1.12, 0.62, 0.28);
+      cheek.position.set(side, -0.07, -0.415);
+      const eyeRing = new Mesh(new TorusGeometry(0.069, 0.012, 8, 18), seamMaterial);
+      eyeRing.position.set(side * 0.62, 0.062, -0.342);
+      eyeRing.rotation.x = Math.PI / 2;
+      const nostril = new Mesh(new SphereGeometry(0.018, 8, 6), nostrilMaterial);
+      nostril.scale.set(1.32, 0.54, 0.5);
+      nostril.position.set(side * 0.42, -0.105, -0.55);
+      headGroup.add(cheek, eyeRing, nostril);
+    });
+    [-0.13, 0, 0.13].forEach((offset, index) => {
+      const feather = new Mesh(new ConeGeometry(0.055 - index * 0.006, 0.34 - index * 0.035, 10), accentMaterial);
+      feather.position.set(offset, 0.41 + index * 0.015, -0.005);
+      feather.rotation.set(-0.4, 0, offset * -1.6);
+      headGroup.add(feather);
+    });
+    const beakBridge = new Mesh(new BoxGeometry(0.48, 0.036, 0.035), seamMaterial);
+    beakBridge.position.set(0, -0.13, -0.52);
+    beakBridge.rotation.x = -0.08;
+    headGroup.add(facePlate, browBar, centerFaceSeam, beakBridge);
+  }
   let mouthJaw: Group | undefined;
   let mouthBasePosition: Vector3 | undefined;
 
@@ -4020,10 +4079,76 @@ function createStageAnimatronic(
     leftLeg.root,
     rightLeg.root,
   );
+  if (detailedDuck) {
+    const jointTrimMaterial = new MeshStandardMaterial({
+      color: 0x9e8f78,
+      emissive: 0x15110d,
+      emissiveIntensity: 0.12,
+      roughness: 0.32,
+      metalness: 0.72,
+    });
+    [
+      [-0.47, 1.52, -0.02],
+      [0.47, 1.52, -0.02],
+      [-0.27, 0.88, 0.02],
+      [0.27, 0.88, 0.02],
+    ].forEach(([ringX, ringY, ringZ], index) => {
+      const ring = new Mesh(new TorusGeometry(index < 2 ? 0.12 : 0.105, 0.012, 8, 18), jointTrimMaterial);
+      ring.position.set(ringX, ringY, ringZ);
+      ring.rotation.set(Math.PI / 2, 0, index % 2 === 0 ? 0.18 : -0.18);
+      root.add(ring);
+    });
+  }
 
   const bow = new Mesh(new BoxGeometry(0.34, 0.1, 0.08), muzzleMaterial);
   bow.position.set(0, 1.66, -0.42);
   root.add(torso, belly, headGroup, bow);
+  if (detailedDuck) {
+    const panelMaterial = new MeshStandardMaterial({
+      color: 0xefc45a,
+      emissive: 0x1f1002,
+      emissiveIntensity: 0.07,
+      roughness: 0.7,
+      metalness: 0.05,
+    });
+    const seamMaterial = new MeshStandardMaterial({
+      color: 0x6f431d,
+      emissive: 0x100602,
+      emissiveIntensity: 0.1,
+      roughness: 0.48,
+      metalness: 0.38,
+    });
+    const metalTrimMaterial = new MeshStandardMaterial({
+      color: 0xb7aea0,
+      emissive: 0x15120e,
+      emissiveIntensity: 0.12,
+      roughness: 0.34,
+      metalness: 0.68,
+    });
+    const chestPlate = new Mesh(new SphereGeometry(0.35, 16, 10), panelMaterial);
+    chestPlate.scale.set(0.9, 1.02, 0.18);
+    chestPlate.position.set(0, 1.14, -0.475);
+    const bellySeam = new Mesh(new BoxGeometry(0.055, 0.72, 0.034), seamMaterial);
+    bellySeam.position.set(0, 1.12, -0.565);
+    [-0.34, 0.34].forEach((side) => {
+      const wingPanel = new Mesh(new SphereGeometry(0.2, 14, 8), panelMaterial);
+      wingPanel.scale.set(0.54, 1.35, 0.18);
+      wingPanel.position.set(side, 1.08, -0.19);
+      wingPanel.rotation.set(0.1, side * 0.5, side * 0.18);
+      const wingSeam = new Mesh(new BoxGeometry(0.034, 0.5, 0.028), seamMaterial);
+      wingSeam.position.set(side * 1.05, 1.06, -0.34);
+      wingSeam.rotation.z = side * 0.08;
+      root.add(wingPanel, wingSeam);
+    });
+    [0.72, 1.48].forEach((height) => {
+      const ring = new Mesh(new TorusGeometry(0.155, 0.011, 8, 20), metalTrimMaterial);
+      ring.scale.x = 1.35;
+      ring.position.set(0, height, -0.475);
+      ring.rotation.x = Math.PI / 2;
+      root.add(ring);
+    });
+    root.add(chestPlate, bellySeam);
+  }
   let propGroup: Group | undefined;
   let drumSticks: StageAnimatronicRefs['drumSticks'];
 
@@ -4280,6 +4405,25 @@ function createStageAnimatronic(
   } else {
     const bib = createDuckBib();
     root.add(bib);
+    if (detailedDuck) {
+      const bibTrimMaterial = new MeshStandardMaterial({
+        color: 0x5bc0f0,
+        emissive: 0x062434,
+        emissiveIntensity: 0.16,
+        roughness: 0.5,
+        metalness: 0.06,
+      });
+      [-0.19, 0.19].forEach((xOffset) => {
+        const bibButton = new Mesh(new SphereGeometry(0.035, 10, 8), bibTrimMaterial);
+        bibButton.scale.set(1, 0.5, 1);
+        bibButton.position.set(xOffset, 1.33, -0.626);
+        root.add(bibButton);
+      });
+      const bibBottomStripe = new Mesh(new BoxGeometry(0.34, 0.026, 0.025), bibTrimMaterial);
+      bibBottomStripe.position.set(0, 0.99, -0.626);
+      bibBottomStripe.rotation.y = Math.PI;
+      root.add(bibBottomStripe);
+    }
     if (includePerformanceProps) {
       const plateMaterial = new MeshStandardMaterial({
         color: 0xf6f0df,
@@ -5779,7 +5923,15 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
   const stageAnimatronicY = PARTY_STAGE_HEIGHT + PARTY_STAGE_ANIMATRONIC_FOOT_LIFT;
   const stageAnimatronics = [
-    createStageAnimatronic('duck', partyRoomCenterX - 4.6, stageAnimatronicY, partyRoomNorthZ + 2.78),
+    createStageAnimatronic(
+      'duck',
+      partyRoomCenterX - 4.6,
+      stageAnimatronicY,
+      partyRoomNorthZ + 2.78,
+      true,
+      true,
+      options.sandboxQuackyDesign === true,
+    ),
     createStageAnimatronic('bunny', partyRoomCenterX, stageAnimatronicY, partyRoomNorthZ + 2.58),
     createStageAnimatronic('bear', partyRoomCenterX + 4.6, stageAnimatronicY, partyRoomNorthZ + 2.78),
   ];
