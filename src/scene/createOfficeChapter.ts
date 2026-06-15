@@ -7082,6 +7082,21 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const southBasementHallwayStartZ = basementWallMaxZ - 0.08;
   const southBasementHallwayEndZ = basementWallMaxZ + southBasementHallwayLength;
   const southBasementHallwayCenterZ = (southBasementHallwayStartZ + southBasementHallwayEndZ) / 2;
+  const basementSideRoomWallX = southBasementHallwayMinX;
+  const basementSideRoomWidth = 7.4;
+  const basementSideRoomDoorWidth = 2.24;
+  const basementSideRooms = [
+    { centerZ: 119.84, depth: 6.2, lightPhase: 2.35 },
+    { centerZ: 129.32, depth: 5.9, lightPhase: 3.1 },
+    { centerZ: 137.33, depth: 5.8, lightPhase: 3.85 },
+  ].map((room) => ({
+    ...room,
+    minX: basementSideRoomWallX - basementSideRoomWidth,
+    maxX: basementSideRoomWallX,
+    centerX: basementSideRoomWallX - basementSideRoomWidth / 2,
+    minZ: room.centerZ - room.depth / 2,
+    maxZ: room.centerZ + room.depth / 2,
+  }));
   const basementHallwayBounds = [
     {
       minX: basementHallwayMinX + 0.5,
@@ -7096,6 +7111,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       maxZ: southBasementHallwayEndZ - 4.15,
     },
   ];
+  basementSideRooms.forEach((room) => {
+    basementHallwayBounds.push({
+      minX: room.minX + 0.58,
+      maxX: room.maxX + 0.82,
+      minZ: room.minZ + 0.42,
+      maxZ: room.maxZ - 0.42,
+    });
+  });
   let basementFlickerTime = 0;
   const basementFlickerLights: Array<{
     light: PointLight;
@@ -7218,6 +7241,31 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       cursorZ = nextZ;
     }
   };
+  const addSegmentedHallwayWallWithGaps = (
+    x: number,
+    startZ: number,
+    endZ: number,
+    gaps: Array<{ minZ: number; maxZ: number }>,
+  ): void => {
+    let cursorZ = startZ;
+    gaps
+      .map((gap) => ({
+        minZ: Math.max(startZ, gap.minZ),
+        maxZ: Math.min(endZ, gap.maxZ),
+      }))
+      .filter((gap) => gap.maxZ > gap.minZ)
+      .sort((a, b) => a.minZ - b.minZ)
+      .forEach((gap) => {
+        if (gap.minZ > cursorZ + 0.04) {
+          addSegmentedHallwayWall(x, cursorZ, gap.minZ);
+        }
+        cursorZ = Math.max(cursorZ, gap.maxZ);
+      });
+
+    if (cursorZ < endZ - 0.04) {
+      addSegmentedHallwayWall(x, cursorZ, endZ);
+    }
+  };
   const addBasementWallSegment = (wall: { x: number; z: number; sx: number; sz: number }): void => {
     const basementWall = new Mesh(new BoxGeometry(wall.sx, basementWallHeight, wall.sz), basementWallMaterial);
     basementWall.position.set(wall.x, basementWallCenterY, wall.z);
@@ -7227,6 +7275,72 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const seam = new Mesh(new BoxGeometry(width, basementWallHeight, width), basementWallMaterial);
     seam.position.set(x, basementWallCenterY, z);
     employeeElevatorRoot.add(seam);
+  };
+  const addBasementSideRoom = (room: typeof basementSideRooms[number], index: number): void => {
+    const floorMaterial = createHallwayRepeatedMaterial(basementFloorMaterial, 1.9, 1.55);
+    const ceilingMaterial = createHallwayRepeatedMaterial(basementCeilingMaterial, 1.7, 1.25);
+    const floor = new Mesh(new BoxGeometry(basementSideRoomWidth, 0.1, room.depth), floorMaterial);
+    floor.position.set(room.centerX, employeeElevatorBasementFloorY - 0.055, room.centerZ);
+    floor.receiveShadow = true;
+    const ceiling = new Mesh(new BoxGeometry(basementSideRoomWidth, 0.08, room.depth), ceilingMaterial);
+    ceiling.position.set(room.centerX, employeeElevatorBasementFloorY + basementWallHeight, room.centerZ);
+    employeeElevatorRoot.add(floor, ceiling);
+
+    addBasementWallSegment({
+      x: room.minX,
+      z: room.centerZ,
+      sx: 0.14,
+      sz: room.depth,
+    });
+    addBasementWallSegment({
+      x: room.centerX,
+      z: room.minZ,
+      sx: basementSideRoomWidth,
+      sz: 0.14,
+    });
+    addBasementWallSegment({
+      x: room.centerX,
+      z: room.maxZ,
+      sx: basementSideRoomWidth,
+      sz: 0.14,
+    });
+
+    const doorMinZ = room.centerZ - basementSideRoomDoorWidth / 2;
+    const doorMaxZ = room.centerZ + basementSideRoomDoorWidth / 2;
+    const northEastWallDepth = doorMinZ - room.minZ;
+    const southEastWallDepth = room.maxZ - doorMaxZ;
+    if (northEastWallDepth > 0.08) {
+      addBasementWallSegment({
+        x: room.maxX,
+        z: room.minZ + northEastWallDepth / 2,
+        sx: 0.14,
+        sz: northEastWallDepth,
+      });
+    }
+    if (southEastWallDepth > 0.08) {
+      addBasementWallSegment({
+        x: room.maxX,
+        z: doorMaxZ + southEastWallDepth / 2,
+        sx: 0.14,
+        sz: southEastWallDepth,
+      });
+    }
+
+    const doorwayHeader = new Mesh(new BoxGeometry(0.16, 0.44, basementSideRoomDoorWidth), basementWallMaterial);
+    doorwayHeader.position.set(room.maxX, employeeElevatorBasementFloorY + basementWallHeight - 0.22, room.centerZ);
+    employeeElevatorRoot.add(doorwayHeader);
+    [
+      [room.minX, room.minZ],
+      [room.minX, room.maxZ],
+      [room.maxX, room.minZ],
+      [room.maxX, room.maxZ],
+      [room.maxX, doorMinZ],
+      [room.maxX, doorMaxZ],
+    ].forEach(([x, z]) => {
+      addBasementWallSeamPost(x, z, 0.26);
+    });
+
+    addBasementFlickerFixture(room.centerX, room.centerZ, 1.25 + index * 0.12, room.lightPhase, 12.5);
   };
   [
     { x: basementWallMinX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
@@ -7344,10 +7458,19 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   employeeElevatorRoot.add(northHallwayFarEndWall);
   addSegmentedHallwayWall(basementHallwayMinX, basementHallwayVisualStartZ, basementHallwayEndZ);
   addSegmentedHallwayWall(basementHallwayMaxX, basementHallwayVisualStartZ, basementHallwayEndZ);
-  addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayStartZ, southBasementHallwayEndZ);
+  addSegmentedHallwayWallWithGaps(
+    southBasementHallwayMinX,
+    southBasementHallwayStartZ,
+    southBasementHallwayEndZ,
+    basementSideRooms.map((room) => ({
+      minZ: room.centerZ - basementSideRoomDoorWidth / 2,
+      maxZ: room.centerZ + basementSideRoomDoorWidth / 2,
+    })),
+  );
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayStartZ, southBasementHallwayEndZ);
   addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
+  basementSideRooms.forEach(addBasementSideRoom);
   const blockedRoomSideWallDepth = blockedBasementRoomDepth;
   [
     { x: blockedBasementRoomMinX, z: blockedBasementRoomCenterZ, sx: 0.14, sz: blockedRoomSideWallDepth },
