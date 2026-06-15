@@ -9273,7 +9273,8 @@ export class Game {
       ? ventBoy.stareTimer + deltaSeconds
       : 0;
     const forcedMove = ventBoy.stareTimer >= OFFICE_VENT_BOY_STARE_LIMIT_SECONDS;
-    const canMove = !watched || forcedMove;
+    const chasingVentPlayer = this.officeVentActive;
+    const canMove = chasingVentPlayer || !watched || forcedMove;
 
     const crawlCycle = this.elapsed * 8.2;
     const leftReach = Math.sin(crawlCycle);
@@ -9290,7 +9291,9 @@ export class Game {
     ventBoy.leftLeg.position.z = 0.24 + Math.max(0, rightReach) * 0.1;
     ventBoy.rightLeg.position.z = 0.24 + Math.max(0, leftReach) * 0.1;
 
-    if (ventBoy.waitTimer > 0) {
+    if (chasingVentPlayer) {
+      ventBoy.waitTimer = 0;
+    } else if (ventBoy.waitTimer > 0) {
       ventBoy.waitTimer = Math.max(0, ventBoy.waitTimer - deltaSeconds);
       return;
     }
@@ -9323,11 +9326,11 @@ export class Game {
       if (!this.officeVentActive) {
         ventBoy.routeIndex = (ventBoy.routeIndex + 1) % ventBoy.route.length;
       }
-      ventBoy.waitTimer = forcedMove ? 0.08 : 0.45;
+      ventBoy.waitTimer = chasingVentPlayer ? 0 : forcedMove ? 0.08 : 0.45;
       return;
     }
 
-    const step = Math.min(distance, OFFICE_VENT_BOY_SPEED * (forcedMove ? 1.65 : 1) * deltaSeconds);
+    const step = Math.min(distance, OFFICE_VENT_BOY_SPEED * (chasingVentPlayer || forcedMove ? 1.65 : 1) * deltaSeconds);
     const nextX = ventBoy.root.position.x + (dx / distance) * step;
     const nextZ = ventBoy.root.position.z + (dz / distance) * step;
     if (!this.canOfficeVentBoyOccupy(nextX, nextZ)) {
