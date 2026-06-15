@@ -583,6 +583,8 @@ const OFFICE_GAME_MODE_DAY_SECONDS = 3 * 60;
 const OFFICE_FUSE_WIRE_COLORS: OfficeFuseWireColor[] = ['green', 'blue', 'red'];
 const OFFICE_VENT_BOY_STARE_LIMIT_SECONDS = 2.65;
 const OFFICE_VENT_BOY_SPEED = 0.82;
+const OFFICE_VENT_BOY_SEARCH_SPEED_MULTIPLIER = 3.15;
+const OFFICE_VENT_BOY_WATCHED_SPEED_MULTIPLIER = 0.72;
 const OFFICE_VENT_BOY_FLOOR_OFFSET = 1.08;
 const OFFICE_VENT_BOY_SOUND_RECORDING_IDS = ['013', '014', '016'];
 const OFFICE_VENT_BOY_SOUND_MIN_DISTANCE = 1.2;
@@ -9047,21 +9049,96 @@ export class Game {
       return desired;
     }
 
-    let bestPoint: Vector3 | null = null;
-    let bestScore = Infinity;
-    ventBoy.route.forEach((point) => {
-      if (!this.isOfficeVentBoyPathClear(root.position.x, root.position.z, point.x, point.z)) {
-        return;
-      }
-      const score = point.distanceTo(desired) + point.distanceTo(root.position) * 0.12;
-      if (score >= bestScore) {
-        return;
-      }
-      bestPoint = point;
-      bestScore = score;
+    const route = ventBoy.route;
+    const startCosts = route.map((point) => (
+      this.isOfficeVentBoyPathClear(root.position.x, root.position.z, point.x, point.z)
+        ? Math.hypot(point.x - root.position.x, point.z - root.position.z)
+        : Infinity
+    ));
+    const hasStart = startCosts.some(Number.isFinite);
+    if (!hasStart) {
+      return this.getNearestOfficeVentPoint(root.position);
+    }
+
+    const goalCosts = route.map((point) => (
+      this.isOfficeVentBoyPathClear(point.x, point.z, desired.x, desired.z)
+        ? Math.hypot(desired.x - point.x, desired.z - point.z)
+        : Infinity
+    ));
+    if (!goalCosts.some(Number.isFinite)) {
+      let nearestGoalIndex = 0;
+      let nearestGoalDistance = Infinity;
+      route.forEach((point, index) => {
+        const distance = Math.hypot(point.x - desired.x, point.z - desired.z);
+        if (distance < nearestGoalDistance) {
+          nearestGoalDistance = distance;
+          nearestGoalIndex = index;
+        }
+      });
+      goalCosts[nearestGoalIndex] = 0;
+    }
+
+    const costs = route.map(() => Infinity);
+    const firstHops = route.map((_, index) => index);
+    const visited = route.map(() => false);
+    startCosts.forEach((cost, index) => {
+      costs[index] = cost;
+      firstHops[index] = index;
     });
 
-    return bestPoint ?? fallback;
+    for (let visitCount = 0; visitCount < route.length; visitCount += 1) {
+      let currentIndex = -1;
+      let currentCost = Infinity;
+      costs.forEach((cost, index) => {
+        if (!visited[index] && cost < currentCost) {
+          currentCost = cost;
+          currentIndex = index;
+        }
+      });
+      if (currentIndex < 0) {
+        break;
+      }
+
+      visited[currentIndex] = true;
+      route.forEach((point, neighborIndex) => {
+        if (visited[neighborIndex] || neighborIndex === currentIndex) {
+          return;
+        }
+
+        const currentPoint = route[currentIndex];
+        if (!this.isOfficeVentBoyPathClear(currentPoint.x, currentPoint.z, point.x, point.z)) {
+          return;
+        }
+
+        const edgeCost = Math.hypot(point.x - currentPoint.x, point.z - currentPoint.z);
+        const nextCost = currentCost + edgeCost;
+        if (nextCost >= costs[neighborIndex]) {
+          return;
+        }
+
+        costs[neighborIndex] = nextCost;
+        firstHops[neighborIndex] = firstHops[currentIndex];
+      });
+    }
+
+    let bestIndex = -1;
+    let bestScore = Infinity;
+    goalCosts.forEach((goalCost, index) => {
+      if (!Number.isFinite(goalCost) || !Number.isFinite(costs[index])) {
+        return;
+      }
+      const score = costs[index] + goalCost;
+      if (score < bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+
+    if (bestIndex < 0) {
+      return fallback;
+    }
+
+    return route[firstHops[bestIndex]] ?? fallback;
   }
 
   private ensureOfficeVentBoy(): OfficeVentBoyState {
@@ -9287,11 +9364,14 @@ export class Game {
     const forcedMove = ventBoy.stareTimer >= OFFICE_VENT_BOY_STARE_LIMIT_SECONDS;
     const chasingVentPlayer = this.officeVentActive;
     const canMove = chasingVentPlayer || !watched || forcedMove;
+    const speedMultiplier = chasingVentPlayer
+      ? (watched ? OFFICE_VENT_BOY_WATCHED_SPEED_MULTIPLIER : OFFICE_VENT_BOY_SEARCH_SPEED_MULTIPLIER)
+      : (forcedMove ? 1.65 : 1);
 
     const crawlCycle = this.elapsed * 8.2;
     const leftReach = Math.sin(crawlCycle);
     const rightReach = Math.sin(crawlCycle + Math.PI);
-    ventBoy.propeller.rotation.y += deltaSeconds * (forcedMove ? 28 : 13);
+    ventBoy.propeller.rotation.y += deltaSeconds * (13 + speedMultiplier * 7.5);
     ventBoy.head.rotation.y = Math.sin(this.elapsed * 4.2) * 0.16;
     ventBoy.root.rotation.x = -0.08 + Math.sin(crawlCycle * 0.5) * 0.018;
     ventBoy.leftArm.rotation.x = -0.34 + leftReach * 0.34;
@@ -9342,11 +9422,15 @@ export class Game {
       return;
     }
 
-    const step = Math.min(distance, OFFICE_VENT_BOY_SPEED * (chasingVentPlayer || forcedMove ? 1.65 : 1) * deltaSeconds);
+    const step = Math.min(distance, OFFICE_VENT_BOY_SPEED * speedMultiplier * deltaSeconds);
     const nextX = ventBoy.root.position.x + (dx / distance) * step;
     const nextZ = ventBoy.root.position.z + (dz / distance) * step;
     if (!this.canOfficeVentBoyOccupy(nextX, nextZ)) {
-      ventBoy.waitTimer = 0.18;
+      const clampedPosition = this.getNearestOfficeVentPoint(ventBoy.root.position);
+      ventBoy.root.position.x = clampedPosition.x;
+      ventBoy.root.position.z = clampedPosition.z;
+      ventBoy.root.position.y = this.getOfficeVentBoyFloorY();
+      ventBoy.waitTimer = chasingVentPlayer ? 0 : 0.18;
       return;
     }
 
