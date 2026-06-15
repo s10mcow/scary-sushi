@@ -3449,112 +3449,6 @@ function createDuckBib(): Group {
   return root;
 }
 
-function getCameraToolPictureDataUrl(captureId: string): string | null {
-  try {
-    const rawCaptures = window.localStorage.getItem('scary-sushi:camera-tool:captures');
-    if (!rawCaptures) {
-      return null;
-    }
-
-    const captures = JSON.parse(rawCaptures) as Array<{ id?: unknown; kind?: unknown; dataUrl?: unknown }>;
-    const capture = captures.find((entry) => (
-      entry?.kind === 'picture'
-      && entry.id === captureId
-      && typeof entry.dataUrl === 'string'
-    ));
-    return typeof capture?.dataUrl === 'string' ? capture.dataUrl : null;
-  } catch {
-    return null;
-  }
-}
-
-function createSandboxQuackyPictureCutout(captureId = '003'): Group {
-  const root = new Group();
-  root.position.set(0, 1.34, -0.72);
-  root.rotation.y = Math.PI;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = 640;
-  canvas.height = 880;
-  const context = canvas.getContext('2d');
-  const drawPlaceholder = (): void => {
-    if (!context) {
-      return;
-    }
-
-    context.fillStyle = '#130c08';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = '#f0c35a';
-    context.font = '700 46px Trebuchet MS, sans-serif';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(`picture ${captureId}`, canvas.width / 2, canvas.height / 2 - 34);
-    context.fillStyle = '#f7efe1';
-    context.font = '700 28px Trebuchet MS, sans-serif';
-    context.fillText('not saved in this browser', canvas.width / 2, canvas.height / 2 + 18);
-  };
-  drawPlaceholder();
-
-  const texture = new CanvasTexture(canvas);
-  const pictureMaterial = new MeshBasicMaterial({
-    map: texture,
-    side: DoubleSide,
-  });
-  const cutout = new Mesh(new PlaneGeometry(1.72, 2.36), pictureMaterial);
-  const frameMaterial = new MeshStandardMaterial({
-    color: 0x2a2119,
-    emissive: 0x070302,
-    emissiveIntensity: 0.16,
-    roughness: 0.44,
-    metalness: 0.38,
-  });
-  const backerMaterial = new MeshStandardMaterial({
-    color: 0x0b0705,
-    emissive: 0x020101,
-    emissiveIntensity: 0.08,
-    roughness: 0.76,
-    metalness: 0.08,
-  });
-  const backer = new Mesh(new BoxGeometry(1.86, 2.5, 0.08), backerMaterial);
-  backer.position.z = 0.035;
-  const topFrame = new Mesh(new BoxGeometry(1.9, 0.06, 0.1), frameMaterial);
-  topFrame.position.set(0, 1.27, -0.02);
-  const bottomFrame = new Mesh(new BoxGeometry(1.9, 0.06, 0.1), frameMaterial);
-  bottomFrame.position.set(0, -1.27, -0.02);
-  const leftFrame = new Mesh(new BoxGeometry(0.06, 2.5, 0.1), frameMaterial);
-  leftFrame.position.set(-0.95, 0, -0.02);
-  const rightFrame = new Mesh(new BoxGeometry(0.06, 2.5, 0.1), frameMaterial);
-  rightFrame.position.set(0.95, 0, -0.02);
-  root.add(backer, cutout, topFrame, bottomFrame, leftFrame, rightFrame);
-
-  const dataUrl = getCameraToolPictureDataUrl(captureId);
-  if (dataUrl && context) {
-    const image = new Image();
-    image.addEventListener('load', () => {
-      context.fillStyle = '#060403';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      const imageAspect = image.width / Math.max(1, image.height);
-      const canvasAspect = canvas.width / canvas.height;
-      let drawWidth = canvas.width;
-      let drawHeight = canvas.height;
-      if (imageAspect > canvasAspect) {
-        drawWidth = canvas.width;
-        drawHeight = canvas.width / imageAspect;
-      } else {
-        drawHeight = canvas.height;
-        drawWidth = canvas.height * imageAspect;
-      }
-      const drawX = (canvas.width - drawWidth) / 2;
-      const drawY = (canvas.height - drawHeight) / 2;
-      context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
-      texture.needsUpdate = true;
-    }, { once: true });
-    image.src = dataUrl;
-  }
-
-  return root;
-}
-
 function createAnimatronicNamePlateMaterial(
   title: string,
   subtitle: string,
@@ -4159,6 +4053,58 @@ function createStageAnimatronic(
       headGroup.add(upperTooth);
       jawGroup.add(lowerTooth);
     });
+    if (detailedDuck) {
+      const innerJawMaterial = new MeshStandardMaterial({
+        color: 0x27211d,
+        emissive: 0x060301,
+        emissiveIntensity: 0.14,
+        roughness: 0.36,
+        metalness: 0.76,
+      });
+      const innerToothMaterial = new MeshStandardMaterial({
+        color: 0xc7c0ae,
+        emissive: 0x0f0c08,
+        emissiveIntensity: 0.08,
+        roughness: 0.34,
+        metalness: 0.28,
+      });
+      const redGlowMaterial = new MeshBasicMaterial({ color: 0xff2f24 });
+      const innerUpperJaw = new Mesh(new BoxGeometry(0.34, 0.045, 0.08), innerJawMaterial);
+      innerUpperJaw.position.set(0, -0.138, -0.5);
+      innerUpperJaw.rotation.x = -0.06;
+      const innerLowerJaw = new Mesh(new BoxGeometry(0.3, 0.04, 0.075), innerJawMaterial);
+      innerLowerJaw.position.set(0, 0.042, -0.145);
+      innerLowerJaw.rotation.x = 0.1;
+      const rearJaw = new Mesh(new BoxGeometry(0.18, 0.038, 0.06), innerJawMaterial);
+      rearJaw.position.set(0, 0.08, -0.205);
+      rearJaw.rotation.x = 0.18;
+      [-0.13, -0.065, 0, 0.065, 0.13].forEach((toothX) => {
+        const innerUpperTooth = new Mesh(new ConeGeometry(0.014, 0.05, 7), innerToothMaterial);
+        innerUpperTooth.position.set(toothX, -0.16, -0.535);
+        innerUpperTooth.rotation.x = Math.PI;
+        const innerLowerTooth = new Mesh(new ConeGeometry(0.012, 0.044, 7), innerToothMaterial);
+        innerLowerTooth.position.set(toothX * 0.88, 0.072, -0.18);
+        innerLowerTooth.rotation.x = 0.12;
+        headGroup.add(innerUpperTooth);
+        jawGroup.add(innerLowerTooth);
+      });
+      [-0.07, 0.07].forEach((toothX) => {
+        const rearTooth = new Mesh(new ConeGeometry(0.01, 0.038, 6), innerToothMaterial);
+        rearTooth.position.set(toothX, 0.108, -0.23);
+        rearTooth.rotation.x = 0.18;
+        jawGroup.add(rearTooth);
+      });
+      [-0.16, 0.16].forEach((eyeX) => {
+        const glowPlate = new Mesh(new SphereGeometry(0.062, 10, 8), redGlowMaterial);
+        glowPlate.scale.set(1.28, 0.72, 0.3);
+        glowPlate.position.set(eyeX, 0.065, -0.355);
+        const eyeLight = new PointLight(0xff2418, 0.45, 1.45);
+        eyeLight.position.set(eyeX, 0.075, -0.42);
+        headGroup.add(glowPlate, eyeLight);
+      });
+      headGroup.add(innerUpperJaw);
+      jawGroup.add(innerLowerJaw, rearJaw);
+    }
     jawGroup.add(lowerBeak);
     headGroup.add(crest, mouthCavity, upperBeak, jawGroup);
   }
@@ -4559,13 +4505,6 @@ function createStageAnimatronic(
       candle.position.set(0.62, 1.46, -0.62);
       root.add(plate, cupcake, frosting, candle);
     }
-  }
-
-  if (detailedDuck) {
-    root.children.forEach((child) => {
-      child.visible = false;
-    });
-    root.add(createSandboxQuackyPictureCutout('003'));
   }
 
   return {
