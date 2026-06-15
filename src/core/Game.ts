@@ -5133,6 +5133,7 @@ export class Game {
       this.cameraToolVideo.playsInline = true;
       this.cameraToolVideo.srcObject = this.cameraToolStream;
       await this.cameraToolVideo.play();
+      this.hud.setCameraToolPreview(this.cameraToolActive, this.cameraToolVideo);
       this.cameraToolMessage = 'Camera and microphone ready. Left click takes a picture; E records video with your voice.';
       this.syncHud();
       return this.cameraToolStream;
@@ -5441,6 +5442,7 @@ export class Game {
   }
 
   private releaseCameraToolStream(): void {
+    this.hud.setCameraToolPreview(false, null);
     this.cameraToolStream?.getTracks().forEach((track) => track.stop());
     this.cameraToolStream = null;
     if (this.cameraToolVideo) {
@@ -11124,6 +11126,7 @@ export class Game {
       this.cameraToolActive,
       this.cameraToolActive ? this.getCameraToolHudText() : '',
     );
+    this.hud.setCameraToolPreview(this.cameraToolActive, this.cameraToolVideo);
     const tabletCameraHudActive = this.officeChapterActive && this.officeTabletCameraFeedActive;
     this.hud.setTabletCameras(
       tabletCameraHudActive,

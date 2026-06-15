@@ -121,6 +121,7 @@ export interface HudController {
   setMicrophone(active: boolean, enabled: boolean, listening: boolean, blocked: boolean, level: number): void;
   setMicrophoneTool(active: boolean, body: string): void;
   setCameraTool(active: boolean, body: string): void;
+  setCameraToolPreview(active: boolean, video?: HTMLVideoElement | null): void;
   setPrompt(text: string): void;
   setActionPrompt(text: string): void;
   setCrouchInstructions(active: boolean, crouched: boolean, text?: string, title?: string): void;
@@ -818,7 +819,16 @@ export function createHud(host: HTMLElement): HudController {
   cameraToolText.className = 'hud__value';
   cameraToolText.textContent = '';
 
-  cameraTool.append(cameraToolLabel, cameraToolText);
+  const cameraToolPreview = document.createElement('div');
+  cameraToolPreview.className = 'hud__camera-tool-preview';
+  cameraToolPreview.dataset.live = 'false';
+
+  const cameraToolPreviewLabel = document.createElement('span');
+  cameraToolPreviewLabel.className = 'hud__camera-tool-preview-label';
+  cameraToolPreviewLabel.textContent = 'Waiting for camera';
+
+  cameraToolPreview.append(cameraToolPreviewLabel);
+  cameraTool.append(cameraToolLabel, cameraToolPreview, cameraToolText);
 
   const tabletCameraPanel = document.createElement('section');
   tabletCameraPanel.className = 'hud__tablet-cameras';
@@ -2649,6 +2659,27 @@ export function createHud(host: HTMLElement): HudController {
     setCameraTool(active, body): void {
       cameraTool.dataset.active = String(active);
       cameraToolText.textContent = body;
+      if (!active) {
+        cameraToolPreview.dataset.live = 'false';
+        cameraToolPreview.replaceChildren(cameraToolPreviewLabel);
+      }
+    },
+    setCameraToolPreview(active, video = null): void {
+      cameraToolPreview.hidden = !active;
+      if (!active || !video) {
+        cameraToolPreview.dataset.live = 'false';
+        cameraToolPreviewLabel.textContent = active ? 'Waiting for camera' : 'Camera hidden';
+        cameraToolPreview.replaceChildren(cameraToolPreviewLabel);
+        return;
+      }
+
+      cameraToolPreview.dataset.live = 'true';
+      video.classList.add('hud__camera-tool-video');
+      video.muted = true;
+      video.playsInline = true;
+      if (video.parentElement !== cameraToolPreview) {
+        cameraToolPreview.replaceChildren(video);
+      }
     },
     setPrompt(text): void {
       promptText.textContent = text;
