@@ -7293,6 +7293,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       roughness: 0.7,
       metalness: 0.18,
     });
+    const doorwayVoidMaterial = new MeshStandardMaterial({
+      color: 0x040302,
+      emissive: 0x010101,
+      emissiveIntensity: 0.08,
+      roughness: 0.92,
+      metalness: 0,
+    });
     const knobMaterial = new MeshStandardMaterial({
       color: 0xa47f42,
       emissive: 0x181006,
@@ -7328,30 +7335,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
     const doorMinZ = room.centerZ - basementSideRoomDoorWidth / 2;
     const doorMaxZ = room.centerZ + basementSideRoomDoorWidth / 2;
-    const northEastWallDepth = doorMinZ - room.minZ;
-    const southEastWallDepth = room.maxZ - doorMaxZ;
-    if (northEastWallDepth > 0.08) {
-      addBasementWallSegment({
-        x: room.maxX,
-        z: room.minZ + northEastWallDepth / 2,
-        sx: 0.14,
-        sz: northEastWallDepth,
-      });
-    }
-    if (southEastWallDepth > 0.08) {
-      addBasementWallSegment({
-        x: room.maxX,
-        z: doorMaxZ + southEastWallDepth / 2,
-        sx: 0.14,
-        sz: southEastWallDepth,
-      });
-    }
 
     const doorwayHeader = new Mesh(new BoxGeometry(0.16, 0.44, basementSideRoomDoorWidth), basementWallMaterial);
-    doorwayHeader.position.set(room.maxX, employeeElevatorBasementFloorY + basementWallHeight - 0.22, room.centerZ);
+    doorwayHeader.position.set(room.maxX + 0.16, employeeElevatorBasementFloorY + basementWallHeight - 0.22, room.centerZ);
     const frameHeight = 2.68;
     const frameCenterY = employeeElevatorBasementFloorY + frameHeight / 2;
-    const frameX = room.maxX + 0.045;
+    const frameX = room.maxX + 0.24;
+    const doorwayVoid = new Mesh(new BoxGeometry(0.06, 2.48, basementSideRoomDoorWidth + 0.22), doorwayVoidMaterial);
+    doorwayVoid.position.set(frameX + 0.035, employeeElevatorBasementFloorY + 1.24, room.centerZ);
     const northFrame = new Mesh(new BoxGeometry(0.28, frameHeight, 0.16), doorTrimMaterial);
     northFrame.position.set(frameX, frameCenterY, doorMinZ - 0.08);
     const southFrame = new Mesh(new BoxGeometry(0.28, frameHeight, 0.16), doorTrimMaterial);
@@ -7359,15 +7350,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const topFrame = new Mesh(new BoxGeometry(0.3, 0.18, basementSideRoomDoorWidth + 0.32), doorTrimMaterial);
     topFrame.position.set(frameX, employeeElevatorBasementFloorY + frameHeight + 0.09, room.centerZ);
     const threshold = new Mesh(new BoxGeometry(0.76, 0.045, basementSideRoomDoorWidth + 0.12), doorTrimMaterial);
-    threshold.position.set(room.maxX - 0.12, employeeElevatorBasementFloorY + 0.012, room.centerZ);
+    threshold.position.set(room.maxX + 0.05, employeeElevatorBasementFloorY + 0.012, room.centerZ);
     const openDoor = new Mesh(new BoxGeometry(basementSideRoomDoorWidth * 0.82, 2.42, 0.1), doorMaterial);
-    openDoor.position.set(room.maxX - basementSideRoomDoorWidth * 0.42, employeeElevatorBasementFloorY + 1.21, doorMinZ + 0.12);
+    openDoor.position.set(room.maxX - basementSideRoomDoorWidth * 0.42, employeeElevatorBasementFloorY + 1.21, doorMinZ + 0.18);
     const doorPanelInset = new Mesh(new BoxGeometry(basementSideRoomDoorWidth * 0.62, 1.82, 0.024), doorTrimMaterial);
     doorPanelInset.position.set(0, 0.02, -0.062);
     const knob = new Mesh(new SphereGeometry(0.07, 10, 8), knobMaterial);
     knob.position.set(basementSideRoomDoorWidth * 0.3, 0.1, -0.09);
     openDoor.add(doorPanelInset, knob);
     employeeElevatorRoot.add(
+      doorwayVoid,
       doorwayHeader,
       northFrame,
       southFrame,
@@ -7507,8 +7499,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     southBasementHallwayStartZ,
     southBasementHallwayEndZ,
     basementSideRooms.map((room) => ({
-      minZ: room.centerZ - basementSideRoomDoorWidth / 2,
-      maxZ: room.centerZ + basementSideRoomDoorWidth / 2,
+      minZ: room.minZ - 0.42,
+      maxZ: room.maxZ + 0.42,
     })),
   );
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayStartZ, southBasementHallwayEndZ);
