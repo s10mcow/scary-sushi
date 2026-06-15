@@ -8978,7 +8978,7 @@ export class Game {
 
     const root = new Group();
     root.visible = false;
-    root.scale.setScalar(0.98);
+    root.scale.setScalar(1.16);
 
     const metalMaterial = new MeshStandardMaterial({
       color: 0x9aa6ad,
@@ -9145,7 +9145,7 @@ export class Game {
 
     const home = this.officeVentBoy.route[0];
     this.officeVentBoy.root.position.copy(home);
-    this.officeVentBoy.root.rotation.set(0, 0, 0);
+    this.officeVentBoy.root.rotation.set(0, Math.PI, 0);
     this.officeVentBoy.root.visible = this.isOfficeVentBoyActive();
     this.officeVentBoy.routeIndex = 1;
     this.officeVentBoy.waitTimer = 1.4;
@@ -9191,7 +9191,7 @@ export class Game {
     const rightReach = Math.sin(crawlCycle + Math.PI);
     ventBoy.propeller.rotation.y += deltaSeconds * (forcedMove ? 28 : 13);
     ventBoy.head.rotation.y = Math.sin(this.elapsed * 4.2) * 0.16;
-    ventBoy.root.rotation.x = Math.sin(crawlCycle * 0.5) * 0.018;
+    ventBoy.root.rotation.x = -0.08 + Math.sin(crawlCycle * 0.5) * 0.018;
     ventBoy.leftArm.rotation.x = -0.34 + leftReach * 0.34;
     ventBoy.rightArm.rotation.x = -0.34 + rightReach * 0.34;
     ventBoy.leftLeg.rotation.x = 0.2 + rightReach * 0.28;
@@ -9228,7 +9228,7 @@ export class Game {
     ventBoy.root.position.x += (dx / distance) * step;
     ventBoy.root.position.z += (dz / distance) * step;
     ventBoy.root.position.y = this.getOfficeVentBoyFloorY();
-    ventBoy.root.rotation.y = Math.atan2(dx, dz);
+    ventBoy.root.rotation.y = Math.atan2(dx, dz) + Math.PI;
   }
 
   private updateOfficeGameModePower(deltaSeconds: number): void {
@@ -10088,13 +10088,15 @@ export class Game {
     const leftHandAndRightKnee = Math.sin(crawlCycle);
     const rightHandAndLeftKnee = Math.sin(crawlCycle + Math.PI);
     const crawlPush = Math.abs(Math.sin(crawlCycle));
+    const leftPairLift = Math.max(0, leftHandAndRightKnee);
+    const rightPairLift = Math.max(0, rightHandAndLeftKnee);
     const animationFloorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, animatronic.model.root.position.x, animatronic.model.root.position.z);
-    const crawlYOffset = animatronic.animatronic === 'foxy' ? -0.34 : -0.43;
+    const crawlYOffset = animatronic.animatronic === 'foxy' ? -0.48 : -0.58;
     const crawlBob = crawlPush * (running ? 0.045 : 0.026) * animatronic.walkCycleBounceMultiplier;
 
     animatronic.model.root.rotation.x = MathUtils.lerp(
       animatronic.model.root.rotation.x,
-      -0.96 + crawlPush * 0.055,
+      -1.2 + crawlPush * 0.06,
       0.36,
     );
     animatronic.model.root.rotation.z = MathUtils.lerp(
@@ -10106,7 +10108,7 @@ export class Game {
 
     animatronic.model.head.rotation.x = MathUtils.lerp(
       animatronic.model.head.rotation.x,
-      0.62 + Math.sin(crawlCycle * 0.5) * 0.045,
+      1.02 + Math.sin(crawlCycle * 0.5) * 0.05,
       0.24,
     );
     animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 7.4 : 4.8) * animatronic.walkCycleSpeedMultiplier + animatronic.walkCyclePhase * 0.6)
@@ -10114,38 +10116,38 @@ export class Game {
       * (running ? 1.15 : 0.62)
       * animatronic.walkCycleBounceMultiplier;
 
-    const handReach = (running ? 0.34 : 0.24) * crawlStrength * animatronic.walkCycleArmMultiplier;
-    const handPlant = (running ? 0.26 : 0.18) * crawlStrength;
-    const kneeReach = (running ? 0.25 : 0.18) * crawlStrength * animatronic.walkCycleStrideMultiplier;
+    const handReach = (running ? 0.28 : 0.2) * crawlStrength * animatronic.walkCycleArmMultiplier;
+    const handPlant = (running ? 0.22 : 0.16) * crawlStrength;
+    const kneeReach = (running ? 0.32 : 0.22) * crawlStrength * animatronic.walkCycleStrideMultiplier;
     animatronic.model.leftArm.rotation.set(
-      -1.46 + leftHandAndRightKnee * handReach,
+      -1.68 + leftHandAndRightKnee * handReach,
       0.28,
-      0.9 - Math.max(0, rightHandAndLeftKnee) * handPlant,
+      0.72 - rightPairLift * handPlant,
     );
     animatronic.model.rightArm.rotation.set(
-      -1.46 + rightHandAndLeftKnee * handReach,
+      -1.68 + rightHandAndLeftKnee * handReach,
       -0.28,
-      -0.9 + Math.max(0, leftHandAndRightKnee) * handPlant,
+      -0.72 + leftPairLift * handPlant,
     );
-    animatronic.model.leftArmJoint.rotation.x = -0.72 - Math.max(0, leftHandAndRightKnee) * 0.32 * crawlStrength;
-    animatronic.model.rightArmJoint.rotation.x = -0.72 - Math.max(0, rightHandAndLeftKnee) * 0.32 * crawlStrength;
-    animatronic.model.leftArmJoint.rotation.z = -0.18 - Math.max(0, rightHandAndLeftKnee) * 0.12;
-    animatronic.model.rightArmJoint.rotation.z = 0.18 + Math.max(0, leftHandAndRightKnee) * 0.12;
+    animatronic.model.leftArmJoint.rotation.x = -1.08 - leftPairLift * 0.24 * crawlStrength;
+    animatronic.model.rightArmJoint.rotation.x = -1.08 - rightPairLift * 0.24 * crawlStrength;
+    animatronic.model.leftArmJoint.rotation.z = -0.24 - rightPairLift * 0.12;
+    animatronic.model.rightArmJoint.rotation.z = 0.24 + leftPairLift * 0.12;
 
     animatronic.model.leftLeg.rotation.set(
-      1.05 + rightHandAndLeftKnee * kneeReach,
+      1.48 + rightHandAndLeftKnee * kneeReach,
       -0.08,
-      0.42 + Math.max(0, leftHandAndRightKnee) * 0.16,
+      0.28 + leftPairLift * 0.12,
     );
     animatronic.model.rightLeg.rotation.set(
-      1.05 + leftHandAndRightKnee * kneeReach,
+      1.48 + leftHandAndRightKnee * kneeReach,
       0.08,
-      -0.42 - Math.max(0, rightHandAndLeftKnee) * 0.16,
+      -0.28 - rightPairLift * 0.12,
     );
-    animatronic.model.leftLegJoint.rotation.x = -1.02 + Math.max(0, rightHandAndLeftKnee) * 0.36 * crawlStrength;
-    animatronic.model.rightLegJoint.rotation.x = -1.02 + Math.max(0, leftHandAndRightKnee) * 0.36 * crawlStrength;
-    animatronic.model.leftLegJoint.rotation.z = 0.08 + Math.max(0, leftHandAndRightKnee) * 0.12;
-    animatronic.model.rightLegJoint.rotation.z = -0.08 - Math.max(0, rightHandAndLeftKnee) * 0.12;
+    animatronic.model.leftLegJoint.rotation.x = -1.46 + rightPairLift * 0.34 * crawlStrength;
+    animatronic.model.rightLegJoint.rotation.x = -1.46 + leftPairLift * 0.34 * crawlStrength;
+    animatronic.model.leftLegJoint.rotation.z = 0.14 + leftPairLift * 0.12;
+    animatronic.model.rightLegJoint.rotation.z = -0.14 - rightPairLift * 0.12;
     return false;
   }
 
