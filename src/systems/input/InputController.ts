@@ -24,6 +24,7 @@ export class InputController {
   private hudHelpToggleQueued = false;
   private placementToolToggleQueued = false;
   private placementMarkerDeleteQueued = false;
+  private paintbrushModeToggleQueued = false;
   private fireQueued = false;
   private secondaryFireQueued = false;
   private fireHeld = false;
@@ -129,6 +130,12 @@ export class InputController {
     return value;
   }
 
+  consumePaintbrushModeToggle(): boolean {
+    const value = this.paintbrushModeToggleQueued;
+    this.paintbrushModeToggleQueued = false;
+    return value;
+  }
+
   consumeFire(): boolean {
     const value = this.fireQueued;
     this.fireQueued = false;
@@ -203,7 +210,11 @@ export class InputController {
       this.dropQueued = true;
     }
 
-    if ((event.code === 'KeyC' || event.code === 'KeyQ') && !event.repeat) {
+    if (event.code === 'KeyQ' && !event.repeat) {
+      this.paintbrushModeToggleQueued = true;
+    }
+
+    if (event.code === 'KeyC' && !event.repeat) {
       this.useItemQueued = true;
     }
 

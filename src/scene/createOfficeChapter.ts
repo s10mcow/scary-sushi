@@ -7569,8 +7569,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     southBasementHallwayStartZ,
     southBasementHallwayEndZ,
     basementSideRooms.map((room) => ({
-      minZ: room.minZ - 0.12,
-      maxZ: room.maxZ + 0.12,
+      minZ: room.openingMinZ,
+      maxZ: room.openingMaxZ,
     })),
   );
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayStartZ, southBasementHallwayEndZ);

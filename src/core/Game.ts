@@ -734,6 +734,7 @@ const CAMERA_TOOL_CAPTURES_STORAGE_KEY = 'scary-sushi:camera-tool:captures';
 const CAMERA_TOOL_NEXT_PICTURE_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-picture-index';
 const CAMERA_TOOL_NEXT_VIDEO_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-video-index';
 const CAMERA_TOOL_MAX_CAPTURES = 24;
+const PAINTBRUSH_EDITS_STORAGE_KEY = 'scary-sushi:paintbrush:edits';
 const OFFICE_JUMPSCARE_CAMERA_CAPTURE_ASSIGNMENTS: Partial<Record<OfficeJumpscareAnimatronic, {
   kind: CameraToolCaptureKind;
   id: string;
@@ -900,6 +901,13 @@ type ChapterSevenInteractable =
 
 type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'torch' | 'empty';
 
+interface PaintbrushEditRecord {
+  chapter: HudChapterId;
+  path: number[];
+  point: [number, number, number];
+  radius: number;
+}
+
 const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
   'coordinate-tool',
   'military-knife',
@@ -964,6 +972,7 @@ export class Game {
   private readonly officePrizeItemAnchor = new Group();
   private readonly officePrizeItemModels = new Map<OfficePrizeItemId, Group>();
   private readonly officeTabletAnchor = new Group();
+  private readonly paintbrushAnchor = new Group();
   private readonly chapterFourBoxHeldAnchor = new Group();
   private readonly chapterFourBoxHideAnchor = new Group();
   private readonly chapterFourBoxWideAnchor = new Group();
@@ -1002,6 +1011,7 @@ export class Game {
   private readonly placementSurfaceUp = new Vector3(0, 1, 0);
   private readonly placementRayOrigin = new Vector3();
   private readonly placementRayDirection = new Vector3();
+  private readonly paintbrushRestorePoint = new Vector3();
   private readonly placementSurfaceNormal = new Vector3(0, 1, 0);
   private readonly placementSurfaceQuaternion = new Quaternion();
   private readonly placementCameraWorldPosition = new Vector3();
@@ -1123,6 +1133,11 @@ export class Game {
   private officeTabletHeld = false;
   private officeTabletCameraFeedActive = false;
   private officeTabletCameraIndex = 0;
+  private paintbrushActive = false;
+  private paintbrushMode: 'erase' | 'paint' = 'erase';
+  private paintbrushSize = 3;
+  private paintbrushStrokeCooldown = 0;
+  private readonly paintbrushEdits: PaintbrushEditRecord[] = [];
   private chapterFourBoxHeld = false;
   private chapterFourBoxActive = false;
   private chapterFourBoxViewMode: 'normal' | 'wide' = 'normal';
@@ -1379,6 +1394,11 @@ export class Game {
     this.officeTabletAnchor.rotation.set(-0.1, -0.18, 0.04);
     this.officeTabletAnchor.visible = false;
     this.createOfficeTabletModel();
+    this.camera.add(this.paintbrushAnchor);
+    this.paintbrushAnchor.position.set(0.42, -0.39, -0.62);
+    this.paintbrushAnchor.rotation.set(-0.08, -0.32, 0.12);
+    this.paintbrushAnchor.visible = false;
+    this.createPaintbrushModel();
     this.camera.add(this.chapterFourBoxHeldAnchor);
     this.chapterFourBoxHeldAnchor.position.set(0.36, -0.46, -0.64);
     this.chapterFourBoxHeldAnchor.rotation.set(0.08, -0.22, 0.06);
@@ -1432,6 +1452,8 @@ export class Game {
     this.createPlacementPreviewModel();
     this.scene.add(this.placementMarkerRoot, this.placementPreview);
     this.placementPreview.visible = false;
+    this.loadPaintbrushEdits();
+    this.applyPaintbrushEdits();
 
     this.player.mount();
 
@@ -2601,6 +2623,12 @@ export class Game {
       }
     }
 
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumePaintbrushModeToggle() && this.paintbrushActive) {
+      this.paintbrushMode = this.paintbrushMode === 'erase' ? 'paint' : 'erase';
+      this.pushStatus(`Paintbrush switched to ${this.paintbrushMode} mode. Hold left click to ${this.paintbrushMode === 'erase' ? 'erase touched parts' : 'restore erased parts'}.`, 2.2);
+      this.syncHud();
+    }
+
     if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitHiding && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && this.input.consumePlacementMarkerDelete() && (this.placementToolActive || this.microphoneSoundToolActive || this.cameraToolActive)) {
       if (this.microphoneSoundToolActive) {
         this.deleteMicrophoneSound();
@@ -2649,6 +2677,9 @@ export class Game {
         this.previewMicrophoneSound();
       } else if (this.cameraToolActive) {
         void this.captureCameraToolPicture();
+      } else if (this.paintbrushActive) {
+        this.applyPaintbrushStroke();
+        this.paintbrushStrokeCooldown = Math.max(this.paintbrushStrokeCooldown, 0.08);
       } else if (this.placementToolActive) {
         this.placePlacementMarker();
       } else {
@@ -2993,6 +3024,7 @@ export class Game {
     this.updateChapterSixPettingArmDisplay(deltaSeconds);
     this.updateChapterEightHeldItemDisplay(deltaSeconds);
     this.updateMicrophoneSoundToolDisplay();
+    this.updatePaintbrushTool(deltaSeconds);
     this.updateOfficeTabletDisplay();
     this.updateChapterFourBoxDisplay();
     this.updateChapterSevenBoxDisplay();
@@ -4269,6 +4301,69 @@ export class Game {
     );
   }
 
+  private createPaintbrushModel(): void {
+    const handMaterial = new MeshStandardMaterial({
+      color: 0xc88c65,
+      roughness: 0.7,
+      metalness: 0.02,
+    });
+    const handleMaterial = new MeshStandardMaterial({
+      color: 0x74421f,
+      emissive: 0x120604,
+      emissiveIntensity: 0.08,
+      roughness: 0.58,
+      metalness: 0.03,
+    });
+    const ferruleMaterial = new MeshStandardMaterial({
+      color: 0xb6bbc1,
+      roughness: 0.28,
+      metalness: 0.68,
+    });
+    const bristleMaterial = new MeshStandardMaterial({
+      color: 0x151515,
+      emissive: 0x020202,
+      emissiveIntensity: 0.1,
+      roughness: 0.92,
+      metalness: 0.01,
+    });
+    const paintMaterial = new MeshStandardMaterial({
+      color: 0x0a0a0a,
+      emissive: 0x000000,
+      roughness: 0.84,
+      metalness: 0.02,
+    });
+
+    const handPalm = new Mesh(new BoxGeometry(0.24, 0.16, 0.18), handMaterial);
+    handPalm.position.set(0.02, -0.08, 0.02);
+    handPalm.rotation.set(0.12, -0.18, 0.1);
+
+    const thumb = new Mesh(new CylinderGeometry(0.035, 0.04, 0.22, 10), handMaterial);
+    thumb.position.set(-0.1, 0, -0.04);
+    thumb.rotation.set(0.74, 0.2, -0.66);
+
+    const finger = new Mesh(new CylinderGeometry(0.028, 0.034, 0.26, 10), handMaterial);
+    finger.position.set(0.11, 0, -0.05);
+    finger.rotation.set(0.68, -0.18, 0.52);
+
+    const handle = new Mesh(new CylinderGeometry(0.035, 0.035, 0.72, 14), handleMaterial);
+    handle.rotation.x = Math.PI / 2;
+    handle.position.set(0, 0.04, -0.16);
+
+    const ferrule = new Mesh(new CylinderGeometry(0.052, 0.046, 0.16, 14), ferruleMaterial);
+    ferrule.rotation.x = Math.PI / 2;
+    ferrule.position.set(0, 0.04, -0.58);
+
+    const bristles = new Mesh(new CylinderGeometry(0.018, 0.052, 0.2, 14), bristleMaterial);
+    bristles.rotation.x = Math.PI / 2;
+    bristles.position.set(0, 0.04, -0.76);
+
+    const wetTip = new Mesh(new SphereGeometry(0.035, 10, 8), paintMaterial);
+    wetTip.position.set(0, 0.04, -0.88);
+    wetTip.scale.set(1.05, 0.75, 0.48);
+
+    this.paintbrushAnchor.add(handPalm, thumb, finger, handle, ferrule, bristles, wetTip);
+  }
+
   private createMicrophoneSoundToolModel(): void {
     const handleMaterial = new MeshStandardMaterial({
       color: 0x24202a,
@@ -4405,6 +4500,8 @@ export class Game {
         this.stopMicrophoneSoundRecording();
       }
       this.clearCameraToolState();
+      this.paintbrushActive = false;
+      this.paintbrushAnchor.visible = false;
       this.officeTabletHeld = false;
       this.officeTabletCameraFeedActive = false;
       this.officeTabletAnchor.visible = false;
@@ -4441,6 +4538,8 @@ export class Game {
     if (active) {
       this.setPlacementToolActive(false);
       this.clearCameraToolState();
+      this.paintbrushActive = false;
+      this.paintbrushAnchor.visible = false;
       this.officeTabletHeld = false;
       this.officeTabletCameraFeedActive = false;
       this.officeTabletAnchor.visible = false;
@@ -4487,6 +4586,8 @@ export class Game {
     if (active) {
       this.setPlacementToolActive(false);
       this.setMicrophoneSoundToolActive(false);
+      this.paintbrushActive = false;
+      this.paintbrushAnchor.visible = false;
       this.officeTabletHeld = false;
       this.officeTabletCameraFeedActive = false;
       this.officeTabletAnchor.visible = false;
@@ -4526,6 +4627,50 @@ export class Game {
       this.stopCameraToolVideoRecording(true);
     }
     this.releaseCameraToolStream();
+  }
+
+  private setPaintbrushActive(active: boolean): void {
+    if (this.paintbrushActive === active) {
+      return;
+    }
+
+    this.paintbrushActive = active;
+    this.paintbrushStrokeCooldown = 0;
+    if (active) {
+      this.setPlacementToolActive(false);
+      this.setMicrophoneSoundToolActive(false);
+      this.clearCameraToolState();
+      this.officeTabletHeld = false;
+      this.officeTabletCameraFeedActive = false;
+      this.officeTabletAnchor.visible = false;
+      this.officeGlassHeld = false;
+      this.officeGlassAnchor.visible = false;
+      this.clearOfficeHeldPrizeItem();
+      this.chapterFourBoxHeld = false;
+      this.chapterFourBoxActive = false;
+      this.chapterFourBoxViewMode = 'normal';
+      this.chapterFourBoxWideCameraReady = false;
+      this.chapterFourBoxHeldAnchor.visible = false;
+      this.chapterFourBoxHideAnchor.visible = false;
+      this.chapterFourBoxWideAnchor.visible = false;
+      this.chapterFourBoxWorldAnchor.visible = false;
+    } else {
+      this.paintbrushAnchor.visible = false;
+    }
+
+    this.pushStatus(
+      active
+        ? `Paintbrush equipped. Hold left click to ${this.paintbrushMode}; press Q for ${this.paintbrushMode === 'erase' ? 'paint' : 'erase'} mode; 1-9 changes size.`
+        : 'Paintbrush put away.',
+      active ? 3.8 : 1.4,
+    );
+    this.syncHud();
+  }
+
+  private clearPaintbrushState(): void {
+    this.paintbrushActive = false;
+    this.paintbrushAnchor.visible = false;
+    this.paintbrushStrokeCooldown = 0;
   }
 
   private async startMicrophoneSoundRecording(): Promise<void> {
@@ -5513,6 +5658,7 @@ export class Game {
     this.setPlacementToolActive(false);
     this.setMicrophoneSoundToolActive(false);
     this.setCameraToolActive(false);
+    this.setPaintbrushActive(false);
     this.officeTabletHeld = false;
     this.officeTabletCameraFeedActive = false;
     this.officeTabletAnchor.visible = false;
@@ -5550,8 +5696,20 @@ export class Game {
   }
 
   private handleOfficeHotbarSlot(slot: number): void {
+    if (this.paintbrushActive && slot >= 1 && slot <= 9) {
+      this.paintbrushSize = slot;
+      this.pushStatus(`Paintbrush size set to ${slot}. ${this.paintbrushMode === 'erase' ? 'Erase' : 'Paint'} mode.`, 1.4);
+      this.syncHud();
+      return;
+    }
+
     if (slot === 1) {
       this.setPlacementToolActive(true);
+      return;
+    }
+
+    if (slot === 2) {
+      this.setPaintbrushActive(true);
       return;
     }
 
@@ -5584,6 +5742,10 @@ export class Game {
       return 4;
     }
 
+    if (this.paintbrushActive) {
+      return 2;
+    }
+
     const heldPrizeSlot = OFFICE_PRIZE_HOTBAR_SLOTS.find((entry) => entry.item === this.officeHeldPrizeItem);
     return heldPrizeSlot?.slot ?? 0;
   }
@@ -5594,6 +5756,8 @@ export class Game {
     this.placementPreview.visible = false;
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
+    this.setPaintbrushActive(false);
     this.officeTabletHeld = false;
     this.officeTabletCameraFeedActive = false;
     this.officeTabletAnchor.visible = false;
@@ -5609,7 +5773,7 @@ export class Game {
     const prizeSlots = OFFICE_PRIZE_HOTBAR_SLOTS
       .filter((entry) => this.getOfficePrizeItemCount(entry.item) > 0)
       .map((entry) => entry.slot);
-    const slots = [0, 1, 3, 4, ...prizeSlots];
+    const slots = [0, 1, 2, 3, 4, ...prizeSlots];
     const currentSlot = this.getCurrentOfficeHotbarSlot();
     const currentIndex = Math.max(0, slots.indexOf(currentSlot));
     const nextIndex = (currentIndex + Math.sign(direction) + slots.length) % slots.length;
@@ -5671,6 +5835,7 @@ export class Game {
     this.placementPreview.visible = false;
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.setChapterFourBoxHeld(false, false);
     this.pushStatus('Hands empty. Spin the mouse wheel or press a hotbar number to hold a Chapter 4 item.', 1.7);
     this.syncHud();
@@ -10066,6 +10231,277 @@ export class Game {
     return false;
   }
 
+  private getPaintbrushRadius(): number {
+    return 0.12 + this.paintbrushSize * 0.18;
+  }
+
+  private getPaintbrushObjectPath(root: Object3D, target: Object3D): number[] | null {
+    const path: number[] = [];
+    let current: Object3D | null = target;
+    while (current && current !== root) {
+      const parent: Object3D | null = current.parent;
+      if (!parent) {
+        return null;
+      }
+      const index = parent.children.indexOf(current);
+      if (index < 0) {
+        return null;
+      }
+      path.unshift(index);
+      current = parent;
+    }
+
+    return current === root ? path : null;
+  }
+
+  private getPaintbrushObjectByPath(root: Object3D, path: number[]): Object3D | null {
+    let current: Object3D | undefined = root;
+    for (const index of path) {
+      current = current.children[index];
+      if (!current) {
+        return null;
+      }
+    }
+    return current;
+  }
+
+  private getPaintbrushPathKey(chapter: HudChapterId, path: number[]): string {
+    return `${chapter}:${path.join('.')}`;
+  }
+
+  private loadPaintbrushEdits(): void {
+    this.paintbrushEdits.length = 0;
+    try {
+      const raw = window.localStorage.getItem(PAINTBRUSH_EDITS_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+      parsed.forEach((entry) => {
+        if (
+          entry
+          && typeof entry === 'object'
+          && 'chapter' in entry
+          && 'path' in entry
+          && 'point' in entry
+          && 'radius' in entry
+          && Array.isArray(entry.path)
+          && Array.isArray(entry.point)
+          && entry.point.length === 3
+          && typeof entry.radius === 'number'
+        ) {
+          this.paintbrushEdits.push({
+            chapter: entry.chapter as HudChapterId,
+            path: entry.path.filter((index: unknown): index is number => typeof index === 'number' && Number.isInteger(index) && index >= 0),
+            point: [
+              Number(entry.point[0]),
+              Number(entry.point[1]),
+              Number(entry.point[2]),
+            ],
+            radius: Math.max(0.12, Number(entry.radius)),
+          });
+        }
+      });
+    } catch {
+      this.paintbrushEdits.length = 0;
+    }
+  }
+
+  private savePaintbrushEdits(): void {
+    try {
+      window.localStorage.setItem(PAINTBRUSH_EDITS_STORAGE_KEY, JSON.stringify(this.paintbrushEdits));
+    } catch {
+      // The paintbrush still works for this session if browser storage is unavailable.
+    }
+  }
+
+  private applyPaintbrushEdits(): void {
+    const rootsByChapter = new Map<HudChapterId, Object3D>([
+      ['chapter-1', this.level.root],
+      ['chapter-2', this.chapterTwo.root],
+      ['chapter-3', this.mainOfficeChapter.root],
+      ['chapter-3-copy', this.officeSandboxChapter.root],
+      ['chapter-4', this.chapterFour.root],
+      ['chapter-5', this.chapterFive.root],
+      ['chapter-6', this.chapterSix.root],
+      ['chapter-7', this.chapterSeven.root],
+      ['chapter-8', this.chapterEight.root],
+    ]);
+
+    this.paintbrushEdits.forEach((edit) => {
+      const root = rootsByChapter.get(edit.chapter);
+      const object = root ? this.getPaintbrushObjectByPath(root, edit.path) : null;
+      if (object) {
+        object.visible = false;
+        object.userData.paintbrushErased = true;
+      }
+    });
+  }
+
+  private getPaintbrushRaycastRoot(): Object3D | null {
+    return this.getPlacementRaycastRoots()[0] ?? null;
+  }
+
+  private isPaintbrushIgnored(object: Object3D): boolean {
+    let current: Object3D | null = object;
+    while (current) {
+      if (
+        current.userData.placementToolIgnore
+        || current.userData.paintbrushLocked
+        || current === this.placementMarkerRoot
+        || current === this.placementPreview
+      ) {
+        return true;
+      }
+      current = current.parent;
+    }
+    return false;
+  }
+
+  private getPaintbrushTarget(): { object: Object3D; point: Vector3; root: Object3D; path: number[] } | null {
+    const root = this.getPaintbrushRaycastRoot();
+    if (!root) {
+      return null;
+    }
+
+    this.camera.getWorldPosition(this.placementRayOrigin);
+    this.camera.getWorldDirection(this.placementRayDirection).normalize();
+    this.placementRaycaster.near = 0.18;
+    this.placementRaycaster.far = 28;
+    this.placementRaycaster.set(this.placementRayOrigin, this.placementRayDirection);
+
+    const intersections = this.placementRaycaster.intersectObject(root, true);
+    for (const hit of intersections) {
+      if (this.isPaintbrushIgnored(hit.object)) {
+        continue;
+      }
+      const path = this.getPaintbrushObjectPath(root, hit.object);
+      if (!path) {
+        continue;
+      }
+      return {
+        object: hit.object,
+        point: hit.point.clone(),
+        root,
+        path,
+      };
+    }
+
+    return null;
+  }
+
+  private restorePaintbrushEditUnderBrush(): boolean {
+    const chapter = this.getCurrentHudChapterId();
+    const root = this.getPaintbrushRaycastRoot();
+    if (!root) {
+      return false;
+    }
+
+    this.camera.getWorldPosition(this.placementRayOrigin);
+    this.camera.getWorldDirection(this.placementRayDirection).normalize();
+    const radius = this.getPaintbrushRadius();
+    let bestIndex = -1;
+    let bestAlong = Infinity;
+
+    this.paintbrushEdits.forEach((edit, index) => {
+      if (edit.chapter !== chapter) {
+        return;
+      }
+      this.paintbrushRestorePoint.set(edit.point[0], edit.point[1], edit.point[2]);
+      const toPoint = this.paintbrushRestorePoint.clone().sub(this.placementRayOrigin);
+      const along = toPoint.dot(this.placementRayDirection);
+      if (along < 0.18 || along > 28 || along >= bestAlong) {
+        return;
+      }
+      const distance = toPoint.addScaledVector(this.placementRayDirection, -along).length();
+      if (distance > Math.max(radius, edit.radius)) {
+        return;
+      }
+      bestIndex = index;
+      bestAlong = along;
+    });
+
+    if (bestIndex < 0) {
+      return false;
+    }
+
+    const [edit] = this.paintbrushEdits.splice(bestIndex, 1);
+    const object = this.getPaintbrushObjectByPath(root, edit.path);
+    if (object) {
+      object.visible = true;
+      object.userData.paintbrushErased = false;
+    }
+    this.savePaintbrushEdits();
+    this.gameplaySfxAudio.playSmallPanel(true);
+    return true;
+  }
+
+  private applyPaintbrushStroke(): void {
+    if (!this.paintbrushActive || !this.player.isLocked() || this.chapterMenuOpen) {
+      return;
+    }
+
+    if (this.paintbrushMode === 'paint') {
+      if (!this.restorePaintbrushEditUnderBrush()) {
+        return;
+      }
+      this.pushStatus(`Paintbrush restored an erased part. Size ${this.paintbrushSize}.`, 0.9);
+      return;
+    }
+
+    const target = this.getPaintbrushTarget();
+    if (!target || !(target.object instanceof Mesh)) {
+      return;
+    }
+
+    const chapter = this.getCurrentHudChapterId();
+    const key = this.getPaintbrushPathKey(chapter, target.path);
+    if (this.paintbrushEdits.some((edit) => this.getPaintbrushPathKey(edit.chapter, edit.path) === key)) {
+      return;
+    }
+
+    target.object.visible = false;
+    target.object.userData.paintbrushErased = true;
+    this.paintbrushEdits.push({
+      chapter,
+      path: target.path,
+      point: [target.point.x, target.point.y, target.point.z],
+      radius: this.getPaintbrushRadius(),
+    });
+    this.savePaintbrushEdits();
+    this.gameplaySfxAudio.playSmallPanel(false);
+    this.pushStatus(`Paintbrush erased the touched part. Size ${this.paintbrushSize}. Press Q to paint it back.`, 1.1);
+  }
+
+  private updatePaintbrushTool(deltaSeconds: number): void {
+    const visible = this.paintbrushActive
+      && this.player.isLocked()
+      && !this.chapterMenuOpen
+      && !this.officeJumpscareMenuOpen
+      && !this.officeModeMenuOpen
+      && !this.officeTabletCameraFeedActive
+      && !this.placementToolActive
+      && !this.microphoneSoundToolActive
+      && !this.cameraToolActive;
+    this.paintbrushAnchor.visible = visible;
+    if (!visible) {
+      return;
+    }
+
+    const sizeScale = 0.92 + this.paintbrushSize * 0.035;
+    this.paintbrushAnchor.scale.setScalar(sizeScale);
+    this.paintbrushStrokeCooldown = Math.max(0, this.paintbrushStrokeCooldown - deltaSeconds);
+    if (!this.input.isFireHeld() || this.paintbrushStrokeCooldown > 0) {
+      return;
+    }
+
+    this.paintbrushStrokeCooldown = Math.max(0.045, 0.18 - this.paintbrushSize * 0.012);
+    this.applyPaintbrushStroke();
+  }
+
   private placePlacementMarker(): void {
     if (!this.player.isLocked() || this.chapterMenuOpen) {
       return;
@@ -10268,7 +10704,7 @@ export class Game {
 
   private updatePlacementToolDisplay(): void {
     const tabletActive = this.officeChapterActive && (this.officeTabletHeld || this.officeTabletCameraFeedActive);
-    const toolVisible = this.placementToolActive && this.player.isLocked() && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && !tabletActive && !this.microphoneSoundToolActive;
+    const toolVisible = this.placementToolActive && this.player.isLocked() && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && !tabletActive && !this.microphoneSoundToolActive && !this.paintbrushActive;
     this.placementToolAnchor.visible = toolVisible;
 
     if (this.officeChapterActive) {
@@ -10389,6 +10825,7 @@ export class Game {
       && !this.officeModeMenuOpen
       && !tabletActive
       && !this.placementToolActive
+      && !this.paintbrushActive
       && !(this.chapterFourActive && this.chapterFourBoxActive);
   }
 
@@ -10401,6 +10838,9 @@ export class Game {
       && !this.officeModeMenuOpen
       && !this.officeTabletCameraFeedActive
       && !this.placementToolActive;
+    if (this.paintbrushActive) {
+      this.officeGlassAnchor.visible = false;
+    }
   }
 
   private updateOfficePrizeItemDisplay(): void {
@@ -10418,7 +10858,8 @@ export class Game {
       && !this.officeModeMenuOpen
       && !this.officeTabletCameraFeedActive
       && !this.placementToolActive
-      && !this.microphoneSoundToolActive;
+      && !this.microphoneSoundToolActive
+      && !this.paintbrushActive;
 
     this.officePrizeItemAnchor.visible = visible;
     this.officePrizeItemModels.forEach((model, item) => {
@@ -12342,6 +12783,7 @@ export class Game {
     this.placementToolActive = false;
     this.placementPreview.visible = false;
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.officeTabletHeld = false;
     this.officeTabletCameraFeedActive = false;
     this.officeTabletAnchor.visible = false;
@@ -15404,7 +15846,12 @@ export class Game {
       });
       return [
         coordinateToolSlot,
-        { label: 'Empty', count: 0, filled: false },
+        {
+          label: `Paintbrush ${this.paintbrushActive ? `[${this.paintbrushMode} ${this.paintbrushSize}]` : '[2]'}`,
+          count: this.paintbrushSize,
+          filled: true,
+          selected: this.paintbrushActive,
+        },
         this.getMicrophoneSoundToolHotbarSlot(3),
         this.getCameraToolHotbarSlot(),
         ...officePrizeSlots,
@@ -15563,6 +16010,10 @@ export class Game {
       return this.cameraToolPreviewUrl
         ? 'Camera Tool active. Left click takes a picture, E records video with audio, D saves preview, right click deletes selected.'
         : 'Camera Tool active. Left click takes a picture; E starts a video recording with microphone audio.';
+    }
+
+    if (this.paintbrushActive) {
+      return `Paintbrush ${this.paintbrushMode} mode. Hold left click to ${this.paintbrushMode === 'erase' ? 'erase the front touched part' : 'paint erased parts back'}. Press Q to switch mode; 1-9 sets size (${this.paintbrushSize}).`;
     }
 
     if (this.placementToolActive) {
@@ -21227,6 +21678,7 @@ export class Game {
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.placementToolActive = false;
     this.placementToolAnchor.visible = false;
     this.placementPreview.visible = false;
@@ -21428,6 +21880,7 @@ export class Game {
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
@@ -21528,6 +21981,7 @@ export class Game {
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
@@ -21647,6 +22101,7 @@ export class Game {
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
@@ -21922,6 +22377,7 @@ export class Game {
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.touchingMonster = null;
     this.monsterState = this.unlockedMonsterState;
     this.transientStatusTime = 0;
@@ -22039,6 +22495,7 @@ export class Game {
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.placementToolActive = false;
     this.placementToolAnchor.visible = false;
     this.placementPreview.visible = false;
@@ -22171,6 +22628,7 @@ export class Game {
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.placementToolActive = false;
     this.placementToolAnchor.visible = false;
     this.placementPreview.visible = false;
@@ -22294,6 +22752,7 @@ export class Game {
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
+    this.clearPaintbrushState();
     this.placementToolActive = false;
     this.placementToolAnchor.visible = false;
     this.placementPreview.visible = false;
