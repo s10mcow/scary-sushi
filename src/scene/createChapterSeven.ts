@@ -3756,18 +3756,18 @@ export function createChapterSeven(): ChapterSevenData {
     nozzle.rotation.z = Math.PI / 2;
     nozzle.position.set(2.92, -1.08, 0);
 
-    const waterStream = new Mesh(new CylinderGeometry(0.026, 0.038, 0.76, 10), faucetWaterMaterial);
+    const waterStream = new Mesh(new CylinderGeometry(0.018, 0.028, 0.5, 10), faucetWaterMaterial);
     waterStream.rotation.z = Math.PI / 2;
-    waterStream.position.set(3.46, -1.08, 0);
+    waterStream.position.set(3.32, -1.08, 0);
     waterStream.visible = false;
     waterStream.scale.y = 0.01;
     const waterSplash = [
-      [3.84, -1.02, -0.16],
-      [4.02, -1.04, 0.08],
-      [3.72, -1.03, 0.2],
-      [4.14, -1.01, -0.08],
+      [3.58, -1.03, -0.12],
+      [3.72, -1.05, 0.06],
+      [3.5, -1.04, 0.15],
+      [3.82, -1.03, -0.06],
     ].map(([dropX, dropY, dropZ], index) => {
-      const drop = new Mesh(new SphereGeometry(0.035, 8, 6), faucetWaterMaterial);
+      const drop = new Mesh(new SphereGeometry(0.026, 8, 6), faucetWaterMaterial);
       drop.position.set(dropX, dropY, dropZ);
       drop.visible = false;
       drop.userData.baseX = dropX;
@@ -3777,7 +3777,7 @@ export function createChapterSeven(): ChapterSevenData {
       return drop;
     });
     const waterSurface = new Mesh(new CylinderGeometry(0.34, 0.48, 0.025, 32), bathtubWaterMaterial);
-    waterSurface.position.set(4.0, -1.135, 0.02);
+    waterSurface.position.set(3.78, -1.135, 0.02);
     waterSurface.rotation.y = 0.28;
     waterSurface.scale.set(0.18, 1, 0.12);
     waterSurface.visible = false;
@@ -5317,23 +5317,23 @@ export function createChapterSeven(): ChapterSevenData {
             const pulse = Math.sin(forestTime * 17 + (drop.userData.phase as number));
             drop.visible = faucetRunning;
             drop.position.set(
-              (drop.userData.baseX as number) + Math.cos(forestTime * 11 + index) * 0.05,
-              (drop.userData.baseY as number) + Math.abs(pulse) * 0.07,
-              (drop.userData.baseZ as number) + pulse * 0.06,
+              (drop.userData.baseX as number) + Math.cos(forestTime * 9 + index) * 0.035,
+              (drop.userData.baseY as number) + Math.abs(pulse) * 0.045,
+              (drop.userData.baseZ as number) + pulse * 0.04,
             );
-            drop.scale.setScalar(0.76 + Math.abs(pulse) * 0.46);
+            drop.scale.setScalar(0.58 + Math.abs(pulse) * 0.32);
           });
           fixture.waterFillAmount = Math.min(
             1,
             Math.max(
               fixture.waterFillAmount ?? 0,
-              (fixture.waterFillAmount ?? 0) + (fixture.targetOpenAmount > 0.5 ? deltaSeconds * 0.085 : 0),
+              (fixture.waterFillAmount ?? 0) + (fixture.targetOpenAmount > 0.5 ? deltaSeconds * 0.045 : 0),
             ),
           );
           if (fixture.waterSurface) {
             fixture.waterSurface.visible = fixture.waterFillAmount > 0.015;
             const puddle = fixture.waterFillAmount;
-            fixture.waterSurface.scale.set(0.28 + puddle * 8.05, 1, 0.18 + puddle * 5.05);
+            fixture.waterSurface.scale.set(0.28 + puddle * 6.05, 1, 0.18 + puddle * 3.85);
           }
         } else if (fixture.animation === 'trash-lid') {
           fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.56;
