@@ -1179,6 +1179,7 @@ export class Game {
   private chapterSevenBoxHidden = false;
   private chapterSevenOvenHidden = false;
   private chapterSevenSwingSeated = false;
+  private chapterSevenHoseWaterSoundCooldown = 0;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -2996,6 +2997,7 @@ export class Game {
       }
     } else if (this.chapterSevenActive) {
       this.chapterSeven.update(deltaSeconds, this.player.getPosition());
+      this.updateChapterSevenHoseWaterAudio(deltaSeconds);
       if (this.chapterSevenSwingSeated) {
         this.player.teleport(this.chapterSeven.swingSet.sitPosition);
         this.player.lookToward(this.chapterSeven.swingSet.lookTarget, 1);
@@ -12589,6 +12591,10 @@ export class Game {
           this.toggleChapterSevenBathtubFaucet(fixture);
           return;
         }
+        if (fixture.kind === 'hose-faucet') {
+          this.toggleChapterSevenHoseFaucet(fixture);
+          return;
+        }
 
         fixture.targetOpenAmount = fixture.targetOpenAmount > 0.5 ? 0 : 1;
         fixture.open = fixture.targetOpenAmount > 0.5;
@@ -16840,6 +16846,11 @@ export class Game {
               ? 'Press E to turn off the bathtub faucet.'
               : 'Press E to turn on the bathtub faucet.';
           }
+          if (interactable.item.kind === 'hose-faucet') {
+            return interactable.item.open
+              ? 'Press E to turn off the hose faucet.'
+              : 'Press E to turn on the hose faucet.';
+          }
           if (interactable.item.kind === 'trash-can') {
             return interactable.item.open
               ? 'Press E to close the trash can.'
@@ -17657,6 +17668,11 @@ export class Game {
             return interactable.item.open
               ? 'The bathtub faucet is running and filling the tub. Press E to turn it off.'
               : 'The bathtub faucet is off. Press E to turn it on.';
+          }
+          if (interactable.item.kind === 'hose-faucet') {
+            return interactable.item.open
+              ? 'The hose faucet is running and spreading a puddle. Press E to turn it off.'
+              : 'The hose faucet is off. Press E to turn it on.';
           }
           if (interactable.item.kind === 'trash-can') {
             return interactable.item.open
@@ -20405,6 +20421,40 @@ export class Game {
         : 'You turn off the bathtub faucet. The tub water slowly drains.',
       2.4,
     );
+  }
+
+  private toggleChapterSevenHoseFaucet(fixture: ChapterSevenData['rearFixtures'][number]): void {
+    fixture.targetOpenAmount = fixture.targetOpenAmount > 0.5 ? 0 : 1;
+    fixture.open = fixture.targetOpenAmount > 0.5;
+    if (fixture.open) {
+      fixture.waterFillAmount = Math.max(fixture.waterFillAmount ?? 0, 0.07);
+      this.chapterSevenHoseWaterSoundCooldown = 0;
+    }
+    this.gameplaySfxAudio.playSmallPanel(fixture.open);
+    this.pushStatus(
+      fixture.open
+        ? 'You turn on the outside hose faucet. Water runs out and starts making a puddle.'
+        : 'You turn off the hose faucet. The puddle stays on the ground.',
+      2.4,
+    );
+  }
+
+  private updateChapterSevenHoseWaterAudio(deltaSeconds: number): void {
+    this.chapterSevenHoseWaterSoundCooldown = Math.max(0, this.chapterSevenHoseWaterSoundCooldown - deltaSeconds);
+    const hoseRunning = this.chapterSeven.rearFixtures.some((fixture) => (
+      fixture.kind === 'hose-faucet'
+      && (fixture.open || fixture.openAmount > 0.03 || fixture.targetOpenAmount > 0.5)
+    ));
+    if (!hoseRunning) {
+      this.chapterSevenHoseWaterSoundCooldown = 0;
+      return;
+    }
+    if (this.chapterSevenHoseWaterSoundCooldown > 0) {
+      return;
+    }
+
+    this.gameplaySfxAudio.playRunningWater(0.82);
+    this.chapterSevenHoseWaterSoundCooldown = 0.7;
   }
 
   private handleChapterSevenFaucetToggle(): void {

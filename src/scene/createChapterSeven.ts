@@ -14,6 +14,7 @@ import {
   Shape,
   ShapeGeometry,
   SphereGeometry,
+  TorusGeometry,
   Vector3,
 } from 'three';
 
@@ -170,12 +171,12 @@ export interface ChapterSevenSwingSet {
 
 export interface ChapterSevenRearFixture {
   label: string;
-  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer' | 'bathtub' | 'trash-can';
+  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer' | 'bathtub' | 'trash-can' | 'hose-faucet';
   interactPosition: Vector3;
   aimPosition: Vector3;
   doorPivots: Group[];
   collider: CollisionBox;
-  animation: 'toilet-lid' | 'faucet' | 'front-door' | 'bathtub-faucet' | 'trash-lid';
+  animation: 'toilet-lid' | 'faucet' | 'front-door' | 'bathtub-faucet' | 'trash-lid' | 'hose-faucet';
   waterStream?: Mesh;
   waterSurface?: Mesh;
   waterSplash?: Mesh[];
@@ -3514,6 +3515,143 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
+  const addHoseFaucetFixture = (localX: number, localY: number, localZ: number): ChapterSevenRearFixture => {
+    const hose = new Group();
+    hose.position.set(localX, localY, localZ);
+
+    const hoseMaterial = new MeshStandardMaterial({
+      color: 0x2d6f3a,
+      emissive: 0x061609,
+      emissiveIntensity: 0.05,
+      roughness: 0.62,
+      metalness: 0.03,
+    });
+    const hoseDarkMaterial = new MeshStandardMaterial({
+      color: 0x1c4126,
+      emissive: 0x030a04,
+      emissiveIntensity: 0.05,
+      roughness: 0.7,
+      metalness: 0.02,
+    });
+
+    const wallPlate = new Mesh(new BoxGeometry(0.12, 1.05, 1.38), faucetMaterial);
+    wallPlate.position.set(0.03, 0, 0);
+    const holderBack = new Mesh(new BoxGeometry(0.14, 0.64, 1.12), counterTopMaterial);
+    holderBack.position.set(0.13, -0.02, 0);
+    const topPeg = new Mesh(new CylinderGeometry(0.055, 0.055, 0.96, 14), faucetMaterial);
+    topPeg.rotation.x = Math.PI / 2;
+    topPeg.position.set(0.28, 0.24, 0);
+    const bottomPeg = topPeg.clone();
+    bottomPeg.position.y = -0.26;
+    const centerHub = new Mesh(new CylinderGeometry(0.22, 0.22, 0.12, 24), faucetMaterial);
+    centerHub.rotation.z = Math.PI / 2;
+    centerHub.position.set(0.3, -0.02, 0);
+
+    const coilPieces: Mesh[] = [];
+    [0.48, 0.62, 0.76].forEach((radius, index) => {
+      const coil = new Mesh(new TorusGeometry(radius, 0.035, 10, 44), hoseMaterial);
+      coil.position.set(0.32 + index * 0.012, -0.02, 0);
+      coil.rotation.y = Math.PI / 2;
+      coil.scale.z = 0.78;
+      coilPieces.push(coil);
+    });
+
+    const straightHose = new Mesh(new CylinderGeometry(0.04, 0.04, 3.0, 12), hoseMaterial);
+    straightHose.rotation.x = Math.PI / 2;
+    straightHose.position.set(0.16, -0.35, 1.95);
+    const faucetPipe = new Mesh(new CylinderGeometry(0.045, 0.045, 0.42, 14), faucetMaterial);
+    faucetPipe.rotation.z = Math.PI / 2;
+    faucetPipe.position.set(0.3, -0.12, 3.45);
+    const spout = new Mesh(new CylinderGeometry(0.035, 0.04, 0.5, 12), faucetMaterial);
+    spout.rotation.z = Math.PI / 2;
+    spout.position.set(0.56, -0.28, 3.45);
+    const handlePivot = new Group();
+    handlePivot.position.set(0.36, 0.12, 3.45);
+    const handleStem = new Mesh(new CylinderGeometry(0.03, 0.03, 0.18, 10), faucetMaterial);
+    handleStem.rotation.z = Math.PI / 2;
+    const handleBar = new Mesh(new BoxGeometry(0.08, 0.38, 0.08), faucetMaterial);
+    handleBar.position.x = 0.08;
+    handlePivot.add(handleStem, handleBar);
+
+    const groundHose = new Group();
+    groundHose.position.set(0.68, -1.05, -0.18);
+    const groundRun = new Mesh(new CylinderGeometry(0.045, 0.045, 2.3, 12), hoseDarkMaterial);
+    groundRun.rotation.z = Math.PI / 2;
+    groundRun.position.set(1.1, 0, 0.04);
+    const groundCurve = new Mesh(new TorusGeometry(0.62, 0.045, 10, 34, Math.PI * 1.18), hoseDarkMaterial);
+    groundCurve.rotation.set(Math.PI / 2, 0, -0.35);
+    groundCurve.position.set(0.22, 0, 0.08);
+    const nozzle = new Mesh(new CylinderGeometry(0.055, 0.04, 0.32, 12), faucetMaterial);
+    nozzle.rotation.z = Math.PI / 2;
+    nozzle.position.set(2.34, 0, 0.04);
+    groundHose.add(groundRun, groundCurve, nozzle);
+
+    const waterStream = new Mesh(new CylinderGeometry(0.026, 0.038, 0.76, 10), faucetWaterMaterial);
+    waterStream.rotation.z = Math.PI / 2;
+    waterStream.position.set(0.96, -0.28, 3.45);
+    waterStream.visible = false;
+    waterStream.scale.y = 0.01;
+    const waterSplash = [
+      [1.36, -1.02, 3.28],
+      [1.54, -1.04, 3.48],
+      [1.25, -1.03, 3.62],
+      [1.68, -1.01, 3.3],
+    ].map(([dropX, dropY, dropZ], index) => {
+      const drop = new Mesh(new SphereGeometry(0.035, 8, 6), faucetWaterMaterial);
+      drop.position.set(dropX, dropY, dropZ);
+      drop.visible = false;
+      drop.userData.baseX = dropX;
+      drop.userData.baseY = dropY;
+      drop.userData.baseZ = dropZ;
+      drop.userData.phase = index * 0.91;
+      return drop;
+    });
+    const waterSurface = new Mesh(new CylinderGeometry(0.34, 0.48, 0.025, 32), bathtubWaterMaterial);
+    waterSurface.position.set(1.5, -1.135, 3.44);
+    waterSurface.rotation.y = 0.28;
+    waterSurface.scale.set(0.18, 1, 0.12);
+    waterSurface.visible = false;
+    waterSurface.userData.baseY = waterSurface.position.y;
+    waterSurface.userData.baseScaleX = waterSurface.scale.x;
+    waterSurface.userData.baseScaleZ = waterSurface.scale.z;
+
+    hose.add(
+      wallPlate,
+      holderBack,
+      topPeg,
+      bottomPeg,
+      centerHub,
+      ...coilPieces,
+      straightHose,
+      faucetPipe,
+      spout,
+      handlePivot,
+      groundHose,
+      waterStream,
+      waterSurface,
+      ...waterSplash,
+    );
+    house.add(hose);
+
+    const collider = addRotatedCollider(colliders, localX, localZ, 0, 0.22, 0, 0.58, 1.52);
+    return {
+      label: 'Outdoor hose faucet',
+      kind: 'hose-faucet',
+      interactPosition: new Vector3(CENTER_X + localX + 1.1, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + 3.45),
+      aimPosition: new Vector3(CENTER_X + localX + 0.42, localY + 0.12, HOUSE_CENTER_Z + localZ + 3.45),
+      doorPivots: [handlePivot],
+      collider,
+      animation: 'hose-faucet',
+      waterStream,
+      waterSurface,
+      waterSplash,
+      waterFillAmount: 0,
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    };
+  };
+
   const addLaundryAppliance = (
     localX: number,
     localZ: number,
@@ -4238,6 +4376,7 @@ export function createChapterSeven(): ChapterSevenData {
     addBathroomSinkFixture(HOUSE_REAR_ROOM_DOOR_X + 0.4, rearRoomBackFixtureZ),
     addBathtubFixture(HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 57.30 - HOUSE_CENTER_Z),
     addTrashCanFixture(1231.64 - CENTER_X, 62.83 - HOUSE_CENTER_Z, -Math.PI / 2),
+    addHoseFaucetFixture(1236.31 - CENTER_X, 1.16, 68.92 - HOUSE_CENTER_Z),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 0.3, 'washing-machine', rearRoomLaundryRotation),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
@@ -4948,6 +5087,35 @@ export function createChapterSeven(): ChapterSevenData {
             fixture.waterSurface.visible = fixture.waterFillAmount > 0.015;
             fixture.waterSurface.position.y = 0.25 + fixture.waterFillAmount * 0.55;
           }
+        } else if (fixture.animation === 'hose-faucet') {
+          fixture.doorPivots[0].rotation.x = fixture.openAmount * Math.PI * 1.4;
+          const faucetRunning = fixture.openAmount > 0.03;
+          if (fixture.waterStream) {
+            fixture.waterStream.visible = faucetRunning;
+            fixture.waterStream.scale.y = Math.max(0.01, fixture.openAmount);
+          }
+          fixture.waterSplash?.forEach((drop, index) => {
+            const pulse = Math.sin(forestTime * 17 + (drop.userData.phase as number));
+            drop.visible = faucetRunning;
+            drop.position.set(
+              (drop.userData.baseX as number) + Math.cos(forestTime * 11 + index) * 0.05,
+              (drop.userData.baseY as number) + Math.abs(pulse) * 0.07,
+              (drop.userData.baseZ as number) + pulse * 0.06,
+            );
+            drop.scale.setScalar(0.76 + Math.abs(pulse) * 0.46);
+          });
+          fixture.waterFillAmount = Math.min(
+            1,
+            Math.max(
+              fixture.waterFillAmount ?? 0,
+              (fixture.waterFillAmount ?? 0) + (fixture.targetOpenAmount > 0.5 ? deltaSeconds * 0.085 : 0),
+            ),
+          );
+          if (fixture.waterSurface) {
+            fixture.waterSurface.visible = fixture.waterFillAmount > 0.015;
+            const puddle = fixture.waterFillAmount;
+            fixture.waterSurface.scale.set(0.28 + puddle * 2.55, 1, 0.18 + puddle * 1.38);
+          }
         } else if (fixture.animation === 'trash-lid') {
           fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.56;
           if (fixture.trashContents) {
@@ -5061,7 +5229,15 @@ export function createChapterSeven(): ChapterSevenData {
         fixture.waterFillAmount = 0;
         if (fixture.waterSurface) {
           fixture.waterSurface.visible = false;
-          fixture.waterSurface.position.y = 0.25;
+          fixture.waterSurface.position.y = typeof fixture.waterSurface.userData.baseY === 'number'
+            ? fixture.waterSurface.userData.baseY
+            : 0.25;
+          fixture.waterSurface.scale.x = typeof fixture.waterSurface.userData.baseScaleX === 'number'
+            ? fixture.waterSurface.userData.baseScaleX
+            : fixture.waterSurface.scale.x;
+          fixture.waterSurface.scale.z = typeof fixture.waterSurface.userData.baseScaleZ === 'number'
+            ? fixture.waterSurface.userData.baseScaleZ
+            : fixture.waterSurface.scale.z;
         }
         fixture.wallColliders?.forEach((collider) => {
           collider.enabled = true;

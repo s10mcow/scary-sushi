@@ -441,6 +441,43 @@ export class GameplaySfxAudio {
     }
   }
 
+  playRunningWater(duration = 0.82): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    const length = Math.max(0.18, duration);
+    const waterGain = this.context.createGain();
+    waterGain.gain.setValueAtTime(0.0001, now);
+    waterGain.gain.exponentialRampToValueAtTime(0.055, now + 0.035);
+    waterGain.gain.linearRampToValueAtTime(0.046, now + length * 0.72);
+    waterGain.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    waterGain.connect(this.masterGain);
+
+    const water = this.context.createBufferSource();
+    water.buffer = this.noiseBuffer;
+    water.loop = true;
+    water.playbackRate.value = 1.55 + Math.random() * 0.08;
+
+    const highpass = this.context.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 520;
+    const band = this.context.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 1450 + Math.random() * 160;
+    band.Q.value = 1.1;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 3600;
+
+    water.connect(highpass);
+    highpass.connect(band);
+    band.connect(lowpass);
+    lowpass.connect(waterGain);
+    this.startSource(water, now, now + length);
+  }
+
   playPrizeWheelClick(intensity = 1): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;
