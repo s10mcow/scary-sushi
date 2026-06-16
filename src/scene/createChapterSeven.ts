@@ -1926,6 +1926,209 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
 
+  const addGrandfatherClock = (localX: number, wallLocalZ: number): void => {
+    const depth = 0.68;
+    const clock = new Group();
+    clock.position.set(localX, 0, wallLocalZ - depth / 2);
+
+    const clockWoodMaterial = new MeshStandardMaterial({
+      color: 0x2f1b12,
+      emissive: 0x070302,
+      emissiveIntensity: 0.05,
+      roughness: 0.76,
+      metalness: 0.02,
+    });
+    const clockTrimMaterial = new MeshStandardMaterial({
+      color: 0x5a351f,
+      emissive: 0x0d0502,
+      emissiveIntensity: 0.06,
+      roughness: 0.7,
+      metalness: 0.04,
+    });
+    const brassMaterial = new MeshStandardMaterial({
+      color: 0xd0a13a,
+      emissive: 0x241605,
+      emissiveIntensity: 0.12,
+      roughness: 0.34,
+      metalness: 0.55,
+    });
+    const clockFaceMaterial = (() => {
+      if (typeof document === 'undefined') {
+        return new MeshStandardMaterial({
+          color: 0xefe2c4,
+          roughness: 0.62,
+          metalness: 0.02,
+          side: DoubleSide,
+        });
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.fillStyle = '#efe2c4';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.strokeStyle = '#3a2215';
+        context.lineWidth = 8;
+        context.beginPath();
+        context.arc(128, 128, 104, 0, Math.PI * 2);
+        context.stroke();
+        context.strokeStyle = '#b78934';
+        context.lineWidth = 5;
+        context.beginPath();
+        context.arc(128, 128, 92, 0, Math.PI * 2);
+        context.stroke();
+        context.fillStyle = '#2b1a12';
+        context.font = 'bold 22px Georgia';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        const numerals = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
+        numerals.forEach((numeral, index) => {
+          const angle = (index / 12) * Math.PI * 2 - Math.PI / 2;
+          context.fillText(numeral, 128 + Math.cos(angle) * 70, 128 + Math.sin(angle) * 70);
+        });
+        for (let tick = 0; tick < 60; tick += 1) {
+          const angle = (tick / 60) * Math.PI * 2 - Math.PI / 2;
+          const outer = tick % 5 === 0 ? 91 : 87;
+          const inner = tick % 5 === 0 ? 80 : 84;
+          context.strokeStyle = tick % 5 === 0 ? '#3a2215' : '#7c6248';
+          context.lineWidth = tick % 5 === 0 ? 3 : 1;
+          context.beginPath();
+          context.moveTo(128 + Math.cos(angle) * inner, 128 + Math.sin(angle) * inner);
+          context.lineTo(128 + Math.cos(angle) * outer, 128 + Math.sin(angle) * outer);
+          context.stroke();
+        }
+        context.strokeStyle = '#25140d';
+        context.lineCap = 'round';
+        context.lineWidth = 7;
+        context.beginPath();
+        context.moveTo(128, 128);
+        context.lineTo(128, 78);
+        context.stroke();
+        context.lineWidth = 5;
+        context.beginPath();
+        context.moveTo(128, 128);
+        context.lineTo(168, 142);
+        context.stroke();
+        context.fillStyle = '#b78934';
+        context.beginPath();
+        context.arc(128, 128, 8, 0, Math.PI * 2);
+        context.fill();
+      }
+      const texture = new CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      return new MeshStandardMaterial({
+        map: texture,
+        roughness: 0.58,
+        metalness: 0.02,
+        side: DoubleSide,
+      });
+    })();
+
+    const base = new Mesh(new BoxGeometry(1.55, 0.34, depth + 0.1), clockTrimMaterial);
+    base.position.y = 0.17;
+    const lowerCase = new Mesh(new BoxGeometry(1.16, 2.75, depth), clockWoodMaterial);
+    lowerCase.position.y = 1.62;
+    const upperCase = new Mesh(new BoxGeometry(1.34, 1.26, depth + 0.05), clockWoodMaterial);
+    upperCase.position.y = 3.72;
+    const neck = new Mesh(new BoxGeometry(1.04, 0.46, depth * 0.92), clockWoodMaterial);
+    neck.position.y = 2.98;
+    const crown = new Mesh(new BoxGeometry(1.62, 0.28, depth + 0.16), clockTrimMaterial);
+    crown.position.y = 4.47;
+    const crownCap = new Mesh(new BoxGeometry(1.82, 0.14, depth + 0.24), brassMaterial);
+    crownCap.position.y = 4.68;
+    const roof = new Mesh(new ConeGeometry(0.98, 0.46, 4), clockTrimMaterial);
+    roof.position.y = 4.98;
+    roof.rotation.y = Math.PI / 4;
+
+    const frontZ = -depth / 2 - 0.035;
+    const rearPanel = new Mesh(new BoxGeometry(1.2, 4.25, 0.08), clockTrimMaterial);
+    rearPanel.position.set(0, 2.26, depth / 2 - 0.035);
+    const frontPosts = [-0.64, 0.64].map((postX) => {
+      const post = new Mesh(new CylinderGeometry(0.06, 0.075, 4.12, 12), clockTrimMaterial);
+      post.position.set(postX, 2.22, frontZ);
+      return post;
+    });
+    const lowerRails = [0.52, 2.68].map((railY) => {
+      const rail = new Mesh(new BoxGeometry(1.28, 0.12, 0.1), clockTrimMaterial);
+      rail.position.set(0, railY, frontZ);
+      return rail;
+    });
+
+    const glassPanel = new Mesh(new BoxGeometry(0.88, 1.7, 0.035), slidingGlassMaterial);
+    glassPanel.position.set(0, 1.55, frontZ - 0.012);
+    const pendulumRod = new Mesh(new CylinderGeometry(0.016, 0.016, 1.22, 8), brassMaterial);
+    pendulumRod.position.set(0, 1.58, frontZ - 0.03);
+    const pendulumBob = new Mesh(new SphereGeometry(0.2, 24, 16), brassMaterial);
+    pendulumBob.scale.set(1, 1.18, 0.22);
+    pendulumBob.position.set(0, 0.9, frontZ - 0.045);
+    const weights = [-0.25, 0.25].map((weightX) => {
+      const weight = new Mesh(new CylinderGeometry(0.075, 0.075, 0.62, 14), brassMaterial);
+      weight.position.set(weightX, 1.72, frontZ - 0.045);
+      return weight;
+    });
+    const chains = [-0.25, 0.25].map((chainX) => {
+      const chain = new Mesh(new CylinderGeometry(0.008, 0.008, 1.35, 6), brassMaterial);
+      chain.position.set(chainX, 2.05, frontZ - 0.05);
+      return chain;
+    });
+
+    const clockFace = new Mesh(new CylinderGeometry(0.45, 0.45, 0.035, 48), clockFaceMaterial);
+    clockFace.rotation.x = Math.PI / 2;
+    clockFace.position.set(0, 3.84, frontZ - 0.035);
+    const clockBezel = new Mesh(new TorusGeometry(0.48, 0.035, 10, 48), brassMaterial);
+    clockBezel.position.set(0, 3.84, frontZ - 0.062);
+    const upperGlass = new Mesh(new BoxGeometry(1.02, 1.04, 0.035), slidingGlassMaterial);
+    upperGlass.position.set(0, 3.84, frontZ - 0.08);
+    const upperFrameTop = new Mesh(new BoxGeometry(1.12, 0.1, 0.1), clockTrimMaterial);
+    upperFrameTop.position.set(0, 4.42, frontZ - 0.02);
+    const upperFrameBottom = upperFrameTop.clone();
+    upperFrameBottom.position.y = 3.22;
+    const upperFrameLeft = new Mesh(new BoxGeometry(0.1, 1.18, 0.1), clockTrimMaterial);
+    upperFrameLeft.position.set(-0.6, 3.82, frontZ - 0.02);
+    const upperFrameRight = upperFrameLeft.clone();
+    upperFrameRight.position.x = 0.6;
+    const finials = [-0.62, 0, 0.62].map((finialX, index) => {
+      const finial = new Group();
+      finial.position.set(finialX, index === 1 ? 5.28 : 4.9, -0.01);
+      const stem = new Mesh(new CylinderGeometry(0.025, 0.03, 0.22, 10), brassMaterial);
+      stem.position.y = -0.08;
+      const ball = new Mesh(new SphereGeometry(index === 1 ? 0.1 : 0.075, 12, 8), brassMaterial);
+      ball.position.y = 0.06;
+      finial.add(stem, ball);
+      return finial;
+    });
+
+    clock.add(
+      base,
+      lowerCase,
+      upperCase,
+      neck,
+      crown,
+      crownCap,
+      roof,
+      rearPanel,
+      ...frontPosts,
+      ...lowerRails,
+      glassPanel,
+      pendulumRod,
+      pendulumBob,
+      ...weights,
+      ...chains,
+      clockFace,
+      clockBezel,
+      upperGlass,
+      upperFrameTop,
+      upperFrameBottom,
+      upperFrameLeft,
+      upperFrameRight,
+      ...finials,
+    );
+    house.add(clock);
+    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + wallLocalZ - depth / 2 - 0.08, 1.62, 0.72);
+  };
+
   const addDiningTable = (localX: number, localZ: number): void => {
     const table = new Group();
     table.position.set(localX, 0, localZ);
@@ -4538,6 +4741,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
+  addGrandfatherClock(1220.08 - CENTER_X, 98.69 - HOUSE_CENTER_Z);
   addBookshelf(1221.05 - CENTER_X, 96.06 - HOUSE_CENTER_Z, Math.PI, 0.84, 0.96);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
   const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
