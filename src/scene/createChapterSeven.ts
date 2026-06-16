@@ -1760,6 +1760,128 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
 
+  const addRoundRoseTable = (localX: number, localZ: number): void => {
+    const table = new Group();
+    table.position.set(localX, 0, localZ);
+
+    const top = new Mesh(new CylinderGeometry(0.82, 0.82, 0.16, 32), furnitureWoodMaterial);
+    top.position.y = 0.82;
+    const pedestal = new Mesh(new CylinderGeometry(0.13, 0.18, 0.72, 16), furnitureWoodMaterial);
+    pedestal.position.y = 0.42;
+    const base = new Mesh(new CylinderGeometry(0.48, 0.54, 0.08, 24), houseTrimMaterial);
+    base.position.y = 0.08;
+    const feet = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3].map((angle) => {
+      const foot = new Mesh(new BoxGeometry(0.56, 0.08, 0.16), houseTrimMaterial);
+      foot.position.set(Math.sin(angle) * 0.26, 0.1, Math.cos(angle) * 0.26);
+      foot.rotation.y = angle;
+      return foot;
+    });
+
+    const pot = new Mesh(new CylinderGeometry(0.21, 0.3, 0.36, 18), plantPotMaterial);
+    pot.position.y = 1.09;
+    const potLip = new Mesh(new CylinderGeometry(0.32, 0.32, 0.07, 18), plantPotMaterial);
+    potLip.position.y = 1.3;
+    const potSoilMaterial = new MeshStandardMaterial({
+      color: 0x2f2118,
+      roughness: 0.95,
+      metalness: 0.01,
+    });
+    const soil = new Mesh(new CylinderGeometry(0.22, 0.24, 0.035, 18), potSoilMaterial);
+    soil.position.y = 1.35;
+
+    const roseStemMaterial = new MeshStandardMaterial({
+      color: 0x2e7b37,
+      roughness: 0.78,
+      metalness: 0.01,
+    });
+    const roseCenterMaterial = new MeshStandardMaterial({
+      color: 0xf1c15a,
+      roughness: 0.64,
+      metalness: 0.03,
+    });
+    const redRoseMaterial = new MeshStandardMaterial({
+      color: 0xc92230,
+      emissive: 0x1a0205,
+      emissiveIntensity: 0.05,
+      roughness: 0.6,
+      metalness: 0.01,
+    });
+    const pinkRoseMaterial = new MeshStandardMaterial({
+      color: 0xf58ab5,
+      emissive: 0x240512,
+      emissiveIntensity: 0.05,
+      roughness: 0.58,
+      metalness: 0.01,
+    });
+    const blueRoseMaterial = new MeshStandardMaterial({
+      color: 0x3f80d7,
+      emissive: 0x03142a,
+      emissiveIntensity: 0.05,
+      roughness: 0.58,
+      metalness: 0.01,
+    });
+    const yellowRoseMaterial = new MeshStandardMaterial({
+      color: 0xffd750,
+      emissive: 0x241a02,
+      emissiveIntensity: 0.04,
+      roughness: 0.58,
+      metalness: 0.01,
+    });
+
+    const addRose = (
+      x: number,
+      z: number,
+      height: number,
+      material: MeshStandardMaterial,
+      leanX: number,
+      leanZ: number,
+    ): void => {
+      const rose = new Group();
+      rose.position.set(x, 1.36, z);
+      const stem = new Mesh(new CylinderGeometry(0.012, 0.017, height, 8), roseStemMaterial);
+      stem.position.set(leanX / 2, height / 2, leanZ / 2);
+      stem.rotation.z = -leanX * 0.28;
+      stem.rotation.x = leanZ * 0.28;
+      const flowerY = height + 0.02;
+      const flowerX = leanX;
+      const flowerZ = leanZ;
+      const center = new Mesh(new SphereGeometry(0.045, 10, 8), roseCenterMaterial);
+      center.position.set(flowerX, flowerY, flowerZ);
+      const petals = [0, 1, 2, 3, 4].map((index) => {
+        const petal = new Mesh(new SphereGeometry(0.055, 10, 8), material);
+        const angle = (index / 5) * Math.PI * 2;
+        petal.scale.set(1.2, 0.72, 0.82);
+        petal.position.set(
+          flowerX + Math.sin(angle) * 0.042,
+          flowerY + Math.cos(angle) * 0.01,
+          flowerZ + Math.cos(angle) * 0.042,
+        );
+        return petal;
+      });
+      const leaves = [
+        [-0.055, height * 0.56, 0.005],
+        [0.05, height * 0.42, -0.005],
+      ].map(([leafX, leafY, leafZ]) => {
+        const leaf = new Mesh(new SphereGeometry(0.055, 8, 6), plantLeafMaterial);
+        leaf.scale.set(1.35, 0.44, 0.72);
+        leaf.position.set(leafX, leafY, leafZ);
+        return leaf;
+      });
+      rose.add(stem, center, ...petals, ...leaves);
+      table.add(rose);
+    };
+
+    addRose(-0.08, 0.02, 0.48, redRoseMaterial, -0.06, 0.02);
+    addRose(0.08, -0.03, 0.43, pinkRoseMaterial, 0.05, -0.03);
+    addRose(0.0, 0.1, 0.5, pinkRoseMaterial, 0.01, 0.07);
+    addRose(-0.12, -0.08, 0.4, blueRoseMaterial, -0.04, -0.05);
+    addRose(0.13, 0.07, 0.46, yellowRoseMaterial, 0.06, 0.04);
+
+    table.add(top, pedestal, base, ...feet, pot, potLip, soil);
+    house.add(table);
+    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.72, 1.72);
+  };
+
   const addDiningTable = (localX: number, localZ: number): void => {
     const table = new Group();
     table.position.set(localX, 0, localZ);
@@ -4369,6 +4491,7 @@ export function createChapterSeven(): ChapterSevenData {
     0,
   );
   addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
+  addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
   addBookshelf(1221.05 - CENTER_X, 96.06 - HOUSE_CENTER_Z, Math.PI, 0.84, 0.96);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
