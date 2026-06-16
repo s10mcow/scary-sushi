@@ -1762,8 +1762,8 @@ export function createChapterSeven(): ChapterSevenData {
     const table = new Group();
     table.position.set(localX, 0, localZ);
 
-    const top = new Mesh(new BoxGeometry(5, 0.36, 2.35), furnitureWoodMaterial);
-    top.position.y = 1.35;
+    const top = new Mesh(new BoxGeometry(5, 0.24, 2.35), furnitureWoodMaterial);
+    top.position.y = 0.98;
     const legOffsets: Array<[number, number]> = [
       [-2.12, -0.88],
       [2.12, -0.88],
@@ -1771,8 +1771,8 @@ export function createChapterSeven(): ChapterSevenData {
       [2.12, 0.88],
     ];
     const legs = legOffsets.map(([legX, legZ]) => {
-      const leg = new Mesh(new BoxGeometry(0.28, 1.32, 0.28), furnitureWoodMaterial);
-      leg.position.set(legX, 0.66, legZ);
+      const leg = new Mesh(new BoxGeometry(0.28, 0.92, 0.28), furnitureWoodMaterial);
+      leg.position.set(legX, 0.46, legZ);
       return leg;
     });
 
@@ -1787,10 +1787,10 @@ export function createChapterSeven(): ChapterSevenData {
       halfDepth: 2.45 / 2,
     });
 
-    addChair(localX, localZ - 2.25, 0);
-    addChair(localX, localZ + 2.25, Math.PI);
-    addChair(localX - 3, localZ, Math.PI / 2);
-    addChair(localX + 3, localZ, -Math.PI / 2);
+    addChair(localX, localZ - 1.56, 0);
+    addChair(localX, localZ + 1.56, Math.PI);
+    addChair(localX - 2.32, localZ, Math.PI / 2);
+    addChair(localX + 2.32, localZ, -Math.PI / 2);
   };
 
   const addOutdoorChair = (worldX: number, worldZ: number, rotationY: number): void => {
@@ -3669,17 +3669,6 @@ export function createChapterSeven(): ChapterSevenData {
       roughness: 0.18,
       metalness: 0.02,
     });
-    const lightPatchMaterial = new MeshStandardMaterial({
-      color: 0xffedb5,
-      emissive: 0xffce70,
-      emissiveIntensity: 0.38,
-      roughness: 0.72,
-      metalness: 0.01,
-      transparent: true,
-      opacity: 0.34,
-      depthWrite: false,
-    });
-
     const backPlate = new Mesh(new BoxGeometry(0.12, 0.72, 0.5), blackMetalMaterial);
     backPlate.position.set(0.02, 0, 0);
     const arm = new Mesh(new CylinderGeometry(0.045, 0.045, 0.72, 12), blackMetalMaterial);
@@ -3704,12 +3693,6 @@ export function createChapterSeven(): ChapterSevenData {
     lampLight.position.set(localX + 0.76, localY - 0.62, localZ);
     lampLight.target.position.set(localX + 2.25, 0.05, localZ);
     house.add(lampLight, lampLight.target);
-
-    const glowPatch = new Mesh(new CylinderGeometry(1.08, 1.62, 0.018, 40), lightPatchMaterial);
-    glowPatch.position.set(localX + 1.76, 0.035, localZ);
-    glowPatch.rotation.y = 0.04;
-    glowPatch.scale.z = 0.66;
-    house.add(glowPatch);
   };
 
   const addLaundryAppliance = (
@@ -3724,7 +3707,7 @@ export function createChapterSeven(): ChapterSevenData {
 
     const width = 1.82;
     const depth = 1.34;
-    const height = 2.0;
+    const height = 1.9;
     const body = new Mesh(new BoxGeometry(width, height, depth), applianceWhiteMaterial);
     body.position.y = height / 2;
     const top = new Mesh(new BoxGeometry(width + 0.08, 0.1, depth + 0.08), porcelainMaterial);
