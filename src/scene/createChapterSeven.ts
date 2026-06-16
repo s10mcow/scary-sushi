@@ -1871,6 +1871,61 @@ export function createChapterSeven(): ChapterSevenData {
     addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.72, 1.72);
   };
 
+  const addSquareBookTable = (localX: number, localZ: number): void => {
+    const table = new Group();
+    table.position.set(localX, 0, localZ);
+
+    const top = new Mesh(new BoxGeometry(1.72, 0.16, 1.72), furnitureWoodMaterial);
+    top.position.y = 0.92;
+    const lowerShelf = new Mesh(new BoxGeometry(1.42, 0.08, 1.42), houseTrimMaterial);
+    lowerShelf.position.y = 0.42;
+    const legs = [
+      [-0.66, -0.66],
+      [0.66, -0.66],
+      [-0.66, 0.66],
+      [0.66, 0.66],
+    ].map(([legX, legZ]) => {
+      const leg = new Mesh(new BoxGeometry(0.14, 0.84, 0.14), furnitureWoodMaterial);
+      leg.position.set(legX, 0.48, legZ);
+      return leg;
+    });
+
+    const pageMaterial = new MeshStandardMaterial({
+      color: 0xe8dfc6,
+      roughness: 0.88,
+      metalness: 0.01,
+    });
+    const bookSizes: Array<[number, number, number]> = [
+      [0.9, 0.16, 0.62],
+      [0.82, 0.14, 0.58],
+      [0.94, 0.13, 0.54],
+      [0.74, 0.12, 0.5],
+    ];
+    const books = bookSizes.map(([width, height, depth], index) => {
+      const book = new Group();
+      book.position.set((index % 2 === 0 ? -0.03 : 0.04), 1.01 + index * 0.15, (index - 1.5) * 0.025);
+      book.rotation.y = (index - 1.5) * 0.07;
+      const cover = new Mesh(new BoxGeometry(width, height, depth), bookMaterials[index % bookMaterials.length]);
+      const pages = new Mesh(new BoxGeometry(width - 0.1, height + 0.012, 0.055), pageMaterial);
+      pages.position.z = depth / 2 + 0.005;
+      const spineBand = new Mesh(new BoxGeometry(0.08, height + 0.016, depth + 0.012), houseTrimMaterial);
+      spineBand.position.x = -width / 2 + 0.07;
+      book.add(cover, pages, spineBand);
+      return book;
+    });
+
+    table.add(top, lowerShelf, ...legs, ...books);
+    house.add(table);
+    const tableCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.86, 1.86);
+    crawlUnderTableColliders.push({
+      collider: tableCollider,
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: 1.86 / 2,
+      halfDepth: 1.86 / 2,
+    });
+  };
+
   const addDiningTable = (localX: number, localZ: number): void => {
     const table = new Group();
     table.position.set(localX, 0, localZ);
@@ -4480,6 +4535,7 @@ export function createChapterSeven(): ChapterSevenData {
     0,
   );
   addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
+  addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
   addBookshelf(1221.05 - CENTER_X, 96.06 - HOUSE_CENTER_Z, Math.PI, 0.84, 0.96);
