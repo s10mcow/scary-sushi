@@ -354,13 +354,6 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 1,
     metalness: 0,
   });
-  const clearingMaterial = new MeshStandardMaterial({
-    color: GRASS_COLOR,
-    emissive: 0x10260a,
-    emissiveIntensity: 0.04,
-    roughness: 0.94,
-    metalness: 0.01,
-  });
   const barkMaterial = new MeshStandardMaterial({
     color: 0x5c4532,
     roughness: 0.94,
@@ -1179,10 +1172,6 @@ export function createChapterSeven(): ChapterSevenData {
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(CENTER_X, 0, CENTER_Z);
   root.add(ground);
-
-  const clearing = new Mesh(new CylinderGeometry(CLEARING_RADIUS, CLEARING_RADIUS, 0.18, 56), clearingMaterial);
-  clearing.position.set(CENTER_X, 0.04, CENTER_Z + 4);
-  root.add(clearing);
 
   const house = new Group();
   house.name = 'Chapter 7 Big Clearing House';
@@ -5288,7 +5277,7 @@ export function createChapterSeven(): ChapterSevenData {
           if (fixture.waterSurface) {
             fixture.waterSurface.visible = fixture.waterFillAmount > 0.015;
             const puddle = fixture.waterFillAmount;
-            fixture.waterSurface.scale.set(0.28 + puddle * 2.55, 1, 0.18 + puddle * 1.38);
+            fixture.waterSurface.scale.set(0.28 + puddle * 8.05, 1, 0.18 + puddle * 5.05);
           }
         } else if (fixture.animation === 'trash-lid') {
           fixture.doorPivots[0].rotation.x = -fixture.openAmount * Math.PI * 0.56;
