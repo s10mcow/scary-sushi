@@ -14,6 +14,7 @@ import {
   Shape,
   ShapeGeometry,
   SphereGeometry,
+  SpotLight,
   TorusGeometry,
   Vector3,
 } from 'three';
@@ -3526,14 +3527,6 @@ export function createChapterSeven(): ChapterSevenData {
       roughness: 0.62,
       metalness: 0.03,
     });
-    const hoseDarkMaterial = new MeshStandardMaterial({
-      color: 0x1c4126,
-      emissive: 0x030a04,
-      emissiveIntensity: 0.05,
-      roughness: 0.7,
-      metalness: 0.02,
-    });
-
     const wallPlate = new Mesh(new BoxGeometry(0.12, 1.05, 1.38), faucetMaterial);
     wallPlate.position.set(0.03, 0, 0);
     const holderBack = new Mesh(new BoxGeometry(0.14, 0.64, 1.12), counterTopMaterial);
@@ -3559,43 +3552,47 @@ export function createChapterSeven(): ChapterSevenData {
     const straightHose = new Mesh(new CylinderGeometry(0.04, 0.04, 3.0, 12), hoseMaterial);
     straightHose.rotation.x = Math.PI / 2;
     straightHose.position.set(0.16, -0.35, 1.95);
-    const faucetPipe = new Mesh(new CylinderGeometry(0.045, 0.045, 0.42, 14), faucetMaterial);
+    const hoseDrop = new Mesh(new CylinderGeometry(0.04, 0.04, 1.32, 12), hoseMaterial);
+    hoseDrop.position.set(0.2, -0.86, 3.28);
+    const faucetPipe = new Mesh(new CylinderGeometry(0.05, 0.05, 0.5, 14), faucetMaterial);
     faucetPipe.rotation.z = Math.PI / 2;
-    faucetPipe.position.set(0.3, -0.12, 3.45);
-    const spout = new Mesh(new CylinderGeometry(0.035, 0.04, 0.5, 12), faucetMaterial);
-    spout.rotation.z = Math.PI / 2;
-    spout.position.set(0.56, -0.28, 3.45);
+    faucetPipe.position.set(0.31, -0.16, -0.92);
+    const faucetNub = new Mesh(new CylinderGeometry(0.095, 0.095, 0.1, 18), faucetMaterial);
+    faucetNub.rotation.z = Math.PI / 2;
+    faucetNub.position.set(0.58, -0.16, -0.92);
     const handlePivot = new Group();
-    handlePivot.position.set(0.36, 0.12, 3.45);
-    const handleStem = new Mesh(new CylinderGeometry(0.03, 0.03, 0.18, 10), faucetMaterial);
-    handleStem.rotation.z = Math.PI / 2;
-    const handleBar = new Mesh(new BoxGeometry(0.08, 0.38, 0.08), faucetMaterial);
-    handleBar.position.x = 0.08;
-    handlePivot.add(handleStem, handleBar);
+    handlePivot.position.set(0.66, -0.16, -0.92);
+    const handleWheel = new Mesh(new TorusGeometry(0.18, 0.025, 8, 28), faucetMaterial);
+    handleWheel.rotation.y = Math.PI / 2;
+    const handleCrossA = new Mesh(new BoxGeometry(0.055, 0.36, 0.055), faucetMaterial);
+    const handleCrossB = new Mesh(new BoxGeometry(0.055, 0.055, 0.36), faucetMaterial);
+    const handleCap = new Mesh(new CylinderGeometry(0.055, 0.055, 0.05, 14), faucetMaterial);
+    handleCap.rotation.z = Math.PI / 2;
+    handlePivot.add(handleWheel, handleCrossA, handleCrossB, handleCap);
 
     const groundHose = new Group();
-    groundHose.position.set(0.68, -1.05, -0.18);
-    const groundRun = new Mesh(new CylinderGeometry(0.045, 0.045, 2.3, 12), hoseDarkMaterial);
+    groundHose.position.set(0.5, -1.08, 2.92);
+    const groundRun = new Mesh(new CylinderGeometry(0.045, 0.045, 2.45, 12), hoseMaterial);
     groundRun.rotation.z = Math.PI / 2;
-    groundRun.position.set(1.1, 0, 0.04);
-    const groundCurve = new Mesh(new TorusGeometry(0.62, 0.045, 10, 34, Math.PI * 1.18), hoseDarkMaterial);
-    groundCurve.rotation.set(Math.PI / 2, 0, -0.35);
-    groundCurve.position.set(0.22, 0, 0.08);
+    groundRun.position.set(1.12, 0, 0.18);
+    const groundCurve = new Mesh(new TorusGeometry(0.44, 0.045, 10, 34, Math.PI * 1.28), hoseMaterial);
+    groundCurve.rotation.set(Math.PI / 2, 0, 0.18);
+    groundCurve.position.set(-0.1, 0, 0.32);
     const nozzle = new Mesh(new CylinderGeometry(0.055, 0.04, 0.32, 12), faucetMaterial);
     nozzle.rotation.z = Math.PI / 2;
-    nozzle.position.set(2.34, 0, 0.04);
+    nozzle.position.set(2.46, 0, 0.18);
     groundHose.add(groundRun, groundCurve, nozzle);
 
     const waterStream = new Mesh(new CylinderGeometry(0.026, 0.038, 0.76, 10), faucetWaterMaterial);
     waterStream.rotation.z = Math.PI / 2;
-    waterStream.position.set(0.96, -0.28, 3.45);
+    waterStream.position.set(3.18, -1.08, 3.1);
     waterStream.visible = false;
     waterStream.scale.y = 0.01;
     const waterSplash = [
-      [1.36, -1.02, 3.28],
-      [1.54, -1.04, 3.48],
-      [1.25, -1.03, 3.62],
-      [1.68, -1.01, 3.3],
+      [3.64, -1.02, 2.94],
+      [3.82, -1.04, 3.12],
+      [3.52, -1.03, 3.28],
+      [3.96, -1.01, 2.98],
     ].map(([dropX, dropY, dropZ], index) => {
       const drop = new Mesh(new SphereGeometry(0.035, 8, 6), faucetWaterMaterial);
       drop.position.set(dropX, dropY, dropZ);
@@ -3607,7 +3604,7 @@ export function createChapterSeven(): ChapterSevenData {
       return drop;
     });
     const waterSurface = new Mesh(new CylinderGeometry(0.34, 0.48, 0.025, 32), bathtubWaterMaterial);
-    waterSurface.position.set(1.5, -1.135, 3.44);
+    waterSurface.position.set(3.78, -1.135, 3.08);
     waterSurface.rotation.y = 0.28;
     waterSurface.scale.set(0.18, 1, 0.12);
     waterSurface.visible = false;
@@ -3623,8 +3620,9 @@ export function createChapterSeven(): ChapterSevenData {
       centerHub,
       ...coilPieces,
       straightHose,
+      hoseDrop,
       faucetPipe,
-      spout,
+      faucetNub,
       handlePivot,
       groundHose,
       waterStream,
@@ -3637,8 +3635,8 @@ export function createChapterSeven(): ChapterSevenData {
     return {
       label: 'Outdoor hose faucet',
       kind: 'hose-faucet',
-      interactPosition: new Vector3(CENTER_X + localX + 1.1, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + 3.45),
-      aimPosition: new Vector3(CENTER_X + localX + 0.42, localY + 0.12, HOUSE_CENTER_Z + localZ + 3.45),
+      interactPosition: new Vector3(CENTER_X + localX + 1.05, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ - 0.92),
+      aimPosition: new Vector3(CENTER_X + localX + 0.66, localY - 0.16, HOUSE_CENTER_Z + localZ - 0.92),
       doorPivots: [handlePivot],
       collider,
       animation: 'hose-faucet',
@@ -3650,6 +3648,68 @@ export function createChapterSeven(): ChapterSevenData {
       openAmount: 0,
       targetOpenAmount: 0,
     };
+  };
+
+  const addWallLamp = (localX: number, localY: number, localZ: number): void => {
+    const lamp = new Group();
+    lamp.position.set(localX, localY, localZ);
+
+    const blackMetalMaterial = new MeshStandardMaterial({
+      color: 0x050506,
+      emissive: 0x010101,
+      emissiveIntensity: 0.08,
+      roughness: 0.34,
+      metalness: 0.58,
+      side: DoubleSide,
+    });
+    const bulbMaterial = new MeshStandardMaterial({
+      color: 0xfff2c0,
+      emissive: 0xffcf65,
+      emissiveIntensity: 1.15,
+      roughness: 0.18,
+      metalness: 0.02,
+    });
+    const lightPatchMaterial = new MeshStandardMaterial({
+      color: 0xffedb5,
+      emissive: 0xffce70,
+      emissiveIntensity: 0.38,
+      roughness: 0.72,
+      metalness: 0.01,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+    });
+
+    const backPlate = new Mesh(new BoxGeometry(0.12, 0.72, 0.5), blackMetalMaterial);
+    backPlate.position.set(0.02, 0, 0);
+    const arm = new Mesh(new CylinderGeometry(0.045, 0.045, 0.72, 12), blackMetalMaterial);
+    arm.rotation.z = Math.PI / 2;
+    arm.position.set(0.36, 0.05, 0);
+    const elbow = new Mesh(new SphereGeometry(0.075, 12, 8), blackMetalMaterial);
+    elbow.position.set(0.7, 0.01, 0);
+    const neck = new Mesh(new CylinderGeometry(0.045, 0.055, 0.34, 12), blackMetalMaterial);
+    neck.position.set(0.76, -0.18, 0);
+    const shade = new Mesh(new ConeGeometry(0.34, 0.48, 28, 1, true), blackMetalMaterial);
+    shade.position.set(0.76, -0.48, 0);
+    const shadeRim = new Mesh(new TorusGeometry(0.34, 0.018, 8, 32), blackMetalMaterial);
+    shadeRim.position.set(0.76, -0.72, 0);
+    shadeRim.rotation.x = Math.PI / 2;
+    const bulb = new Mesh(new SphereGeometry(0.105, 16, 10), bulbMaterial);
+    bulb.position.set(0.76, -0.62, 0);
+
+    lamp.add(backPlate, arm, elbow, neck, shade, shadeRim, bulb);
+    house.add(lamp);
+
+    const lampLight = new SpotLight(0xffe3a5, 6.5, 11.5, Math.PI / 4.4, 0.58, 1.45);
+    lampLight.position.set(localX + 0.76, localY - 0.62, localZ);
+    lampLight.target.position.set(localX + 2.25, 0.05, localZ);
+    house.add(lampLight, lampLight.target);
+
+    const glowPatch = new Mesh(new CylinderGeometry(1.08, 1.62, 0.018, 40), lightPatchMaterial);
+    glowPatch.position.set(localX + 1.76, 0.035, localZ);
+    glowPatch.rotation.y = 0.04;
+    glowPatch.scale.z = 0.66;
+    house.add(glowPatch);
   };
 
   const addLaundryAppliance = (
@@ -4343,6 +4403,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1217.94 - CENTER_X, 2.03, 92.24 - HOUSE_CENTER_Z, -1, babyPortraitMaterial);
   addSidePictureFrame(1218.56 - CENTER_X, 2.15, 86.42 - HOUSE_CENTER_Z, 1, squirrelPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
+  addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
     1187.12 - CENTER_X,
