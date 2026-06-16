@@ -1,6 +1,7 @@
 import {
   BoxGeometry,
   CanvasTexture,
+  CatmullRomCurve3,
   ConeGeometry,
   CylinderGeometry,
   DoubleSide,
@@ -15,6 +16,7 @@ import {
   ShapeGeometry,
   SphereGeometry,
   SpotLight,
+  TubeGeometry,
   TorusGeometry,
   Vector3,
 } from 'three';
@@ -3549,19 +3551,33 @@ export function createChapterSeven(): ChapterSevenData {
       coilPieces.push(coil);
     });
 
-    const straightHose = new Mesh(new CylinderGeometry(0.04, 0.04, 3.0, 12), hoseMaterial);
-    straightHose.rotation.x = Math.PI / 2;
-    straightHose.position.set(0.16, -0.35, 1.95);
-    const hoseDrop = new Mesh(new CylinderGeometry(0.04, 0.04, 1.32, 12), hoseMaterial);
-    hoseDrop.position.set(0.2, -0.86, 3.28);
+    const makeHoseTube = (points: Vector3[], radius = 0.042): Mesh => {
+      const curve = new CatmullRomCurve3(points);
+      return new Mesh(new TubeGeometry(curve, 54, radius, 12, false), hoseMaterial);
+    };
+    const wallFeedHose = makeHoseTube([
+      new Vector3(0.28, -0.16, -0.54),
+      new Vector3(0.24, -0.2, -0.86),
+      new Vector3(0.26, -0.18, -1.18),
+      new Vector3(0.35, -0.16, -1.42),
+    ], 0.038);
+    const floorHose = makeHoseTube([
+      new Vector3(0.28, -0.26, 0.62),
+      new Vector3(0.26, -0.52, 0.82),
+      new Vector3(0.32, -0.88, 0.74),
+      new Vector3(0.68, -1.08, 0.52),
+      new Vector3(1.28, -1.1, 0.24),
+      new Vector3(2.04, -1.1, 0.06),
+      new Vector3(2.74, -1.08, 0),
+    ], 0.046);
     const faucetPipe = new Mesh(new CylinderGeometry(0.05, 0.05, 0.5, 14), faucetMaterial);
     faucetPipe.rotation.z = Math.PI / 2;
-    faucetPipe.position.set(0.31, -0.16, -0.92);
+    faucetPipe.position.set(0.31, -0.16, -1.42);
     const faucetNub = new Mesh(new CylinderGeometry(0.095, 0.095, 0.1, 18), faucetMaterial);
     faucetNub.rotation.z = Math.PI / 2;
-    faucetNub.position.set(0.58, -0.16, -0.92);
+    faucetNub.position.set(0.58, -0.16, -1.42);
     const handlePivot = new Group();
-    handlePivot.position.set(0.66, -0.16, -0.92);
+    handlePivot.position.set(0.66, -0.16, -1.42);
     const handleWheel = new Mesh(new TorusGeometry(0.18, 0.025, 8, 28), faucetMaterial);
     handleWheel.rotation.y = Math.PI / 2;
     const handleCrossA = new Mesh(new BoxGeometry(0.055, 0.36, 0.055), faucetMaterial);
@@ -3570,29 +3586,20 @@ export function createChapterSeven(): ChapterSevenData {
     handleCap.rotation.z = Math.PI / 2;
     handlePivot.add(handleWheel, handleCrossA, handleCrossB, handleCap);
 
-    const groundHose = new Group();
-    groundHose.position.set(0.5, -1.08, 2.92);
-    const groundRun = new Mesh(new CylinderGeometry(0.045, 0.045, 2.45, 12), hoseMaterial);
-    groundRun.rotation.z = Math.PI / 2;
-    groundRun.position.set(1.12, 0, 0.18);
-    const groundCurve = new Mesh(new TorusGeometry(0.44, 0.045, 10, 34, Math.PI * 1.28), hoseMaterial);
-    groundCurve.rotation.set(Math.PI / 2, 0, 0.18);
-    groundCurve.position.set(-0.1, 0, 0.32);
     const nozzle = new Mesh(new CylinderGeometry(0.055, 0.04, 0.32, 12), faucetMaterial);
     nozzle.rotation.z = Math.PI / 2;
-    nozzle.position.set(2.46, 0, 0.18);
-    groundHose.add(groundRun, groundCurve, nozzle);
+    nozzle.position.set(2.92, -1.08, 0);
 
     const waterStream = new Mesh(new CylinderGeometry(0.026, 0.038, 0.76, 10), faucetWaterMaterial);
     waterStream.rotation.z = Math.PI / 2;
-    waterStream.position.set(3.18, -1.08, 3.1);
+    waterStream.position.set(3.46, -1.08, 0);
     waterStream.visible = false;
     waterStream.scale.y = 0.01;
     const waterSplash = [
-      [3.64, -1.02, 2.94],
-      [3.82, -1.04, 3.12],
-      [3.52, -1.03, 3.28],
-      [3.96, -1.01, 2.98],
+      [3.84, -1.02, -0.16],
+      [4.02, -1.04, 0.08],
+      [3.72, -1.03, 0.2],
+      [4.14, -1.01, -0.08],
     ].map(([dropX, dropY, dropZ], index) => {
       const drop = new Mesh(new SphereGeometry(0.035, 8, 6), faucetWaterMaterial);
       drop.position.set(dropX, dropY, dropZ);
@@ -3604,7 +3611,7 @@ export function createChapterSeven(): ChapterSevenData {
       return drop;
     });
     const waterSurface = new Mesh(new CylinderGeometry(0.34, 0.48, 0.025, 32), bathtubWaterMaterial);
-    waterSurface.position.set(3.78, -1.135, 3.08);
+    waterSurface.position.set(4.0, -1.135, 0.02);
     waterSurface.rotation.y = 0.28;
     waterSurface.scale.set(0.18, 1, 0.12);
     waterSurface.visible = false;
@@ -3619,12 +3626,12 @@ export function createChapterSeven(): ChapterSevenData {
       bottomPeg,
       centerHub,
       ...coilPieces,
-      straightHose,
-      hoseDrop,
+      wallFeedHose,
+      floorHose,
       faucetPipe,
       faucetNub,
       handlePivot,
-      groundHose,
+      nozzle,
       waterStream,
       waterSurface,
       ...waterSplash,
@@ -3635,8 +3642,8 @@ export function createChapterSeven(): ChapterSevenData {
     return {
       label: 'Outdoor hose faucet',
       kind: 'hose-faucet',
-      interactPosition: new Vector3(CENTER_X + localX + 1.05, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ - 0.92),
-      aimPosition: new Vector3(CENTER_X + localX + 0.66, localY - 0.16, HOUSE_CENTER_Z + localZ - 0.92),
+      interactPosition: new Vector3(CENTER_X + localX + 1.05, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ - 1.42),
+      aimPosition: new Vector3(CENTER_X + localX + 0.66, localY - 0.16, HOUSE_CENTER_Z + localZ - 1.42),
       doorPivots: [handlePivot],
       collider,
       animation: 'hose-faucet',
