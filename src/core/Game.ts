@@ -2584,8 +2584,6 @@ export class Game {
       if (this.officeChapterActive) {
         if (this.officeTabletCameraFeedActive) {
           this.cycleOfficeTabletCamera(itemCycle);
-        } else if (this.officeHeldPrizeItem === 'photo-camera') {
-          this.cycleOfficePosterPhotoGallery(itemCycle);
         } else {
           this.cycleOfficeHotbarItem(itemCycle);
         }
@@ -5993,7 +5991,7 @@ export class Game {
       const action = item === 'glass'
         ? 'Left click to throw it and shatter it.'
         : item === 'photo-camera'
-          ? 'Left click to take a poster photo. Scroll or type a photo number to review photos.'
+          ? 'Left click to take a poster photo. Mouse wheel switches items; type a photo number to review photos.'
         : item === 'tiny-bear'
           ? 'Left click to throw it and squeak it as a distraction.'
           : item === 'lollipop'
@@ -16455,7 +16453,7 @@ export class Game {
   private getOfficeHeldPrizeActionText(): string | null {
     switch (this.officeHeldPrizeItem) {
       case 'photo-camera':
-        return `Photo Camera equipped. Left click to take a picture. Captured posters: ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}. Scroll or type a photo number to review photos.`;
+        return `Photo Camera equipped. Left click to take a picture. Captured posters: ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}. Mouse wheel switches items; type a photo number to review photos.`;
       case 'glass':
         return 'Glass Cup equipped. Left click to throw it and make it shatter.';
       case 'tiny-bear':
@@ -19430,15 +19428,10 @@ export class Game {
         continue;
       }
 
+      poster.root.updateMatrixWorld(true);
       const toPoster = poster.position.clone().sub(cameraPosition);
       const distance = toPoster.length();
-      if (distance <= 0.1 || distance > 46) {
-        continue;
-      }
-
-      const direction = toPoster.clone().normalize();
-      const aim = forward.dot(direction);
-      if (aim < 0.935) {
+      if (distance <= 0.1 || distance > 58) {
         continue;
       }
 
@@ -19447,7 +19440,50 @@ export class Game {
         continue;
       }
 
-      const score = aim * 2 - distance * 0.012;
+      const posterRight = new Vector3(poster.normal.z, 0, -poster.normal.x).normalize();
+      const posterUp = new Vector3(0, 1, 0);
+      const samples = [
+        new Vector3(0, 0, 0),
+        new Vector3(-0.71, -0.99, 0),
+        new Vector3(0.71, -0.99, 0),
+        new Vector3(-0.71, 0.99, 0),
+        new Vector3(0.71, 0.99, 0),
+        new Vector3(0, -0.99, 0),
+        new Vector3(0, 0.99, 0),
+        new Vector3(-0.71, 0, 0),
+        new Vector3(0.71, 0, 0),
+      ];
+      let bestVisibility = -Infinity;
+      for (const sample of samples) {
+        const sampleWorld = poster.position
+          .clone()
+          .addScaledVector(posterRight, sample.x)
+          .addScaledVector(posterUp, sample.y);
+        const direction = sampleWorld.clone().sub(cameraPosition).normalize();
+        if (forward.dot(direction) < 0.36) {
+          continue;
+        }
+
+        const projected = sampleWorld.clone().project(this.camera);
+        if (projected.z < -1 || projected.z > 1) {
+          continue;
+        }
+
+        const viewMargin = 1.08;
+        if (Math.abs(projected.x) > viewMargin || Math.abs(projected.y) > viewMargin) {
+          continue;
+        }
+
+        const centeredScore = 1 - Math.min(1, Math.hypot(projected.x, projected.y) / Math.SQRT2);
+        bestVisibility = Math.max(bestVisibility, centeredScore);
+      }
+
+      if (bestVisibility < 0) {
+        continue;
+      }
+
+      const aim = forward.dot(toPoster.clone().normalize());
+      const score = bestVisibility * 3 + aim - distance * 0.01;
       if (score > bestScore) {
         closestPoster = poster;
         bestScore = score;
@@ -19455,6 +19491,10 @@ export class Game {
     }
 
     return closestPoster;
+  }
+
+  private formatOfficePosterCoordinates(position: Vector3): string {
+    return `x:${position.x.toFixed(2)} y:${position.y.toFixed(2)} z:${position.z.toFixed(2)}`;
   }
 
   private captureOfficePhotoCameraImage(): string {
@@ -19536,10 +19576,11 @@ export class Game {
 
     const firstCapture = !this.officePosterPhotoIds.has(poster.id);
     this.officePosterPhotoIds.add(poster.id);
+    const posterCoordinates = this.formatOfficePosterCoordinates(poster.position);
     const photo: OfficePosterPhoto = {
       id: photoId,
       posterId: poster.id,
-      label: poster.label,
+      label: `${poster.label} @ ${posterCoordinates}`,
       imageUrl: capturedImageUrl || this.createOfficePhotoFallbackImage(poster.label),
     };
     this.officePosterPhotos.push(photo);
@@ -19548,27 +19589,11 @@ export class Game {
     this.showOfficePosterPhoto(photo, true);
     this.pushStatus(
       firstCapture
-        ? `Photo ${photoId}: ${poster.label}. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`
-        : `Photo ${photoId}: ${poster.label} again. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`,
+        ? `Photo ${photoId}: glimpse of ${poster.label} marked at ${posterCoordinates}. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`
+        : `Photo ${photoId}: ${poster.label} again at ${posterCoordinates}. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`,
       2.8,
     );
     this.syncHud();
-  }
-
-  private cycleOfficePosterPhotoGallery(direction: number): void {
-    if (this.officePosterPhotos.length === 0) {
-      this.pushStatus('No photos yet. Left click while holding the Photo Camera to take one.', 1.8);
-      return;
-    }
-
-    this.officePosterPhotoIndex = (
-      this.officePosterPhotoIndex
-      + Math.sign(direction)
-      + this.officePosterPhotos.length
-    ) % this.officePosterPhotos.length;
-    const photo = this.officePosterPhotos[this.officePosterPhotoIndex];
-    this.showOfficePosterPhoto(photo);
-    this.pushStatus(`Photo ${photo.id}/${this.officePosterPhotos.length}: ${photo.label}.`, 1.8);
   }
 
   private selectOfficePosterPhotoByNumber(photoNumber: number): void {

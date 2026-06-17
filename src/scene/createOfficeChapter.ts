@@ -3273,6 +3273,57 @@ function createShelfPhotoCameraModel(): Group {
   return root;
 }
 
+function createInstructionHoverLabel(text: string, width = 2.4, height = 0.42): Mesh {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  if (context) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = 'rgba(5, 8, 11, 0.74)';
+    context.fillRect(10, 18, canvas.width - 20, canvas.height - 36);
+    context.strokeStyle = 'rgba(112, 226, 255, 0.82)';
+    context.lineWidth = 5;
+    context.strokeRect(12, 20, canvas.width - 24, canvas.height - 40);
+    context.fillStyle = '#e9fbff';
+    context.font = 'bold 30px Trebuchet MS, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    words.forEach((word) => {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      if (context.measureText(testLine).width > canvas.width - 78 && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    });
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    const lineHeight = 34;
+    const startY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+    lines.slice(0, 3).forEach((line, index) => {
+      context.fillText(line, canvas.width / 2, startY + index * lineHeight);
+    });
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  const material = new MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+    side: DoubleSide,
+  });
+  const label = new Mesh(new PlaneGeometry(width, height), material);
+  label.renderOrder = 7;
+  return label;
+}
+
 function createPosterKeycardMaterial(): MeshStandardMaterial {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -9763,6 +9814,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const photoCameraRoot = createShelfPhotoCameraModel();
   photoCameraRoot.position.set(storageShelfX + 0.08, 1.52, storageClosetCenterZ + 1.78);
   photoCameraRoot.rotation.y = -Math.PI / 2;
+  const photoCameraHint = createInstructionHoverLabel('take pictures of posters with camera', 2.35, 0.5);
+  photoCameraHint.position.set(0, 0.62, 0);
+  photoCameraHint.rotation.y = Math.PI / 2;
+  photoCameraRoot.add(photoCameraHint);
   storageClosetShelfRoot.add(photoCameraRoot);
   const photoCameraPickup: OfficeChapterPhotoCameraPickup = {
     label: 'Shelf Photo Camera',
@@ -10399,6 +10454,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const posterPrinterModel = createPosterPrinterModel();
   posterPrinterModel.root.position.set(backstageStorageMaxX - 0.74, 2.28, backstageStorageCenterZ - 0.95);
   posterPrinterModel.root.rotation.y = -Math.PI / 2;
+  const posterPrinterHint = createInstructionHoverLabel('Take pictures of all the posters', 2.55, 0.52);
+  posterPrinterHint.position.set(0, 0.72, 0);
+  posterPrinterModel.root.add(posterPrinterHint);
   root.add(posterPrinterModel.root);
   const posterPrinter: OfficeChapterPosterPrinter = {
     label: 'Poster Keycard Printer',
