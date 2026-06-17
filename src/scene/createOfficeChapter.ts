@@ -760,6 +760,109 @@ function createArcadeCabinet(
   return root;
 }
 
+function createRollerCoasterSimulator(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const platformMaterial = new MeshStandardMaterial({
+    color: 0x202633,
+    emissive: 0x02050a,
+    emissiveIntensity: 0.12,
+    roughness: 0.52,
+    metalness: 0.22,
+  });
+  const shellMaterial = new MeshStandardMaterial({
+    color: 0xb7363f,
+    emissive: 0x220307,
+    emissiveIntensity: 0.12,
+    roughness: 0.45,
+    metalness: 0.16,
+  });
+  const seatMaterial = new MeshStandardMaterial({
+    color: 0x15171d,
+    roughness: 0.48,
+    metalness: 0.22,
+  });
+  const screenMaterial = new MeshStandardMaterial({
+    color: 0x101621,
+    emissive: 0x48d8ff,
+    emissiveIntensity: 0.92,
+    roughness: 0.24,
+    metalness: 0.05,
+  });
+  const trackMaterial = new MeshStandardMaterial({
+    color: 0xffd45a,
+    emissive: 0xff9d24,
+    emissiveIntensity: 0.48,
+    roughness: 0.34,
+    metalness: 0.1,
+  });
+  const handleMaterial = new MeshStandardMaterial({
+    color: 0xd6e0e7,
+    emissive: 0x101820,
+    emissiveIntensity: 0.12,
+    roughness: 0.28,
+    metalness: 0.58,
+  });
+
+  const base = new Mesh(new BoxGeometry(3.45, 0.26, 2.45), platformMaterial);
+  base.position.set(0, 0.13, 0);
+  base.castShadow = true;
+  base.receiveShadow = true;
+
+  const screenFrame = new Mesh(new BoxGeometry(3.18, 2.14, 0.18), platformMaterial);
+  screenFrame.position.set(0, 1.75, 0.96);
+  screenFrame.castShadow = true;
+  const screen = new Mesh(new BoxGeometry(2.78, 1.62, 0.055), screenMaterial);
+  screen.position.set(0, 1.75, 0.86);
+
+  const trackCurve = new CatmullRomCurve3([
+    new Vector3(-1.12, 1.42, 0.81),
+    new Vector3(-0.62, 2.02, 0.81),
+    new Vector3(-0.12, 1.58, 0.81),
+    new Vector3(0.42, 1.96, 0.81),
+    new Vector3(1.08, 1.36, 0.81),
+  ]);
+  const track = new Mesh(new TubeGeometry(trackCurve, 32, 0.025, 8), trackMaterial);
+
+  const titleBar = new Mesh(new BoxGeometry(2.42, 0.16, 0.045), trackMaterial);
+  titleBar.position.set(0, 2.42, 0.8);
+
+  [-0.64, 0.64].forEach((seatX) => {
+    const seatRoot = new Group();
+    seatRoot.position.set(seatX, 0, -0.45);
+    const chairBase = new Mesh(new BoxGeometry(0.78, 0.24, 0.9), shellMaterial);
+    chairBase.position.set(0, 0.52, 0);
+    const cushion = new Mesh(new BoxGeometry(0.64, 0.18, 0.62), seatMaterial);
+    cushion.position.set(0, 0.72, -0.04);
+    const back = new Mesh(new BoxGeometry(0.68, 0.98, 0.18), seatMaterial);
+    back.position.set(0, 1.15, -0.42);
+    back.rotation.x = -0.2;
+    const sideLeft = new Mesh(new BoxGeometry(0.12, 0.46, 0.78), shellMaterial);
+    sideLeft.position.set(-0.42, 0.88, -0.06);
+    const sideRight = sideLeft.clone();
+    sideRight.position.x = 0.42;
+    const lapBar = new Mesh(new CylinderGeometry(0.035, 0.035, 0.76, 14), handleMaterial);
+    lapBar.rotation.z = Math.PI / 2;
+    lapBar.position.set(0, 1.05, 0.18);
+    const handle = new Mesh(new TorusGeometry(0.2, 0.025, 8, 20, Math.PI), handleMaterial);
+    handle.rotation.set(Math.PI / 2, 0, Math.PI);
+    handle.position.set(0, 1.13, 0.28);
+    seatRoot.add(chairBase, cushion, back, sideLeft, sideRight, lapBar, handle);
+    root.add(seatRoot);
+  });
+
+  const frontPanel = new Mesh(new BoxGeometry(2.75, 0.52, 0.24), shellMaterial);
+  frontPanel.position.set(0, 0.72, 0.42);
+  const footRail = new Mesh(new CylinderGeometry(0.045, 0.045, 2.74, 16), handleMaterial);
+  footRail.rotation.z = Math.PI / 2;
+  footRail.position.set(0, 0.48, 0.08);
+
+  root.add(base, screenFrame, screen, track, titleBar, frontPanel, footRail);
+  return root;
+}
+
 function createSwivelingSecurityCamera(
   id: number,
   label: string,
@@ -6961,6 +7064,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ));
     addCollider(colliders, cabinet.x, cabinet.z, 0.92, 1.12);
   });
+  root.add(createRollerCoasterSimulator(-220.67, 115.06, Math.PI / 2));
+  addCollider(colliders, -220.67, 115.06, 2.45, 3.45);
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
