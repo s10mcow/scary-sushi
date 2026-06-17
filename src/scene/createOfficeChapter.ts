@@ -35,7 +35,7 @@ const OFFICE_SECURITY_CAMERA_SCAN_LIGHTS_ENABLED = false;
 const GOLDEN_BORI_COLLISION_RADIUS = 0.62;
 const GOLDEN_BORI_PATH_SAMPLE_DISTANCE = 0.46;
 const GOLDEN_BORI_INSULT_RAGE_SECONDS = 10;
-const GOLDEN_BORI_INSULT_SOUND_COOLDOWN_SECONDS = 3.2;
+const GOLDEN_BORI_INSULT_STARE_SECONDS = 1.35;
 
 export interface OfficeChapterSeat {
   label: string;
@@ -485,7 +485,6 @@ interface OfficeChapterOptions {
   sandboxQuackyDesign?: boolean;
   onGoldenBoriStep?: () => void;
   onGoldenBoriCatch?: () => void;
-  onGoldenBoriInsult?: () => void;
 }
 
 const OFFICE_CENTER_X = -240;
@@ -1078,6 +1077,7 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     { centerX: -203.8, centerZ: 149.2, width: 18.8, depth: 2.24 },
     { centerX: -226.4, centerZ: 141.2, width: 2.24, depth: 17.8 },
     { centerX: -218.8, centerZ: 132.3, width: 17.6, depth: 2.24 },
+    { centerX: -225.14, centerZ: 116.62, width: 2.24, depth: 33.1 },
     { centerX: -250.2, centerZ: 171, width: 19.8, depth: 2.24 },
   ];
 
@@ -1087,6 +1087,8 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     { label: 'Foxy stage floor vent', x: -203.8, z: 149.2, width: 1.24, depth: 0.86, glow: 0xff8358 },
     { label: 'Ball pit floor vent', x: -212.1, z: 141.2, width: 0.9, depth: 1.22, glow: 0x5bdcff },
     { label: 'Back room floor vent', x: -218.8, z: 132.3, width: 1.18, depth: 0.86, glow: 0x67ff9a },
+    { label: 'Game room middle ceiling vent', x: -225.22, z: 114.84, width: 1.18, depth: 0.86, glow: 0xffd36b },
+    { label: 'Game room north ceiling vent', x: -225.07, z: 100.95, width: 1.18, depth: 0.86, glow: 0xff9f5b },
     { label: 'Kitchen floor vent', x: -237.2, z: 148.35, width: 1.18, depth: 0.86, glow: 0x9dffd1 },
     { label: 'Backstage suit storage floor vent', x: -255.1, z: 171, width: 1.18, depth: 0.86, glow: 0xf4ff8f },
     { label: 'Office hall floor vent', x: -234.8, z: 184.2, width: 1.18, depth: 0.86, glow: 0xff9f9f },
@@ -1515,6 +1517,8 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     [-236.5, 148.35, 'Kitchen branch junction'],
     [-226.4, 159.2, 'Ball pit branch junction'],
     [-226.4, 132.3, 'North room branch junction'],
+    [-225.14, 114.84, 'Game room vent junction'],
+    [-225.14, 100.95, 'Game room north vent junction'],
     [-212.1, 159.2, 'Foxy branch junction'],
     [-212.1, 149.2, 'Pirate room branch junction'],
     [-250.2, 171.0, 'Left hall branch junction'],
@@ -6237,30 +6241,22 @@ function createGoldenBoriPerformer(x: number, y: number, z: number): StageAnimat
     object.receiveShadow = true;
   });
 
-  const glassesMaterial = new MeshStandardMaterial({
-    color: 0x030405,
-    emissive: 0x000000,
-    roughness: 0.18,
-    metalness: 0.64,
+  const rageEyeMaterial = new MeshBasicMaterial({
+    color: 0xff1f14,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
   });
-  const frameMaterial = new MeshStandardMaterial({
-    color: 0x111111,
-    roughness: 0.22,
-    metalness: 0.72,
+  const rageEyes: Mesh[] = [];
+  [-0.14, 0.14].forEach((eyeX) => {
+    const rageEye = new Mesh(new SphereGeometry(0.064, 12, 8), rageEyeMaterial.clone());
+    rageEye.scale.set(1.18, 0.74, 0.36);
+    rageEye.position.set(eyeX, 0.065, -0.37);
+    rageEye.renderOrder = 6;
+    performer.head.add(rageEye);
+    rageEyes.push(rageEye);
   });
-  [-0.16, 0.16].forEach((lensX) => {
-    const lens = new Mesh(new BoxGeometry(0.22, 0.12, 0.035), glassesMaterial);
-    lens.position.set(lensX, 0.065, -0.49);
-    lens.rotation.set(-0.05, lensX < 0 ? -0.08 : 0.08, lensX < 0 ? 0.08 : -0.08);
-    performer.head.add(lens);
-  });
-  const bridge = new Mesh(new BoxGeometry(0.16, 0.035, 0.034), frameMaterial);
-  bridge.position.set(0, 0.065, -0.492);
-  bridge.rotation.x = -0.05;
-  const browFrame = new Mesh(new BoxGeometry(0.58, 0.035, 0.034), frameMaterial);
-  browFrame.position.set(0, 0.14, -0.485);
-  browFrame.rotation.x = -0.05;
-  performer.head.add(bridge, browFrame);
+  performer.root.userData.goldenBoriRageEyes = rageEyes;
 
   return performer;
 }
@@ -10137,6 +10133,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       new Vector3(-249.07, 3.28, 186.75),
       new Vector3(0, 0, -1),
     ),
+    createSwivelingSecurityCamera(
+      18,
+      'Camera 17 Game Room West Wall',
+      new Vector3(-225.22, 3.64, 114.84),
+      new Vector3(-1, 0, 0),
+    ),
+    createSwivelingSecurityCamera(
+      19,
+      'Camera 18 Game Room North Wall',
+      new Vector3(-225.07, 3.71, 100.95),
+      new Vector3(0, 0, 1),
+    ),
     ...(abandonedStraightHalls
       ? [
         createSwivelingSecurityCamera(
@@ -11005,8 +11013,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let goldenBoriWalkTime = 0;
   let goldenBoriChaseActive = false;
   let goldenBoriChaseTimer = 0;
+  let goldenBoriInsultStareTimer = 0;
   let goldenBoriInsultRageTimer = 0;
-  let goldenBoriInsultSoundCooldown = 0;
   let goldenBoriStepSoundIndex = -1;
   let goldenBoriCatchCooldown = 0;
   let goldenBoriStuckTimer = 0;
@@ -11236,6 +11244,23 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }
     goldenBoriStepSoundIndex = stepIndex;
     options.onGoldenBoriStep?.();
+  };
+  const updateGoldenBoriRageEyes = (): void => {
+    const rageEyes = goldenBori.root.userData.goldenBoriRageEyes as Mesh[] | undefined;
+    const active = goldenBoriInsultStareTimer > 0 || goldenBoriInsultRageTimer > 0;
+    const pulse = active
+      ? goldenBoriInsultStareTimer > 0
+        ? 0.3 + Math.abs(Math.sin(goldenBoriWalkTime * 19 + performance.now() * 0.018)) * 0.7
+        : 0.52 + Math.abs(Math.sin(performance.now() * 0.011)) * 0.22
+      : 0;
+    rageEyes?.forEach((eye) => {
+      const material = eye.material;
+      if (material instanceof MeshBasicMaterial) {
+        material.opacity = pulse;
+        material.needsUpdate = true;
+      }
+      eye.visible = pulse > 0.02;
+    });
   };
   let basketballThrowActive = false;
   let basketballThrowTime = 0;
@@ -11781,8 +11806,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     provocativeSpeech = false,
   ): void => {
     goldenBoriCatchCooldown = Math.max(0, goldenBoriCatchCooldown - deltaSeconds);
+    goldenBoriInsultStareTimer = Math.max(0, goldenBoriInsultStareTimer - deltaSeconds);
     goldenBoriInsultRageTimer = Math.max(0, goldenBoriInsultRageTimer - deltaSeconds);
-    goldenBoriInsultSoundCooldown = Math.max(0, goldenBoriInsultSoundCooldown - deltaSeconds);
+    updateGoldenBoriRageEyes();
     goldenBori.homePosition.y = getGoldenBoriRootY(goldenBori.root.position.x, goldenBori.root.position.z);
 
     if (playerPosition) {
@@ -11797,18 +11823,48 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       const heardProvocation = provocativeSpeech
         && playerDistance <= 86
         && playerOnMainFloor;
-      if (heardVoice || heardProvocation) {
+      if (heardProvocation && goldenBoriInsultStareTimer <= 0 && goldenBoriInsultRageTimer <= 0) {
+        goldenBoriChaseTimer = Math.max(goldenBoriChaseTimer, 12);
+        goldenBoriInsultRageTimer = Math.max(
+          goldenBoriInsultRageTimer,
+          GOLDEN_BORI_INSULT_RAGE_SECONDS + GOLDEN_BORI_INSULT_STARE_SECONDS,
+        );
+        goldenBoriInsultStareTimer = Math.max(goldenBoriInsultStareTimer, GOLDEN_BORI_INSULT_STARE_SECONDS);
+        goldenBoriWanderPause = 0;
+      } else if (heardVoice) {
         goldenBoriChaseActive = true;
-        goldenBoriChaseTimer = Math.max(goldenBoriChaseTimer, heardProvocation || playerVoiceLevel >= 0.48 ? 12 : 7);
-        if (heardProvocation) {
-          goldenBoriInsultRageTimer = Math.max(goldenBoriInsultRageTimer, GOLDEN_BORI_INSULT_RAGE_SECONDS);
-          if (goldenBoriInsultSoundCooldown <= 0) {
-            options.onGoldenBoriInsult?.();
-            goldenBoriInsultSoundCooldown = GOLDEN_BORI_INSULT_SOUND_COOLDOWN_SECONDS;
-          }
-        }
+        goldenBoriChaseTimer = Math.max(goldenBoriChaseTimer, playerVoiceLevel >= 0.48 ? 12 : 7);
         goldenBoriWanderPause = 0;
       }
+    }
+
+    if (goldenBoriInsultStareTimer > 0) {
+      resetAnimatronicPartsTowardHome(goldenBori, 1 - Math.exp(-deltaSeconds * 5.5));
+      goldenBori.root.position.y = MathUtils.lerp(goldenBori.root.position.y, goldenBori.homePosition.y, 1 - Math.exp(-deltaSeconds * 8));
+      if (playerPosition) {
+        const dx = playerPosition.x - goldenBori.root.position.x;
+        const dz = playerPosition.z - goldenBori.root.position.z;
+        if (Math.hypot(dx, dz) > 0.01) {
+          goldenBori.root.rotation.y = MathUtils.lerp(goldenBori.root.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-deltaSeconds * 8.5));
+        }
+        goldenBori.root.updateMatrixWorld(true);
+        const localTarget = goldenBori.root.worldToLocal(partyLocalTarget.copy(playerPosition));
+        const direction = localTarget.sub(goldenBori.head.position);
+        goldenBori.head.rotation.y = MathUtils.clamp(Math.atan2(-direction.x, -direction.z), -0.52, 0.52);
+        goldenBori.head.rotation.x = -MathUtils.clamp(
+          Math.atan2(direction.y, Math.hypot(direction.x, direction.z)),
+          -0.22,
+          0.26,
+        );
+      }
+      goldenBoriCollider.centerX = goldenBori.root.position.x;
+      goldenBoriCollider.centerZ = goldenBori.root.position.z;
+      return;
+    }
+    if (goldenBoriInsultRageTimer > 0 && playerPosition) {
+      goldenBoriChaseActive = true;
+      goldenBoriChaseTimer = Math.max(goldenBoriChaseTimer, goldenBoriInsultRageTimer);
+      goldenBoriWanderPause = 0;
     }
 
     if (goldenBoriWanderPause > 0) {
@@ -11893,6 +11949,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
       if (goldenBoriChaseTimer <= 0 || !playerPosition || playerPosition.y <= -1 || playerPosition.y >= WALL_HEIGHT + 3.2) {
         goldenBoriChaseActive = false;
+        goldenBoriInsultStareTimer = 0;
         goldenBoriInsultRageTimer = 0;
         goldenBoriWanderPause = 0.35;
       }
@@ -12480,8 +12537,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     goldenBoriWalkTime = 0;
     goldenBoriChaseActive = false;
     goldenBoriChaseTimer = 0;
+    goldenBoriInsultStareTimer = 0;
     goldenBoriInsultRageTimer = 0;
-    goldenBoriInsultSoundCooldown = 0;
     goldenBoriStepSoundIndex = -1;
     goldenBoriCatchCooldown = 3.5;
     goldenBoriStuckTimer = 0;
@@ -12489,6 +12546,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     goldenBori.root.position.copy(goldenBoriStageHomePosition);
     goldenBori.root.rotation.set(0, goldenBori.homeRotationY, 0);
     resetAnimatronicPartsTowardHome(goldenBori, 1);
+    updateGoldenBoriRageEyes();
     goldenBoriCollider.centerX = goldenBori.root.position.x;
     goldenBoriCollider.centerZ = goldenBori.root.position.z;
   };
