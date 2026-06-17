@@ -481,7 +481,7 @@ const PARTY_SHOW_MUSIC_DURATION = 10;
 const PARTY_SHOW_RETURN_DURATION = 2.4;
 const BASKETBALL_THROW_DURATION = 1.65;
 const FOXY_PLAY_DURATION = 2.7;
-const FOXY_STORY_DURATION = 24;
+const FOXY_STORY_DURATION = 52;
 
 type OfficeChapterFoxyPlayAction = 'foxy' | 'parrot';
 
@@ -3305,7 +3305,7 @@ function createPuppetTreasure(): Group {
 function createFoxyPuppetShowStage(): Group {
   const root = new Group();
   root.position.set(-1.34, 2.0, 0);
-  root.rotation.y = Math.PI / 2;
+  root.rotation.y = -Math.PI / 2;
   root.visible = false;
 
   const background = new Mesh(new PlaneGeometry(7.15, 3.15), createPuppetShowBackgroundMaterial());

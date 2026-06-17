@@ -89,7 +89,7 @@ export class FoxyPlayAudio {
     const enthusiasticFoxy = speaker === 'foxy' && spokenLine === FOXY_PLAY_FOXY_SOON_LINE;
     const storyFoxy = speaker === 'foxy' && spokenLine === FOXY_PLAY_STORY_NARRATION;
     utterance.volume = speaker === 'foxy' ? 0.92 : 0.82;
-    utterance.rate = storyFoxy ? 1.04 : enthusiasticFoxy ? 1.02 : speaker === 'foxy' ? 0.86 : 1.28;
+    utterance.rate = storyFoxy ? 0.92 : enthusiasticFoxy ? 1.02 : speaker === 'foxy' ? 0.86 : 1.28;
     utterance.pitch = storyFoxy ? 0.82 : enthusiasticFoxy ? 0.94 : speaker === 'foxy' ? 0.72 : 1.82;
     utterance.onend = (): void => {
       if (this.activeSpeech === utterance) {
