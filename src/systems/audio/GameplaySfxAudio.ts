@@ -479,6 +479,57 @@ export class GameplaySfxAudio {
     }
   }
 
+  playPrinterPrint(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.012;
+    const whirrEnd = now + 1.0;
+    const paperStart = now + 0.42;
+    const paperEnd = now + 1.54;
+
+    const whirrGain = this.context.createGain();
+    whirrGain.gain.setValueAtTime(0.0001, now);
+    whirrGain.gain.exponentialRampToValueAtTime(0.075, now + 0.08);
+    whirrGain.gain.linearRampToValueAtTime(0.062, whirrEnd - 0.12);
+    whirrGain.gain.exponentialRampToValueAtTime(0.0001, whirrEnd);
+    whirrGain.connect(this.masterGain);
+
+    const motor = this.context.createOscillator();
+    motor.type = 'sawtooth';
+    motor.frequency.setValueAtTime(94, now);
+    motor.frequency.linearRampToValueAtTime(128, whirrEnd);
+    motor.connect(whirrGain);
+    this.startSource(motor, now, whirrEnd + 0.03);
+
+    const paper = this.context.createBufferSource();
+    paper.buffer = this.noiseBuffer;
+    paper.loop = true;
+    paper.playbackRate.value = 1.35;
+
+    const paperFilter = this.context.createBiquadFilter();
+    paperFilter.type = 'bandpass';
+    paperFilter.frequency.setValueAtTime(1150, paperStart);
+    paperFilter.frequency.linearRampToValueAtTime(1860, paperEnd);
+    paperFilter.Q.value = 1.15;
+
+    const paperGain = this.context.createGain();
+    paperGain.gain.setValueAtTime(0.0001, paperStart);
+    paperGain.gain.exponentialRampToValueAtTime(0.052, paperStart + 0.06);
+    paperGain.gain.linearRampToValueAtTime(0.046, paperEnd - 0.12);
+    paperGain.gain.exponentialRampToValueAtTime(0.0001, paperEnd);
+
+    paper.connect(paperFilter);
+    paperFilter.connect(paperGain);
+    paperGain.connect(this.masterGain);
+    this.startSource(paper, paperStart, paperEnd + 0.04);
+
+    [0.56, 0.78, 1.02, 1.28].forEach((offset, index) => {
+      this.playMetalThud(now + offset, 0.022 + index * 0.004, 260 + index * 42);
+    });
+  }
+
   playRunningWater(duration = 0.82): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;

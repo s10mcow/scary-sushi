@@ -440,7 +440,7 @@ interface OfficeCutsceneMaterialState {
   eye: boolean;
 }
 
-type OfficePrizeItemId = 'photo-camera' | 'glass' | 'tiny-bear' | 'lollipop' | 'duck-toy' | 'stuffie';
+type OfficePrizeItemId = 'photo-camera' | 'glass' | 'tiny-bear' | 'lollipop' | 'duck-toy' | 'stuffie' | 'poster-keycard';
 type OfficeThrowableKind = 'glass' | 'tiny-bear';
 
 interface ActiveOfficeGlassThrow {
@@ -796,6 +796,7 @@ const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
   lollipop: 'Lollipop',
   'duck-toy': 'Duck Toy',
   stuffie: 'Stuffie',
+  'poster-keycard': 'Poster Keycard',
 };
 const OFFICE_PRIZE_HOTBAR_SLOTS: Array<{ slot: number; item: OfficePrizeItemId }> = [
   { slot: 5, item: 'photo-camera' },
@@ -803,6 +804,7 @@ const OFFICE_PRIZE_HOTBAR_SLOTS: Array<{ slot: number; item: OfficePrizeItemId }
   { slot: 7, item: 'tiny-bear' },
   { slot: 8, item: 'lollipop' },
   { slot: 9, item: 'stuffie' },
+  { slot: 10, item: 'poster-keycard' },
 ];
 const OFFICE_GAME_MODE_OFFICE_CENTER = new Vector3(-240, GAME_CONFIG.player.height, 184);
 const OFFICE_GAME_MODE_OFFICE_SPAWN = new Vector3(-240, GAME_CONFIG.player.height, 186.2);
@@ -3741,6 +3743,48 @@ export class Game {
     return root;
   }
 
+  private createOfficePosterKeycardModel(includeHand = false): Group {
+    const root = new Group();
+    if (includeHand) {
+      root.add(this.createOfficePrizeHandModel());
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 192;
+    canvas.height = 128;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#dce5ec';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#142433';
+      context.fillRect(8, 8, canvas.width - 16, canvas.height - 16);
+      context.fillStyle = '#76e8ff';
+      context.font = 'bold 18px Trebuchet MS, sans-serif';
+      context.textAlign = 'center';
+      context.fillText('POSTER', canvas.width / 2, 29);
+      context.fillText('KEYCARD', canvas.width / 2, 51);
+      const colors = ['#8b5a32', '#dfb23f', '#b7a7dd', '#b44a2b', '#6fa8dc'];
+      for (let index = 0; index < 15; index += 1) {
+        const col = index % 5;
+        const row = Math.floor(index / 5);
+        context.fillStyle = colors[index % colors.length] ?? '#ffffff';
+        context.fillRect(26 + col * 28, 66 + row * 16, 18, 11);
+      }
+      context.fillStyle = '#eaf8ff';
+      context.font = 'bold 10px Trebuchet MS, sans-serif';
+      context.fillText('BASEMENT ACCESS', canvas.width / 2, 118);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    const cardMaterial = new MeshBasicMaterial({ map: texture });
+    const card = new Mesh(new PlaneGeometry(0.32, 0.22), cardMaterial);
+    card.position.set(0.02, 0.09, -0.16);
+    card.rotation.set(-0.2, -0.08, 0.08);
+    root.add(card);
+    return root;
+  }
+
   private createOfficePrizeItemModels(): void {
     const models: Array<[OfficePrizeItemId, Group]> = [
       ['photo-camera', this.createOfficePhotoCameraModel(true)],
@@ -3748,6 +3792,7 @@ export class Game {
       ['lollipop', this.createOfficeLollipopModel(true)],
       ['duck-toy', this.createOfficeDuckToyModel(true)],
       ['stuffie', this.createOfficeStuffieModel(true)],
+      ['poster-keycard', this.createOfficePosterKeycardModel(true)],
     ];
 
     models.forEach(([item, model]) => {
@@ -5946,7 +5991,9 @@ export class Game {
             ? 'Left click to eat it for a 10 second speed boost.'
             : item === 'stuffie'
               ? 'Left click to play the saved stuffie sound.'
-              : 'It looks like a tiny Quacky toy in your hand.';
+              : item === 'poster-keycard'
+                ? 'Use it on the locked basement keycard doors.'
+                : 'It looks like a tiny Quacky toy in your hand.';
       this.pushStatus(`${OFFICE_PRIZE_ITEM_LABELS[item]} equipped. ${action}`, 2.6);
     }
   }
@@ -13204,6 +13251,9 @@ export class Game {
         this.playOfficePrizeToySound();
         this.pushStatus('The stuffie peeps when you squish it.', 1.8);
         return true;
+      case 'poster-keycard':
+        this.pushStatus('The poster keycard is ready for the basement keycard doors.', 1.8);
+        return true;
       case 'duck-toy':
         this.pushStatus('The tiny duck toy looks like Quacky in your hand.', 1.8);
         return true;
@@ -16407,6 +16457,8 @@ export class Game {
         return 'Duck Toy equipped. It looks like a tiny Quacky in your hand.';
       case 'stuffie':
         return 'Stuffie equipped. Left click to play the saved custom sound.';
+      case 'poster-keycard':
+        return 'Poster Keycard equipped. Use it on locked basement keycard doors.';
       default:
         return null;
     }
@@ -16599,6 +16651,7 @@ export class Game {
           label: `${OFFICE_PRIZE_ITEM_LABELS[item]} ${held ? '[Held]' : ''}`.trim(),
           count: this.getOfficePrizeItemCount(item),
           filled: this.getOfficePrizeItemCount(item) > 0 || held,
+          type: item,
         };
       });
       return [
@@ -19545,8 +19598,9 @@ export class Game {
     this.officePrintedPosterKeycard = true;
     printer.printed = true;
     printer.keycardRoot.visible = true;
-    this.gameplaySfxAudio.playSmallPanel(true);
-    this.pushStatus('The printer spits out a basement keycard covered with tiny poster pictures.', 3.0);
+    this.addOfficePrizeItem('poster-keycard', 1);
+    this.gameplaySfxAudio.playPrinterPrint();
+    this.pushStatus('The printer whirs, feeds paper through, and spits out a basement poster keycard into hotbar slot 10.', 3.4);
     this.syncHud();
   }
 

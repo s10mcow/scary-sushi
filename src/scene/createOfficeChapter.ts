@@ -10397,13 +10397,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     addCollider(colliders, shelf.x, shelf.z, shelf.colliderWidth, shelf.colliderDepth);
   });
   const posterPrinterModel = createPosterPrinterModel();
-  posterPrinterModel.root.position.set(backstageStorageCenterX - 3.7, 2.22, backstageStorageMinZ + 0.62);
-  posterPrinterModel.root.rotation.y = Math.PI;
+  posterPrinterModel.root.position.set(backstageStorageMaxX - 0.74, 2.28, backstageStorageCenterZ - 0.95);
+  posterPrinterModel.root.rotation.y = -Math.PI / 2;
   root.add(posterPrinterModel.root);
   const posterPrinter: OfficeChapterPosterPrinter = {
     label: 'Poster Keycard Printer',
     root: posterPrinterModel.root,
-    interactPosition: new Vector3(backstageStorageCenterX - 3.7, 1.72, backstageStorageMinZ + 1.18),
+    interactPosition: new Vector3(backstageStorageMaxX - 1.36, 1.86, backstageStorageCenterZ - 0.95),
     keycardRoot: posterPrinterModel.keycardRoot,
     printed: false,
   };
@@ -10919,6 +10919,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let goldenBoriChaseTimer = 0;
   let goldenBoriStepSoundIndex = -1;
   let goldenBoriCatchCooldown = 0;
+  let goldenBoriStuckTimer = 0;
   const goldenBoriChaseTarget = new Vector3();
   const goldenBoriStageFloors = [kitchenHallRoomStageFloor, stageFloor, foxStageFloor];
   const getGoldenBoriRootY = (x: number, z: number): number => {
@@ -11090,6 +11091,52 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       1 - Math.exp(-deltaSeconds * 5.8),
     );
     goldenBori.homePosition.y = getGoldenBoriRootY(rootPosition.x, rootPosition.z);
+    return true;
+  };
+  const recoverGoldenBoriFromStuck = (target: Vector3): boolean => {
+    const currentRouteIndex = getNearestGoldenBoriRouteIndex(goldenBori.root.position);
+    const targetRouteIndex = getNearestGoldenBoriRouteIndex(target);
+    const nextRouteIndex = getGoldenBoriNextRouteIndex(currentRouteIndex, targetRouteIndex);
+    const candidates = [
+      goldenBoriWanderPoints[nextRouteIndex],
+      goldenBoriWanderPoints[currentRouteIndex],
+      ...goldenBoriWanderPoints,
+    ].filter((point): point is Vector3 => Boolean(point));
+
+    let bestPoint: Vector3 | null = null;
+    let bestScore = Infinity;
+    for (const point of candidates) {
+      if (!canGoldenBoriStandAt(point.x, point.z, GOLDEN_BORI_COLLISION_RADIUS * 0.7)) {
+        continue;
+      }
+
+      const currentDistance = Math.hypot(point.x - goldenBori.root.position.x, point.z - goldenBori.root.position.z);
+      const targetDistance = Math.hypot(point.x - target.x, point.z - target.z);
+      const score = currentDistance * 0.7 + targetDistance * 0.3;
+      if (score >= bestScore) {
+        continue;
+      }
+
+      bestPoint = point;
+      bestScore = score;
+    }
+
+    const recoveredPoint = bestPoint;
+    if (!recoveredPoint) {
+      return false;
+    }
+
+    goldenBori.root.position.set(
+      recoveredPoint.x,
+      getGoldenBoriRootY(recoveredPoint.x, recoveredPoint.z),
+      recoveredPoint.z,
+    );
+    goldenBori.homePosition.y = goldenBori.root.position.y;
+    goldenBoriCollider.centerX = recoveredPoint.x;
+    goldenBoriCollider.centerZ = recoveredPoint.z;
+    goldenBoriWanderIndex = Math.max(0, goldenBoriPatrolRoute.indexOf(nextRouteIndex));
+    goldenBoriWanderPause = goldenBoriChaseActive ? 0.08 : 0.28;
+    goldenBoriStuckTimer = 0;
     return true;
   };
   const triggerGoldenBoriStep = (): void => {
@@ -11709,6 +11756,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const dz = target.z - goldenBori.root.position.z;
     const distance = Math.hypot(dx, dz);
 
+    if (isGoldenBoriBlocked(goldenBori.root.position.x, goldenBori.root.position.z, GOLDEN_BORI_COLLISION_RADIUS * 0.66)) {
+      recoverGoldenBoriFromStuck(target);
+      return;
+    }
+
     if (goldenBoriChaseActive) {
       goldenBoriChaseTimer = Math.max(0, goldenBoriChaseTimer - deltaSeconds);
       if (playerPosition && playerPosition.y > -1 && playerPosition.y < WALL_HEIGHT + 3.2) {
@@ -11751,6 +11803,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const speed = goldenBoriChaseActive ? 5.95 : 1.22;
     const moved = moveGoldenBoriToward(target, speed, deltaSeconds);
     if (!moved) {
+      goldenBoriStuckTimer += deltaSeconds;
+      if (goldenBoriStuckTimer > 0.7 && recoverGoldenBoriFromStuck(target)) {
+        return;
+      }
       if (!goldenBoriChaseActive) {
         goldenBoriWanderIndex = (goldenBoriWanderIndex + 1) % goldenBoriPatrolRoute.length;
       }
@@ -11759,6 +11815,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       goldenBoriCollider.centerZ = goldenBori.root.position.z;
       return;
     }
+    goldenBoriStuckTimer = 0;
 
     goldenBoriWalkTime += deltaSeconds * (goldenBoriChaseActive ? 10.8 : 6.25);
     triggerGoldenBoriStep();
@@ -12307,6 +12364,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     goldenBoriChaseTimer = 0;
     goldenBoriStepSoundIndex = -1;
     goldenBoriCatchCooldown = 3.5;
+    goldenBoriStuckTimer = 0;
     goldenBori.homePosition.copy(goldenBoriStageHomePosition);
     goldenBori.root.position.copy(goldenBoriStageHomePosition);
     goldenBori.root.rotation.set(0, goldenBori.homeRotationY, 0);

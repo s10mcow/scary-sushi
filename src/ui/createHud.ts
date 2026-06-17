@@ -1106,7 +1106,7 @@ export function createHud(host: HTMLElement): HudController {
   hotbarLabel.className = 'hud__label hud__label--hotbar';
   hotbarLabel.textContent = 'Inventory';
 
-  const hotbarSlots = Array.from({ length: 9 }, (_, index) => {
+  const hotbarSlots = Array.from({ length: 10 }, (_, index) => {
     const slot = document.createElement('div');
     slot.className = 'hud__slot';
     slot.dataset.filled = 'false';

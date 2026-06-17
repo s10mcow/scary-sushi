@@ -511,8 +511,8 @@ select {
 .hud[data-theme="doom"] .hud__hotbar {
   left: 50%;
   bottom: 0.7rem;
-  width: min(56rem, calc(100% - 21rem));
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  width: min(62rem, calc(100% - 21rem));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 0.12rem;
   padding: 0.42rem 0.55rem 0.52rem;
   border: 1px solid rgba(153, 74, 29, 0.9);
@@ -2154,8 +2154,8 @@ select {
   bottom: 1.6rem;
   z-index: 1;
   display: grid;
-  width: min(64rem, calc(100% - 2rem));
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  width: min(70rem, calc(100% - 2rem));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 0.28rem;
   transform: translateX(-50%);
   transition:
@@ -2287,6 +2287,21 @@ select {
 .hud__slot[data-filled="true"][data-item]::before,
 .hud__minecraft-slot[data-filled="true"][data-item]::before {
   opacity: 1;
+}
+
+.hud__slot[data-item="poster-keycard"]::before {
+  width: 1.78rem;
+  height: 1.12rem;
+  transform: translateX(-50%) rotateZ(-4deg);
+  border-color: rgba(20, 38, 56, 0.7);
+  border-radius: 0.12rem;
+  background:
+    linear-gradient(90deg, rgba(86, 222, 255, 0.92) 0 0.22rem, transparent 0.22rem),
+    repeating-linear-gradient(90deg, #dba84b 0 0.18rem, #7a4f2e 0.18rem 0.36rem, #b7a7dd 0.36rem 0.54rem),
+    #dce5ec;
+  box-shadow:
+    inset 0 0 0 0.12rem rgba(20, 38, 56, 0.82),
+    0 0.24rem 0.42rem rgba(0, 0, 0, 0.22);
 }
 
 .hud__slot {
@@ -4941,7 +4956,7 @@ select {
     bottom: 1rem;
     width: auto;
     transform: none;
-    grid-template-columns: repeat(9, minmax(0, 1fr));
+    grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: 0.16rem;
   }
 
