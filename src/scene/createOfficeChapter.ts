@@ -1002,6 +1002,14 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     metalness: 0.58,
     side: DoubleSide,
   });
+  const ductCeilingMaterial = new MeshStandardMaterial({
+    color: 0x5d6870,
+    emissive: 0x080d10,
+    emissiveIntensity: 0.11,
+    roughness: 0.4,
+    metalness: 0.6,
+    side: DoubleSide,
+  });
   const frameMaterial = new MeshStandardMaterial({
     color: 0x20292f,
     emissive: 0x030607,
@@ -1077,7 +1085,6 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     { label: 'Ball pit floor vent', x: -212.1, z: 141.2, width: 0.9, depth: 1.22, glow: 0x5bdcff },
     { label: 'Back room floor vent', x: -218.8, z: 132.3, width: 1.18, depth: 0.86, glow: 0x67ff9a },
     { label: 'Kitchen floor vent', x: -237.2, z: 148.35, width: 1.18, depth: 0.86, glow: 0x9dffd1 },
-    { label: 'Bathroom floor vent', x: -260.1, z: 164.8, width: 0.9, depth: 1.18, glow: 0x8fd7ff },
     { label: 'Backstage suit storage floor vent', x: -255.1, z: 171, width: 1.18, depth: 0.86, glow: 0xf4ff8f },
     { label: 'Office hall floor vent', x: -234.8, z: 184.2, width: 1.18, depth: 0.86, glow: 0xff9f9f },
   ];
@@ -1322,6 +1329,67 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     }
   };
 
+  const addDuctCeilingPieces = (plan: OfficeVentDuctPlan, previousPlans: OfficeVentDuctPlan[]): void => {
+    const rect = getDuctRect(plan);
+    const overlaps = previousPlans
+      .map((previous) => {
+        const previousRect = getDuctRect(previous);
+        return {
+          minX: Math.max(rect.minX, previousRect.minX),
+          maxX: Math.min(rect.maxX, previousRect.maxX),
+          minZ: Math.max(rect.minZ, previousRect.minZ),
+          maxZ: Math.min(rect.maxZ, previousRect.maxZ),
+        };
+      })
+      .filter((overlap) => overlap.maxX - overlap.minX > 0.08 && overlap.maxZ - overlap.minZ > 0.08);
+
+    if (overlaps.length === 0) {
+      const ceiling = new Mesh(new BoxGeometry(plan.width, 0.04, plan.depth), ductCeilingMaterial);
+      ceiling.position.set(plan.centerX, ductBottomY + ductHeight, plan.centerZ);
+      root.add(ceiling);
+      return;
+    }
+
+    const xCuts = [rect.minX, rect.maxX];
+    const zCuts = [rect.minZ, rect.maxZ];
+    overlaps.forEach((overlap) => {
+      xCuts.push(overlap.minX, overlap.maxX);
+      zCuts.push(overlap.minZ, overlap.maxZ);
+    });
+    xCuts.sort((left, right) => left - right);
+    zCuts.sort((left, right) => left - right);
+
+    for (let xIndex = 0; xIndex < xCuts.length - 1; xIndex += 1) {
+      for (let zIndex = 0; zIndex < zCuts.length - 1; zIndex += 1) {
+        const minX = xCuts[xIndex];
+        const maxX = xCuts[xIndex + 1];
+        const minZ = zCuts[zIndex];
+        const maxZ = zCuts[zIndex + 1];
+        const width = maxX - minX;
+        const depth = maxZ - minZ;
+        if (width <= 0.08 || depth <= 0.08) {
+          continue;
+        }
+
+        const centerX = (minX + maxX) / 2;
+        const centerZ = (minZ + maxZ) / 2;
+        const insidePreviousCeiling = overlaps.some((overlap) => (
+          centerX >= overlap.minX
+          && centerX <= overlap.maxX
+          && centerZ >= overlap.minZ
+          && centerZ <= overlap.maxZ
+        ));
+        if (insidePreviousCeiling) {
+          continue;
+        }
+
+        const ceiling = new Mesh(new BoxGeometry(width, 0.04, depth), ductCeilingMaterial);
+        ceiling.position.set(centerX, ductBottomY + ductHeight, centerZ);
+        root.add(ceiling);
+      }
+    }
+  };
+
   const addWallPiecesAlongX = (xStart: number, xEnd: number, z: number, openings: Array<[number, number]>): void => {
     getMergedIntervals(xStart, xEnd, openings).forEach(([wallStart, wallEnd]) => {
       const wallWidth = wallEnd - wallStart;
@@ -1331,7 +1399,7 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     });
   };
 
-  const addDuctSegment = (plan: OfficeVentDuctPlan): void => {
+  const addDuctSegment = (plan: OfficeVentDuctPlan, index: number): void => {
     const { centerX, centerZ, width, depth } = plan;
     const rect = getDuctRect(plan);
     segments.push({
@@ -1341,6 +1409,7 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     });
 
     addDuctFloorPieces(plan);
+    addDuctCeilingPieces(plan, ventDuctPlans.slice(0, index));
     addWallPiecesAlongZ(rect.minX, rect.minZ, rect.maxZ, getSideOpenings(plan, 'west'));
     addWallPiecesAlongZ(rect.maxX, rect.minZ, rect.maxZ, getSideOpenings(plan, 'east'));
     addWallPiecesAlongX(rect.minX, rect.maxX, rect.minZ, getSideOpenings(plan, 'north'));

@@ -19602,6 +19602,7 @@ export class Game {
       && playerPosition.z >= area.minZ
       && playerPosition.z <= area.maxZ
     ))) {
+      this.resolveOfficeBasementDoorCollision(playerPosition);
       return;
     }
 
@@ -19622,6 +19623,32 @@ export class Game {
 
     playerPosition.x = bestX;
     playerPosition.z = bestZ;
+    this.resolveOfficeBasementDoorCollision(playerPosition);
+  }
+
+  private resolveOfficeBasementDoorCollision(playerPosition: Vector3): void {
+    const radius = GAME_CONFIG.player.radius;
+    this.officeChapter.basementRoomDoors.forEach((door) => {
+      const collider = door.collider;
+      if (collider.enabled === false) {
+        return;
+      }
+
+      const dx = playerPosition.x - collider.centerX;
+      const dz = playerPosition.z - collider.centerZ;
+      const overlapX = collider.halfWidth + radius - Math.abs(dx);
+      const overlapZ = collider.halfDepth + radius - Math.abs(dz);
+      if (overlapX <= 0 || overlapZ <= 0) {
+        return;
+      }
+
+      if (overlapX < overlapZ) {
+        playerPosition.x += (dx >= 0 ? 1 : -1) * overlapX;
+        return;
+      }
+
+      playerPosition.z += (dz >= 0 ? 1 : -1) * overlapZ;
+    });
   }
 
   private isPlayerNearOfficeEmployeeElevatorLowerButton(playerPosition = this.player.getPosition()): boolean {
