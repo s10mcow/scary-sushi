@@ -754,7 +754,7 @@ const MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY = 'scary-sushi:microphone-sound-to
 const MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY = 'scary-sushi:microphone-sound-tool:next-index';
 const MICROPHONE_SOUND_LEGACY_STORAGE_KEY = 'scary-sushi:microphone-sound-tool:latest';
 const MICROPHONE_SOUND_MAX_RECORDINGS = 999;
-const MICROPHONE_JUMPSCARE_RECORDING_ID: string | null = '010';
+const MICROPHONE_JUMPSCARE_RECORDING_ID: string | null = '022';
 const OFFICE_THROW_SOUND_RECORDING_ID = '006';
 const OFFICE_STUFFIE_SOUND_RECORDING_ID = '004';
 const OFFICE_PARTY_SHOW_RECORDING_ID = '017';
@@ -5196,16 +5196,16 @@ export class Game {
   }
 
   private playOfficeJumpscareSound(cue: OfficeJumpscareCue = 'stomp-roar'): void {
+    const recordingId = this.getMicrophoneJumpscareRecordingId();
+    if (recordingId && this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playOfficeJumpscareCue(cue), recordingId)) {
+      return;
+    }
+
     this.gameplaySfxAudio.playOfficeJumpscareCue(cue);
   }
 
   private playCustomJumpscareSound(fallbackCue: OfficeJumpscareCue): void {
-    const recordingId = this.getMicrophoneJumpscareRecordingId();
-    if (recordingId && this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playOfficeJumpscareCue(fallbackCue), recordingId)) {
-      return;
-    }
-
-    this.gameplaySfxAudio.playOfficeJumpscareCue(fallbackCue);
+    this.playOfficeJumpscareSound(fallbackCue);
   }
 
   private playPurpleJumpscareSound(): void {
