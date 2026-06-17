@@ -6704,6 +6704,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [WALL_THICKNESS, WALL_HEIGHT, kitchenHallRoomDepth],
     },
     {
+      position: [-224.775, WALL_HEIGHT / 2, 118.535],
+      size: [0.9, WALL_HEIGHT, 10.37],
+    },
+    {
       position: [kitchenWestX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, kitchenCenterZ],
       size: [WALL_THICKNESS, WALL_HEIGHT, kitchenWidth],
     },
