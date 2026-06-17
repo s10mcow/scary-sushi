@@ -10530,8 +10530,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       );
       duck.root.rotation.y = duck.homeRotationY + bodySway * 0.24;
       duck.root.rotation.z = bodySway * 0.065;
-      duck.head.rotation.x += -0.08 + singPulse * 0.12;
-      duck.head.rotation.z += Math.sin(partyShowTime * 5.2) * 0.08;
       duck.leftArm.root.rotation.x = Math.sin(partyShowTime * 5.8) * 0.18;
       duck.leftArm.root.rotation.z = -0.18 + Math.sin(partyShowTime * 4.4) * 0.16;
       duck.leftArm.joint.rotation.x = -0.16 + Math.sin(partyShowTime * 6.2 + 1.1) * 0.28;
@@ -10555,11 +10553,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
     if (bunny) {
       const shredTime = partyShowTime * 19.5;
-      const headDip = 0.34 + Math.max(0, Math.sin(partyShowTime * 7.2)) * 0.18;
       bunny.root.rotation.x = -0.08 + Math.sin(partyShowTime * 4.2) * 0.035;
       bunny.root.rotation.z = Math.sin(partyShowTime * 3.4) * 0.045;
-      bunny.head.rotation.x += headDip;
-      bunny.head.rotation.z += Math.sin(partyShowTime * 8.6) * 0.1;
       bunny.leftArm.root.rotation.x = -0.16 + Math.sin(partyShowTime * 7.4) * 0.1;
       bunny.leftArm.root.rotation.z = -0.12 + Math.sin(partyShowTime * 5.2) * 0.08;
       bunny.leftArm.joint.rotation.x = -0.22 + Math.sin(partyShowTime * 9.8) * 0.16;
@@ -10580,9 +10575,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       const leftLift = 1 - leftHit;
       const rightLift = 1 - rightHit;
       bear.root.rotation.z = Math.sin(partyShowTime * 5.1) * 0.08;
-      bear.head.rotation.y += Math.sin(partyShowTime * 6.4) * 0.22;
-      bear.head.rotation.z += Math.sin(partyShowTime * 8.2) * 0.18;
-      bear.head.rotation.x += Math.max(leftHit, rightHit) * 0.1;
       bear.leftArm.root.rotation.x = -0.72 + leftLift * 0.76 - leftHit * 0.38;
       bear.leftArm.root.rotation.z = 0.32 + Math.sin(drumTime + 0.4) * 0.18;
       bear.leftArm.joint.rotation.x = -0.32 + leftHit * 0.72;
