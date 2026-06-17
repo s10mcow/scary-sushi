@@ -7178,8 +7178,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ));
     addCollider(colliders, cabinet.x, cabinet.z, 0.92, 1.12);
   });
-  root.add(createRollerCoasterSimulator(-220.67, 115.06, -Math.PI / 2));
-  addCollider(colliders, -220.67, 115.06, 2.45, 3.45);
+  root.add(createRollerCoasterSimulator(-223.06, 115.06, Math.PI / 2));
+  addCollider(colliders, -223.06, 115.06, 2.45, 3.45);
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
