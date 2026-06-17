@@ -423,6 +423,7 @@ export interface OfficeChapterData {
   setStageAnimatronicPresent(animatronic: 'quacky' | 'fluffle' | 'bori' | 'foxy', present: boolean): void;
   flashHallLight(doorId: 'left' | 'right'): void;
   startPartyShow(playerPosition?: Vector3): void;
+  setPartyShowMusicDuration(durationSeconds: number): void;
   startFoxyPlay(action?: OfficeChapterFoxyPlayAction): void;
   startFoxyStory(): void;
   setFoxyStoryScene(sceneIndex: number): void;
@@ -480,6 +481,7 @@ const PARTY_STAGE_DEPTH = 3.9;
 const PARTY_STAGE_HEIGHT = 0.72;
 const PARTY_STAGE_ANIMATRONIC_FOOT_LIFT = 0.08;
 const PARTY_SHOW_MUSIC_DURATION = 10;
+const PARTY_SHOW_MINIMUM_MUSIC_DURATION = 10;
 const PARTY_SHOW_RETURN_DURATION = 2.4;
 const BASKETBALL_THROW_DURATION = 1.65;
 const FOXY_PLAY_DURATION = 2.7;
@@ -5485,33 +5487,31 @@ function createStageAnimatronic(
       root.add(bibBottomStripe);
     }
     if (includePerformanceProps) {
-      const plateMaterial = new MeshStandardMaterial({
-        color: 0xf6f0df,
-        roughness: 0.58,
-        metalness: 0.04,
+      propGroup = new Group();
+      const microphoneHandleMaterial = new MeshStandardMaterial({
+        color: 0x262a31,
+        roughness: 0.32,
+        metalness: 0.58,
       });
-      const cupcakeWrapperMaterial = new MeshStandardMaterial({
-        color: 0xb9433b,
-        roughness: 0.62,
-        metalness: 0.04,
-      });
-      const frostingMaterial = new MeshStandardMaterial({
-        color: 0xffd7e8,
-        emissive: 0x3d0d20,
+      const microphoneHeadMaterial = new MeshStandardMaterial({
+        color: 0xbec7d2,
+        emissive: 0x18212c,
         emissiveIntensity: 0.08,
-        roughness: 0.7,
-        metalness: 0.02,
+        roughness: 0.25,
+        metalness: 0.74,
       });
-      const plate = new Mesh(new CylinderGeometry(0.22, 0.25, 0.04, 24), plateMaterial);
-      plate.position.set(0.62, 1.14, -0.62);
-      const cupcake = new Mesh(new CylinderGeometry(0.1, 0.12, 0.16, 16), cupcakeWrapperMaterial);
-      cupcake.position.set(0.62, 1.24, -0.62);
-      const frosting = new Mesh(new SphereGeometry(0.11, 12, 10), frostingMaterial);
-      frosting.scale.set(1, 0.58, 1);
-      frosting.position.set(0.62, 1.34, -0.62);
-      const candle = new Mesh(new CylinderGeometry(0.012, 0.012, 0.18, 8), accentMaterial);
-      candle.position.set(0.62, 1.46, -0.62);
-      root.add(plate, cupcake, frosting, candle);
+      const microphoneHandle = new Mesh(new CylinderGeometry(0.028, 0.036, 0.48, 14), microphoneHandleMaterial);
+      microphoneHandle.position.set(0.62, 1.18, -0.62);
+      microphoneHandle.rotation.set(0.45, 0, -0.12);
+      const microphoneHead = new Mesh(new SphereGeometry(0.085, 16, 10), microphoneHeadMaterial);
+      microphoneHead.scale.set(1, 0.78, 1);
+      microphoneHead.position.set(0.57, 1.42, -0.72);
+      const grilleBand = new Mesh(new TorusGeometry(0.088, 0.006, 8, 18), microphoneHandleMaterial);
+      grilleBand.scale.y = 0.72;
+      grilleBand.position.copy(microphoneHead.position);
+      grilleBand.rotation.x = Math.PI / 2;
+      propGroup.add(microphoneHandle, microphoneHead, grilleBand);
+      root.add(propGroup);
     }
   }
 
@@ -9820,6 +9820,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
   let partyShowActive = false;
   let partyShowTime = 0;
+  let partyShowMusicDuration = PARTY_SHOW_MUSIC_DURATION;
   let partyShowReturning = false;
   let partyShowReturnTime = 0;
   let securityCameraTime = 0;
@@ -10275,6 +10276,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     if (!partyShowActive) {
       resetStageShowPose();
       partyShowTime = 0;
+      partyShowMusicDuration = PARTY_SHOW_MUSIC_DURATION;
       partyShowReturning = false;
       partyShowReturnTime = 0;
     }
@@ -10282,8 +10284,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     partyHeadTarget = playerPosition?.clone() ?? null;
   };
 
+  const setPartyShowMusicDuration = (durationSeconds: number): void => {
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      return;
+    }
+
+    partyShowMusicDuration = Math.max(PARTY_SHOW_MINIMUM_MUSIC_DURATION, durationSeconds + 0.18);
+  };
+
   const isPartyShowActive = (): boolean => partyShowActive;
-  const isPartyShowMusicActive = (): boolean => partyShowActive && !partyShowReturning && partyShowTime <= PARTY_SHOW_MUSIC_DURATION;
+  const isPartyShowMusicActive = (): boolean => partyShowActive && !partyShowReturning && partyShowTime <= partyShowMusicDuration;
   const getPartyShowMusicTime = (): number => isPartyShowMusicActive() ? partyShowTime : 0;
 
   const resetAnimatronicPartsTowardHome = (animatronic: StageAnimatronicRefs, blend: number): void => {
@@ -10446,7 +10456,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const bunny = stageAnimatronics.find((animatronic) => animatronic.kind === 'bunny');
     const bear = stageAnimatronics.find((animatronic) => animatronic.kind === 'bear');
 
-    if (!partyShowReturning && partyShowTime >= PARTY_SHOW_MUSIC_DURATION) {
+    if (!partyShowReturning && partyShowTime >= partyShowMusicDuration) {
       partyShowReturning = true;
       partyShowReturnTime = 0;
       if (duck) {
@@ -10476,6 +10486,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
         partyShowActive = false;
         partyShowReturning = false;
         partyShowTime = 0;
+        partyShowMusicDuration = PARTY_SHOW_MUSIC_DURATION;
         partyShowReturnTime = 0;
         partyHeadTarget = null;
         resetStageShowPose();
@@ -10509,53 +10520,82 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     });
 
     if (duck) {
-      const angle = partyShowTime * 1.25;
-      const radiusX = 1.05;
-      const radiusZ = 0.58;
-      const tangentX = -Math.sin(angle) * radiusX;
-      const tangentZ = Math.cos(angle) * radiusZ;
+      const singPulse = Math.max(0, Math.sin(partyShowTime * 7.6));
+      const bodySway = Math.sin(partyShowTime * 3.4);
+      const sideStep = Math.sin(partyShowTime * 1.9) * 0.18;
       duck.root.position.set(
-        duck.homePosition.x + Math.cos(angle) * radiusX,
-        duck.homePosition.y,
-        duck.homePosition.z + Math.sin(angle) * radiusZ,
+        duck.homePosition.x + sideStep,
+        duck.homePosition.y + Math.abs(bodySway) * 0.035,
+        duck.homePosition.z - 0.08 + Math.cos(partyShowTime * 2.1) * 0.045,
       );
-      duck.root.rotation.y = Math.atan2(-tangentX, -tangentZ);
-      const armSwing = Math.sin(partyShowTime * 8.2);
-      duck.leftArm.root.rotation.x = armSwing * 0.26;
-      duck.leftArm.root.rotation.z = -0.08 + Math.sin(partyShowTime * 8.2 + 0.8) * 0.08;
-      duck.leftArm.joint.rotation.x = -0.22 + Math.sin(partyShowTime * 8.2 + 1.1) * 0.5;
-      duck.leftArm.joint.rotation.z = Math.sin(partyShowTime * 8.2 + 1.7) * 0.12;
-      animateLegWalkCycle(duck, partyShowTime * 8.6, 1);
+      duck.root.rotation.y = duck.homeRotationY + bodySway * 0.24;
+      duck.root.rotation.z = bodySway * 0.065;
+      duck.head.rotation.x += -0.08 + singPulse * 0.12;
+      duck.head.rotation.z += Math.sin(partyShowTime * 5.2) * 0.08;
+      duck.leftArm.root.rotation.x = Math.sin(partyShowTime * 5.8) * 0.18;
+      duck.leftArm.root.rotation.z = -0.18 + Math.sin(partyShowTime * 4.4) * 0.16;
+      duck.leftArm.joint.rotation.x = -0.16 + Math.sin(partyShowTime * 6.2 + 1.1) * 0.28;
+      duck.rightArm.root.rotation.x = -0.12 + Math.sin(partyShowTime * 3.8) * 0.08;
+      duck.rightArm.root.rotation.z = 0.16 + Math.sin(partyShowTime * 4.1) * 0.06;
+      duck.rightArm.joint.rotation.x = -0.1 + singPulse * 0.12;
+      if (duck.propGroup) {
+        duck.propGroup.rotation.z = Math.sin(partyShowTime * 5.4) * 0.045;
+        duck.propGroup.position.y = singPulse * 0.025;
+      }
+      if (duck.mouth && duck.mouthBasePosition) {
+        duck.mouth.position.copy(duck.mouthBasePosition);
+        duck.mouth.position.y -= singPulse * 0.075;
+        duck.mouth.rotation.x = singPulse * 0.26;
+      }
+      duck.leftLeg.root.rotation.x = Math.sin(partyShowTime * 3.8) * 0.08;
+      duck.leftLeg.joint.rotation.x = 0.08 + Math.max(0, Math.sin(partyShowTime * 3.8)) * 0.12;
+      duck.rightLeg.root.rotation.x = Math.sin(partyShowTime * 3.8 + Math.PI) * 0.08;
+      duck.rightLeg.joint.rotation.x = 0.08 + Math.max(0, Math.sin(partyShowTime * 3.8 + Math.PI)) * 0.12;
     }
 
     if (bunny) {
-      bunny.leftArm.root.rotation.x = Math.sin(partyShowTime * 7.4) * 0.08;
-      bunny.leftArm.root.rotation.z = Math.sin(partyShowTime * 5.2) * 0.06;
-      bunny.rightArm.root.rotation.x = Math.sin(partyShowTime * 12.5) * 0.2;
-      bunny.rightArm.joint.rotation.x = Math.sin(partyShowTime * 12.5 + 0.4) * 0.22;
-      bunny.rightArm.root.rotation.z = 0.08 + Math.sin(partyShowTime * 12.5 + 0.4) * 0.08;
+      const shredTime = partyShowTime * 19.5;
+      const headDip = 0.34 + Math.max(0, Math.sin(partyShowTime * 7.2)) * 0.18;
+      bunny.root.rotation.x = -0.08 + Math.sin(partyShowTime * 4.2) * 0.035;
+      bunny.root.rotation.z = Math.sin(partyShowTime * 3.4) * 0.045;
+      bunny.head.rotation.x += headDip;
+      bunny.head.rotation.z += Math.sin(partyShowTime * 8.6) * 0.1;
+      bunny.leftArm.root.rotation.x = -0.16 + Math.sin(partyShowTime * 7.4) * 0.1;
+      bunny.leftArm.root.rotation.z = -0.12 + Math.sin(partyShowTime * 5.2) * 0.08;
+      bunny.leftArm.joint.rotation.x = -0.22 + Math.sin(partyShowTime * 9.8) * 0.16;
+      bunny.rightArm.root.rotation.x = Math.sin(shredTime) * 0.34;
+      bunny.rightArm.joint.rotation.x = Math.sin(shredTime + 0.4) * 0.42;
+      bunny.rightArm.root.rotation.z = 0.1 + Math.sin(shredTime + 0.4) * 0.16;
+      bunny.rightArm.joint.rotation.z = Math.sin(shredTime * 1.2) * 0.14;
       if (bunny.propGroup) {
-        bunny.propGroup.rotation.z = Math.sin(partyShowTime * 3.5) * 0.025;
+        bunny.propGroup.rotation.x = Math.sin(partyShowTime * 4.6) * 0.025;
+        bunny.propGroup.rotation.z = -0.06 + Math.sin(partyShowTime * 6.5) * 0.06;
       }
     }
 
     if (bear) {
-      const drumTime = partyShowTime * 17.45;
+      const drumTime = partyShowTime * 18.8;
       const leftHit = Math.max(0, Math.sin(drumTime));
       const rightHit = Math.max(0, Math.sin(drumTime + Math.PI));
-      bear.leftArm.root.rotation.x = -0.28 - leftHit * 0.42;
-      bear.leftArm.root.rotation.z = 0.12 + Math.sin(drumTime + 0.4) * 0.08;
-      bear.leftArm.joint.rotation.x = -0.18 + leftHit * 0.55;
-      bear.rightArm.root.rotation.x = -0.28 - rightHit * 0.42;
-      bear.rightArm.root.rotation.z = -0.12 + Math.sin(drumTime + Math.PI + 0.4) * 0.08;
-      bear.rightArm.joint.rotation.x = -0.18 + rightHit * 0.55;
+      const leftLift = 1 - leftHit;
+      const rightLift = 1 - rightHit;
+      bear.root.rotation.z = Math.sin(partyShowTime * 5.1) * 0.08;
+      bear.head.rotation.y += Math.sin(partyShowTime * 6.4) * 0.22;
+      bear.head.rotation.z += Math.sin(partyShowTime * 8.2) * 0.18;
+      bear.head.rotation.x += Math.max(leftHit, rightHit) * 0.1;
+      bear.leftArm.root.rotation.x = -0.72 + leftLift * 0.76 - leftHit * 0.38;
+      bear.leftArm.root.rotation.z = 0.32 + Math.sin(drumTime + 0.4) * 0.18;
+      bear.leftArm.joint.rotation.x = -0.32 + leftHit * 0.72;
+      bear.rightArm.root.rotation.x = -0.72 + rightLift * 0.76 - rightHit * 0.38;
+      bear.rightArm.root.rotation.z = -0.32 + Math.sin(drumTime + Math.PI + 0.4) * 0.18;
+      bear.rightArm.joint.rotation.x = -0.32 + rightHit * 0.72;
       if (bear.drumSticks) {
         const animateStick = (stick: StageDrumStickRefs, hit: number, side: -1 | 1): void => {
           stick.root.position.copy(stick.basePosition);
-          stick.root.position.y -= hit * 0.08;
-          stick.root.rotation.x = stick.baseRotation.x - hit * 0.7;
-          stick.root.rotation.y = stick.baseRotation.y + side * hit * 0.08;
-          stick.root.rotation.z = stick.baseRotation.z + side * hit * 0.12;
+          stick.root.position.y += (1 - hit) * 0.12 - hit * 0.08;
+          stick.root.rotation.x = stick.baseRotation.x + (1 - hit) * 0.44 - hit * 0.82;
+          stick.root.rotation.y = stick.baseRotation.y + side * hit * 0.12;
+          stick.root.rotation.z = stick.baseRotation.z + side * (0.18 + hit * 0.16);
         };
         animateStick(bear.drumSticks.left, leftHit, -1);
         animateStick(bear.drumSticks.right, rightHit, 1);
@@ -10836,6 +10876,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const reset = (): void => {
     partyShowActive = false;
     partyShowTime = 0;
+    partyShowMusicDuration = PARTY_SHOW_MUSIC_DURATION;
     partyShowReturning = false;
     partyShowReturnTime = 0;
     partyHeadTarget = null;
@@ -11079,6 +11120,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     setStageAnimatronicPresent,
     flashHallLight,
     startPartyShow,
+    setPartyShowMusicDuration,
     startFoxyPlay,
     startFoxyStory,
     setFoxyStoryScene,

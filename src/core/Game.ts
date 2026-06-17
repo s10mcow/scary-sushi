@@ -756,6 +756,7 @@ const MICROPHONE_SOUND_MAX_RECORDINGS = 999;
 const MICROPHONE_JUMPSCARE_RECORDING_ID: string | null = '010';
 const OFFICE_THROW_SOUND_RECORDING_ID = '006';
 const OFFICE_STUFFIE_SOUND_RECORDING_ID = '004';
+const OFFICE_PARTY_SHOW_RECORDING_ID = '0-0';
 const CAMERA_TOOL_CAPTURES_STORAGE_KEY = 'scary-sushi:camera-tool:captures';
 const CAMERA_TOOL_NEXT_PICTURE_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-picture-index';
 const CAMERA_TOOL_NEXT_VIDEO_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-video-index';
@@ -1235,6 +1236,8 @@ export class Game {
   private microphoneSoundPreviewUrl: string | null = null;
   private microphoneSoundPreviewRecordingId: string | null = null;
   private microphoneSoundPlayback: HTMLAudioElement | null = null;
+  private officePartyShowSoundPlayback: HTMLAudioElement | null = null;
+  private officePartyShowUsingCustomSound = false;
   private officeDoorSoundPlayback: HTMLAudioElement | null = null;
   private officeDoorSoundTarget: { doorId: 'left' | 'right'; open: boolean } | null = null;
   private readonly activeOfficeDoorSparks: ActiveOfficeDoorSpark[] = [];
@@ -1560,6 +1563,7 @@ export class Game {
     this.gameplaySfxAudio.destroy();
     this.foxyPlayAudio.destroy();
     this.lobbyCrashAudio.destroy();
+    this.stopOfficePartyShowSound();
     this.partyShowAudio.destroy();
     this.powerEventAudio.destroy();
     this.voiceInput.destroy();
@@ -3044,9 +3048,10 @@ export class Game {
     }
     this.partyShowAudio.update(
       deltaSeconds,
-      this.officeChapterActive && this.officeChapter.isPartyShowMusicActive(),
+      this.officeChapterActive && this.officeChapter.isPartyShowMusicActive() && !this.officePartyShowUsingCustomSound,
       this.officeChapter.getPartyShowMusicTime(),
     );
+    this.updateOfficePartyShowSoundPlayback();
     if (this.chapterTwoActive && this.chapterTwoSeatId) {
       const occupiedSeat = this.getChapterTwoSeatById(this.chapterTwoSeatId);
       if (occupiedSeat?.kind === 'swing') {
@@ -5117,6 +5122,76 @@ export class Game {
       fallback?.();
     });
     return true;
+  }
+
+  private getOfficePartyShowRecording(): MicrophoneSoundRecording | null {
+    return (
+      this.getMicrophoneSoundRecordingById(OFFICE_PARTY_SHOW_RECORDING_ID)
+      ?? this.getMicrophoneSoundRecordingById('000')
+      ?? this.getMicrophoneSoundRecordingById('00')
+      ?? this.getMicrophoneSoundRecordingById('0')
+    );
+  }
+
+  private playOfficePartyShowSound(): boolean {
+    const recording = this.getOfficePartyShowRecording();
+    if (!recording) {
+      this.officePartyShowUsingCustomSound = false;
+      return false;
+    }
+
+    this.stopOfficePartyShowSound();
+    this.partyShowAudio.stop();
+    const playback = new Audio(recording.dataUrl);
+    playback.volume = 1;
+    playback.loop = false;
+    playback.addEventListener('loadedmetadata', () => {
+      if (this.officePartyShowSoundPlayback === playback && Number.isFinite(playback.duration)) {
+        this.officeChapter.setPartyShowMusicDuration(playback.duration);
+      }
+    });
+    playback.addEventListener('durationchange', () => {
+      if (this.officePartyShowSoundPlayback === playback && Number.isFinite(playback.duration)) {
+        this.officeChapter.setPartyShowMusicDuration(playback.duration);
+      }
+    });
+    playback.addEventListener('ended', () => {
+      if (this.officePartyShowSoundPlayback === playback) {
+        this.officePartyShowUsingCustomSound = true;
+      }
+    });
+
+    this.officePartyShowSoundPlayback = playback;
+    this.officePartyShowUsingCustomSound = true;
+    void playback.play().then(() => {
+      if (this.officePartyShowSoundPlayback === playback && Number.isFinite(playback.duration)) {
+        this.officeChapter.setPartyShowMusicDuration(playback.duration);
+      }
+    }).catch(() => {
+      if (this.officePartyShowSoundPlayback === playback) {
+        this.officePartyShowUsingCustomSound = false;
+        this.officePartyShowSoundPlayback = null;
+        this.partyShowAudio.start();
+      }
+    });
+    return true;
+  }
+
+  private updateOfficePartyShowSoundPlayback(): void {
+    if (!this.officePartyShowSoundPlayback) {
+      this.officePartyShowUsingCustomSound = false;
+      return;
+    }
+
+    if (!this.officeChapterActive || !this.officeChapter.isPartyShowMusicActive()) {
+      this.stopOfficePartyShowSound();
+    }
+  }
+
+  private stopOfficePartyShowSound(): void {
+    this.officePartyShowSoundPlayback?.pause();
+    this.officePartyShowSoundPlayback = null;
+    this.officePartyShowUsingCustomSound = false;
   }
 
   private playOfficeJumpscareSound(cue: OfficeJumpscareCue = 'stomp-roar'): void {
@@ -20165,9 +20240,11 @@ export class Game {
     if (partyPlay) {
       this.officeChapter.startPartyShow(this.player.getPosition());
       this.gameplaySfxAudio.playSmallPanel(false);
-      this.partyShowAudio.start();
+      if (!this.playOfficePartyShowSound()) {
+        this.partyShowAudio.start();
+      }
       this.pushStatus(
-        "The Let's Party wall button clicks in. Quacky dances, Fluffle plays guitar, and Bori hammers the drums.",
+        "The Let's Party wall button clicks in. Quacky sings, Fluffle shreds guitar, and Bori hammers the drums.",
         3.2,
       );
       return;
