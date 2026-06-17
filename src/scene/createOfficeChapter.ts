@@ -7456,6 +7456,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const bathroomWomenEastDepth = bathroomSouthZ - bathroomEntryMaxZ;
   const bathroomRoomDoorWidth = 2.35;
   const bathroomDividerWidth = bathroomRoomWidth - bathroomRoomDoorWidth;
+  const bathroomHallEndCapX = bathroomRoomMaxX - bathroomRoomDoorWidth - WALL_THICKNESS / 2;
   backstageWalls.push(
     {
       position: [bathroomRoomMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, bathroomTotalCenterZ],
@@ -7508,6 +7509,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
         bathroomEntryMaxZ + WALL_THICKNESS / 2,
       ],
       size: [bathroomDividerWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [bathroomHallEndCapX, WALL_HEIGHT / 2, bathroomEntryCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, bathroomHallWidth - WALL_THICKNESS * 1.5],
     },
   );
   if (backstageHallEastWallDepth > 0.24) {
@@ -9028,9 +9033,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }
   } else {
     addBasementWallSegment({
-      x: basementHallwayCenterX,
+      x: employeeElevatorCenterX,
       z: basementWallMinZ,
-      sx: basementHallwayWidth,
+      sx: employeeElevatorBasementRoomWidth,
       sz: 0.14,
     });
   }
