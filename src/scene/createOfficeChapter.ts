@@ -237,6 +237,29 @@ export interface OfficeChapterEmployeeKeyBriefcase {
   keyCollected: boolean;
 }
 
+export interface OfficeChapterPhotoCameraPickup {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  collected: boolean;
+}
+
+export interface OfficeChapterPosterTarget {
+  id: string;
+  label: string;
+  root: Mesh;
+  position: Vector3;
+  normal: Vector3;
+}
+
+export interface OfficeChapterPosterPrinter {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  keycardRoot: Group;
+  printed: boolean;
+}
+
 export interface OfficeChapterEmployeeElevator {
   label: string;
   root: Group;
@@ -413,6 +436,9 @@ export interface OfficeChapterData {
   storageClosetDoor: OfficeChapterStorageClosetDoor;
   employeeOnlyDoor: OfficeChapterEmployeeOnlyDoor;
   employeeKeyBriefcase: OfficeChapterEmployeeKeyBriefcase;
+  photoCameraPickup: OfficeChapterPhotoCameraPickup;
+  posterTargets: OfficeChapterPosterTarget[];
+  posterPrinter: OfficeChapterPosterPrinter;
   employeeElevator: OfficeChapterEmployeeElevator;
   storageFuseBox: OfficeChapterStorageFuseBox;
   kitchenEntranceDoor: OfficeChapterKitchenEntranceDoor;
@@ -3133,6 +3159,126 @@ function createBackstageShelf(x: number, z: number, rotationY: number): Group {
   root.add(tickets);
 
   return root;
+}
+
+function createShelfPhotoCameraModel(): Group {
+  const root = new Group();
+  const bodyMaterial = new MeshStandardMaterial({
+    color: 0x20262c,
+    emissive: 0x020406,
+    emissiveIntensity: 0.14,
+    roughness: 0.34,
+    metalness: 0.36,
+  });
+  const gripMaterial = new MeshStandardMaterial({
+    color: 0x111315,
+    roughness: 0.58,
+    metalness: 0.08,
+  });
+  const lensMaterial = new MeshStandardMaterial({
+    color: 0x081018,
+    emissive: 0x28a8c9,
+    emissiveIntensity: 0.36,
+    roughness: 0.14,
+    metalness: 0.62,
+  });
+  const body = new Mesh(new BoxGeometry(0.44, 0.24, 0.18), bodyMaterial);
+  body.position.y = 0.12;
+  const grip = new Mesh(new BoxGeometry(0.12, 0.28, 0.2), gripMaterial);
+  grip.position.set(-0.2, 0.13, 0);
+  const lens = new Mesh(new CylinderGeometry(0.085, 0.105, 0.12, 20), lensMaterial);
+  lens.rotation.x = Math.PI / 2;
+  lens.position.set(0.08, 0.13, -0.14);
+  const flash = new Mesh(new BoxGeometry(0.08, 0.045, 0.025), new MeshStandardMaterial({
+    color: 0xe8f8ff,
+    emissive: 0x9ae8ff,
+    emissiveIntensity: 0.32,
+    roughness: 0.22,
+    metalness: 0.06,
+  }));
+  flash.position.set(0.14, 0.24, -0.095);
+  root.add(body, grip, lens, flash);
+  return root;
+}
+
+function createPosterKeycardMaterial(): MeshStandardMaterial {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 160;
+  const context = canvas.getContext('2d');
+  if (context) {
+    context.fillStyle = '#d9dde3';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#1f2730';
+    context.fillRect(10, 10, canvas.width - 20, canvas.height - 20);
+    context.fillStyle = '#dff8ff';
+    context.font = 'bold 18px Trebuchet MS, sans-serif';
+    context.textAlign = 'center';
+    context.fillText('POSTER KEYCARD', canvas.width / 2, 30);
+    const colors = ['#8b5a32', '#dfb23f', '#b7a7dd', '#b44a2b', '#d8a735'];
+    for (let index = 0; index < 20; index += 1) {
+      const col = index % 5;
+      const row = Math.floor(index / 5);
+      const x = 24 + col * 44;
+      const y = 46 + row * 25;
+      context.fillStyle = colors[index % colors.length] ?? '#ffffff';
+      context.fillRect(x, y, 26, 18);
+      context.strokeStyle = '#eef6ff';
+      context.lineWidth = 2;
+      context.strokeRect(x, y, 26, 18);
+    }
+    context.fillStyle = '#6be2ff';
+    context.font = 'bold 15px Trebuchet MS, sans-serif';
+    context.fillText('BASEMENT ACCESS', canvas.width / 2, 144);
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.24,
+    metalness: 0.18,
+  });
+}
+
+function createPosterPrinterModel(): { root: Group; keycardRoot: Group } {
+  const root = new Group();
+  const shellMaterial = new MeshStandardMaterial({
+    color: 0x2d3338,
+    emissive: 0x030608,
+    emissiveIntensity: 0.12,
+    roughness: 0.42,
+    metalness: 0.28,
+  });
+  const trimMaterial = new MeshStandardMaterial({
+    color: 0x0f1418,
+    roughness: 0.38,
+    metalness: 0.36,
+  });
+  const glowMaterial = new MeshStandardMaterial({
+    color: 0x1dd6ff,
+    emissive: 0x1dd6ff,
+    emissiveIntensity: 0.5,
+    roughness: 0.2,
+    metalness: 0.08,
+  });
+  const base = new Mesh(new BoxGeometry(1.06, 0.32, 0.62), shellMaterial);
+  base.position.y = 0.16;
+  const top = new Mesh(new BoxGeometry(0.88, 0.22, 0.48), shellMaterial);
+  top.position.set(0, 0.43, -0.02);
+  const tray = new Mesh(new BoxGeometry(0.76, 0.035, 0.42), trimMaterial);
+  tray.position.set(0, 0.32, -0.42);
+  const button = new Mesh(new CylinderGeometry(0.055, 0.055, 0.025, 16), glowMaterial);
+  button.position.set(0.39, 0.56, -0.18);
+  const keycardRoot = new Group();
+  keycardRoot.position.set(0, 0.34, -0.58);
+  keycardRoot.rotation.x = -0.08;
+  const keycard = new Mesh(new PlaneGeometry(0.58, 0.36), createPosterKeycardMaterial());
+  keycard.rotation.x = -Math.PI / 2;
+  keycardRoot.add(keycard);
+  keycardRoot.visible = false;
+  root.add(base, top, tray, button, keycardRoot);
+  return { root, keycardRoot };
 }
 
 function createBrokenAnimatronicSuit(
@@ -7627,6 +7773,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   });
 
   const addAnimatronicWallPoster = (
+    id: string,
     kind: AnimatronicPosterKind,
     slogan: string,
     x: number,
@@ -7634,6 +7781,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     rotationY: number,
     y = 2.08,
   ): void => {
+    const posterNames: Record<AnimatronicPosterKind, string> = {
+      bori: 'Bori',
+      quacky: 'Quacky',
+      fluffle: 'Fluffles',
+      foxy: 'Foxy',
+      golden: 'Golden Bori',
+    };
     const posterWallGap = 0.045;
     const poster = createAnimatronicPoster(kind, slogan);
     poster.position.set(
@@ -7643,30 +7797,38 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     );
     poster.rotation.y = rotationY;
     root.add(poster);
+    posterTargets.push({
+      id,
+      label: `${posterNames[kind]} Poster`,
+      root: poster,
+      position: poster.position.clone(),
+      normal: new Vector3(Math.sin(rotationY), 0, Math.cos(rotationY)).normalize(),
+    });
   };
+  const posterTargets: OfficeChapterPosterTarget[] = [];
   [
-    { kind: 'bori' as const, slogan: "Let's party and have fun", x: partyRoomCenterX - 7.6, z: partyRoomSouthZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
-    { kind: 'quacky' as const, slogan: 'Sing loud with Quacky', x: partyRoomCenterX + 1.2, z: partyRoomSouthZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
-    { kind: 'fluffle' as const, slogan: 'Hop in for birthday fun', x: partyRoomMinX + WALL_THICKNESS + 0.026, z: partyRoomCenterZ - 2.6, rotationY: Math.PI / 2 },
-    { kind: 'foxy' as const, slogan: 'Adventure starts at Pirate Cove', x: partyRoomMaxX - WALL_THICKNESS - 0.026, z: partyRoomCenterZ + 2.85, rotationY: -Math.PI / 2 },
-    { kind: 'golden' as const, slogan: 'Golden fun never stops', x: kitchenHallRoomCenterX - 4.2, z: kitchenHallRoomNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
-    { kind: 'bori' as const, slogan: 'Play games win prizes', x: kitchenHallRoomMaxX - WALL_THICKNESS - 0.026, z: kitchenHallRoomCenterZ - 1.6, rotationY: -Math.PI / 2 },
-    { kind: 'quacky' as const, slogan: 'Quack laugh party', x: kitchenHallRoomMinX + WALL_THICKNESS + 0.026, z: kitchenHallRoomCenterZ + 4.2, rotationY: Math.PI / 2 },
-    { kind: 'fluffle' as const, slogan: 'Fast games big smiles', x: northPartyHallOpeningMinX + WALL_THICKNESS + 0.026, z: northPartyHallNorthZ + 4.8, rotationY: Math.PI / 2 },
-    { kind: 'foxy' as const, slogan: 'Ahoy kids play nice', x: secondHallCenterX, z: secondHallOpeningMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
-    { kind: 'foxy' as const, slogan: 'Pirate shows every day', x: secondRoomCenterX - 2.4, z: secondRoomMaxZ - WALL_THICKNESS - 0.03, rotationY: Math.PI },
-    { kind: 'bori' as const, slogan: 'Treasure the party', x: secondRoomMaxX - WALL_THICKNESS - 0.03, z: secondRoomCenterZ - 3.2, rotationY: -Math.PI / 2 },
-    { kind: 'quacky' as const, slogan: 'Dive into the ball pit', x: northPartySideRoomMaxX - WALL_THICKNESS - 0.026, z: northPartySideRoomCenterZ + 3.2, rotationY: -Math.PI / 2 },
-    { kind: 'fluffle' as const, slogan: 'Bounce laugh repeat', x: northPartySideRoomCenterX, z: northPartySideRoomMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
-    { kind: 'bori' as const, slogan: 'Staff smiles backstage', x: backstageHallCenterX, z: backstageHallExtensionNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
-    { kind: 'golden' as const, slogan: 'Shine bright after dark', x: backstageStorageCenterX + 2.8, z: backstageStorageMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
-    { kind: 'fluffle' as const, slogan: 'Clean up then party', x: storageClosetCenterX, z: storageClosetMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
-    { kind: 'quacky' as const, slogan: 'Fresh pizza fresh songs', x: kitchenWestX + WALL_THICKNESS + 0.026, z: kitchenCenterZ - 2.4, rotationY: Math.PI / 2 },
-    { kind: 'bori' as const, slogan: 'Wash hands then party', x: bathroomHallCenterX - 0.55, z: bathroomEntryMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
-    { kind: 'foxy' as const, slogan: 'No running matey', x: bathroomRoomMinX + WALL_THICKNESS + 0.026, z: menBathroomCenterZ, rotationY: Math.PI / 2 },
-    { kind: 'quacky' as const, slogan: 'Smile for the show', x: bathroomRoomMinX + WALL_THICKNESS + 0.026, z: womenBathroomCenterZ, rotationY: Math.PI / 2 },
+    { id: 'main-south-bori', kind: 'bori' as const, slogan: "Let's party and have fun", x: partyRoomCenterX - 7.6, z: partyRoomSouthZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
+    { id: 'main-south-quacky', kind: 'quacky' as const, slogan: 'Sing loud with Quacky', x: partyRoomCenterX + 1.2, z: partyRoomSouthZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
+    { id: 'main-west-fluffle', kind: 'fluffle' as const, slogan: 'Hop in for birthday fun', x: partyRoomMinX + WALL_THICKNESS + 0.026, z: partyRoomCenterZ - 2.6, rotationY: Math.PI / 2 },
+    { id: 'main-east-foxy', kind: 'foxy' as const, slogan: 'Adventure starts at Pirate Cove', x: partyRoomMaxX - WALL_THICKNESS - 0.026, z: partyRoomCenterZ + 2.85, rotationY: -Math.PI / 2 },
+    { id: 'game-stage-golden', kind: 'golden' as const, slogan: 'Golden fun never stops', x: kitchenHallRoomCenterX - 4.2, z: kitchenHallRoomNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { id: 'game-east-bori', kind: 'bori' as const, slogan: 'Play games win prizes', x: kitchenHallRoomMaxX - WALL_THICKNESS - 0.026, z: kitchenHallRoomCenterZ + 6.2, rotationY: -Math.PI / 2 },
+    { id: 'game-west-quacky', kind: 'quacky' as const, slogan: 'Quack laugh party', x: kitchenHallRoomMinX + WALL_THICKNESS + 0.026, z: kitchenHallRoomCenterZ + 4.2, rotationY: Math.PI / 2 },
+    { id: 'north-hall-fluffle', kind: 'fluffle' as const, slogan: 'Fast games big smiles', x: northPartyHallOpeningMinX + WALL_THICKNESS + 0.026, z: northPartyHallNorthZ + 4.8, rotationY: Math.PI / 2 },
+    { id: 'pirate-hall-foxy', kind: 'foxy' as const, slogan: 'Ahoy kids play nice', x: secondHallCenterX, z: secondHallOpeningMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
+    { id: 'pirate-room-foxy', kind: 'foxy' as const, slogan: 'Pirate shows every day', x: secondRoomCenterX - 2.4, z: secondRoomMaxZ - WALL_THICKNESS - 0.03, rotationY: Math.PI },
+    { id: 'pirate-east-bori', kind: 'bori' as const, slogan: 'Treasure the party', x: secondRoomMaxX - WALL_THICKNESS - 0.03, z: secondRoomCenterZ - 3.2, rotationY: -Math.PI / 2 },
+    { id: 'ballpit-east-quacky', kind: 'quacky' as const, slogan: 'Dive into the ball pit', x: northPartySideRoomMaxX - WALL_THICKNESS - 0.026, z: northPartySideRoomCenterZ + 3.2, rotationY: -Math.PI / 2 },
+    { id: 'ballpit-north-fluffle', kind: 'fluffle' as const, slogan: 'Bounce laugh repeat', x: northPartySideRoomCenterX, z: northPartySideRoomMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { id: 'backstage-hall-bori', kind: 'bori' as const, slogan: 'Staff smiles backstage', x: backstageHallCenterX, z: backstageHallExtensionNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { id: 'backstage-storage-golden', kind: 'golden' as const, slogan: 'Shine bright after dark', x: backstageStorageCenterX + 2.8, z: backstageStorageMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { id: 'storage-closet-fluffle', kind: 'fluffle' as const, slogan: 'Clean up then party', x: storageClosetCenterX, z: storageClosetMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
+    { id: 'kitchen-quacky', kind: 'quacky' as const, slogan: 'Fresh pizza fresh songs', x: kitchenWestX + WALL_THICKNESS + 0.026, z: kitchenCenterZ - 2.4, rotationY: Math.PI / 2 },
+    { id: 'bathroom-hall-bori', kind: 'bori' as const, slogan: 'Wash hands then party', x: bathroomHallCenterX - 0.55, z: bathroomEntryMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { id: 'mens-room-foxy', kind: 'foxy' as const, slogan: 'No running matey', x: bathroomRoomMinX + WALL_THICKNESS + 0.026, z: menBathroomCenterZ, rotationY: Math.PI / 2 },
+    { id: 'womens-room-quacky', kind: 'quacky' as const, slogan: 'Smile for the show', x: bathroomRoomMinX + WALL_THICKNESS + 0.026, z: womenBathroomCenterZ, rotationY: Math.PI / 2 },
   ].forEach((poster) => {
-    addAnimatronicWallPoster(poster.kind, poster.slogan, poster.x, poster.z, poster.rotationY);
+    addAnimatronicWallPoster(poster.id, poster.kind, poster.slogan, poster.x, poster.z, poster.rotationY);
   });
 
   const stageMaterial = new MeshStandardMaterial({
@@ -9529,6 +9691,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     cap.position.set(storageShelfX + 0.06, 2.65, storageClosetCenterZ + offsetZ);
     storageClosetShelfRoot.add(bottle, cap);
   });
+  const photoCameraRoot = createShelfPhotoCameraModel();
+  photoCameraRoot.position.set(storageShelfX + 0.08, 1.52, storageClosetCenterZ + 1.78);
+  photoCameraRoot.rotation.y = -Math.PI / 2;
+  storageClosetShelfRoot.add(photoCameraRoot);
+  const photoCameraPickup: OfficeChapterPhotoCameraPickup = {
+    label: 'Shelf Photo Camera',
+    root: photoCameraRoot,
+    interactPosition: new Vector3(storageShelfX + 0.42, 1.58, storageClosetCenterZ + 1.78),
+    collected: false,
+  };
   root.add(storageClosetShelfRoot);
   addCollider(colliders, storageShelfX, storageClosetCenterZ, 0.84, storageClosetDepth - 0.74);
 
@@ -10155,6 +10327,17 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     root.add(createBackstageShelf(shelf.x, shelf.z, shelf.rotationY));
     addCollider(colliders, shelf.x, shelf.z, shelf.colliderWidth, shelf.colliderDepth);
   });
+  const posterPrinterModel = createPosterPrinterModel();
+  posterPrinterModel.root.position.set(backstageStorageCenterX - 3.7, 2.22, backstageStorageMinZ + 0.62);
+  posterPrinterModel.root.rotation.y = Math.PI;
+  root.add(posterPrinterModel.root);
+  const posterPrinter: OfficeChapterPosterPrinter = {
+    label: 'Poster Keycard Printer',
+    root: posterPrinterModel.root,
+    interactPosition: new Vector3(backstageStorageCenterX - 3.7, 1.72, backstageStorageMinZ + 1.18),
+    keycardRoot: posterPrinterModel.keycardRoot,
+    printed: false,
+  };
 
   [
     { kind: 'cat' as const, x: backstageStorageMinX + 2.15, z: backstageStorageCenterZ + 1.35, rotationY: 0.3 },
@@ -12232,6 +12415,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeKeyBriefcase.keyCollected = false;
     employeeKeyBriefcase.lidPivot.rotation.x = 0;
     employeeKeyBriefcase.keyRoot.visible = false;
+    photoCameraPickup.collected = false;
+    photoCameraPickup.root.visible = true;
+    posterPrinter.printed = false;
+    posterPrinter.keycardRoot.visible = false;
     basementRoomDoors.forEach((door) => {
       door.open = false;
       door.openAmount = 0;
@@ -12299,6 +12486,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     storageClosetDoor,
     employeeOnlyDoor,
     employeeKeyBriefcase,
+    photoCameraPickup,
+    posterTargets,
+    posterPrinter,
     employeeElevator,
     storageFuseBox,
     kitchenEntranceDoor,

@@ -440,7 +440,7 @@ interface OfficeCutsceneMaterialState {
   eye: boolean;
 }
 
-type OfficePrizeItemId = 'glass' | 'tiny-bear' | 'lollipop' | 'duck-toy' | 'stuffie';
+type OfficePrizeItemId = 'photo-camera' | 'glass' | 'tiny-bear' | 'lollipop' | 'duck-toy' | 'stuffie';
 type OfficeThrowableKind = 'glass' | 'tiny-bear';
 
 interface ActiveOfficeGlassThrow {
@@ -465,6 +465,12 @@ interface CameraToolCapture {
   kind: CameraToolCaptureKind;
   dataUrl: string;
   createdAt: number;
+}
+
+interface OfficePosterPhoto {
+  id: number;
+  posterId: string | null;
+  label: string;
 }
 
 interface OfficeGameModeConfig {
@@ -783,6 +789,7 @@ const OFFICE_LOLLIPOP_BOOST_SECONDS = 10;
 const OFFICE_LOLLIPOP_SPEED_MULTIPLIER = 2;
 const OFFICE_STARTING_LOLLIPOPS = 5;
 const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
+  'photo-camera': 'Photo Camera',
   glass: 'Glass Cup',
   'tiny-bear': 'Tiny Bear',
   lollipop: 'Lollipop',
@@ -790,10 +797,10 @@ const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
   stuffie: 'Stuffie',
 };
 const OFFICE_PRIZE_HOTBAR_SLOTS: Array<{ slot: number; item: OfficePrizeItemId }> = [
-  { slot: 5, item: 'glass' },
-  { slot: 6, item: 'tiny-bear' },
-  { slot: 7, item: 'lollipop' },
-  { slot: 8, item: 'duck-toy' },
+  { slot: 5, item: 'photo-camera' },
+  { slot: 6, item: 'glass' },
+  { slot: 7, item: 'tiny-bear' },
+  { slot: 8, item: 'lollipop' },
   { slot: 9, item: 'stuffie' },
 ];
 const OFFICE_GAME_MODE_OFFICE_CENTER = new Vector3(-240, GAME_CONFIG.player.height, 184);
@@ -1140,6 +1147,10 @@ export class Game {
   private officePrizeBonusMultiplier = 1;
   private officeLollipopBoostRemaining = 0;
   private officeLollipopUseTimer = 0;
+  private officePrintedPosterKeycard = false;
+  private readonly officePosterPhotoIds = new Set<string>();
+  private readonly officePosterPhotos: OfficePosterPhoto[] = [];
+  private officePosterPhotoIndex = 0;
   private readonly officeGlassThrows: ActiveOfficeGlassThrow[] = [];
   private officePrizeWheelLastTickIndex = 0;
   private officePrizeWheelWasSpinning = false;
@@ -2516,6 +2527,8 @@ export class Game {
       if (this.officeChapterActive) {
         if (this.officeTabletCameraFeedActive) {
           this.cycleOfficeTabletCamera(itemCycle);
+        } else if (this.officeHeldPrizeItem === 'photo-camera') {
+          this.cycleOfficePosterPhotoGallery(itemCycle);
         } else {
           this.cycleOfficeHotbarItem(itemCycle);
         }
@@ -3634,8 +3647,57 @@ export class Game {
     return root;
   }
 
+  private createOfficePhotoCameraModel(includeHand = false): Group {
+    const root = new Group();
+    const bodyMaterial = new MeshStandardMaterial({
+      color: 0x20262c,
+      emissive: 0x020406,
+      emissiveIntensity: 0.14,
+      roughness: 0.34,
+      metalness: 0.36,
+    });
+    const gripMaterial = new MeshStandardMaterial({
+      color: 0x111315,
+      roughness: 0.58,
+      metalness: 0.08,
+    });
+    const lensMaterial = new MeshStandardMaterial({
+      color: 0x081018,
+      emissive: 0x28a8c9,
+      emissiveIntensity: 0.36,
+      roughness: 0.14,
+      metalness: 0.62,
+    });
+
+    if (includeHand) {
+      root.add(this.createOfficePrizeHandModel());
+    }
+
+    const cameraBody = new Group();
+    cameraBody.position.set(0.01, 0.07, -0.14);
+    cameraBody.rotation.set(0.08, -0.08, 0.02);
+    const body = new Mesh(new BoxGeometry(0.2, 0.12, 0.09), bodyMaterial);
+    const grip = new Mesh(new BoxGeometry(0.055, 0.14, 0.1), gripMaterial);
+    grip.position.x = -0.095;
+    const lens = new Mesh(new CylinderGeometry(0.045, 0.055, 0.065, 18), lensMaterial);
+    lens.rotation.x = Math.PI / 2;
+    lens.position.set(0.025, 0, -0.075);
+    const flash = new Mesh(new BoxGeometry(0.045, 0.025, 0.014), new MeshStandardMaterial({
+      color: 0xe8f8ff,
+      emissive: 0x9ae8ff,
+      emissiveIntensity: 0.32,
+      roughness: 0.22,
+      metalness: 0.06,
+    }));
+    flash.position.set(0.06, 0.065, -0.048);
+    cameraBody.add(body, grip, lens, flash);
+    root.add(cameraBody);
+    return root;
+  }
+
   private createOfficePrizeItemModels(): void {
     const models: Array<[OfficePrizeItemId, Group]> = [
+      ['photo-camera', this.createOfficePhotoCameraModel(true)],
       ['tiny-bear', this.createOfficeTinyBearToyModel(true)],
       ['lollipop', this.createOfficeLollipopModel(true)],
       ['duck-toy', this.createOfficeDuckToyModel(true)],
@@ -5783,6 +5845,15 @@ export class Game {
     this.clearOfficeHeldPrizeItem();
   }
 
+  private resetOfficePosterPhotography(): void {
+    this.officePrintedPosterKeycard = false;
+    this.officePosterPhotoIds.clear();
+    this.officePosterPhotos.length = 0;
+    this.officePosterPhotoIndex = 0;
+    this.officeChapter.posterPrinter.printed = false;
+    this.officeChapter.posterPrinter.keycardRoot.visible = false;
+  }
+
   private setOfficeHeldPrizeItem(item: OfficePrizeItemId, showStatus = true): void {
     if (this.getOfficePrizeItemCount(item) <= 0) {
       this.pushStatus(`${OFFICE_PRIZE_ITEM_LABELS[item]} is not in your hotbar yet.`, 1.8);
@@ -5818,6 +5889,8 @@ export class Game {
     if (showStatus) {
       const action = item === 'glass'
         ? 'Left click to throw it and shatter it.'
+        : item === 'photo-camera'
+          ? 'Left click to take a poster photo. Scroll while holding it to review photos.'
         : item === 'tiny-bear'
           ? 'Left click to throw it and squeak it as a distraction.'
           : item === 'lollipop'
@@ -13061,6 +13134,9 @@ export class Game {
       case 'glass':
         this.throwOfficeGlass();
         return true;
+      case 'photo-camera':
+        this.takeOfficePosterPhoto();
+        return true;
       case 'tiny-bear':
         this.throwOfficeTinyBear();
         return true;
@@ -16078,6 +16154,7 @@ export class Game {
         this.getOfficeTabletInventoryLine(),
         this.getMicrophoneSoundToolInventoryLine(),
         this.getCameraToolInventoryLine(),
+        this.getOfficePosterCameraInventoryLine(),
         `Tickets: ${this.officeChapterTickets}`,
         `Prizes: ${prizeItems}`,
         this.officePrizeBonusMultiplier > 1 ? 'Prize Wheel Bonus: next real prize is doubled' : 'Prize Wheel Bonus: none',
@@ -16249,8 +16326,20 @@ export class Game {
     return `Camera Tool: ${state} / press 4 / ${saved}`;
   }
 
+  private getOfficePosterCameraInventoryLine(): string {
+    const hasCamera = this.getOfficePrizeItemCount('photo-camera') > 0;
+    const cameraState = hasCamera
+      ? this.officeHeldPrizeItem === 'photo-camera'
+        ? 'held'
+        : 'in hotbar'
+      : 'on storage closet shelf';
+    return `Photo Camera: ${cameraState} / photos ${this.officePosterPhotos.length} / posters ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length} / poster keycard ${this.officePrintedPosterKeycard ? 'printed' : 'not printed'}`;
+  }
+
   private getOfficeHeldPrizeActionText(): string | null {
     switch (this.officeHeldPrizeItem) {
+      case 'photo-camera':
+        return `Photo Camera equipped. Left click to take a picture. Captured posters: ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}. Scroll to review photos.`;
       case 'glass':
         return 'Glass Cup equipped. Left click to throw it and make it shatter.';
       case 'tiny-bear':
@@ -16993,6 +17082,8 @@ export class Game {
       const ballPitSlide = this.getNearestOfficeBallPitSlide();
       const kitchenEntranceDoor = this.getNearestOfficeKitchenEntranceDoor();
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
+      const photoCameraPickup = this.getNearestOfficePhotoCameraPickup();
+      const posterPrinter = this.getNearestOfficePosterPrinter();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
       const employeeElevator = this.getNearestOfficeEmployeeElevator();
@@ -17048,6 +17139,19 @@ export class Game {
         return this.officeHeldPrizeItem === 'glass'
           ? 'Glass Cup is already in your hand. Left click to throw it.'
           : 'Press E to add a glass cup to your hotbar from the kitchen shelf.';
+      }
+
+      if (photoCameraPickup) {
+        return 'Press E to pick up the shelf photo camera.';
+      }
+
+      if (posterPrinter) {
+        const missing = this.officeChapter.posterTargets.length - this.officePosterPhotoIds.size;
+        return this.officePrintedPosterKeycard
+          ? 'The poster keycard has already printed.'
+          : missing <= 0
+            ? 'Press E to print the basement poster keycard.'
+            : `The printer needs every poster photographed. ${missing} poster${missing === 1 ? '' : 's'} left.`;
       }
 
       if (utility) {
@@ -17122,9 +17226,9 @@ export class Game {
 
       if (basementRoomDoor) {
         if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
-          return this.officeChapter.employeeKeyBriefcase.keyCollected
-            ? `Press E to unlock ${basementRoomDoor.label.toLowerCase()} with the key card.`
-            : `${basementRoomDoor.label} needs the employees-only key card.`;
+          return this.officePrintedPosterKeycard
+            ? `Press E to unlock ${basementRoomDoor.label.toLowerCase()} with the printed poster keycard.`
+            : `${basementRoomDoor.label} needs the printed poster keycard from the backstage printer.`;
         }
         return basementRoomDoor.open
           ? `Press E to close ${basementRoomDoor.label.toLowerCase()}.`
@@ -17753,6 +17857,8 @@ export class Game {
       const utility = this.getNearestOfficeUtilityInteractable();
       const kitchenEntranceDoor = this.getNearestOfficeKitchenEntranceDoor();
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
+      const photoCameraPickup = this.getNearestOfficePhotoCameraPickup();
+      const posterPrinter = this.getNearestOfficePosterPrinter();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
       const employeeKeyBriefcase = this.getNearestOfficeEmployeeKeyBriefcase();
@@ -17834,6 +17940,19 @@ export class Game {
           : `${kitchenGlassShelf.label} has cups and glasses. Press E to add one to your hotbar.`;
       }
 
+      if (photoCameraPickup) {
+        return 'A small photo camera is sitting on the cleaning closet shelf. Press E to put it in your inventory.';
+      }
+
+      if (posterPrinter) {
+        const missing = this.officeChapter.posterTargets.length - this.officePosterPhotoIds.size;
+        return this.officePrintedPosterKeycard
+          ? 'The printer has already made the poster keycard for the basement doors.'
+          : missing <= 0
+            ? 'The backstage printer is ready. Press E to print the basement poster keycard.'
+            : `The backstage printer needs photos of every poster first. ${missing} poster${missing === 1 ? '' : 's'} left.`;
+      }
+
       if (utility) {
         return utility.kind === 'power-box'
           ? this.officeChapter.utilityCloset.powerBoxOpen
@@ -17906,9 +18025,9 @@ export class Game {
 
       if (basementRoomDoor) {
         if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
-          return this.officeChapter.employeeKeyBriefcase.keyCollected
-            ? `${basementRoomDoor.label} is locked. Press E to swipe the employees-only key card.`
-            : `${basementRoomDoor.label} is locked. Find the employees-only key card first.`;
+          return this.officePrintedPosterKeycard
+            ? `${basementRoomDoor.label} is locked. Press E to swipe the printed poster keycard.`
+            : `${basementRoomDoor.label} is locked. Photograph every poster, then print the backstage poster keycard.`;
         }
         return basementRoomDoor.open
           ? `${basementRoomDoor.label} is open. Press E to close it.`
@@ -19147,6 +19266,152 @@ export class Game {
     return closest;
   }
 
+  private getNearestOfficePhotoCameraPickup(): OfficeChapterData['photoCameraPickup'] | null {
+    const pickup = this.officeChapter.photoCameraPickup;
+    if (pickup.collected || !pickup.root.visible) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toPickup = pickup.interactPosition.clone().sub(playerPosition);
+    const along = toPickup.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.05) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toPickup.sub(projected).length();
+    return lateral <= 0.72 ? pickup : null;
+  }
+
+  private getNearestOfficePosterPrinter(): OfficeChapterData['posterPrinter'] | null {
+    const printer = this.officeChapter.posterPrinter;
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toPrinter = printer.interactPosition.clone().sub(playerPosition);
+    const along = toPrinter.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.25) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toPrinter.sub(projected).length();
+    return lateral <= 0.92 ? printer : null;
+  }
+
+  private getAimedOfficePosterTarget(): OfficeChapterData['posterTargets'][number] | null {
+    const cameraPosition = this.camera.getWorldPosition(new Vector3());
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    let closestPoster: OfficeChapterData['posterTargets'][number] | null = null;
+    let bestScore = -Infinity;
+
+    for (const poster of this.officeChapter.posterTargets) {
+      if (!poster.root.visible) {
+        continue;
+      }
+
+      const toPoster = poster.position.clone().sub(cameraPosition);
+      const distance = toPoster.length();
+      if (distance <= 0.1 || distance > 46) {
+        continue;
+      }
+
+      const direction = toPoster.clone().normalize();
+      const aim = forward.dot(direction);
+      if (aim < 0.952) {
+        continue;
+      }
+
+      const frontFacing = poster.normal.dot(cameraPosition.clone().sub(poster.position).normalize());
+      if (frontFacing < 0.06) {
+        continue;
+      }
+
+      const score = aim * 2 - distance * 0.012;
+      if (score > bestScore) {
+        closestPoster = poster;
+        bestScore = score;
+      }
+    }
+
+    return closestPoster;
+  }
+
+  private takeOfficePosterPhoto(): void {
+    const photoId = this.officePosterPhotos.length + 1;
+    const poster = this.getAimedOfficePosterTarget();
+
+    if (!poster) {
+      this.officePosterPhotos.push({
+        id: photoId,
+        posterId: null,
+        label: 'No poster clearly visible',
+      });
+      this.officePosterPhotoIndex = this.officePosterPhotos.length - 1;
+      this.gameplaySfxAudio.playSmallPanel(false);
+      this.pushStatus(`Photo ${photoId}: no poster is clearly visible. Center a poster in the camera view.`, 2.6);
+      this.syncHud();
+      return;
+    }
+
+    const firstCapture = !this.officePosterPhotoIds.has(poster.id);
+    this.officePosterPhotoIds.add(poster.id);
+    this.officePosterPhotos.push({
+      id: photoId,
+      posterId: poster.id,
+      label: poster.label,
+    });
+    this.officePosterPhotoIndex = this.officePosterPhotos.length - 1;
+    this.gameplaySfxAudio.playSmallPanel(true);
+    this.pushStatus(
+      firstCapture
+        ? `Photo ${photoId}: ${poster.label}. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`
+        : `Photo ${photoId}: ${poster.label} again. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`,
+      2.8,
+    );
+    this.syncHud();
+  }
+
+  private cycleOfficePosterPhotoGallery(direction: number): void {
+    if (this.officePosterPhotos.length === 0) {
+      this.pushStatus('No photos yet. Left click while holding the Photo Camera to take one.', 1.8);
+      return;
+    }
+
+    this.officePosterPhotoIndex = (
+      this.officePosterPhotoIndex
+      + Math.sign(direction)
+      + this.officePosterPhotos.length
+    ) % this.officePosterPhotos.length;
+    const photo = this.officePosterPhotos[this.officePosterPhotoIndex];
+    this.pushStatus(`Photo ${photo.id}/${this.officePosterPhotos.length}: ${photo.label}.`, 1.8);
+  }
+
+  private handleOfficePosterPrinterInteract(): void {
+    const printer = this.officeChapter.posterPrinter;
+    const totalPosters = this.officeChapter.posterTargets.length;
+    const capturedPosters = this.officePosterPhotoIds.size;
+
+    if (this.officePrintedPosterKeycard || printer.printed) {
+      this.pushStatus('The poster keycard is already printed. Use it on the basement keycard doors.', 2.5);
+      return;
+    }
+
+    if (capturedPosters < totalPosters) {
+      this.gameplaySfxAudio.playSmallPanel(false);
+      this.pushStatus(`The printer needs every poster photographed first: ${capturedPosters}/${totalPosters}.`, 3.0);
+      return;
+    }
+
+    this.officePrintedPosterKeycard = true;
+    printer.printed = true;
+    printer.keycardRoot.visible = true;
+    this.gameplaySfxAudio.playSmallPanel(true);
+    this.pushStatus('The printer spits out a basement keycard covered with tiny poster pictures.', 3.0);
+    this.syncHud();
+  }
+
   private getNearestOfficeVentLadder(): OfficeChapterData['ventSystem'] | null {
     if (this.officeVentActive) {
       return null;
@@ -20019,6 +20284,23 @@ export class Game {
       return;
     }
 
+    const photoCameraPickup = this.getNearestOfficePhotoCameraPickup();
+    if (photoCameraPickup) {
+      photoCameraPickup.collected = true;
+      photoCameraPickup.root.visible = false;
+      this.addOfficePrizeItem('photo-camera', 1);
+      this.setOfficeHeldPrizeItem('photo-camera', false);
+      this.gameplaySfxAudio.playSmallPanel(true);
+      this.pushStatus('You pick up the photo camera. Left click posters to take pictures, then use the backstage printer.', 3.2);
+      return;
+    }
+
+    const posterPrinter = this.getNearestOfficePosterPrinter();
+    if (posterPrinter) {
+      this.handleOfficePosterPrinterInteract();
+      return;
+    }
+
     const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
     if (backstageStorageDoor) {
       backstageStorageDoor.targetOpenAmount = backstageStorageDoor.targetOpenAmount > 0.5 ? 0 : 1;
@@ -20135,9 +20417,9 @@ export class Game {
     const basementRoomDoor = this.getNearestOfficeBasementRoomDoor();
     if (basementRoomDoor) {
       if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
-        if (!this.officeChapter.employeeKeyBriefcase.keyCollected) {
+        if (!this.officePrintedPosterKeycard) {
           this.gameplaySfxAudio.playSmallPanel(false);
-          this.pushStatus(`${basementRoomDoor.label} needs the employees-only key card from the briefcase.`, 2.6);
+          this.pushStatus(`${basementRoomDoor.label} needs the printed poster keycard from the backstage printer.`, 2.8);
           return;
         }
 
@@ -20145,7 +20427,7 @@ export class Game {
         basementRoomDoor.targetOpenAmount = 1;
         basementRoomDoor.open = true;
         this.gameplaySfxAudio.playClosetDoor(true);
-        this.pushStatus(`The key card unlocks ${basementRoomDoor.label.toLowerCase()}.`, 2.5);
+        this.pushStatus(`The printed poster keycard unlocks ${basementRoomDoor.label.toLowerCase()}.`, 2.5);
         return;
       }
       basementRoomDoor.targetOpenAmount = basementRoomDoor.targetOpenAmount > 0.5 ? 0 : 1;
@@ -23703,6 +23985,7 @@ export class Game {
     }
     this.officeChapterTickets = 0;
     this.resetOfficePrizeInventory();
+    this.resetOfficePosterPhotography();
     this.officeBasketballHeld = false;
     this.chapterTwoCoffeeJob = null;
     this.activeCoffeeDrink = null;
