@@ -2,6 +2,7 @@ import {
   BoxGeometry,
   CatmullRomCurve3,
   CanvasTexture,
+  CircleGeometry,
   ConeGeometry,
   CylinderGeometry,
   DoubleSide,
@@ -394,6 +395,7 @@ export interface OfficeChapterData {
   buttons: OfficeChapterButton[];
   partyPlay: OfficeChapterPartyPlayMachine;
   foxyPlay: OfficeChapterFoxyPlayButton;
+  foxyStoryPlay: OfficeChapterFoxyPlayButton;
   ticketPickups: OfficeChapterTicketPickup[];
   basketballGame: OfficeChapterBasketballGame;
   prizeWheel: OfficeChapterPrizeWheel;
@@ -422,10 +424,12 @@ export interface OfficeChapterData {
   flashHallLight(doorId: 'left' | 'right'): void;
   startPartyShow(playerPosition?: Vector3): void;
   startFoxyPlay(action?: OfficeChapterFoxyPlayAction): void;
+  startFoxyStory(): void;
   startBasketballThrow(scored: boolean, targetHoop: 'left' | 'right', throwStartWorldPosition?: Vector3): void;
   setBasketballHeld(held: boolean): void;
   isBasketballThrowActive(): boolean;
   isFoxyPlayActive(): boolean;
+  isFoxyStoryActive(): boolean;
   isPartyShowActive(): boolean;
   isPartyShowMusicActive(): boolean;
   getPartyShowMusicTime(): number;
@@ -477,6 +481,7 @@ const PARTY_SHOW_MUSIC_DURATION = 10;
 const PARTY_SHOW_RETURN_DURATION = 2.4;
 const BASKETBALL_THROW_DURATION = 1.65;
 const FOXY_PLAY_DURATION = 2.7;
+const FOXY_STORY_DURATION = 24;
 
 type OfficeChapterFoxyPlayAction = 'foxy' | 'parrot';
 
@@ -3144,6 +3149,209 @@ function createBrokenAnimatronicSuit(
   return root;
 }
 
+function createPuppetShowTextMaterial(lines: string[], fontSize = 32): MeshStandardMaterial {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 256;
+  const context = canvas.getContext('2d');
+
+  if (context) {
+    context.fillStyle = '#f3d49a';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#5a3518';
+    context.lineWidth = 18;
+    context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+    context.fillStyle = '#322014';
+    context.font = `bold ${fontSize}px Georgia, serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    const startY = canvas.height / 2 - (lines.length - 1) * fontSize * 0.62;
+    lines.forEach((line, index) => {
+      context.fillText(line, canvas.width / 2, startY + index * fontSize * 1.28);
+    });
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.68,
+    metalness: 0.02,
+    side: DoubleSide,
+  });
+}
+
+function createPuppetShowBackgroundMaterial(): MeshStandardMaterial {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 512;
+  const context = canvas.getContext('2d');
+
+  if (context) {
+    const wood = context.createLinearGradient(0, 0, canvas.width, 0);
+    wood.addColorStop(0, '#5f381d');
+    wood.addColorStop(0.5, '#9a6333');
+    wood.addColorStop(1, '#5b341a');
+    context.fillStyle = wood;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    for (let x = 0; x < canvas.width; x += 86) {
+      context.fillStyle = x % 172 === 0 ? 'rgba(38, 19, 9, 0.28)' : 'rgba(255, 218, 154, 0.12)';
+      context.fillRect(x, 0, 8, canvas.height);
+      context.strokeStyle = 'rgba(42, 21, 8, 0.34)';
+      context.lineWidth = 3;
+      context.beginPath();
+      context.moveTo(x + 34, 0);
+      context.bezierCurveTo(x + 52, 128, x + 18, 276, x + 42, canvas.height);
+      context.stroke();
+    }
+    context.fillStyle = '#7fc8ff';
+    context.fillRect(0, 92, canvas.width, 194);
+    context.fillStyle = '#17315a';
+    context.fillRect(0, 286, canvas.width, 226);
+    context.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    context.lineWidth = 5;
+    for (let y = 328; y < 492; y += 36) {
+      context.beginPath();
+      for (let x = -10; x <= canvas.width + 10; x += 26) {
+        context.lineTo(x, y + Math.sin((x + y) * 0.035) * 7);
+      }
+      context.stroke();
+    }
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.72,
+    metalness: 0.02,
+    side: DoubleSide,
+  });
+}
+
+function createPuppetPerson(kind: 'sailor' | 'pirate' | 'foxy'): Group {
+  const root = new Group();
+  const bodyColor = kind === 'sailor' ? 0xe8e6d6 : kind === 'foxy' ? 0xb85524 : 0x4a1d1a;
+  const trimColor = kind === 'sailor' ? 0x2f6ea6 : kind === 'foxy' ? 0xd8b07a : 0x151111;
+  const bodyMaterial = new MeshStandardMaterial({ color: bodyColor, roughness: 0.72, metalness: 0.02, side: DoubleSide });
+  const trimMaterial = new MeshStandardMaterial({ color: trimColor, roughness: 0.58, metalness: 0.04, side: DoubleSide });
+  const faceMaterial = new MeshStandardMaterial({ color: kind === 'foxy' ? 0xd8b07a : 0xd7a46a, roughness: 0.62, side: DoubleSide });
+  const darkMaterial = new MeshBasicMaterial({ color: 0x151111, side: DoubleSide });
+
+  const body = new Mesh(new PlaneGeometry(0.42, 0.7), bodyMaterial);
+  body.position.y = -0.12;
+  const head = new Mesh(new CircleGeometry(kind === 'foxy' ? 0.23 : 0.18, 18), faceMaterial);
+  head.position.y = 0.36;
+  const hat = new Mesh(new PlaneGeometry(kind === 'foxy' ? 0.5 : 0.44, 0.16), trimMaterial);
+  hat.position.y = 0.54;
+  const leftArm = new Mesh(new PlaneGeometry(0.38, 0.1), bodyMaterial);
+  leftArm.position.set(-0.34, 0.02, 0.01);
+  leftArm.rotation.z = 0.32;
+  const rightArm = new Mesh(new PlaneGeometry(0.38, 0.1), bodyMaterial);
+  rightArm.position.set(0.34, 0.02, 0.01);
+  rightArm.rotation.z = -0.32;
+  [-0.07, 0.07].forEach((eyeX) => {
+    const eye = new Mesh(new CircleGeometry(0.025, 8), darkMaterial);
+    eye.position.set(eyeX, 0.39, 0.02);
+    root.add(eye);
+  });
+  if (kind === 'foxy') {
+    const snout = new Mesh(new PlaneGeometry(0.28, 0.1), faceMaterial);
+    snout.position.set(0, 0.29, 0.02);
+    const hook = new Mesh(
+      new TorusGeometry(0.08, 0.012, 6, 14, Math.PI * 1.25),
+      new MeshStandardMaterial({ color: 0xdce6ec, metalness: 0.72, roughness: 0.18 }),
+    );
+    hook.position.set(0.54, -0.03, 0.03);
+    hook.rotation.z = -0.62;
+    root.add(snout, hook);
+  }
+
+  root.add(body, head, hat, leftArm, rightArm);
+  return root;
+}
+
+function createPuppetShip(): Group {
+  const root = new Group();
+  const woodMaterial = new MeshStandardMaterial({ color: 0x6a3518, roughness: 0.76, side: DoubleSide });
+  const sailMaterial = new MeshStandardMaterial({ color: 0xf0dfc4, roughness: 0.68, side: DoubleSide });
+  const hull = new Mesh(new PlaneGeometry(1.18, 0.28), woodMaterial);
+  hull.position.y = -0.55;
+  const mast = new Mesh(new PlaneGeometry(0.05, 0.86), woodMaterial);
+  mast.position.y = -0.05;
+  const sail = new Mesh(new PlaneGeometry(0.52, 0.58), sailMaterial);
+  sail.position.set(0.28, -0.08, 0.02);
+  root.add(hull, mast, sail);
+  return root;
+}
+
+function createPuppetTreasure(): Group {
+  const root = new Group();
+  const chestMaterial = new MeshStandardMaterial({ color: 0x7a3d1c, roughness: 0.62, side: DoubleSide });
+  const goldMaterial = new MeshStandardMaterial({ color: 0xffd84c, emissive: 0x7a5206, emissiveIntensity: 0.3, roughness: 0.34, metalness: 0.25 });
+  const chest = new Mesh(new PlaneGeometry(0.72, 0.34), chestMaterial);
+  const lid = new Mesh(new PlaneGeometry(0.72, 0.18), chestMaterial);
+  lid.position.y = 0.26;
+  lid.rotation.z = -0.28;
+  [-0.24, -0.08, 0.1, 0.26].forEach((coinX) => {
+    const coin = new Mesh(new CircleGeometry(0.055, 12), goldMaterial);
+    coin.position.set(coinX, 0.15 + Math.abs(coinX) * 0.05, 0.03);
+    root.add(coin);
+  });
+  root.add(chest, lid);
+  return root;
+}
+
+function createFoxyPuppetShowStage(): Group {
+  const root = new Group();
+  root.position.set(-1.34, 2.0, 0);
+  root.rotation.y = Math.PI / 2;
+  root.visible = false;
+
+  const background = new Mesh(new PlaneGeometry(7.15, 3.15), createPuppetShowBackgroundMaterial());
+  const frameMaterial = new MeshStandardMaterial({ color: 0x3d2010, roughness: 0.8, metalness: 0.02 });
+  const topFrame = new Mesh(new BoxGeometry(7.4, 0.18, 0.08), frameMaterial);
+  topFrame.position.set(0, 1.66, 0.04);
+  const bottomFrame = new Mesh(new BoxGeometry(7.4, 0.18, 0.08), frameMaterial);
+  bottomFrame.position.set(0, -1.66, 0.04);
+  const leftFrame = new Mesh(new BoxGeometry(0.18, 3.36, 0.08), frameMaterial);
+  leftFrame.position.set(-3.68, 0, 0.04);
+  const rightFrame = new Mesh(new BoxGeometry(0.18, 3.36, 0.08), frameMaterial);
+  rightFrame.position.set(3.68, 0, 0.04);
+
+  const captions = [
+    ['Once upon a time,', 'there was a sailor.'],
+    ['Many pirates chased him,', 'for he knew where the treasure was.'],
+    ['A crew dragged him aboard', 'and forced the secret out.'],
+    ['They sailed away', 'to pick up the treasure.'],
+    ['Then I, Pirate Foxy, arrived', 'and beat all the bad pirates!'],
+    ['Foxy and the sailor', 'found the treasure together.'],
+    ['They became wealthy and kind,', 'donating to poor places. The end.'],
+  ].map((lines) => {
+    const caption = new Mesh(new PlaneGeometry(3.9, 0.72), createPuppetShowTextMaterial(lines));
+    caption.position.set(0, 1.08, 0.08);
+    caption.visible = false;
+    return caption;
+  });
+
+  const sailor = createPuppetPerson('sailor');
+  const pirates = new Group();
+  [-0.42, 0, 0.42].forEach((offsetX) => {
+    const pirate = createPuppetPerson('pirate');
+    pirate.scale.setScalar(0.84);
+    pirate.position.x = offsetX;
+    pirates.add(pirate);
+  });
+  const ship = createPuppetShip();
+  const foxy = createPuppetPerson('foxy');
+  const treasure = createPuppetTreasure();
+  const donation = new Mesh(new PlaneGeometry(1.2, 0.56), createPuppetShowTextMaterial(['DONATIONS', 'FOR GOOD'], 28));
+
+  root.add(background, topFrame, bottomFrame, leftFrame, rightFrame, ...captions, sailor, pirates, ship, foxy, treasure, donation);
+  root.userData.foxyStoryParts = { captions, sailor, pirates, ship, foxy, treasure, donation };
+  return root;
+}
+
 function createBathroomSignMaterial(label: string, subtitle = ''): MeshStandardMaterial {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -3669,6 +3877,7 @@ function createFoxPirateStage(x: number, z: number): Group {
     tailTip,
     parrotRoot,
   );
+  const storyRoot = createFoxyPuppetShowStage();
   root.userData.foxyParts = {
     foxRoot,
     head: headGroup,
@@ -3694,7 +3903,9 @@ function createFoxPirateStage(x: number, z: number): Group {
       parrotRightWingRotation: new Vector3(rightWing.rotation.x, rightWing.rotation.y, rightWing.rotation.z),
     },
   };
-  root.add(foxRoot, createAnimatronicNamePlate('Foxy', 'the Pirate Fox', '#ff9b52', 0x201016));
+  root.userData.foxyStoryRoot = storyRoot;
+  root.userData.foxyStoryParts = storyRoot.userData.foxyStoryParts;
+  root.add(foxRoot, storyRoot, createAnimatronicNamePlate('Foxy', 'the Pirate Fox', '#ff9b52', 0x201016));
 
   return root;
 }
@@ -9163,7 +9374,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     Math.PI,
   );
   root.add(foxyPlay.root);
-  const pirateCovePlayButton = createFoxyPlayButton(
+  const foxyStoryPlay = createFoxyPlayButton(
     secondRoomCenterX + 1.35,
     secondRoomMaxZ - WALL_THICKNESS + 0.04,
     Math.PI,
@@ -9171,7 +9382,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     'PLAY',
     'READY',
   );
-  root.add(pirateCovePlayButton.root);
+  root.add(foxyStoryPlay.root);
 
   const ticketPickups = [
     createTicketPickup('ticket-main-table', partyRoomCenterX - 7.25, partyRoomCenterZ + 4.8, 0.28),
@@ -9492,14 +9703,27 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let foxyPlayActive = false;
   let foxyPlayTime = 0;
   let foxyPlayAction: OfficeChapterFoxyPlayAction = 'foxy';
+  let foxyStoryActive = false;
+  let foxyStoryTime = 0;
 
   const startFoxyPlay = (action: OfficeChapterFoxyPlayAction = 'foxy'): void => {
     foxyPlayActive = true;
     foxyPlayTime = 0;
     foxyPlayAction = action;
+    foxyStoryActive = false;
+    foxyStoryTime = 0;
   };
 
   const isFoxyPlayActive = (): boolean => foxyPlayActive;
+
+  const startFoxyStory = (): void => {
+    foxyPlayActive = false;
+    foxyPlayTime = 0;
+    foxyStoryActive = true;
+    foxyStoryTime = 0;
+  };
+
+  const isFoxyStoryActive = (): boolean => foxyStoryActive;
 
   const setBasketballHeld = (held: boolean): void => {
     basketballGame.ball.visible = !held;
@@ -9582,8 +9806,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
   const updateFoxCurtains = (deltaSeconds: number): void => {
     foxCurtainTime += deltaSeconds;
-    const curtainOpen = foxyPlayActive
-      ? 0.78 + Math.sin(foxyPlayTime * 2.1) * 0.2
+    const curtainOpen = foxyPlayActive || foxyStoryActive
+      ? 0.78 + Math.sin((foxyPlayActive ? foxyPlayTime : foxyStoryTime) * 2.1) * 0.2
       : 0.16 + Math.sin(foxCurtainTime * 0.72) * 0.08;
     const leftCurtain = foxStage.userData.leftCurtain as Mesh | undefined;
     const rightCurtain = foxStage.userData.rightCurtain as Mesh | undefined;
@@ -9689,6 +9913,112 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       foxyPlayActive = false;
       foxyPlayTime = 0;
       setBase();
+    }
+  };
+
+  const updateFoxyStory = (deltaSeconds: number): void => {
+    const buttonBlend = 1 - Math.exp(-12 * deltaSeconds);
+    foxyStoryPlay.pressAmount += ((foxyStoryActive ? 1 : 0) - foxyStoryPlay.pressAmount) * buttonBlend;
+    foxyStoryPlay.button.position.z = foxyStoryPlay.buttonRestZ - foxyStoryPlay.pressAmount * 0.055;
+    foxyStoryPlay.buttonMaterial.emissiveIntensity = 0.62 + foxyStoryPlay.pressAmount * 0.55;
+    foxyStoryPlay.labelMaterial.emissiveIntensity = foxyStoryActive
+      ? 0.9 + Math.abs(Math.sin(foxyStoryTime * 5.4)) * 0.32
+      : 0.58;
+
+    const parts = foxStage.userData.foxyParts as { foxRoot?: Group } | undefined;
+    const storyRoot = foxStage.userData.foxyStoryRoot as Group | undefined;
+    const storyParts = foxStage.userData.foxyStoryParts as {
+      captions: Mesh[];
+      sailor: Group;
+      pirates: Group;
+      ship: Group;
+      foxy: Group;
+      treasure: Group;
+      donation: Mesh;
+    } | undefined;
+    if (!storyRoot || !storyParts) {
+      return;
+    }
+
+    if (!foxyStoryActive) {
+      storyRoot.visible = false;
+      return;
+    }
+
+    foxyStoryTime += deltaSeconds;
+    storyRoot.visible = true;
+    if (parts?.foxRoot) {
+      parts.foxRoot.visible = false;
+    }
+
+    const sceneLength = FOXY_STORY_DURATION / storyParts.captions.length;
+    const sceneIndex = Math.min(storyParts.captions.length - 1, Math.floor(foxyStoryTime / sceneLength));
+    const sceneProgress = MathUtils.clamp((foxyStoryTime - sceneIndex * sceneLength) / sceneLength, 0, 1);
+    storyParts.captions.forEach((caption, index) => {
+      caption.visible = index === sceneIndex;
+    });
+
+    const bob = Math.sin(foxyStoryTime * 6) * 0.045;
+    storyParts.sailor.visible = sceneIndex <= 6;
+    storyParts.pirates.visible = sceneIndex >= 1 && sceneIndex <= 4;
+    storyParts.ship.visible = sceneIndex >= 2 && sceneIndex <= 4;
+    storyParts.foxy.visible = sceneIndex >= 4 && sceneIndex <= 6;
+    storyParts.treasure.visible = sceneIndex >= 5;
+    storyParts.donation.visible = sceneIndex === 6;
+
+    storyParts.sailor.scale.setScalar(0.78);
+    storyParts.pirates.scale.setScalar(0.72);
+    storyParts.ship.scale.setScalar(1);
+    storyParts.foxy.scale.setScalar(0.86);
+    storyParts.treasure.scale.setScalar(0.82);
+    storyParts.donation.scale.setScalar(1);
+
+    if (sceneIndex === 0) {
+      storyParts.sailor.position.set(MathUtils.lerp(-2.6, -0.7, sceneProgress), -0.68 + bob, 0.12);
+      storyParts.sailor.rotation.z = Math.sin(foxyStoryTime * 4) * 0.06;
+    } else if (sceneIndex === 1) {
+      storyParts.sailor.position.set(MathUtils.lerp(-1.8, 0.85, sceneProgress), -0.68 + bob, 0.12);
+      storyParts.pirates.position.set(MathUtils.lerp(-3.0, -0.42, sceneProgress), -0.7 - bob * 0.6, 0.16);
+      storyParts.pirates.rotation.z = Math.sin(foxyStoryTime * 8) * 0.05;
+    } else if (sceneIndex === 2) {
+      storyParts.ship.position.set(0, -0.18 + bob * 0.4, 0.1);
+      storyParts.sailor.position.set(-0.18, -0.42 + bob, 0.16);
+      storyParts.pirates.position.set(0.7, -0.42 - bob, 0.18);
+      storyParts.pirates.rotation.z = Math.sin(foxyStoryTime * 7) * 0.08;
+    } else if (sceneIndex === 3) {
+      storyParts.ship.position.set(MathUtils.lerp(-2.2, 1.8, sceneProgress), -0.18 + bob * 0.4, 0.1);
+      storyParts.sailor.position.set(MathUtils.lerp(-2.0, 1.38, sceneProgress), -0.42 + bob, 0.16);
+      storyParts.pirates.position.set(MathUtils.lerp(-1.35, 2.1, sceneProgress), -0.42 - bob, 0.18);
+    } else if (sceneIndex === 4) {
+      storyParts.ship.position.set(-1.25, -0.18 + bob * 0.4, 0.1);
+      storyParts.sailor.position.set(-1.0, -0.42 + bob, 0.16);
+      storyParts.foxy.position.set(MathUtils.lerp(2.8, -0.05, sceneProgress), -0.46 + bob, 0.2);
+      storyParts.foxy.rotation.z = Math.sin(foxyStoryTime * 7) * 0.09;
+      storyParts.pirates.position.set(MathUtils.lerp(0.6, -2.35, sceneProgress), -0.44 - bob, 0.18);
+      storyParts.pirates.rotation.z = sceneProgress * -0.85 + Math.sin(foxyStoryTime * 12) * 0.18;
+    } else if (sceneIndex === 5) {
+      storyParts.sailor.position.set(-1.05, -0.58 + bob, 0.16);
+      storyParts.foxy.position.set(-0.35, -0.54 - bob, 0.18);
+      storyParts.treasure.position.set(1.25, -0.68 + Math.abs(bob), 0.22);
+      storyParts.treasure.rotation.z = Math.sin(foxyStoryTime * 5) * 0.04;
+    } else {
+      storyParts.sailor.position.set(-1.45, -0.58 + bob, 0.16);
+      storyParts.foxy.position.set(-0.62, -0.54 - bob, 0.18);
+      storyParts.treasure.position.set(0.45, -0.7 + Math.abs(bob), 0.22);
+      storyParts.donation.position.set(1.72, -0.48, 0.22);
+      storyParts.donation.rotation.z = Math.sin(foxyStoryTime * 4) * 0.04;
+    }
+
+    if (foxyStoryTime >= FOXY_STORY_DURATION) {
+      foxyStoryActive = false;
+      foxyStoryTime = 0;
+      storyRoot.visible = false;
+      storyParts.captions.forEach((caption) => {
+        caption.visible = false;
+      });
+      if (parts?.foxRoot) {
+        parts.foxRoot.visible = true;
+      }
     }
   };
 
@@ -10300,6 +10630,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
     updateBasketballThrow(deltaSeconds);
     updateFoxyPlay(deltaSeconds);
+    updateFoxyStory(deltaSeconds);
     updateFoxCurtains(deltaSeconds);
     updateBathroomFixtures(deltaSeconds);
     updatePartyShow(deltaSeconds, playerPosition);
@@ -10320,10 +10651,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     });
     foxyPlayActive = false;
     foxyPlayTime = 0;
+    foxyStoryActive = false;
+    foxyStoryTime = 0;
     foxyPlay.pressAmount = 0;
     foxyPlay.button.position.z = foxyPlay.buttonRestZ;
     foxyPlay.buttonMaterial.emissiveIntensity = 0.62;
     foxyPlay.labelMaterial.emissiveIntensity = 0.58;
+    foxyStoryPlay.pressAmount = 0;
+    foxyStoryPlay.button.position.z = foxyStoryPlay.buttonRestZ;
+    foxyStoryPlay.buttonMaterial.emissiveIntensity = 0.62;
+    foxyStoryPlay.labelMaterial.emissiveIntensity = 0.58;
+    const foxyStoryRoot = foxStage.userData.foxyStoryRoot as Group | undefined;
+    if (foxyStoryRoot) {
+      foxyStoryRoot.visible = false;
+    }
     (['quacky', 'fluffle', 'bori', 'foxy'] as const).forEach((animatronic) => {
       setStageAnimatronicPresent(animatronic, true);
     });
@@ -10513,6 +10854,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     buttons,
     partyPlay,
     foxyPlay,
+    foxyStoryPlay,
     ticketPickups,
     basketballGame,
     prizeWheel,
@@ -10541,10 +10883,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     flashHallLight,
     startPartyShow,
     startFoxyPlay,
+    startFoxyStory,
     startBasketballThrow,
     setBasketballHeld,
     isBasketballThrowActive,
     isFoxyPlayActive,
+    isFoxyStoryActive,
     isPartyShowActive,
     isPartyShowMusicActive,
     getPartyShowMusicTime,

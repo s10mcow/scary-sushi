@@ -16899,6 +16899,7 @@ export class Game {
       const basketballGame = this.getNearestOfficeBasketballGame();
       const prizeWheel = this.getNearestOfficePrizeWheel();
       const foxyPlay = this.getNearestOfficeFoxyPlayButton();
+      const foxyStory = this.getNearestOfficeFoxyStoryButton();
       const partyPlay = this.getNearestOfficePartyPlayMachine();
       const button = this.getNearestOfficeButton();
       const door = this.getNearestOfficeDoor();
@@ -17055,6 +17056,12 @@ export class Game {
         return this.officeChapter.isFoxyPlayActive()
           ? "Foxy's Pirate Cove stage is playing a short line."
           : "Press E on Foxy's Play for a Foxy or parrot line.";
+      }
+
+      if (foxyStory) {
+        return this.officeChapter.isFoxyStoryActive()
+          ? "Pirate Foxy's puppet show is playing."
+          : "Press E on Play to start Pirate Foxy's puppet show.";
       }
 
       if (partyPlay) {
@@ -17648,6 +17655,7 @@ export class Game {
       const basketballGame = this.getNearestOfficeBasketballGame();
       const prizeWheel = this.getNearestOfficePrizeWheel();
       const foxyPlay = this.getNearestOfficeFoxyPlayButton();
+      const foxyStory = this.getNearestOfficeFoxyStoryButton();
       const partyPlay = this.getNearestOfficePartyPlayMachine();
       const cameraMonitors = this.getNearestOfficeCameraMonitors();
       const button = this.getNearestOfficeButton();
@@ -17821,6 +17829,12 @@ export class Game {
         return this.officeChapter.isFoxyPlayActive()
           ? 'The Foxy stage curtains are open during the short Pirate Cove line.'
           : "Foxy's Play is a red wall button for a short Foxy or parrot line.";
+      }
+
+      if (foxyStory) {
+        return this.officeChapter.isFoxyStoryActive()
+          ? "Pirate Foxy's old wooden puppet show is playing behind the curtains."
+          : "The Play button starts Pirate Foxy's wooden puppet treasure story.";
       }
 
       if (partyPlay) {
@@ -18947,6 +18961,20 @@ export class Game {
     return lateral <= 0.46 ? this.officeChapter.foxyPlay : null;
   }
 
+  private getNearestOfficeFoxyStoryButton(): OfficeChapterData['foxyStoryPlay'] | null {
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toButton = this.officeChapter.foxyStoryPlay.interactPosition.clone().sub(playerPosition);
+    const along = toButton.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.0) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toButton.sub(projected).length();
+    return lateral <= 0.46 ? this.officeChapter.foxyStoryPlay : null;
+  }
+
   private getNearestOfficeBackstageStorageDoor(): OfficeChapterData['backstageStorageDoor'] | null {
     const playerPosition = this.player.getPosition();
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
@@ -20065,6 +20093,14 @@ export class Game {
     const prizeWheel = this.getNearestOfficePrizeWheel();
     if (prizeWheel) {
       this.startOfficePrizeWheelSpin();
+      return;
+    }
+
+    const foxyStory = this.getNearestOfficeFoxyStoryButton();
+    if (foxyStory) {
+      this.officeChapter.startFoxyStory();
+      this.gameplaySfxAudio.playSmallPanel(false);
+      this.pushStatus("Pirate Foxy's wooden puppet show begins behind the stage.", 4.2);
       return;
     }
 
