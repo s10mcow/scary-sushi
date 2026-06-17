@@ -1306,7 +1306,29 @@ export class Game {
     this.level = createLevel();
     this.chapterTwo = createChapterTwoLevel();
     this.chapterTwo.root.visible = false;
-    this.mainOfficeChapter = createOfficeChapter();
+    this.mainOfficeChapter = createOfficeChapter({
+      onGoldenBoriStep: () => {
+        if (!this.officeChapterActive || this.officeChapter !== this.mainOfficeChapter) {
+          return;
+        }
+        this.gameplaySfxAudio.playGoldenBoriBoom();
+      },
+      onGoldenBoriCatch: () => {
+        if (
+          !this.officeChapterActive
+          || this.officeChapter !== this.mainOfficeChapter
+          || this.activeOfficeJumpscare
+          || this.officeFoxyKnockdownTimer > 0
+        ) {
+          return;
+        }
+        const definition = this.getRandomOfficeJumpscareDefinition('bori')
+          ?? OFFICE_JUMPSCARE_DEFINITIONS.find((entry) => entry.id === 'bori-3');
+        if (definition) {
+          this.startOfficeJumpscare(definition);
+        }
+      },
+    });
     this.officeSandboxChapter = createOfficeChapter({ sandboxQuackyDesign: true });
     this.translateOfficeChapterCopy(this.officeSandboxChapter, OFFICE_CHAPTER_COPY_OFFSET_X, OFFICE_CHAPTER_COPY_OFFSET_Z);
     this.officeChapter = this.mainOfficeChapter;
@@ -2935,7 +2957,12 @@ export class Game {
     } else if (this.doomModeActive) {
       this.doomMode.update(deltaSeconds);
     } else if (this.officeChapterActive) {
-      this.officeChapter.update(deltaSeconds, this.player.getPosition());
+      this.officeChapter.update(
+        deltaSeconds,
+        this.player.getPosition(),
+        this.officePlayerVoiceLevel,
+        this.officeInsultHeardTimer > 0,
+      );
       this.updateOfficeDoorSoundPlayback();
       this.updateOfficeDoorSparks(deltaSeconds);
       this.updateOfficePrizeWheelAudio();
