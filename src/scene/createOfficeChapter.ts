@@ -8776,12 +8776,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }
   };
 
-  [
-    { x: secondRoomCenterX + 3.35, z: secondRoomCenterZ + 1.35, rotationY: -0.22 },
-    { x: secondRoomCenterX - 2.4, z: secondRoomCenterZ - 3.65, rotationY: -0.12 },
-  ].forEach((table) => {
+  [-3.45, -1.15, 1.15, 3.45].forEach((zOffset) => {
+    const table = {
+      x: secondRoomCenterX - 4.85,
+      z: secondRoomCenterZ + zOffset,
+      rotationY: Math.PI / 2,
+    };
     root.add(createPartyTable(table.x, table.z, table.rotationY));
-    addCollider(colliders, table.x, table.z, 3.45, 1.58);
+    addCollider(colliders, table.x, table.z, 1.58, 3.45);
   });
 
   [
