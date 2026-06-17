@@ -6403,6 +6403,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const northPartyHallSouthZ = partyRoomNorthZ;
   const northPartyHallNorthZ = northPartyHallSouthZ - northPartyHallLength;
   const northPartyHallCenterZ = (northPartyHallNorthZ + northPartyHallSouthZ) / 2;
+  const kitchenHallRoomWidth = 20.5;
+  const kitchenHallRoomDepth = 22;
+  const kitchenHallRoomSouthZ = northPartyHallNorthZ;
+  const kitchenHallRoomNorthZ = kitchenHallRoomSouthZ - kitchenHallRoomDepth;
+  const kitchenHallRoomCenterX = northPartyHallCenterX;
+  const kitchenHallRoomCenterZ = (kitchenHallRoomNorthZ + kitchenHallRoomSouthZ) / 2;
+  const kitchenHallRoomMinX = kitchenHallRoomCenterX - kitchenHallRoomWidth / 2;
+  const kitchenHallRoomMaxX = kitchenHallRoomCenterX + kitchenHallRoomWidth / 2;
   const kitchenDoorCenterZ = 141.67;
   const kitchenDoorWidth = 4.4;
   const kitchenDoorMinZ = kitchenDoorCenterZ - kitchenDoorWidth / 2;
@@ -6521,6 +6529,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   }, materials));
   root.add(createPizzeriaCheckeredFloor(northPartyHallWidth, northPartyHallLength, northPartyHallCenterX, northPartyHallCenterZ, 0.12));
   root.add(createFloor({
+    width: kitchenHallRoomWidth,
+    depth: kitchenHallRoomDepth,
+    center: [kitchenHallRoomCenterX, kitchenHallRoomCenterZ],
+    ceilingHeight: WALL_HEIGHT,
+  }, materials));
+  root.add(createPizzeriaCheckeredFloor(kitchenHallRoomWidth, kitchenHallRoomDepth, kitchenHallRoomCenterX, kitchenHallRoomCenterZ, WALL_THICKNESS));
+  root.add(createFloor({
     width: kitchenDepth,
     depth: kitchenWidth,
     center: [kitchenCenterX, kitchenCenterZ],
@@ -6537,8 +6552,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
   const northPartyHallWalls: WallDefinition[] = [
     {
-      position: [northPartyHallCenterX, WALL_HEIGHT / 2, northPartyHallNorthZ + WALL_THICKNESS / 2],
-      size: [northPartyHallWidth, WALL_HEIGHT, WALL_THICKNESS],
+      position: [kitchenHallRoomCenterX, WALL_HEIGHT / 2, kitchenHallRoomNorthZ + WALL_THICKNESS / 2],
+      size: [kitchenHallRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [kitchenHallRoomMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, kitchenHallRoomCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, kitchenHallRoomDepth],
+    },
+    {
+      position: [kitchenHallRoomMaxX - WALL_THICKNESS / 2, WALL_HEIGHT / 2, kitchenHallRoomCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, kitchenHallRoomDepth],
     },
     {
       position: [kitchenWestX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, kitchenCenterZ],
@@ -6589,6 +6612,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     });
   });
   ([
+    [kitchenHallRoomMinX, northPartyHallOpeningMinX],
+    [northPartyHallOpeningMaxX, kitchenHallRoomMaxX],
+  ] as Array<[number, number]>).forEach(([startX, endX]) => {
+    const width = endX - startX;
+    if (width <= 0.24) {
+      return;
+    }
+
+    northPartyHallWalls.push({
+      position: [startX + width / 2, WALL_HEIGHT / 2, kitchenHallRoomSouthZ - WALL_THICKNESS / 2],
+      size: [width, WALL_HEIGHT, WALL_THICKNESS],
+    });
+  });
+  ([
     [northPartyHallNorthZ, northPartySideRoomDoorMinZ],
     [northPartySideRoomDoorMaxZ, northPartyHallSouthZ],
   ] as Array<[number, number]>).forEach(([startZ, endZ]) => {
@@ -6618,7 +6655,39 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   root.add(northPartyHallWallResult.root);
   colliders.push(...northPartyHallWallResult.colliders);
 
-  [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2].forEach((z) => {
+  const kitchenHallRoomStageMaterial = new MeshStandardMaterial({
+    color: 0x3b2419,
+    roughness: 0.72,
+    metalness: 0.04,
+  });
+  const kitchenHallRoomCurtainMaterial = new MeshStandardMaterial({
+    color: 0x7f2026,
+    emissive: 0x210307,
+    emissiveIntensity: 0.08,
+    roughness: 0.64,
+  });
+  const kitchenHallRoomStageWidth = 8.8;
+  const kitchenHallRoomStageDepth = 3.2;
+  const kitchenHallRoomStageHeight = 0.48;
+  const kitchenHallRoomStageZ = kitchenHallRoomNorthZ + WALL_THICKNESS + kitchenHallRoomStageDepth / 2 + 0.18;
+  const kitchenHallRoomStage = new Mesh(
+    new BoxGeometry(kitchenHallRoomStageWidth, kitchenHallRoomStageHeight, kitchenHallRoomStageDepth),
+    kitchenHallRoomStageMaterial,
+  );
+  kitchenHallRoomStage.position.set(kitchenHallRoomCenterX, kitchenHallRoomStageHeight / 2, kitchenHallRoomStageZ);
+  kitchenHallRoomStage.receiveShadow = true;
+  kitchenHallRoomStage.castShadow = true;
+  const kitchenHallRoomStageLip = new Mesh(new BoxGeometry(kitchenHallRoomStageWidth + 0.55, 0.18, 0.28), materials.metal);
+  kitchenHallRoomStageLip.position.set(kitchenHallRoomCenterX, kitchenHallRoomStageHeight + 0.08, kitchenHallRoomStageZ + kitchenHallRoomStageDepth / 2 + 0.08);
+  const kitchenHallRoomCurtain = new Mesh(
+    new BoxGeometry(kitchenHallRoomStageWidth + 0.72, 2.45, 0.12),
+    kitchenHallRoomCurtainMaterial,
+  );
+  kitchenHallRoomCurtain.position.set(kitchenHallRoomCenterX, 1.74, kitchenHallRoomNorthZ + WALL_THICKNESS + 0.14);
+  root.add(kitchenHallRoomStage, kitchenHallRoomStageLip, kitchenHallRoomCurtain);
+  addCollider(colliders, kitchenHallRoomCenterX, kitchenHallRoomStageZ, kitchenHallRoomStageWidth, kitchenHallRoomStageDepth);
+
+  [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
     fixture.position.set(northPartyHallCenterX, WALL_HEIGHT - 0.16, z);
     const glow = new PointLight(0xffd9ad, 0.72, 10, 1.7);
