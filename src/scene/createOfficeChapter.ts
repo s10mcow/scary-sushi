@@ -8567,7 +8567,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   });
 
   const mainPartyTableColumns = [-10, 0, 10];
-  const mainPartyTableRows = [-3.55, -0.2, 3.15, 6.5];
+  const mainPartyTableRows = [-0.2, 3.15];
   mainPartyTableRows.forEach((rowOffsetZ) => {
     mainPartyTableColumns.forEach((columnOffsetX) => {
       const tableX = partyRoomCenterX + columnOffsetX;
