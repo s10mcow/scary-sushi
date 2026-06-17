@@ -1176,19 +1176,6 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
     });
   };
 
-  const shouldSkipVentRib = (current: OfficeVentDuctPlan, ribX: number, ribZ: number): boolean => {
-    return ventDuctPlans.some((other) => {
-      if (other === current) {
-        return false;
-      }
-      const rect = getDuctRect(other);
-      return ribX >= rect.minX - 0.18
-        && ribX <= rect.maxX + 0.18
-        && ribZ >= rect.minZ - 0.18
-        && ribZ <= rect.maxZ + 0.18;
-    });
-  };
-
   const addDuctSegment = (plan: OfficeVentDuctPlan): void => {
     const { centerX, centerZ, width, depth } = plan;
     const rect = getDuctRect(plan);
@@ -1198,46 +1185,11 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
       halfDepth: depth / 2,
     });
 
-    const top = new Mesh(new BoxGeometry(width, 0.08, depth), ductWallMaterial);
-    top.position.set(centerX, ductBottomY + ductHeight, centerZ);
-    root.add(top);
     addDuctFloorPieces(plan);
     addWallPiecesAlongZ(rect.minX, rect.minZ, rect.maxZ, getSideOpenings(plan, 'west'));
     addWallPiecesAlongZ(rect.maxX, rect.minZ, rect.maxZ, getSideOpenings(plan, 'east'));
     addWallPiecesAlongX(rect.minX, rect.maxX, rect.minZ, getSideOpenings(plan, 'north'));
     addWallPiecesAlongX(rect.minX, rect.maxX, rect.maxZ, getSideOpenings(plan, 'south'));
-
-    const ribs = Math.max(2, Math.floor(Math.max(width, depth) / 3));
-    for (let index = 0; index <= ribs; index += 1) {
-      const progress = ribs === 0 ? 0 : index / ribs;
-      const rib = new Group();
-      if (width >= depth) {
-        const ribX = centerX - width / 2 + width * progress;
-        if (shouldSkipVentRib(plan, ribX, centerZ)) {
-          continue;
-        }
-        const left = new Mesh(new BoxGeometry(0.08, ductHeight + 0.16, 0.1), frameMaterial);
-        left.position.set(ribX, ductCenterY, centerZ - depth / 2);
-        const right = left.clone();
-        right.position.z = centerZ + depth / 2;
-        const cross = new Mesh(new BoxGeometry(0.1, 0.08, depth + 0.14), frameMaterial);
-        cross.position.set(ribX, ductBottomY + ductHeight + 0.03, centerZ);
-        rib.add(left, right, cross);
-      } else {
-        const ribZ = centerZ - depth / 2 + depth * progress;
-        if (shouldSkipVentRib(plan, centerX, ribZ)) {
-          continue;
-        }
-        const left = new Mesh(new BoxGeometry(0.1, ductHeight + 0.16, 0.08), frameMaterial);
-        left.position.set(centerX - width / 2, ductCenterY, ribZ);
-        const right = left.clone();
-        right.position.x = centerX + width / 2;
-        const cross = new Mesh(new BoxGeometry(width + 0.14, 0.08, 0.1), frameMaterial);
-        cross.position.set(centerX, ductBottomY + ductHeight + 0.03, ribZ);
-        rib.add(left, right, cross);
-      }
-      root.add(rib);
-    }
   };
 
   const addVentPeekGrate = (grate: typeof ventPeekGrates[number]): OfficeChapterVentOpening => {
@@ -1299,12 +1251,8 @@ function createOfficeVentSystem(ladderX: number, ladderZ: number): OfficeChapter
   const addVentJunction = (x: number, z: number, label = 'Vent Junction'): void => {
     const junctionFloor = new Mesh(new BoxGeometry(2.32, 0.045, 2.32), ductFloorMaterial);
     junctionFloor.position.set(x, ductBottomY + 0.012, z);
-    const junctionTop = new Mesh(new BoxGeometry(2.32, 0.08, 2.32), ductWallMaterial);
-    junctionTop.position.set(x, ductBottomY + ductHeight, z);
-    const labelPanel = new Mesh(new BoxGeometry(0.72, 0.04, 0.18), frameMaterial);
-    labelPanel.position.set(x, ductBottomY + ductHeight - 0.14, z - 0.92);
-    labelPanel.name = label;
-    root.add(junctionFloor, junctionTop, labelPanel);
+    junctionFloor.name = label;
+    root.add(junctionFloor);
   };
 
   const addVentOpening = (label: string, x: number, z: number, exitPosition?: Vector3): OfficeChapterVentOpening => {
@@ -1731,7 +1679,7 @@ function createBallPit(centerX: number, centerZ: number, width: number, depth: n
     roughness: 0.48,
     metalness: 0.02,
   }));
-  const ballGeometry = new SphereGeometry(0.22, 14, 10);
+  const ballGeometry = new SphereGeometry(0.22, 8, 6);
 
   const pitBottom = new Mesh(new BoxGeometry(width - 0.5, 0.08, depth - 0.5), padMaterial);
   pitBottom.position.set(centerX, -0.04, centerZ);
@@ -1768,10 +1716,10 @@ function createBallPit(centerX: number, centerZ: number, width: number, depth: n
   const matrix = new Matrix4();
   const usableWidth = width - 1.06;
   const usableDepth = depth - 1.06;
-  const spacing = 0.34;
+  const spacing = 0.48;
   const columns = Math.ceil(usableWidth / spacing);
   const rows = Math.ceil(usableDepth / spacing);
-  const layers = 7;
+  const layers = 3;
   let ballIndex = 0;
   for (let layer = 0; layer < layers; layer += 1) {
     for (let row = 0; row < rows; row += 1) {
@@ -1791,7 +1739,7 @@ function createBallPit(centerX: number, centerZ: number, width: number, depth: n
         }
 
         const scale = 0.8 + jitter * 0.32;
-        const y = 0.06 + layer * 0.14 + jitter * 0.055;
+        const y = 0.2 + layer * 0.18 + jitter * 0.055;
         matrix.compose(
           new Vector3(x, y, z),
           root.quaternion,
