@@ -132,6 +132,45 @@ export class GameplaySfxAudio {
     this.startSource(dust, now, now + 0.24);
   }
 
+  playGoldenBoriStomp(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    this.playMetalThud(now, 0.11, 46);
+
+    const boomGain = this.context.createGain();
+    boomGain.gain.setValueAtTime(0.0001, now);
+    boomGain.gain.exponentialRampToValueAtTime(0.105, now + 0.018);
+    boomGain.gain.exponentialRampToValueAtTime(0.025, now + 0.18);
+    boomGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+    boomGain.connect(this.masterGain);
+
+    const boom = this.context.createOscillator();
+    boom.type = 'sine';
+    boom.frequency.setValueAtTime(58 + Math.random() * 6, now);
+    boom.frequency.exponentialRampToValueAtTime(28, now + 0.34);
+    boom.connect(boomGain);
+    this.startSource(boom, now, now + 0.44);
+
+    const dustGain = this.context.createGain();
+    dustGain.gain.setValueAtTime(0.0001, now);
+    dustGain.gain.exponentialRampToValueAtTime(0.036, now + 0.02);
+    dustGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    dustGain.connect(this.masterGain);
+
+    const dust = this.context.createBufferSource();
+    dust.buffer = this.noiseBuffer;
+    dust.playbackRate.value = 0.42 + Math.random() * 0.06;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 230 + Math.random() * 70;
+    dust.connect(lowpass);
+    lowpass.connect(dustGain);
+    this.startSource(dust, now, now + 0.2);
+  }
+
   playGreenSqueak(): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;

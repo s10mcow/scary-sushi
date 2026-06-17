@@ -1306,7 +1306,13 @@ export class Game {
     this.level = createLevel();
     this.chapterTwo = createChapterTwoLevel();
     this.chapterTwo.root.visible = false;
-    this.mainOfficeChapter = createOfficeChapter();
+    this.mainOfficeChapter = createOfficeChapter({
+      onGoldenBoriStomp: () => {
+        if (this.officeChapterActive && this.officeChapter === this.mainOfficeChapter) {
+          this.gameplaySfxAudio.playGoldenBoriStomp();
+        }
+      },
+    });
     this.officeSandboxChapter = createOfficeChapter({ sandboxQuackyDesign: true });
     this.translateOfficeChapterCopy(this.officeSandboxChapter, OFFICE_CHAPTER_COPY_OFFSET_X, OFFICE_CHAPTER_COPY_OFFSET_Z);
     this.officeChapter = this.mainOfficeChapter;
