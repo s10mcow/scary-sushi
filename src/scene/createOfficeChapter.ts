@@ -4151,6 +4151,146 @@ function createBasketballGame(x: number, z: number, rotationY: number): OfficeCh
   };
 }
 
+function createFoosballTable(x: number, z: number, rotationY = 0): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const cabinetMaterial = new MeshStandardMaterial({
+    color: 0x4b2d18,
+    roughness: 0.68,
+    metalness: 0.06,
+  });
+  const railMaterial = new MeshStandardMaterial({
+    color: 0x24170f,
+    emissive: 0x030100,
+    emissiveIntensity: 0.08,
+    roughness: 0.48,
+    metalness: 0.18,
+  });
+  const fieldMaterial = new MeshStandardMaterial({
+    color: 0x245d35,
+    emissive: 0x071a0d,
+    emissiveIntensity: 0.1,
+    roughness: 0.72,
+    metalness: 0.02,
+  });
+  const lineMaterial = new MeshStandardMaterial({
+    color: 0xe9efe0,
+    emissive: 0x222a18,
+    emissiveIntensity: 0.08,
+    roughness: 0.45,
+    metalness: 0.02,
+  });
+  const metalMaterial = new MeshStandardMaterial({
+    color: 0xaeb9bc,
+    emissive: 0x10191b,
+    emissiveIntensity: 0.14,
+    roughness: 0.28,
+    metalness: 0.66,
+  });
+  const handleMaterial = new MeshStandardMaterial({
+    color: 0x111111,
+    roughness: 0.42,
+    metalness: 0.18,
+  });
+  const blueTeamMaterial = new MeshStandardMaterial({
+    color: 0x3277d8,
+    emissive: 0x071b38,
+    emissiveIntensity: 0.18,
+    roughness: 0.52,
+    metalness: 0.04,
+  });
+  const redTeamMaterial = new MeshStandardMaterial({
+    color: 0xc9362b,
+    emissive: 0x330805,
+    emissiveIntensity: 0.18,
+    roughness: 0.52,
+    metalness: 0.04,
+  });
+
+  const cabinet = new Mesh(new BoxGeometry(3.55, 0.42, 1.78), cabinetMaterial);
+  cabinet.position.y = 0.82;
+  cabinet.castShadow = true;
+  cabinet.receiveShadow = true;
+  const playfield = new Mesh(new BoxGeometry(3.05, 0.035, 1.26), fieldMaterial);
+  playfield.position.y = 1.05;
+  playfield.receiveShadow = true;
+  const centerLine = new Mesh(new BoxGeometry(0.035, 0.015, 1.1), lineMaterial);
+  centerLine.position.y = 1.08;
+  const centerCircle = new Mesh(new TorusGeometry(0.28, 0.012, 8, 36), lineMaterial);
+  centerCircle.position.y = 1.09;
+  centerCircle.rotation.x = Math.PI / 2;
+  root.add(cabinet, playfield, centerLine, centerCircle);
+
+  [
+    { x: 0, z: -0.88, width: 3.72, depth: 0.16 },
+    { x: 0, z: 0.88, width: 3.72, depth: 0.16 },
+    { x: -1.86, z: 0, width: 0.16, depth: 1.78 },
+    { x: 1.86, z: 0, width: 0.16, depth: 1.78 },
+  ].forEach((rail) => {
+    const piece = new Mesh(new BoxGeometry(rail.width, 0.24, rail.depth), railMaterial);
+    piece.position.set(rail.x, 1.14, rail.z);
+    piece.castShadow = true;
+    root.add(piece);
+  });
+
+  [-1.42, 1.42].forEach((legX) => {
+    [-0.58, 0.58].forEach((legZ) => {
+      const leg = new Mesh(new BoxGeometry(0.16, 0.78, 0.16), cabinetMaterial);
+      leg.position.set(legX, 0.39, legZ);
+      leg.castShadow = true;
+      root.add(leg);
+    });
+  });
+
+  const rodRows = [
+    { x: -1.18, players: [-0.32, 0.32], material: blueTeamMaterial },
+    { x: -0.42, players: [-0.46, 0, 0.46], material: redTeamMaterial },
+    { x: 0.42, players: [-0.46, 0, 0.46], material: blueTeamMaterial },
+    { x: 1.18, players: [-0.32, 0.32], material: redTeamMaterial },
+  ];
+  rodRows.forEach((row, rowIndex) => {
+    const rod = new Mesh(new CylinderGeometry(0.028, 0.028, 2.25, 14), metalMaterial);
+    rod.position.set(row.x, 1.25, 0);
+    rod.rotation.x = Math.PI / 2;
+    rod.castShadow = true;
+    root.add(rod);
+
+    [-1.22, 1.22].forEach((handleZ) => {
+      const handle = new Mesh(new CylinderGeometry(0.05, 0.058, 0.24, 12), handleMaterial);
+      handle.position.set(row.x, 1.25, handleZ);
+      handle.rotation.x = Math.PI / 2;
+      root.add(handle);
+    });
+
+    row.players.forEach((playerZ, playerIndex) => {
+      const player = new Group();
+      const torso = new Mesh(new BoxGeometry(0.12, 0.32, 0.08), row.material);
+      torso.position.y = -0.12;
+      const head = new Mesh(new SphereGeometry(0.065, 12, 8), row.material);
+      head.position.y = 0.09;
+      const foot = new Mesh(new BoxGeometry(0.16, 0.06, 0.1), row.material);
+      foot.position.y = -0.31;
+      player.add(torso, head, foot);
+      player.position.set(row.x, 1.25, playerZ);
+      player.rotation.z = (rowIndex + playerIndex) % 2 === 0 ? 0.12 : -0.12;
+      root.add(player);
+    });
+  });
+
+  const ballMaterial = new MeshStandardMaterial({
+    color: 0xf5f0d0,
+    roughness: 0.5,
+    metalness: 0.02,
+  });
+  const ball = new Mesh(new SphereGeometry(0.07, 16, 12), ballMaterial);
+  ball.position.set(0.12, 1.14, -0.08);
+  root.add(ball);
+
+  return root;
+}
+
 function createBibMaterial(): MeshStandardMaterial {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -6691,6 +6831,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     halfDepth: kitchenHallRoomStageDepth / 2 + 0.12,
     floorY: GAME_CONFIG.player.height + kitchenHallRoomStageHeight,
   };
+  root.add(createFoosballTable(-218.34, 125.89, 0));
+  addCollider(colliders, -218.34, 125.89, 3.9, 2.25);
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
