@@ -440,6 +440,7 @@ export interface OfficeChapterData {
   isPartyShowMusicActive(): boolean;
   getPartyShowMusicTime(): number;
   update(deltaSeconds: number, playerPosition?: Vector3, playerVoiceLevel?: number, provocativeSpeech?: boolean): void;
+  resetGoldenBori(): void;
   reset(): void;
 }
 
@@ -11644,6 +11645,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     updatePartyShow(deltaSeconds, playerPosition);
   };
 
+  const resetGoldenBori = (): void => {
+    goldenBoriWanderIndex = 1;
+    goldenBoriWanderPause = 0.65;
+    goldenBoriWalkTime = 0;
+    goldenBoriChaseActive = false;
+    goldenBoriChaseTimer = 0;
+    goldenBoriStepSoundIndex = -1;
+    goldenBoriCatchCooldown = 3.5;
+    goldenBori.homePosition.copy(goldenBoriStageHomePosition);
+    goldenBori.root.position.copy(goldenBoriStageHomePosition);
+    goldenBori.root.rotation.set(0, goldenBori.homeRotationY, 0);
+    resetAnimatronicPartsTowardHome(goldenBori, 1);
+    goldenBoriCollider.centerX = goldenBori.root.position.x;
+    goldenBoriCollider.centerZ = goldenBori.root.position.z;
+  };
+
   const reset = (): void => {
     partyShowActive = false;
     partyShowTime = 0;
@@ -11651,18 +11668,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     partyShowReturning = false;
     partyShowReturnTime = 0;
     partyHeadTarget = null;
-    goldenBoriWanderIndex = 1;
-    goldenBoriWanderPause = 0.65;
-    goldenBoriWalkTime = 0;
-    goldenBoriChaseActive = false;
-    goldenBoriChaseTimer = 0;
-    goldenBoriStepSoundIndex = -1;
-    goldenBoriCatchCooldown = 0;
-    goldenBori.homePosition.copy(goldenBoriStageHomePosition);
-    goldenBori.root.position.copy(goldenBoriStageHomePosition);
-    goldenBori.root.rotation.set(0, goldenBori.homeRotationY, 0);
-    goldenBoriCollider.centerX = goldenBori.root.position.x;
-    goldenBoriCollider.centerZ = goldenBori.root.position.z;
+    resetGoldenBori();
     securityCameraTime = 0;
     visualUpdateTimer = 0;
     securityCameras.forEach((securityCamera) => {
@@ -11917,6 +11923,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     isPartyShowMusicActive,
     getPartyShowMusicTime,
     update,
+    resetGoldenBori,
     reset,
   };
 }

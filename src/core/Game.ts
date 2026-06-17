@@ -1318,6 +1318,7 @@ export class Game {
           !this.officeChapterActive
           || this.officeChapter !== this.mainOfficeChapter
           || this.activeOfficeJumpscare
+          || this.officeDeathNoticePhase
           || this.officeFoxyKnockdownTimer > 0
         ) {
           return;
@@ -13367,6 +13368,10 @@ export class Game {
   }
 
   private startOfficeJumpscare(definition: OfficeJumpscareDefinition, keepMenuOpen = false): void {
+    if (!keepMenuOpen && (this.activeOfficeJumpscare || this.officeDeathNoticePhase)) {
+      return;
+    }
+
     if (!keepMenuOpen && this.isOfficeBasementOrElevatorProtected()) {
       return;
     }
@@ -13483,6 +13488,14 @@ export class Game {
   private startOfficeDeathNotice(): void {
     this.officeDeathNoticePhase = 'died';
     this.officeDeathNoticeTimer = OFFICE_DEATH_DIED_NOTICE_SECONDS;
+    this.officeChapter.resetGoldenBori();
+    this.officeGameModeAnimatronics.forEach((animatronic) => {
+      animatronic.attackCooldown = Math.max(animatronic.attackCooldown, OFFICE_DEATH_DIED_NOTICE_SECONDS + OFFICE_DEATH_FIRED_NOTICE_SECONDS + 1.2);
+      animatronic.chaseCommitTimer = 0;
+      animatronic.chaseCommitCooldown = OFFICE_GAME_MODE_CHASE_COMMIT_COOLDOWN;
+      animatronic.foxyLeapTimer = 0;
+      animatronic.doorBreachTimer = 0;
+    });
     this.officeTabletCameraFeedActive = false;
     this.officeTabletHeld = false;
     this.officeTabletAnchor.visible = false;
@@ -13551,6 +13564,7 @@ export class Game {
     this.player.teleport(this.getOfficeGameModePoint(OFFICE_GAME_MODE_OFFICE_SPAWN));
     this.player.lookToward(this.getOfficeGameModePoint(OFFICE_GAME_MODE_OFFICE_LOOK_TARGET), 1);
     this.resetOfficeGameModeAnimatronics();
+    this.officeChapter.resetGoldenBori();
     this.pushStatus('The jumpscare ends and you snap back into the office.', 2.8);
   }
 
