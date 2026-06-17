@@ -6404,7 +6404,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const northPartyHallNorthZ = northPartyHallSouthZ - northPartyHallLength;
   const northPartyHallCenterZ = (northPartyHallNorthZ + northPartyHallSouthZ) / 2;
   const kitchenHallRoomWidth = 20.5;
-  const kitchenHallRoomDepth = 22;
+  const kitchenHallRoomDepth = 29;
   const kitchenHallRoomSouthZ = northPartyHallNorthZ;
   const kitchenHallRoomNorthZ = kitchenHallRoomSouthZ - kitchenHallRoomDepth;
   const kitchenHallRoomCenterX = northPartyHallCenterX;
@@ -6668,7 +6668,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   });
   const kitchenHallRoomStageWidth = 8.8;
   const kitchenHallRoomStageDepth = 3.2;
-  const kitchenHallRoomStageHeight = 0.48;
+  const kitchenHallRoomStageHeight = 0.36;
   const kitchenHallRoomStageZ = kitchenHallRoomNorthZ + WALL_THICKNESS + kitchenHallRoomStageDepth / 2 + 0.18;
   const kitchenHallRoomStage = new Mesh(
     new BoxGeometry(kitchenHallRoomStageWidth, kitchenHallRoomStageHeight, kitchenHallRoomStageDepth),
@@ -6685,7 +6685,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   );
   kitchenHallRoomCurtain.position.set(kitchenHallRoomCenterX, 1.74, kitchenHallRoomNorthZ + WALL_THICKNESS + 0.14);
   root.add(kitchenHallRoomStage, kitchenHallRoomStageLip, kitchenHallRoomCurtain);
-  addCollider(colliders, kitchenHallRoomCenterX, kitchenHallRoomStageZ, kitchenHallRoomStageWidth, kitchenHallRoomStageDepth);
+  const kitchenHallRoomStageFloor: OfficeChapterStageFloor = {
+    center: new Vector3(kitchenHallRoomCenterX, GAME_CONFIG.player.height + kitchenHallRoomStageHeight, kitchenHallRoomStageZ),
+    halfWidth: kitchenHallRoomStageWidth / 2,
+    halfDepth: kitchenHallRoomStageDepth / 2 + 0.12,
+    floorY: GAME_CONFIG.player.height + kitchenHallRoomStageHeight,
+  };
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
@@ -9178,6 +9183,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       new Vector3(backstageStorageCenterX, 3.45, backstageStorageMaxZ - 0.08),
       new Vector3(0, 0, -1),
     ),
+    createSwivelingSecurityCamera(
+      16,
+      'Camera 15 Office Right Door',
+      new Vector3(-230.50, 3.43, 186.75),
+      new Vector3(0, 0, -1),
+    ),
+    createSwivelingSecurityCamera(
+      17,
+      'Camera 16 Office Left Door',
+      new Vector3(-249.07, 3.28, 186.75),
+      new Vector3(0, 0, -1),
+    ),
     ...(abandonedStraightHalls
       ? [
         createSwivelingSecurityCamera(
@@ -11226,7 +11243,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     bathroomStalls,
     utilityCloset,
     stageFloor,
-    stageFloors: [stageFloor, foxStageFloor],
+    stageFloors: [stageFloor, foxStageFloor, kitchenHallRoomStageFloor],
     setStageAnimatronicPresent,
     flashHallLight,
     startPartyShow,
