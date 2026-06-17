@@ -1926,10 +1926,11 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
 
-  const addGrandfatherClock = (localX: number, wallLocalZ: number): void => {
+  const addSideGrandfatherClock = (wallLocalX: number, localZ: number, normalX: 1 | -1): void => {
     const depth = 0.68;
     const clock = new Group();
-    clock.position.set(localX, 0, wallLocalZ - depth / 2);
+    clock.position.set(wallLocalX + normalX * depth / 2, 0, localZ);
+    clock.rotation.y = -normalX * Math.PI / 2;
 
     const clockWoodMaterial = new MeshStandardMaterial({
       color: 0x2f1b12,
@@ -2126,7 +2127,13 @@ export function createChapterSeven(): ChapterSevenData {
       ...finials,
     );
     house.add(clock);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + wallLocalZ - depth / 2 - 0.08, 1.62, 0.72);
+    addCollider(
+      colliders,
+      CENTER_X + wallLocalX + normalX * (depth / 2 + 0.08),
+      HOUSE_CENTER_Z + localZ,
+      0.72,
+      1.62,
+    );
   };
 
   const addDiningTable = (localX: number, localZ: number): void => {
@@ -4741,7 +4748,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
-  addGrandfatherClock(1220.08 - CENTER_X, 98.69 - HOUSE_CENTER_Z);
+  addSideGrandfatherClock(1217.94 - CENTER_X, 87.41 - HOUSE_CENTER_Z, -1);
   addBookshelf(1221.05 - CENTER_X, 96.06 - HOUSE_CENTER_Z, Math.PI, 0.84, 0.96);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
   const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
