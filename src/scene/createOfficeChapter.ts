@@ -7053,7 +7053,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { x: -223.23, z: 121.97, color: 0x2d5f9d, screen: 0x55e1ff },
     { x: -223.22, z: 120.2, color: 0x963543, screen: 0xffcc58 },
     { x: -223.22, z: 118.37, color: 0x5f3f9f, screen: 0xff70d9 },
-    { x: -223.21, z: 116.36, color: 0x3f7a38, screen: 0x95ff66 },
   ].forEach((cabinet) => {
     root.add(createArcadeCabinet(
       cabinet.x,
@@ -7064,7 +7063,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ));
     addCollider(colliders, cabinet.x, cabinet.z, 0.92, 1.12);
   });
-  root.add(createRollerCoasterSimulator(-220.67, 115.06, Math.PI / 2));
+  root.add(createRollerCoasterSimulator(-220.67, 115.06, -Math.PI / 2));
   addCollider(colliders, -220.67, 115.06, 2.45, 3.45);
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
