@@ -25,6 +25,7 @@ export interface HotbarSlotView {
   filled: boolean;
   type?: string | null;
   selected?: boolean;
+  imageUrl?: string | null;
 }
 
 export type MinecraftInventorySlotKind = 'hotbar' | 'inventory' | 'craft';
@@ -1099,13 +1100,18 @@ export function createHud(host: HTMLElement): HudController {
     valueText.className = 'hud__slot-value';
     valueText.textContent = 'Empty';
 
+    const image = document.createElement('img');
+    image.className = 'hud__slot-image';
+    image.alt = '';
+    image.hidden = true;
+
     const countText = document.createElement('span');
     countText.className = 'hud__slot-count';
     countText.textContent = 'x0';
 
-    slot.append(indexText, valueText, countText);
+    slot.append(indexText, image, valueText, countText);
 
-    return { root: slot, valueText, countText };
+    return { root: slot, image, valueText, countText };
   });
 
   hotbar.append(hotbarLabel, ...hotbarSlots.map((slot) => slot.root));
@@ -2786,6 +2792,10 @@ export function createHud(host: HTMLElement): HudController {
         slot.root.dataset.filled = String(Boolean(value?.filled));
         slot.root.dataset.selected = String(Boolean(value?.selected));
         slot.root.dataset.item = value?.filled && value.type ? value.type : '';
+        const imageUrl = value?.filled ? value.imageUrl : null;
+        slot.root.dataset.image = String(Boolean(imageUrl));
+        slot.image.hidden = !imageUrl;
+        slot.image.src = imageUrl ?? '';
         slot.valueText.textContent = value?.filled ? value.label : 'Empty';
         slot.countText.textContent = value?.filled ? `x${value.count}` : 'x0';
       });

@@ -4534,9 +4534,35 @@ select {
   padding-top: 2.1rem;
 }
 
+.hud__slot[data-image="true"] {
+  min-height: 4.45rem;
+  padding-top: 2.22rem;
+}
+
 .hud__slot[data-filled="true"] {
   border-color: rgba(112, 150, 96, 0.45);
   box-shadow: 0 0.95rem 2.2rem rgba(100, 148, 89, 0.16);
+}
+
+.hud__slot-image {
+  position: absolute;
+  left: 50%;
+  top: 0.44rem;
+  width: 2.05rem;
+  height: 1.42rem;
+  transform: translateX(-50%);
+  border: 1px solid rgba(24, 18, 11, 0.34);
+  border-radius: 0.18rem;
+  object-fit: cover;
+  background: rgba(16, 18, 22, 0.16);
+  box-shadow:
+    0 0.18rem 0.35rem rgba(24, 18, 11, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+}
+
+.hud__slot-image[hidden] {
+  display: none;
 }
 
 .hud__slot-index {

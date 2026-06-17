@@ -16542,6 +16542,7 @@ export class Game {
 
   private getCameraToolHotbarSlot() {
     this.loadCameraToolCaptures();
+    const cameraIconCapture = this.getCameraToolCaptureById('picture', '004');
     const state = this.cameraToolRecording
       ? '[Rec]'
       : this.cameraToolActive
@@ -16551,6 +16552,8 @@ export class Game {
       label: `Camera Tool ${state}`,
       count: this.cameraToolCaptures.length + (this.cameraToolPreviewUrl && !this.cameraToolSaved ? 1 : 0),
       filled: true,
+      selected: this.cameraToolActive,
+      imageUrl: cameraIconCapture?.dataUrl ?? null,
     };
   }
 
