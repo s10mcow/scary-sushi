@@ -6923,8 +6923,15 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     kitchenHallRoomStageHeight + PARTY_STAGE_ANIMATRONIC_FOOT_LIFT,
     kitchenHallRoomStageZ + 0.18,
   );
+  const goldenBoriStageHomePosition = goldenBori.homePosition.clone();
   root.add(goldenBori.root);
-  addCollider(colliders, kitchenHallRoomCenterX, kitchenHallRoomStageZ + 0.18, 1.78, 1.45);
+  const goldenBoriCollider: CollisionBox = {
+    centerX: kitchenHallRoomCenterX,
+    centerZ: kitchenHallRoomStageZ + 0.18,
+    halfWidth: 0.89,
+    halfDepth: 0.72,
+  };
+  colliders.push(goldenBoriCollider);
   root.add(createFoosballTable(-218.34, 125.89, 0));
   addCollider(colliders, -218.34, 125.89, 3.9, 2.25);
 
@@ -10201,6 +10208,19 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const partyLocalTarget = new Vector3();
   const partyShowReturnStartPosition = new Vector3();
   let partyShowReturnStartRotationY = Math.PI;
+  const goldenBoriWanderPoints = [
+    new Vector3(kitchenHallRoomCenterX, 0, kitchenHallRoomStageZ + 0.18),
+    new Vector3(kitchenHallRoomMaxX - 2.25, 0, kitchenHallRoomNorthZ + 8.45),
+    new Vector3(kitchenHallRoomMaxX - 2.05, 0, 115.05),
+    new Vector3(kitchenHallRoomMaxX - 3.35, 0, 124.75),
+    new Vector3(kitchenHallRoomCenterX + 2.2, 0, kitchenHallRoomSouthZ - 3.15),
+    new Vector3(kitchenHallRoomMinX + 2.45, 0, kitchenHallRoomSouthZ - 3.35),
+    new Vector3(kitchenHallRoomMinX + 2.35, 0, 115.05),
+    new Vector3(kitchenHallRoomCenterX - 4.85, 0, kitchenHallRoomNorthZ + 8.45),
+  ];
+  let goldenBoriWanderIndex = 1;
+  let goldenBoriWanderPause = 0.65;
+  let goldenBoriWalkTime = 0;
   let basketballThrowActive = false;
   let basketballThrowTime = 0;
   let basketballThrowScored = false;
@@ -10738,6 +10758,69 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     animatronic.root.rotation.z = Math.sin(walkTime) * 0.035 * strength;
   };
 
+  const updateGoldenBoriWander = (deltaSeconds: number, playerPosition?: Vector3): void => {
+    const onStage = Math.abs(goldenBori.root.position.x - kitchenHallRoomStageFloor.center.x) <= kitchenHallRoomStageFloor.halfWidth
+      && Math.abs(goldenBori.root.position.z - kitchenHallRoomStageFloor.center.z) <= kitchenHallRoomStageFloor.halfDepth;
+    goldenBori.homePosition.y = (onStage ? kitchenHallRoomStageHeight : 0) + PARTY_STAGE_ANIMATRONIC_FOOT_LIFT;
+
+    if (goldenBoriWanderPause > 0) {
+      goldenBoriWanderPause = Math.max(0, goldenBoriWanderPause - deltaSeconds);
+      resetAnimatronicPartsTowardHome(goldenBori, 1 - Math.exp(-deltaSeconds * 5.5));
+      goldenBori.root.position.y = MathUtils.lerp(goldenBori.root.position.y, goldenBori.homePosition.y, 1 - Math.exp(-deltaSeconds * 8));
+      if (playerPosition) {
+        goldenBori.root.updateMatrixWorld(true);
+        const localTarget = goldenBori.root.worldToLocal(partyLocalTarget.copy(playerPosition));
+        const direction = localTarget.sub(goldenBori.head.position);
+        goldenBori.head.rotation.y = MathUtils.clamp(Math.atan2(-direction.x, -direction.z), -0.42, 0.42);
+        goldenBori.head.rotation.x = -MathUtils.clamp(
+          Math.atan2(direction.y, Math.hypot(direction.x, direction.z)),
+          -0.18,
+          0.22,
+        );
+      }
+      goldenBoriCollider.centerX = goldenBori.root.position.x;
+      goldenBoriCollider.centerZ = goldenBori.root.position.z;
+      return;
+    }
+
+    const target = goldenBoriWanderPoints[goldenBoriWanderIndex] ?? goldenBoriWanderPoints[0];
+    const dx = target.x - goldenBori.root.position.x;
+    const dz = target.z - goldenBori.root.position.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance < 0.24) {
+      goldenBoriWanderIndex = (goldenBoriWanderIndex + 1) % goldenBoriWanderPoints.length;
+      goldenBoriWanderPause = MathUtils.lerp(0.45, 1.25, Math.random());
+      return;
+    }
+
+    const speed = 1.05;
+    const step = Math.min(distance, speed * deltaSeconds);
+    const directionX = dx / distance;
+    const directionZ = dz / distance;
+    goldenBori.root.position.x += directionX * step;
+    goldenBori.root.position.z += directionZ * step;
+    goldenBori.root.rotation.y = MathUtils.lerp(
+      goldenBori.root.rotation.y,
+      Math.atan2(directionX, directionZ) + Math.PI,
+      1 - Math.exp(-deltaSeconds * 5.2),
+    );
+
+    goldenBoriWalkTime += deltaSeconds * 5.6;
+    animateLegWalkCycle(goldenBori, goldenBoriWalkTime, 0.78);
+    const leftSwing = Math.sin(goldenBoriWalkTime + Math.PI);
+    const rightSwing = Math.sin(goldenBoriWalkTime);
+    goldenBori.leftArm.root.rotation.x = -0.06 + leftSwing * 0.24;
+    goldenBori.leftArm.root.rotation.z = -0.12 + Math.max(0, -leftSwing) * 0.08;
+    goldenBori.leftArm.joint.rotation.x = 0.08 + Math.max(0, leftSwing) * 0.18;
+    goldenBori.rightArm.root.rotation.x = -0.06 + rightSwing * 0.24;
+    goldenBori.rightArm.root.rotation.z = 0.12 - Math.max(0, -rightSwing) * 0.08;
+    goldenBori.rightArm.joint.rotation.x = 0.08 + Math.max(0, rightSwing) * 0.18;
+    goldenBori.head.rotation.y = Math.sin(goldenBoriWalkTime * 0.42) * 0.08;
+    goldenBori.head.rotation.x = -0.02 + Math.sin(goldenBoriWalkTime * 0.8) * 0.025;
+    goldenBoriCollider.centerX = goldenBori.root.position.x;
+    goldenBoriCollider.centerZ = goldenBori.root.position.z;
+  };
+
   const updateBathroomFixtures = (deltaSeconds: number): void => {
     const blend = 1 - Math.exp(-9.5 * deltaSeconds);
     bathroomEntranceDoor.openAmount = MathUtils.lerp(
@@ -11228,6 +11311,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       });
     }
 
+    updateGoldenBoriWander(deltaSeconds, playerPosition);
     updateBasketballThrow(deltaSeconds);
     updateFoxyPlay(deltaSeconds);
     updateFoxyStory(deltaSeconds);
@@ -11243,8 +11327,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     partyShowReturning = false;
     partyShowReturnTime = 0;
     partyHeadTarget = null;
-    goldenBori.root.position.copy(goldenBori.homePosition);
+    goldenBoriWanderIndex = 1;
+    goldenBoriWanderPause = 0.65;
+    goldenBoriWalkTime = 0;
+    goldenBori.homePosition.copy(goldenBoriStageHomePosition);
+    goldenBori.root.position.copy(goldenBoriStageHomePosition);
     goldenBori.root.rotation.set(0, goldenBori.homeRotationY, 0);
+    goldenBoriCollider.centerX = goldenBori.root.position.x;
+    goldenBoriCollider.centerZ = goldenBori.root.position.z;
     securityCameraTime = 0;
     visualUpdateTimer = 0;
     securityCameras.forEach((securityCamera) => {
