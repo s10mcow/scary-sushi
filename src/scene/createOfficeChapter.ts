@@ -2116,6 +2116,42 @@ function createPartyTable(x: number, z: number, rotationY: number): Group {
   return root;
 }
 
+function createPartyRoomCheckeredFloorMaterial(): MeshStandardMaterial {
+  if (typeof document === 'undefined') {
+    return new MeshStandardMaterial({
+      color: 0xd8d8d8,
+      roughness: 0.72,
+      metalness: 0.05,
+    });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  if (context) {
+    const tileSize = 32;
+    for (let y = 0; y < 4; y += 1) {
+      for (let x = 0; x < 4; x += 1) {
+        context.fillStyle = (x + y) % 2 === 0 ? '#f2f2ec' : '#111111';
+        context.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      }
+    }
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(9, 5.25);
+  texture.needsUpdate = true;
+
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.66,
+    metalness: 0.08,
+  });
+}
+
 const PRIZE_WHEEL_PRIZES = [
   'Stuffie',
   'Glass Cup',
@@ -5598,6 +5634,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     center: [partyRoomCenterX, partyRoomCenterZ],
     ceilingHeight: WALL_HEIGHT,
   }, materials));
+  const partyRoomCheckeredFloor = new Mesh(
+    new PlaneGeometry(PARTY_ROOM_WIDTH - WALL_THICKNESS * 2, PARTY_ROOM_DEPTH - WALL_THICKNESS * 2),
+    createPartyRoomCheckeredFloorMaterial(),
+  );
+  partyRoomCheckeredFloor.rotation.x = -Math.PI / 2;
+  partyRoomCheckeredFloor.position.set(partyRoomCenterX, 0.006, partyRoomCenterZ);
+  partyRoomCheckeredFloor.receiveShadow = true;
+  root.add(partyRoomCheckeredFloor);
 
   const leftHallOpeningMinX = leftTurnCenterX - PARTY_ROOM_HALL_OPENING_WIDTH / 2;
   const leftHallOpeningMaxX = leftTurnCenterX + PARTY_ROOM_HALL_OPENING_WIDTH / 2;
@@ -8522,13 +8566,17 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     addCollider(colliders, suit.x, suit.z, 0.92, 0.88);
   });
 
-  [
-    { x: partyRoomCenterX - 5.4, z: partyRoomCenterZ + 3.15, rotationY: 0.08 },
-    { x: partyRoomCenterX + 5.1, z: partyRoomCenterZ + 2.55, rotationY: -0.08 },
-    { x: partyRoomCenterX - 1.1, z: partyRoomCenterZ - 1.55, rotationY: Math.PI / 2 },
-  ].forEach((table) => {
-    root.add(createPartyTable(table.x, table.z, table.rotationY));
-    addCollider(colliders, table.x, table.z, 3.45, 1.58);
+  const mainPartyTableColumns = [-10, 0, 10];
+  const mainPartyTableRows = [-3.55, -0.2, 3.15, 6.5];
+  mainPartyTableRows.forEach((rowOffsetZ) => {
+    mainPartyTableColumns.forEach((columnOffsetX) => {
+      const tableX = partyRoomCenterX + columnOffsetX;
+      const tableZ = partyRoomCenterZ + rowOffsetZ;
+      const table = createPartyTable(tableX, tableZ, 0);
+      table.scale.set(1.22, 1, 1.18);
+      root.add(table);
+      addCollider(colliders, tableX, tableZ, 4.25, 1.88);
+    });
   });
 
   const prizeWheel = createPrizeWheel(-222.02, 2, 146.89);
