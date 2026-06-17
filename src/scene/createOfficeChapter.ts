@@ -6946,6 +6946,21 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   colliders.push(goldenBoriCollider);
   root.add(createFoosballTable(-218.34, 125.89, 0));
   addCollider(colliders, -218.34, 125.89, 3.9, 2.25);
+  [
+    { x: -223.23, z: 121.97, color: 0x2d5f9d, screen: 0x55e1ff },
+    { x: -223.22, z: 120.2, color: 0x963543, screen: 0xffcc58 },
+    { x: -223.22, z: 118.37, color: 0x5f3f9f, screen: 0xff70d9 },
+    { x: -223.21, z: 116.36, color: 0x3f7a38, screen: 0x95ff66 },
+  ].forEach((cabinet) => {
+    root.add(createArcadeCabinet(
+      cabinet.x,
+      cabinet.z,
+      Math.PI / 2,
+      cabinet.color,
+      cabinet.screen,
+    ));
+    addCollider(colliders, cabinet.x, cabinet.z, 0.92, 1.12);
+  });
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
