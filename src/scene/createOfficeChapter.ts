@@ -6397,7 +6397,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const womenBathroomCenterZ = bathroomEntryMaxZ + bathroomRoomDepth / 2;
   const northPartyHallCenterX = -224.95;
   const northPartyHallWidth = 5.7;
-  const northPartyHallLength = 18;
+  const northPartyHallLength = 26.5;
   const northPartyHallOpeningMinX = northPartyHallCenterX - northPartyHallWidth / 2;
   const northPartyHallOpeningMaxX = northPartyHallCenterX + northPartyHallWidth / 2;
   const northPartyHallSouthZ = partyRoomNorthZ;
@@ -6618,7 +6618,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   root.add(northPartyHallWallResult.root);
   colliders.push(...northPartyHallWallResult.colliders);
 
-  [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4].forEach((z) => {
+  [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
     fixture.position.set(northPartyHallCenterX, WALL_HEIGHT - 0.16, z);
     const glow = new PointLight(0xffd9ad, 0.72, 10, 1.7);
