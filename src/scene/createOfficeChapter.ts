@@ -421,7 +421,7 @@ export interface OfficeChapterData {
   setStageAnimatronicPresent(animatronic: 'quacky' | 'fluffle' | 'bori' | 'foxy', present: boolean): void;
   flashHallLight(doorId: 'left' | 'right'): void;
   startPartyShow(playerPosition?: Vector3): void;
-  startFoxyPlay(): void;
+  startFoxyPlay(action?: OfficeChapterFoxyPlayAction): void;
   startBasketballThrow(scored: boolean, targetHoop: 'left' | 'right', throwStartWorldPosition?: Vector3): void;
   setBasketballHeld(held: boolean): void;
   isBasketballThrowActive(): boolean;
@@ -476,7 +476,9 @@ const PARTY_STAGE_ANIMATRONIC_FOOT_LIFT = 0.08;
 const PARTY_SHOW_MUSIC_DURATION = 10;
 const PARTY_SHOW_RETURN_DURATION = 2.4;
 const BASKETBALL_THROW_DURATION = 1.65;
-const FOXY_PLAY_DURATION = 10;
+const FOXY_PLAY_DURATION = 2.7;
+
+type OfficeChapterFoxyPlayAction = 'foxy' | 'parrot';
 
 interface StageLimbRefs {
   root: Group;
@@ -1970,7 +1972,11 @@ function createPartyPlayMachine(x: number, z: number, rotationY: number): Office
   };
 }
 
-function createFoxyPlayLabelMaterial(): MeshStandardMaterial {
+function createFoxyPlayLabelMaterial(
+  topText = "FOXY'S",
+  middleText = 'PLAY',
+  footerText = 'PRESS THE RED BUTTON',
+): MeshStandardMaterial {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 256;
@@ -1990,12 +1996,13 @@ function createFoxyPlayLabelMaterial(): MeshStandardMaterial {
     context.font = 'bold 64px Trebuchet MS, sans-serif';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText("FOXY'S", canvas.width / 2, 86);
+    context.fillText(topText, canvas.width / 2, topText ? 86 : 104);
     context.fillStyle = '#ffcf70';
-    context.fillText('PLAY', canvas.width / 2, 160);
+    context.font = topText ? 'bold 64px Trebuchet MS, sans-serif' : 'bold 82px Trebuchet MS, sans-serif';
+    context.fillText(middleText, canvas.width / 2, topText ? 160 : 132);
     context.fillStyle = '#ffffff';
     context.font = 'bold 22px Trebuchet MS, sans-serif';
-    context.fillText('PRESS THE RED BUTTON', canvas.width / 2, 214);
+    context.fillText(footerText, canvas.width / 2, 214);
   }
 
   return new MeshStandardMaterial({
@@ -2008,7 +2015,14 @@ function createFoxyPlayLabelMaterial(): MeshStandardMaterial {
   });
 }
 
-function createFoxyPlayButton(x: number, z: number, rotationY: number): OfficeChapterFoxyPlayButton {
+function createFoxyPlayButton(
+  x: number,
+  z: number,
+  rotationY: number,
+  labelTop = "FOXY'S",
+  labelMiddle = 'PLAY',
+  footerText = 'PRESS THE RED BUTTON',
+): OfficeChapterFoxyPlayButton {
   const root = new Group();
   root.position.set(x, 0, z);
   root.rotation.y = rotationY;
@@ -2020,7 +2034,7 @@ function createFoxyPlayButton(x: number, z: number, rotationY: number): OfficeCh
     roughness: 0.2,
     metalness: 0.18,
   });
-  const labelMaterial = createFoxyPlayLabelMaterial();
+  const labelMaterial = createFoxyPlayLabelMaterial(labelTop, labelMiddle, footerText);
   const plateMaterial = new MeshStandardMaterial({
     color: 0x1b1c20,
     emissive: 0x160304,
@@ -2053,7 +2067,7 @@ function createFoxyPlayButton(x: number, z: number, rotationY: number): OfficeCh
   root.updateMatrixWorld(true);
 
   return {
-    label: "Foxy's Play wall button",
+    label: labelTop ? "Foxy's Play wall button" : 'Pirate Cove Play wall button',
     root,
     position: root.localToWorld(new Vector3(0, 1.32, 0.1)),
     interactPosition: root.localToWorld(new Vector3(0, 1.32, 0.96)),
@@ -3361,6 +3375,8 @@ function createFoxPirateStage(x: number, z: number): Group {
     leftLeg,
     rightLeg,
     hook,
+    parrotLeftWing: leftWing,
+    parrotRightWing: rightWing,
     base: {
       foxRootPosition: foxRoot.position.clone(),
       foxRootRotation: new Vector3(foxRoot.rotation.x, foxRoot.rotation.y, foxRoot.rotation.z),
@@ -3372,6 +3388,8 @@ function createFoxPirateStage(x: number, z: number): Group {
       rightLegPosition: rightLeg.root.position.clone(),
       hookPosition: hook.position.clone(),
       hookRotation: new Vector3(hook.rotation.x, hook.rotation.y, hook.rotation.z),
+      parrotLeftWingRotation: new Vector3(leftWing.rotation.x, leftWing.rotation.y, leftWing.rotation.z),
+      parrotRightWingRotation: new Vector3(rightWing.rotation.x, rightWing.rotation.y, rightWing.rotation.z),
     },
   };
   root.add(foxRoot, createAnimatronicNamePlate('Foxy', 'the Pirate Fox', '#ff9b52', 0x201016));
@@ -8814,6 +8832,15 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     Math.PI,
   );
   root.add(foxyPlay.root);
+  const pirateCovePlayButton = createFoxyPlayButton(
+    secondRoomCenterX + 1.35,
+    secondRoomMaxZ - WALL_THICKNESS + 0.04,
+    Math.PI,
+    '',
+    'PLAY',
+    'READY',
+  );
+  root.add(pirateCovePlayButton.root);
 
   const ticketPickups = [
     createTicketPickup('ticket-main-table', partyRoomCenterX - 7.25, partyRoomCenterZ + 4.8, 0.28),
@@ -9133,10 +9160,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let foxCurtainTime = 0;
   let foxyPlayActive = false;
   let foxyPlayTime = 0;
+  let foxyPlayAction: OfficeChapterFoxyPlayAction = 'foxy';
 
-  const startFoxyPlay = (): void => {
+  const startFoxyPlay = (action: OfficeChapterFoxyPlayAction = 'foxy'): void => {
     foxyPlayActive = true;
     foxyPlayTime = 0;
+    foxyPlayAction = action;
   };
 
   const isFoxyPlayActive = (): boolean => foxyPlayActive;
@@ -9255,6 +9284,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       leftLeg: StageLimbRefs;
       rightLeg: StageLimbRefs;
       hook: Group;
+      parrotLeftWing?: Mesh;
+      parrotRightWing?: Mesh;
       base: Record<string, Vector3>;
     } | undefined;
     if (!parts) {
@@ -9278,6 +9309,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       resetLimb(parts.rightLeg, parts.base.rightLegPosition);
       parts.hook.position.copy(parts.base.hookPosition);
       parts.hook.rotation.set(parts.base.hookRotation.x, parts.base.hookRotation.y, parts.base.hookRotation.z);
+      const leftWingBase = parts.base.parrotLeftWingRotation;
+      const rightWingBase = parts.base.parrotRightWingRotation;
+      if (parts.parrotLeftWing && leftWingBase) {
+        parts.parrotLeftWing.rotation.set(leftWingBase.x, leftWingBase.y, leftWingBase.z);
+      }
+      if (parts.parrotRightWing && rightWingBase) {
+        parts.parrotRightWing.rotation.set(rightWingBase.x, rightWingBase.y, rightWingBase.z);
+      }
     };
 
     if (!foxyPlayActive) {
@@ -9287,104 +9326,30 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
     foxyPlayTime += deltaSeconds;
     const fadeIn = MathUtils.smoothstep(foxyPlayTime, 0, 0.45);
-    const fadeOut = 1 - MathUtils.smoothstep(foxyPlayTime, FOXY_PLAY_DURATION - 0.55, FOXY_PLAY_DURATION);
+    const fadeOut = 1 - MathUtils.smoothstep(foxyPlayTime, FOXY_PLAY_DURATION - 0.45, FOXY_PLAY_DURATION);
     const strength = fadeIn * fadeOut;
-    const beat = foxyPlayTime * 9.2;
-    const cheer = Math.sin(beat);
-    const pump = Math.max(0, cheer);
     setBase();
-    parts.foxRoot.position.y += Math.abs(Math.sin(beat)) * 0.035 * strength;
-    parts.head.rotation.y += Math.sin(foxyPlayTime * 2.8) * 0.18 * strength;
-    parts.head.rotation.x += Math.sin(foxyPlayTime * 4.1) * 0.055 * strength;
 
-    if (foxyPlayTime < 2.15) {
-      const step = Math.sin(foxyPlayTime * 10.4);
-      parts.foxRoot.position.z += Math.sin(foxyPlayTime * 3.2) * 0.12 * strength;
-      parts.foxRoot.rotation.z += Math.sin(foxyPlayTime * 6.2) * 0.12 * strength;
-      parts.leftArm.root.rotation.x = (-0.42 - pump * 0.36) * strength;
-      parts.leftArm.root.rotation.z = (0.42 + cheer * 0.18) * strength;
-      parts.leftArm.joint.rotation.x = (-0.28 - pump * 0.32) * strength;
-      parts.rightArm.root.rotation.x = (-0.5 - Math.max(0, -cheer) * 0.42) * strength;
-      parts.rightArm.root.rotation.z = (-0.44 + cheer * 0.18) * strength;
-      parts.rightArm.joint.rotation.x = (-0.3 - Math.max(0, -cheer) * 0.38) * strength;
-      parts.leftLeg.root.rotation.x = step * 0.22 * strength;
-      parts.rightLeg.root.rotation.x = -step * 0.22 * strength;
-      parts.leftLeg.joint.rotation.x = Math.max(0, -step) * 0.4 * strength;
-      parts.rightLeg.joint.rotation.x = Math.max(0, step) * 0.4 * strength;
-    } else if (foxyPlayTime < 4.05) {
-      const segmentTime = foxyPlayTime - 2.15;
-      const spinProgress = MathUtils.smoothstep(segmentTime, 0, 1.9);
-      parts.foxRoot.rotation.y += spinProgress * Math.PI * 2 * strength;
-      parts.foxRoot.rotation.z += Math.sin(segmentTime * 8.8) * 0.18 * strength;
-      parts.leftArm.root.rotation.x = -0.24 * strength;
-      parts.leftArm.root.rotation.z = (0.92 + Math.sin(segmentTime * 5.4) * 0.12) * strength;
-      parts.leftArm.joint.rotation.x = -0.18 * strength;
-      parts.rightArm.root.rotation.x = -0.28 * strength;
-      parts.rightArm.root.rotation.z = (-0.92 + Math.cos(segmentTime * 5.4) * 0.12) * strength;
-      parts.rightArm.joint.rotation.x = -0.22 * strength;
-      parts.leftLeg.root.rotation.x = Math.sin(segmentTime * 8.2) * 0.18 * strength;
-      parts.rightLeg.root.rotation.x = Math.sin(segmentTime * 8.2 + Math.PI) * 0.18 * strength;
-      parts.leftLeg.joint.rotation.x = (0.16 + Math.max(0, -Math.sin(segmentTime * 8.2)) * 0.36) * strength;
-      parts.rightLeg.joint.rotation.x = (0.16 + Math.max(0, Math.sin(segmentTime * 8.2)) * 0.36) * strength;
-    } else if (foxyPlayTime < 6.3) {
-      const segmentTime = foxyPlayTime - 4.05;
-      const spinProgress = MathUtils.smoothstep(segmentTime, 0, 2.25);
-      parts.foxRoot.position.y -= 0.36 * strength;
-      parts.foxRoot.position.x += Math.sin(segmentTime * 8.4) * 0.08 * strength;
-      parts.foxRoot.rotation.y += spinProgress * Math.PI * 4.6 * strength;
-      parts.foxRoot.rotation.z += (1.05 + Math.sin(segmentTime * 13.5) * 0.08) * strength;
-      parts.head.rotation.x += 0.18 * strength;
-      parts.leftArm.root.rotation.x = (-0.9 + Math.sin(segmentTime * 10.2) * 0.1) * strength;
-      parts.leftArm.root.rotation.z = 0.75 * strength;
-      parts.leftArm.joint.rotation.x = -0.5 * strength;
-      parts.rightArm.root.rotation.x = (-0.88 + Math.cos(segmentTime * 10.2) * 0.1) * strength;
-      parts.rightArm.root.rotation.z = -0.72 * strength;
-      parts.rightArm.joint.rotation.x = -0.48 * strength;
-      parts.leftLeg.root.rotation.x = 0.62 * strength;
-      parts.leftLeg.root.rotation.z = (0.62 + Math.sin(segmentTime * 9.6) * 0.22) * strength;
-      parts.leftLeg.joint.rotation.x = -0.35 * strength;
-      parts.rightLeg.root.rotation.x = -0.45 * strength;
-      parts.rightLeg.root.rotation.z = (-0.62 + Math.cos(segmentTime * 9.6) * 0.22) * strength;
-      parts.rightLeg.joint.rotation.x = 0.52 * strength;
-    } else if (foxyPlayTime < 8.15) {
-      const segmentTime = foxyPlayTime - 6.3;
-      const slide = Math.sin(segmentTime * 4.6);
-      const pop = Math.max(0, Math.sin(segmentTime * 12.5));
-      parts.foxRoot.position.x += slide * 0.22 * strength;
-      parts.foxRoot.rotation.z += -slide * 0.16 * strength;
-      parts.leftArm.root.rotation.x = (-0.14 - pop * 0.5) * strength;
-      parts.leftArm.root.rotation.z = (0.22 + slide * 0.32) * strength;
-      parts.leftArm.joint.rotation.x = (-0.16 - pop * 0.46) * strength;
-      parts.rightArm.root.rotation.x = (-0.2 - (1 - pop) * 0.36) * strength;
-      parts.rightArm.root.rotation.z = (-0.22 + slide * 0.32) * strength;
-      parts.rightArm.joint.rotation.x = (-0.2 - pop * 0.4) * strength;
-      parts.leftLeg.root.rotation.x = -slide * 0.26 * strength;
-      parts.rightLeg.root.rotation.x = slide * 0.26 * strength;
-      parts.leftLeg.joint.rotation.x = Math.max(0, slide) * 0.42 * strength;
-      parts.rightLeg.joint.rotation.x = Math.max(0, -slide) * 0.42 * strength;
+    if (foxyPlayAction === 'foxy') {
+      const wave = Math.sin(foxyPlayTime * 10.5);
+      const handRaise = MathUtils.smoothstep(foxyPlayTime, 0.08, 0.82)
+        * (1 - MathUtils.smoothstep(foxyPlayTime, 2.05, 2.62));
+      parts.head.rotation.y += Math.sin(foxyPlayTime * 2.2) * 0.08 * strength;
+      parts.leftArm.root.rotation.x = -1.18 * handRaise;
+      parts.leftArm.root.rotation.z = 0.52 * handRaise;
+      parts.leftArm.joint.rotation.x = (-0.48 + wave * 0.18) * handRaise;
+      parts.leftArm.joint.rotation.z = wave * 0.34 * handRaise;
     } else {
-      const segmentTime = foxyPlayTime - 8.15;
-      const finaleSpin = MathUtils.smoothstep(segmentTime, 0.15, 1.45);
-      parts.foxRoot.position.y += Math.abs(Math.sin(segmentTime * 11.5)) * 0.08 * strength;
-      parts.foxRoot.rotation.y += finaleSpin * Math.PI * 1.5 * strength;
-      parts.foxRoot.rotation.z += Math.sin(segmentTime * 6.2) * 0.1 * strength;
-      parts.leftArm.root.rotation.x = (-1.08 + Math.sin(segmentTime * 8.2) * 0.12) * strength;
-      parts.leftArm.root.rotation.z = 0.68 * strength;
-      parts.leftArm.joint.rotation.x = (-0.32 - pump * 0.32) * strength;
-      parts.rightArm.root.rotation.x = (-1.12 + Math.cos(segmentTime * 8.2) * 0.12) * strength;
-      parts.rightArm.root.rotation.z = -0.68 * strength;
-      parts.rightArm.joint.rotation.x = (-0.34 - pump * 0.34) * strength;
-      parts.leftLeg.root.rotation.x = Math.sin(segmentTime * 8.8) * 0.18 * strength;
-      parts.rightLeg.root.rotation.x = Math.sin(segmentTime * 8.8 + Math.PI) * 0.18 * strength;
-      parts.leftLeg.joint.rotation.x = (0.14 + Math.max(0, -Math.sin(segmentTime * 8.8)) * 0.34) * strength;
-      parts.rightLeg.joint.rotation.x = (0.14 + Math.max(0, Math.sin(segmentTime * 8.8)) * 0.34) * strength;
+      const flap = Math.sin(foxyPlayTime * 18);
+      const flapOpen = (0.42 + Math.abs(flap) * 0.78) * strength;
+      if (parts.parrotLeftWing && parts.parrotRightWing) {
+        parts.parrotLeftWing.rotation.z -= flapOpen;
+        parts.parrotLeftWing.rotation.y += 0.18 * strength;
+        parts.parrotRightWing.rotation.z += flapOpen;
+        parts.parrotRightWing.rotation.y -= 0.18 * strength;
+      }
+      parts.head.rotation.y += Math.sin(foxyPlayTime * 5.6) * 0.04 * strength;
     }
-
-    parts.hook.rotation.set(
-      parts.base.hookRotation.x + pump * 0.28 * strength,
-      parts.base.hookRotation.y + cheer * 0.14 * strength,
-      parts.base.hookRotation.z + Math.sin(foxyPlayTime * 5.8) * 0.08 * strength,
-    );
 
     if (foxyPlayTime >= FOXY_PLAY_DURATION) {
       foxyPlayActive = false;

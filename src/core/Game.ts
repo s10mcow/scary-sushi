@@ -17067,8 +17067,8 @@ export class Game {
 
       if (foxyPlay) {
         return this.officeChapter.isFoxyPlayActive()
-          ? "Foxy dances on the Pirate Cove stage."
-          : "Press E on Foxy's Play to start Foxy's pirate dance.";
+          ? "Foxy's Pirate Cove stage is playing a short line."
+          : "Press E on Foxy's Play for a Foxy or parrot line.";
       }
 
       if (partyPlay) {
@@ -17833,8 +17833,8 @@ export class Game {
 
       if (foxyPlay) {
         return this.officeChapter.isFoxyPlayActive()
-          ? 'The Foxy stage curtains are open while Foxy dances with his parrot.'
-          : "Foxy's Play is a red wall button for the pirate fox stage.";
+          ? 'The Foxy stage curtains are open during the short Pirate Cove line.'
+          : "Foxy's Play is a red wall button for a short Foxy or parrot line.";
       }
 
       if (partyPlay) {
@@ -20084,12 +20084,12 @@ export class Game {
 
     const foxyPlay = this.getNearestOfficeFoxyPlayButton();
     if (foxyPlay) {
-      this.officeChapter.startFoxyPlay();
       const speaker: FoxyPlaySpeaker = Math.random() < 0.5 ? 'foxy' : 'parrot';
+      this.officeChapter.startFoxyPlay(speaker);
       const line = speaker === 'foxy' ? FOXY_PLAY_FOXY_LINE : FOXY_PLAY_PARROT_LINE;
       this.foxyPlayAudio.play(speaker);
       this.gameplaySfxAudio.playSmallPanel(false);
-      this.pushStatus(`${speaker === 'foxy' ? 'Foxy' : "Foxy's parrot"} starts the pirate dance line: "${line}"`, 4.2);
+      this.pushStatus(`${speaker === 'foxy' ? 'Foxy waves' : "Foxy's parrot flaps"} and says: "${line}"`, 4.2);
       return;
     }
 
