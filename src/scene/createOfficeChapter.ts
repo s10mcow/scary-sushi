@@ -8961,9 +8961,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
 
   [
-    { x: secondRoomMaxX - 5.75, z: secondRoomCenterZ - 0.05, rotationY: 0 },
-    { x: secondRoomMaxX - 9.72, z: secondRoomCenterZ - 2.35, rotationY: 0 },
-    { x: secondRoomMaxX - 9.72, z: secondRoomCenterZ + 2.15, rotationY: 0 },
+    { x: secondRoomMaxX - 5.42, z: secondRoomCenterZ + 0.45, rotationY: 0 },
+    { x: secondRoomMaxX - 9.39, z: secondRoomCenterZ - 1.85, rotationY: 0 },
+    { x: secondRoomMaxX - 9.39, z: secondRoomCenterZ + 2.65, rotationY: 0 },
   ].forEach((table) => {
     root.add(createPartyTable(table.x, table.z, table.rotationY));
     addCollider(colliders, table.x, table.z, 3.45, 1.58);
@@ -9496,14 +9496,17 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     setBase();
 
     if (foxyPlayAction === 'foxy') {
-      const wave = Math.sin(foxyPlayTime * 10.5);
+      const wave = Math.sin(foxyPlayTime * 7.8);
       const handRaise = MathUtils.smoothstep(foxyPlayTime, 0.08, 0.82)
         * (1 - MathUtils.smoothstep(foxyPlayTime, 2.05, 2.62));
-      parts.head.rotation.y += Math.sin(foxyPlayTime * 2.2) * 0.08 * strength;
-      parts.leftArm.root.rotation.x = -1.18 * handRaise;
-      parts.leftArm.root.rotation.z = 0.52 * handRaise;
-      parts.leftArm.joint.rotation.x = (-0.48 + wave * 0.18) * handRaise;
-      parts.leftArm.joint.rotation.z = wave * 0.34 * handRaise;
+      const headTurn = MathUtils.smoothstep(foxyPlayTime, 0.75, 1.2)
+        * (1 - MathUtils.smoothstep(foxyPlayTime, 1.85, 2.5));
+      parts.head.rotation.y += (0.24 * headTurn + Math.sin(foxyPlayTime * 4.4) * 0.035 * handRaise) * strength;
+      parts.leftArm.root.rotation.x = -0.58 * handRaise;
+      parts.leftArm.root.rotation.y = -0.18 * handRaise;
+      parts.leftArm.root.rotation.z = 1.28 * handRaise;
+      parts.leftArm.joint.rotation.x = (-0.32 + wave * 0.1) * handRaise;
+      parts.leftArm.joint.rotation.z = (0.52 + wave * 0.24) * handRaise;
     } else {
       const flap = Math.sin(foxyPlayTime * 18);
       const flapOpen = (0.42 + Math.abs(flap) * 0.78) * strength;

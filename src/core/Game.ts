@@ -105,7 +105,13 @@ import { VoiceInputController } from '../systems/input/VoiceInputController';
 import { BearJumpScareAudio } from '../systems/audio/BearJumpScareAudio';
 import { CoffeeMachineAudio } from '../systems/audio/CoffeeMachineAudio';
 import { GameplaySfxAudio, type OfficeJumpscareCue } from '../systems/audio/GameplaySfxAudio';
-import { FOXY_PLAY_FOXY_LINE, FOXY_PLAY_PARROT_LINE, FoxyPlayAudio, type FoxyPlaySpeaker } from '../systems/audio/FoxyPlayAudio';
+import {
+  FOXY_PLAY_FOXY_LINE,
+  FOXY_PLAY_FOXY_SOON_LINE,
+  FOXY_PLAY_PARROT_LINE,
+  FoxyPlayAudio,
+  type FoxyPlaySpeaker,
+} from '../systems/audio/FoxyPlayAudio';
 import { LobbyCrashAudio } from '../systems/audio/LobbyCrashAudio';
 import { PartyShowAudio } from '../systems/audio/PartyShowAudio';
 import { PowerEventAudio } from '../systems/audio/PowerEventAudio';
@@ -20066,8 +20072,10 @@ export class Game {
     if (foxyPlay) {
       const speaker: FoxyPlaySpeaker = Math.random() < 0.5 ? 'foxy' : 'parrot';
       this.officeChapter.startFoxyPlay(speaker);
-      const line = speaker === 'foxy' ? FOXY_PLAY_FOXY_LINE : FOXY_PLAY_PARROT_LINE;
-      this.foxyPlayAudio.play(speaker);
+      const line = speaker === 'foxy'
+        ? (Math.random() < 0.5 ? FOXY_PLAY_FOXY_LINE : FOXY_PLAY_FOXY_SOON_LINE)
+        : FOXY_PLAY_PARROT_LINE;
+      this.foxyPlayAudio.play(speaker, line);
       this.gameplaySfxAudio.playSmallPanel(false);
       this.pushStatus(`${speaker === 'foxy' ? 'Foxy waves' : "Foxy's parrot flaps"} and says: "${line}"`, 4.2);
       return;

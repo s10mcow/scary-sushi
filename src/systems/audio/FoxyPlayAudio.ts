@@ -5,6 +5,7 @@ interface FoxyPlayAudioCtor {
 export type FoxyPlaySpeaker = 'foxy' | 'parrot';
 
 export const FOXY_PLAY_FOXY_LINE = 'Hey there, kids.';
+export const FOXY_PLAY_FOXY_SOON_LINE = "Don't worry, kids. The play will be starting soon.";
 export const FOXY_PLAY_PARROT_LINE = 'Aye aye, captain.';
 
 export class FoxyPlayAudio {
@@ -33,10 +34,10 @@ export class FoxyPlayAudio {
     void this.context.resume();
   }
 
-  play(speaker: FoxyPlaySpeaker): void {
+  play(speaker: FoxyPlaySpeaker, line?: string): void {
     this.stopMusic();
     this.resume();
-    this.playSpeech(speaker);
+    this.playSpeech(speaker, line);
     if (speaker === 'parrot') {
       this.playParrotChirp();
     }
@@ -53,7 +54,7 @@ export class FoxyPlayAudio {
     void this.context.close();
   }
 
-  private playSpeech(speaker: FoxyPlaySpeaker): void {
+  private playSpeech(speaker: FoxyPlaySpeaker, line?: string): void {
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
       return;
     }
@@ -61,7 +62,8 @@ export class FoxyPlayAudio {
     const speechSynth = window.speechSynthesis;
     speechSynth.cancel();
     speechSynth.resume();
-    const utterance = new SpeechSynthesisUtterance(speaker === 'foxy' ? FOXY_PLAY_FOXY_LINE : FOXY_PLAY_PARROT_LINE);
+    const spokenLine = line ?? (speaker === 'foxy' ? FOXY_PLAY_FOXY_LINE : FOXY_PLAY_PARROT_LINE);
+    const utterance = new SpeechSynthesisUtterance(spokenLine);
     const voice = selectPirateVoice(speechSynth.getVoices());
     if (voice) {
       utterance.voice = voice;
@@ -69,9 +71,10 @@ export class FoxyPlayAudio {
     } else {
       utterance.lang = 'en-GB';
     }
-    utterance.volume = speaker === 'foxy' ? 0.9 : 0.82;
-    utterance.rate = speaker === 'foxy' ? 0.86 : 1.28;
-    utterance.pitch = speaker === 'foxy' ? 0.72 : 1.82;
+    const enthusiasticFoxy = speaker === 'foxy' && spokenLine === FOXY_PLAY_FOXY_SOON_LINE;
+    utterance.volume = speaker === 'foxy' ? 0.92 : 0.82;
+    utterance.rate = enthusiasticFoxy ? 1.02 : speaker === 'foxy' ? 0.86 : 1.28;
+    utterance.pitch = enthusiasticFoxy ? 0.94 : speaker === 'foxy' ? 0.72 : 1.82;
     utterance.onend = (): void => {
       if (this.activeSpeech === utterance) {
         this.activeSpeech = null;
