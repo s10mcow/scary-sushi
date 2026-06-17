@@ -7885,7 +7885,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { id: 'game-west-quacky', kind: 'quacky' as const, slogan: 'Quack laugh party', x: kitchenHallRoomMinX + WALL_THICKNESS + 0.026, z: kitchenHallRoomCenterZ + 4.2, rotationY: Math.PI / 2 },
     { id: 'north-hall-fluffle', kind: 'fluffle' as const, slogan: 'Fast games big smiles', x: northPartyHallOpeningMinX + WALL_THICKNESS + 0.026, z: northPartyHallNorthZ + 4.8, rotationY: Math.PI / 2 },
     { id: 'pirate-hall-foxy', kind: 'foxy' as const, slogan: 'Ahoy kids play nice', x: secondHallCenterX, z: secondHallOpeningMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
-    { id: 'pirate-room-foxy', kind: 'foxy' as const, slogan: 'Pirate shows every day', x: secondRoomCenterX - 2.4, z: secondRoomMaxZ - WALL_THICKNESS - 0.03, rotationY: Math.PI },
+    { id: 'pirate-room-foxy', kind: 'foxy' as const, slogan: 'Pirate shows every day', x: secondRoomMaxX - WALL_THICKNESS - 0.03, z: secondRoomCenterZ + 2.2, rotationY: -Math.PI / 2 },
     { id: 'pirate-east-bori', kind: 'bori' as const, slogan: 'Treasure the party', x: secondRoomMaxX - WALL_THICKNESS - 0.03, z: secondRoomCenterZ - 3.2, rotationY: -Math.PI / 2 },
     { id: 'ballpit-east-quacky', kind: 'quacky' as const, slogan: 'Dive into the ball pit', x: northPartySideRoomMaxX - WALL_THICKNESS - 0.026, z: northPartySideRoomCenterZ + 3.2, rotationY: -Math.PI / 2 },
     { id: 'ballpit-north-fluffle', kind: 'fluffle' as const, slogan: 'Bounce laugh repeat', x: northPartySideRoomCenterX, z: northPartySideRoomMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
@@ -7894,8 +7894,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { id: 'storage-closet-fluffle', kind: 'fluffle' as const, slogan: 'Clean up then party', x: storageClosetCenterX, z: storageClosetMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
     { id: 'kitchen-quacky', kind: 'quacky' as const, slogan: 'Fresh pizza fresh songs', x: kitchenWestX + WALL_THICKNESS + 0.026, z: kitchenCenterZ - 2.4, rotationY: Math.PI / 2 },
     { id: 'bathroom-hall-bori', kind: 'bori' as const, slogan: 'Wash hands then party', x: bathroomHallCenterX - 0.55, z: bathroomEntryMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
-    { id: 'mens-room-foxy', kind: 'foxy' as const, slogan: 'No running matey', x: bathroomRoomMinX + WALL_THICKNESS + 0.026, z: menBathroomCenterZ, rotationY: Math.PI / 2 },
-    { id: 'womens-room-quacky', kind: 'quacky' as const, slogan: 'Smile for the show', x: bathroomRoomMinX + WALL_THICKNESS + 0.026, z: womenBathroomCenterZ, rotationY: Math.PI / 2 },
+    { id: 'mens-room-foxy', kind: 'foxy' as const, slogan: 'No running matey', x: bathroomHallMinX + WALL_THICKNESS + 0.026, z: bathroomEntryCenterZ - 1.68, rotationY: Math.PI / 2 },
+    { id: 'womens-room-quacky', kind: 'quacky' as const, slogan: 'Smile for the show', x: bathroomHallMinX + WALL_THICKNESS + 0.026, z: bathroomEntryCenterZ + 1.68, rotationY: Math.PI / 2 },
   ].forEach((poster) => {
     addAnimatronicWallPoster(poster.id, poster.kind, poster.slogan, poster.x, poster.z, poster.rotationY);
   });

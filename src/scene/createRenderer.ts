@@ -6,7 +6,7 @@ import {
 } from 'three';
 
 export function createRenderer(host: HTMLElement): WebGLRenderer {
-  const renderer = new WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+  const renderer = new WebGLRenderer({ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: true });
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.shadowMap.enabled = false;
   renderer.shadowMap.type = PCFSoftShadowMap;

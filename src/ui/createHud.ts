@@ -123,6 +123,7 @@ export interface HudController {
   setMicrophoneTool(active: boolean, body: string): void;
   setCameraTool(active: boolean, body: string): void;
   setCameraToolPreview(active: boolean, video?: HTMLVideoElement | null): void;
+  setPhotoCameraPreview(active: boolean, imageUrl: string | null, label: string, flash: boolean): void;
   setPrompt(text: string): void;
   setActionPrompt(text: string): void;
   setCrouchInstructions(active: boolean, crouched: boolean, text?: string, title?: string): void;
@@ -830,6 +831,25 @@ export function createHud(host: HTMLElement): HudController {
 
   cameraToolPreview.append(cameraToolPreviewLabel);
   cameraTool.append(cameraToolLabel, cameraToolPreview, cameraToolText);
+
+  const photoCameraPreview = document.createElement('section');
+  photoCameraPreview.className = 'hud__photo-camera-preview';
+  photoCameraPreview.dataset.active = 'false';
+  photoCameraPreview.dataset.flash = 'false';
+
+  const photoCameraPreviewImage = document.createElement('img');
+  photoCameraPreviewImage.className = 'hud__photo-camera-preview-image';
+  photoCameraPreviewImage.alt = 'Photo camera preview';
+
+  const photoCameraPreviewLabel = document.createElement('p');
+  photoCameraPreviewLabel.className = 'hud__photo-camera-preview-label';
+  photoCameraPreviewLabel.textContent = '';
+
+  const photoCameraFlash = document.createElement('div');
+  photoCameraFlash.className = 'hud__photo-camera-flash';
+  photoCameraFlash.dataset.active = 'false';
+
+  photoCameraPreview.append(photoCameraPreviewImage, photoCameraPreviewLabel);
 
   const tabletCameraPanel = document.createElement('section');
   tabletCameraPanel.className = 'hud__tablet-cameras';
@@ -1810,6 +1830,8 @@ export function createHud(host: HTMLElement): HudController {
     placementTool,
     microphoneTool,
     cameraTool,
+    photoCameraPreview,
+    photoCameraFlash,
     chapterMenu,
     curatorTool,
     officeJumpscareMenu,
@@ -2669,6 +2691,13 @@ export function createHud(host: HTMLElement): HudController {
         cameraToolPreview.dataset.live = 'false';
         cameraToolPreview.replaceChildren(cameraToolPreviewLabel);
       }
+    },
+    setPhotoCameraPreview(active, imageUrl, label, flash): void {
+      photoCameraPreview.dataset.active = String(active && Boolean(imageUrl));
+      photoCameraPreview.dataset.flash = String(flash);
+      photoCameraFlash.dataset.active = String(flash);
+      photoCameraPreviewImage.src = imageUrl ?? '';
+      photoCameraPreviewLabel.textContent = label;
     },
     setCameraToolPreview(active, video = null): void {
       cameraToolPreview.hidden = !active;

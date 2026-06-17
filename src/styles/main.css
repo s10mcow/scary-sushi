@@ -2711,6 +2711,71 @@ select {
   transform: scaleX(-1);
 }
 
+.hud__photo-camera-preview {
+  position: fixed;
+  left: 1rem;
+  bottom: 7.2rem;
+  z-index: 28;
+  width: min(15rem, 42vw);
+  padding: 0.45rem;
+  border: 1px solid rgba(225, 241, 255, 0.48);
+  border-radius: 0.35rem;
+  background: rgba(8, 12, 16, 0.82);
+  box-shadow:
+    0 0.7rem 1.7rem rgba(0, 0, 0, 0.38),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.8rem) scale(0.98);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.hud__photo-camera-preview[data-active="true"] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.hud__photo-camera-preview[data-flash="true"] {
+  border-color: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 2.2rem rgba(255, 255, 255, 0.46),
+    0 0.7rem 1.7rem rgba(0, 0, 0, 0.38),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.hud__photo-camera-preview-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 0.22rem;
+  background: #030507;
+}
+
+.hud__photo-camera-preview-label {
+  margin: 0.42rem 0 0;
+  color: rgba(239, 247, 255, 0.92);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.hud__photo-camera-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+  background: white;
+  opacity: 0;
+  transition: opacity 190ms ease-out;
+}
+
+.hud__photo-camera-flash[data-active="true"] {
+  opacity: 0.86;
+  transition: opacity 34ms linear;
+}
+
 .hud__crouch-instructions {
   left: 1.2rem;
   bottom: 1.05rem;

@@ -471,6 +471,7 @@ interface OfficePosterPhoto {
   id: number;
   posterId: string | null;
   label: string;
+  imageUrl: string;
 }
 
 interface OfficeGameModeConfig {
@@ -1151,6 +1152,9 @@ export class Game {
   private readonly officePosterPhotoIds = new Set<string>();
   private readonly officePosterPhotos: OfficePosterPhoto[] = [];
   private officePosterPhotoIndex = 0;
+  private officePhotoCameraFlashTimer = 0;
+  private officePhotoCameraNumberBuffer = '';
+  private officePhotoCameraNumberBufferTimer = 0;
   private readonly officeGlassThrows: ActiveOfficeGlassThrow[] = [];
   private officePrizeWheelLastTickIndex = 0;
   private officePrizeWheelWasSpinning = false;
@@ -1665,7 +1669,44 @@ export class Game {
     this.syncHud();
   };
 
+  private handleOfficePhotoCameraNumberKey(event: KeyboardEvent): boolean {
+    if (
+      event.repeat
+      || !this.officeChapterActive
+      || this.officeHeldPrizeItem !== 'photo-camera'
+      || this.chapterMenuOpen
+      || this.officeJumpscareMenuOpen
+      || this.officeModeMenuOpen
+      || this.officeTabletCameraFeedActive
+    ) {
+      return false;
+    }
+
+    const digit = event.code.startsWith('Digit')
+      ? event.code.slice('Digit'.length)
+      : event.code.startsWith('Numpad')
+        ? event.code.slice('Numpad'.length)
+        : '';
+    if (!/^\d$/.test(digit)) {
+      return false;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.officePhotoCameraNumberBuffer += digit;
+    this.officePhotoCameraNumberBufferTimer = 0.92;
+    const photoNumber = Number.parseInt(this.officePhotoCameraNumberBuffer, 10);
+    if (Number.isFinite(photoNumber) && photoNumber > 0) {
+      this.selectOfficePosterPhotoByNumber(photoNumber);
+    }
+    return true;
+  }
+
   private readonly handleGlobalKeyDown = (event: KeyboardEvent): void => {
+    if (this.handleOfficePhotoCameraNumberKey(event)) {
+      return;
+    }
+
     if ((event.code !== 'KeyB' && event.code !== 'KeyJ' && event.code !== 'KeyK' && event.code !== 'KeyZ' && event.code !== 'KeyX' && event.code !== 'KeyT' && event.code !== 'KeyE') || event.repeat) {
       return;
     }
@@ -2462,6 +2503,11 @@ export class Game {
     const chapterFourLockerHiding = this.chapterFourActive && this.chapterFourLockerId !== null;
     this.zombieFireCooldown = Math.max(0, this.zombieFireCooldown - deltaSeconds);
     this.zombieWeaponKick = Math.max(0, this.zombieWeaponKick - deltaSeconds * 6.8);
+    this.officePhotoCameraFlashTimer = Math.max(0, this.officePhotoCameraFlashTimer - deltaSeconds);
+    this.officePhotoCameraNumberBufferTimer = Math.max(0, this.officePhotoCameraNumberBufferTimer - deltaSeconds);
+    if (this.officePhotoCameraNumberBufferTimer <= 0) {
+      this.officePhotoCameraNumberBuffer = '';
+    }
 
     const chapterMenuToggle = this.input.consumeChapterMenuToggle();
     if (chapterMenuToggle) {
@@ -5850,6 +5896,9 @@ export class Game {
     this.officePosterPhotoIds.clear();
     this.officePosterPhotos.length = 0;
     this.officePosterPhotoIndex = 0;
+    this.officePhotoCameraFlashTimer = 0;
+    this.officePhotoCameraNumberBuffer = '';
+    this.officePhotoCameraNumberBufferTimer = 0;
     this.officeChapter.posterPrinter.printed = false;
     this.officeChapter.posterPrinter.keycardRoot.visible = false;
   }
@@ -5890,7 +5939,7 @@ export class Game {
       const action = item === 'glass'
         ? 'Left click to throw it and shatter it.'
         : item === 'photo-camera'
-          ? 'Left click to take a poster photo. Scroll while holding it to review photos.'
+          ? 'Left click to take a poster photo. Scroll or type a photo number to review photos.'
         : item === 'tiny-bear'
           ? 'Left click to throw it and squeak it as a distraction.'
           : item === 'lollipop'
@@ -12121,6 +12170,7 @@ export class Game {
       || (this.chapterSixActive && this.chapterSix.isInventoryOpen())
       || this.placementToolActive
       || this.officeTabletCameraFeedActive
+      || this.officePhotoCameraFlashTimer > 0
       || this.officeCameraPuppetPhase !== 'idle'
       || this.officeBallPitSlide !== null
       || this.officeVentDrop !== null
@@ -12259,6 +12309,13 @@ export class Game {
       this.cameraToolActive ? this.getCameraToolHudText() : '',
     );
     this.hud.setCameraToolPreview(this.cameraToolActive, this.cameraToolVideo);
+    const selectedOfficePosterPhoto = this.officePosterPhotos[this.officePosterPhotoIndex] ?? null;
+    this.hud.setPhotoCameraPreview(
+      this.officeChapterActive && this.officeHeldPrizeItem === 'photo-camera' && Boolean(selectedOfficePosterPhoto),
+      selectedOfficePosterPhoto?.imageUrl ?? null,
+      this.getOfficePosterPhotoPreviewLabel(selectedOfficePosterPhoto),
+      this.officePhotoCameraFlashTimer > 0,
+    );
     const tabletCameraHudActive = this.officeChapterActive && this.officeTabletCameraFeedActive;
     this.hud.setTabletCameras(
       tabletCameraHudActive,
@@ -16339,7 +16396,7 @@ export class Game {
   private getOfficeHeldPrizeActionText(): string | null {
     switch (this.officeHeldPrizeItem) {
       case 'photo-camera':
-        return `Photo Camera equipped. Left click to take a picture. Captured posters: ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}. Scroll to review photos.`;
+        return `Photo Camera equipped. Left click to take a picture. Captured posters: ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}. Scroll or type a photo number to review photos.`;
       case 'glass':
         return 'Glass Cup equipped. Left click to throw it and make it shatter.';
       case 'tiny-bear':
@@ -19319,7 +19376,7 @@ export class Game {
 
       const direction = toPoster.clone().normalize();
       const aim = forward.dot(direction);
-      if (aim < 0.952) {
+      if (aim < 0.935) {
         continue;
       }
 
@@ -19338,18 +19395,78 @@ export class Game {
     return closestPoster;
   }
 
+  private captureOfficePhotoCameraImage(): string {
+    try {
+      this.renderer.render(this.scene, this.camera);
+      return this.renderer.domElement.toDataURL('image/jpeg', 0.72);
+    } catch {
+      return '';
+    }
+  }
+
+  private createOfficePhotoFallbackImage(label: string): string {
+    const canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 180;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return '';
+    }
+
+    context.fillStyle = '#06090d';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#1b2d38';
+    context.fillRect(10, 10, canvas.width - 20, canvas.height - 20);
+    context.strokeStyle = '#dff7ff';
+    context.lineWidth = 5;
+    context.strokeRect(22, 22, canvas.width - 44, canvas.height - 44);
+    context.fillStyle = '#eef8ff';
+    context.font = 'bold 22px Trebuchet MS, sans-serif';
+    context.textAlign = 'center';
+    context.fillText('PHOTO', canvas.width / 2, 72);
+    context.font = '16px Trebuchet MS, sans-serif';
+    context.fillText(label, canvas.width / 2, 112);
+    return canvas.toDataURL('image/png');
+  }
+
+  private getOfficePosterPhotoPreviewLabel(photo: OfficePosterPhoto | null): string {
+    if (!photo) {
+      return 'No photos';
+    }
+
+    return `Photo ${photo.id}/${this.officePosterPhotos.length}: ${photo.label}`;
+  }
+
+  private showOfficePosterPhoto(photo: OfficePosterPhoto | null, flash = false): void {
+    if (flash) {
+      this.officePhotoCameraFlashTimer = 0.18;
+    }
+    this.hud.setPhotoCameraPreview(
+      Boolean(photo),
+      photo?.imageUrl ?? null,
+      this.getOfficePosterPhotoPreviewLabel(photo),
+      flash || this.officePhotoCameraFlashTimer > 0,
+    );
+  }
+
   private takeOfficePosterPhoto(): void {
     const photoId = this.officePosterPhotos.length + 1;
     const poster = this.getAimedOfficePosterTarget();
+    const capturedImageUrl = this.captureOfficePhotoCameraImage();
 
     if (!poster) {
-      this.officePosterPhotos.push({
+      const photo: OfficePosterPhoto = {
         id: photoId,
         posterId: null,
         label: 'No poster clearly visible',
+        imageUrl: capturedImageUrl || this.createOfficePhotoFallbackImage('No poster visible'),
+      };
+      this.officePosterPhotos.push({
+        ...photo,
       });
       this.officePosterPhotoIndex = this.officePosterPhotos.length - 1;
       this.gameplaySfxAudio.playSmallPanel(false);
+      this.showOfficePosterPhoto(photo, true);
       this.pushStatus(`Photo ${photoId}: no poster is clearly visible. Center a poster in the camera view.`, 2.6);
       this.syncHud();
       return;
@@ -19357,13 +19474,16 @@ export class Game {
 
     const firstCapture = !this.officePosterPhotoIds.has(poster.id);
     this.officePosterPhotoIds.add(poster.id);
-    this.officePosterPhotos.push({
+    const photo: OfficePosterPhoto = {
       id: photoId,
       posterId: poster.id,
       label: poster.label,
-    });
+      imageUrl: capturedImageUrl || this.createOfficePhotoFallbackImage(poster.label),
+    };
+    this.officePosterPhotos.push(photo);
     this.officePosterPhotoIndex = this.officePosterPhotos.length - 1;
     this.gameplaySfxAudio.playSmallPanel(true);
+    this.showOfficePosterPhoto(photo, true);
     this.pushStatus(
       firstCapture
         ? `Photo ${photoId}: ${poster.label}. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`
@@ -19385,7 +19505,25 @@ export class Game {
       + this.officePosterPhotos.length
     ) % this.officePosterPhotos.length;
     const photo = this.officePosterPhotos[this.officePosterPhotoIndex];
+    this.showOfficePosterPhoto(photo);
     this.pushStatus(`Photo ${photo.id}/${this.officePosterPhotos.length}: ${photo.label}.`, 1.8);
+  }
+
+  private selectOfficePosterPhotoByNumber(photoNumber: number): void {
+    if (this.officePosterPhotos.length === 0) {
+      this.pushStatus('No photos yet. Left click while holding the Photo Camera to take one.', 1.6);
+      return;
+    }
+
+    const photo = this.officePosterPhotos[photoNumber - 1];
+    if (!photo) {
+      this.pushStatus(`Photo ${photoNumber} has not been taken yet.`, 1.4);
+      return;
+    }
+
+    this.officePosterPhotoIndex = photoNumber - 1;
+    this.showOfficePosterPhoto(photo);
+    this.pushStatus(`Selected ${this.getOfficePosterPhotoPreviewLabel(photo)}.`, 1.5);
   }
 
   private handleOfficePosterPrinterInteract(): void {
