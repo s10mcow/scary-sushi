@@ -750,8 +750,6 @@ const MICROPHONE_SOUND_MAX_RECORDINGS = 999;
 const MICROPHONE_JUMPSCARE_RECORDING_ID: string | null = '010';
 const OFFICE_THROW_SOUND_RECORDING_ID = '006';
 const OFFICE_STUFFIE_SOUND_RECORDING_ID = '004';
-const OFFICE_DOOR_OPEN_SOUND_RECORDING_ID = '012';
-const OFFICE_DOOR_CLOSE_SOUND_RECORDING_ID = '013';
 const CAMERA_TOOL_CAPTURES_STORAGE_KEY = 'scary-sushi:camera-tool:captures';
 const CAMERA_TOOL_NEXT_PICTURE_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-picture-index';
 const CAMERA_TOOL_NEXT_VIDEO_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-video-index';
@@ -5132,27 +5130,9 @@ export class Game {
     this.playCustomJumpscareSound('bear-grab');
   }
 
-  private playOfficeDoorToggleSound(doorId: 'left' | 'right', open: boolean): void {
-    const recordingId = open ? OFFICE_DOOR_OPEN_SOUND_RECORDING_ID : OFFICE_DOOR_CLOSE_SOUND_RECORDING_ID;
-    const recording = this.getMicrophoneSoundRecordingById(recordingId);
+  private playOfficeDoorToggleSound(_doorId: 'left' | 'right', open: boolean): void {
     this.stopOfficeDoorSound();
-
-    if (!recording) {
-      this.gameplaySfxAudio.playSecurityDoor(open);
-      return;
-    }
-
-    const audio = new Audio(recording.dataUrl);
-    audio.volume = 1;
-    audio.loop = true;
-    this.officeDoorSoundPlayback = audio;
-    this.officeDoorSoundTarget = { doorId, open };
-    void audio.play().catch(() => {
-      if (this.officeDoorSoundPlayback === audio) {
-        this.stopOfficeDoorSound();
-      }
-      this.gameplaySfxAudio.playSecurityDoor(open);
-    });
+    this.gameplaySfxAudio.playSecurityDoor(open);
   }
 
   private updateOfficeDoorSoundPlayback(): void {

@@ -2206,6 +2206,144 @@ function createPirateCoveCarpetMaterial(repeatX: number, repeatZ: number): MeshS
   });
 }
 
+function createPirateCoveWallpaperMaterial(repeatX: number, repeatY: number): MeshStandardMaterial {
+  if (typeof document === 'undefined') {
+    return new MeshStandardMaterial({
+      color: 0x5aa5dc,
+      roughness: 0.82,
+      metalness: 0.01,
+      side: DoubleSide,
+    });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const context = canvas.getContext('2d');
+  if (context) {
+    const sky = context.createLinearGradient(0, 0, 0, 132);
+    sky.addColorStop(0, '#75c9ff');
+    sky.addColorStop(1, '#c8ecff');
+    context.fillStyle = sky;
+    context.fillRect(0, 0, canvas.width, 132);
+
+    const water = context.createLinearGradient(0, 132, 0, canvas.height);
+    water.addColorStop(0, '#1f79bd');
+    water.addColorStop(1, '#0c2f65');
+    context.fillStyle = water;
+    context.fillRect(0, 132, canvas.width, 124);
+    context.strokeStyle = 'rgba(255, 255, 255, 0.38)';
+    context.lineWidth = 3;
+    for (let waveY = 154; waveY < 244; waveY += 24) {
+      context.beginPath();
+      for (let x = -18; x <= canvas.width + 18; x += 18) {
+        context.lineTo(x, waveY + Math.sin((x + waveY) * 0.045) * 5);
+      }
+      context.stroke();
+    }
+
+    const drawIsland = (x: number, y: number, scale: number, chest: boolean): void => {
+      context.fillStyle = '#d9b35d';
+      context.beginPath();
+      context.ellipse(x, y, 48 * scale, 16 * scale, 0, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#7a4a1d';
+      context.fillRect(x - 4 * scale, y - 55 * scale, 7 * scale, 58 * scale);
+      context.strokeStyle = '#5f3916';
+      context.lineWidth = 2 * scale;
+      context.beginPath();
+      context.moveTo(x, y - 32 * scale);
+      context.lineTo(x - 34 * scale, y - 58 * scale);
+      context.moveTo(x, y - 35 * scale);
+      context.lineTo(x + 36 * scale, y - 62 * scale);
+      context.stroke();
+      context.fillStyle = '#1c8c46';
+      [-33, -12, 13, 35].forEach((leafOffset, index) => {
+        context.beginPath();
+        context.ellipse(
+          x + leafOffset * scale,
+          y - (58 + (index % 2) * 4) * scale,
+          22 * scale,
+          7 * scale,
+          leafOffset < 0 ? -0.35 : 0.35,
+          0,
+          Math.PI * 2,
+        );
+        context.fill();
+      });
+      if (!chest) {
+        return;
+      }
+      context.fillStyle = '#6b3819';
+      context.fillRect(x + 16 * scale, y - 18 * scale, 24 * scale, 15 * scale);
+      context.fillStyle = '#9b5726';
+      context.beginPath();
+      context.arc(x + 28 * scale, y - 18 * scale, 12 * scale, Math.PI, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#ffd44f';
+      context.fillRect(x + 19 * scale, y - 11 * scale, 18 * scale, 5 * scale);
+      context.fillStyle = '#5fe2ff';
+      context.beginPath();
+      context.arc(x + 42 * scale, y - 5 * scale, 3 * scale, 0, Math.PI * 2);
+      context.arc(x + 9 * scale, y - 6 * scale, 2.4 * scale, 0, Math.PI * 2);
+      context.fill();
+    };
+
+    const drawShip = (x: number, y: number, scale: number): void => {
+      context.fillStyle = '#5a2f18';
+      context.beginPath();
+      context.moveTo(x - 54 * scale, y);
+      context.lineTo(x + 52 * scale, y);
+      context.lineTo(x + 34 * scale, y + 22 * scale);
+      context.lineTo(x - 36 * scale, y + 22 * scale);
+      context.closePath();
+      context.fill();
+      context.strokeStyle = '#2e170b';
+      context.lineWidth = 3 * scale;
+      context.beginPath();
+      context.moveTo(x, y - 72 * scale);
+      context.lineTo(x, y + 3 * scale);
+      context.stroke();
+      context.fillStyle = '#f4e4c6';
+      context.beginPath();
+      context.moveTo(x + 3 * scale, y - 68 * scale);
+      context.lineTo(x + 3 * scale, y - 18 * scale);
+      context.lineTo(x + 42 * scale, y - 32 * scale);
+      context.closePath();
+      context.fill();
+      context.fillStyle = '#171717';
+      context.fillRect(x - 20 * scale, y - 58 * scale, 18 * scale, 15 * scale);
+    };
+
+    drawIsland(96, 142, 0.75, true);
+    drawShip(250, 143, 0.72);
+    drawIsland(408, 150, 0.68, false);
+    drawShip(462, 108, 0.44);
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.needsUpdate = true;
+
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.78,
+    metalness: 0.01,
+    side: DoubleSide,
+  });
+}
+
+function createPirateCoveWallpaperPanel(width: number, height: number, repeatX: number): Mesh {
+  const panel = new Mesh(
+    new PlaneGeometry(width, height),
+    createPirateCoveWallpaperMaterial(repeatX, 1),
+  );
+  panel.receiveShadow = false;
+  return panel;
+}
+
 const PRIZE_WHEEL_PRIZES = [
   'Stuffie',
   'Glass Cup',
@@ -6326,6 +6464,34 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   root.add(secondPartyWallResult.root);
   colliders.push(...secondPartyWallResult.colliders);
 
+  const wallpaperHeight = WALL_HEIGHT - 0.72;
+  const wallpaperY = 0.46 + wallpaperHeight / 2;
+  const wallpaperInset = 0.018;
+  const southWallpaper = createPirateCoveWallpaperPanel(SECOND_PARTY_ROOM_WIDTH - WALL_THICKNESS * 2, wallpaperHeight, 3.4);
+  southWallpaper.position.set(secondRoomCenterX, wallpaperY, secondRoomMinZ + WALL_THICKNESS + wallpaperInset);
+  const northWallpaper = createPirateCoveWallpaperPanel(SECOND_PARTY_ROOM_WIDTH - WALL_THICKNESS * 2, wallpaperHeight, 3.4);
+  northWallpaper.position.set(secondRoomCenterX, wallpaperY, secondRoomMaxZ - WALL_THICKNESS - wallpaperInset);
+  northWallpaper.rotation.y = Math.PI;
+  const eastWallpaper = createPirateCoveWallpaperPanel(SECOND_PARTY_ROOM_DEPTH - WALL_THICKNESS * 2, wallpaperHeight, 2.8);
+  eastWallpaper.position.set(secondRoomMaxX - WALL_THICKNESS - wallpaperInset, wallpaperY, secondRoomCenterZ);
+  eastWallpaper.rotation.y = -Math.PI / 2;
+  root.add(southWallpaper, northWallpaper, eastWallpaper);
+
+  ([
+    [secondRoomMinZ + WALL_THICKNESS, secondHallOpeningMinZ],
+    [secondHallOpeningMaxZ, secondRoomMaxZ - WALL_THICKNESS],
+  ] as Array<[number, number]>).forEach(([startZ, endZ]) => {
+    const width = endZ - startZ;
+    if (width <= 0.2) {
+      return;
+    }
+
+    const westWallpaper = createPirateCoveWallpaperPanel(width, wallpaperHeight, Math.max(0.8, width / 4.4));
+    westWallpaper.position.set(secondRoomMinX + WALL_THICKNESS + wallpaperInset, wallpaperY, startZ + width / 2);
+    westWallpaper.rotation.y = Math.PI / 2;
+    root.add(westWallpaper);
+  });
+
   const stageMaterial = new MeshStandardMaterial({
     color: 0x3d2730,
     emissive: 0x17050a,
@@ -8794,14 +8960,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }
   };
 
-  [-3.45, -1.15, 1.15, 3.45].forEach((zOffset) => {
-    const table = {
-      x: secondRoomCenterX - 4.85,
-      z: secondRoomCenterZ + zOffset,
-      rotationY: Math.PI / 2,
-    };
+  [
+    { x: secondRoomMaxX - 5.75, z: secondRoomCenterZ - 0.05, rotationY: 0 },
+    { x: secondRoomMaxX - 9.72, z: secondRoomCenterZ - 2.35, rotationY: 0 },
+    { x: secondRoomMaxX - 9.72, z: secondRoomCenterZ + 2.15, rotationY: 0 },
+  ].forEach((table) => {
     root.add(createPartyTable(table.x, table.z, table.rotationY));
-    addCollider(colliders, table.x, table.z, 1.58, 3.45);
+    addCollider(colliders, table.x, table.z, 3.45, 1.58);
   });
 
   [
