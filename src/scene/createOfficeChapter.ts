@@ -443,7 +443,6 @@ export interface OfficeChapterData {
 interface OfficeChapterOptions {
   abandonedStraightHalls?: boolean;
   sandboxQuackyDesign?: boolean;
-  onGoldenBoriStomp?: () => void;
 }
 
 const OFFICE_CENTER_X = -240;
@@ -526,11 +525,6 @@ interface StageCollisionRefs {
   animatronic: StageAnimatronicRefs;
   body: CollisionBox;
   drumKit?: CollisionBox;
-}
-
-interface GoldenBoriPerformer extends StageAnimatronicRefs {
-  shockwave: Mesh;
-  shockwaveMaterial: MeshBasicMaterial;
 }
 
 export interface OfficeJumpscareStageModel {
@@ -5691,23 +5685,23 @@ function createStageAnimatronic(
   };
 }
 
-function createGoldenBoriPerformer(x: number, y: number, z: number, floorY: number): GoldenBoriPerformer {
-  const performer = createStageAnimatronic('bear', x, y, z, false, false) as GoldenBoriPerformer;
-  performer.root.scale.set(1.5, 1.54, 1.5);
+function createGoldenBoriPerformer(x: number, y: number, z: number): StageAnimatronicRefs {
+  const performer = createStageAnimatronic('bear', x, y, z, false, false);
+  performer.root.scale.set(1.34, 1.36, 1.34);
 
   const goldMaterial = new MeshStandardMaterial({
-    color: 0xd7a52b,
-    emissive: 0x2a1500,
-    emissiveIntensity: 0.15,
-    roughness: 0.34,
-    metalness: 0.58,
+    color: 0xf0b93a,
+    emissive: 0x321a00,
+    emissiveIntensity: 0.18,
+    roughness: 0.22,
+    metalness: 0.86,
   });
   const darkGoldMaterial = new MeshStandardMaterial({
-    color: 0x8d651b,
-    emissive: 0x180b00,
-    emissiveIntensity: 0.12,
-    roughness: 0.38,
-    metalness: 0.7,
+    color: 0xa9791c,
+    emissive: 0x1e0f00,
+    emissiveIntensity: 0.14,
+    roughness: 0.24,
+    metalness: 0.9,
   });
   const shadowMaterial = new MeshStandardMaterial({
     color: 0x080605,
@@ -5762,20 +5756,6 @@ function createGoldenBoriPerformer(x: number, y: number, z: number, floorY: numb
   browFrame.position.set(0, 0.14, -0.485);
   browFrame.rotation.x = -0.05;
   performer.head.add(bridge, browFrame);
-
-  const shockwaveMaterial = new MeshBasicMaterial({
-    color: 0xffd166,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    side: DoubleSide,
-  });
-  const shockwave = new Mesh(new CircleGeometry(0.72, 36), shockwaveMaterial);
-  shockwave.rotation.x = -Math.PI / 2;
-  shockwave.position.set(x, floorY + 0.018, z + 0.14);
-  shockwave.visible = false;
-  performer.shockwave = shockwave;
-  performer.shockwaveMaterial = shockwaveMaterial;
 
   return performer;
 }
@@ -6942,9 +6922,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     kitchenHallRoomCenterX,
     kitchenHallRoomStageHeight + PARTY_STAGE_ANIMATRONIC_FOOT_LIFT,
     kitchenHallRoomStageZ + 0.18,
-    kitchenHallRoomStageHeight,
   );
-  root.add(goldenBori.root, goldenBori.shockwave);
+  root.add(goldenBori.root);
   addCollider(colliders, kitchenHallRoomCenterX, kitchenHallRoomStageZ + 0.18, 1.78, 1.45);
   root.add(createFoosballTable(-218.34, 125.89, 0));
   addCollider(colliders, -218.34, 125.89, 3.9, 2.25);
@@ -10222,9 +10201,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const partyLocalTarget = new Vector3();
   const partyShowReturnStartPosition = new Vector3();
   let partyShowReturnStartRotationY = Math.PI;
-  let goldenBoriStompTime = 0;
-  let goldenBoriStepIndex = -1;
-  let goldenBoriShockwaveTime = 1;
   let basketballThrowActive = false;
   let basketballThrowTime = 0;
   let basketballThrowScored = false;
@@ -10762,37 +10738,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     animatronic.root.rotation.z = Math.sin(walkTime) * 0.035 * strength;
   };
 
-  const updateGoldenBoriPerformer = (deltaSeconds: number): void => {
-    goldenBoriStompTime += deltaSeconds;
-    const walkTime = goldenBoriStompTime * 3.85;
-    animateLegWalkCycle(goldenBori, walkTime, 1.08);
-
-    const stompIndex = Math.floor(walkTime / Math.PI);
-    if (stompIndex !== goldenBoriStepIndex) {
-      goldenBoriStepIndex = stompIndex;
-      goldenBoriShockwaveTime = 0;
-      options.onGoldenBoriStomp?.();
-    }
-
-    const leftSwing = Math.sin(walkTime + Math.PI);
-    const rightSwing = Math.sin(walkTime);
-    goldenBori.leftArm.root.rotation.x = -0.08 + leftSwing * 0.34;
-    goldenBori.leftArm.root.rotation.z = -0.14 + Math.max(0, -leftSwing) * 0.1;
-    goldenBori.leftArm.joint.rotation.x = 0.08 + Math.max(0, leftSwing) * 0.26;
-    goldenBori.rightArm.root.rotation.x = -0.08 + rightSwing * 0.34;
-    goldenBori.rightArm.root.rotation.z = 0.14 - Math.max(0, -rightSwing) * 0.1;
-    goldenBori.rightArm.joint.rotation.x = 0.08 + Math.max(0, rightSwing) * 0.26;
-    goldenBori.head.rotation.y = Math.sin(goldenBoriStompTime * 1.6) * 0.16;
-    goldenBori.head.rotation.x = -0.03 + Math.sin(goldenBoriStompTime * 3.2) * 0.045;
-
-    goldenBoriShockwaveTime += deltaSeconds;
-    const shockProgress = MathUtils.clamp(goldenBoriShockwaveTime / 0.52, 0, 1);
-    const shockVisible = shockProgress < 1;
-    goldenBori.shockwave.visible = shockVisible;
-    goldenBori.shockwave.scale.setScalar(0.45 + shockProgress * 2.8);
-    goldenBori.shockwaveMaterial.opacity = shockVisible ? (1 - shockProgress) * 0.28 : 0;
-  };
-
   const updateBathroomFixtures = (deltaSeconds: number): void => {
     const blend = 1 - Math.exp(-9.5 * deltaSeconds);
     bathroomEntranceDoor.openAmount = MathUtils.lerp(
@@ -11283,7 +11228,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       });
     }
 
-    updateGoldenBoriPerformer(deltaSeconds);
     updateBasketballThrow(deltaSeconds);
     updateFoxyPlay(deltaSeconds);
     updateFoxyStory(deltaSeconds);
@@ -11299,13 +11243,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     partyShowReturning = false;
     partyShowReturnTime = 0;
     partyHeadTarget = null;
-    goldenBoriStompTime = 0;
-    goldenBoriStepIndex = -1;
-    goldenBoriShockwaveTime = 1;
     goldenBori.root.position.copy(goldenBori.homePosition);
     goldenBori.root.rotation.set(0, goldenBori.homeRotationY, 0);
-    goldenBori.shockwave.visible = false;
-    goldenBori.shockwaveMaterial.opacity = 0;
     securityCameraTime = 0;
     visualUpdateTimer = 0;
     securityCameras.forEach((securityCamera) => {
