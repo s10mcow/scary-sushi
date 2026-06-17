@@ -8961,12 +8961,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
 
   [
-    { x: secondRoomMaxX - 5.42, z: secondRoomCenterZ + 0.45, rotationY: 0 },
-    { x: secondRoomMaxX - 9.39, z: secondRoomCenterZ - 1.85, rotationY: 0 },
-    { x: secondRoomMaxX - 9.39, z: secondRoomCenterZ + 2.65, rotationY: 0 },
+    { x: secondRoomMaxX - 5.42, z: secondRoomCenterZ + 0.45, rotationY: Math.PI / 2 },
+    { x: secondRoomMaxX - 9.39, z: secondRoomCenterZ - 1.85, rotationY: Math.PI / 2 },
+    { x: secondRoomMaxX - 9.39, z: secondRoomCenterZ + 2.65, rotationY: Math.PI / 2 },
   ].forEach((table) => {
     root.add(createPartyTable(table.x, table.z, table.rotationY));
-    addCollider(colliders, table.x, table.z, 3.45, 1.58);
+    addCollider(colliders, table.x, table.z, 1.58, 3.45);
   });
 
   [
