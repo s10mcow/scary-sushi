@@ -2304,7 +2304,7 @@ function createQuackyCardboardStandee(x: number, z: number, rotationY: number): 
   return root;
 }
 
-function createPartyRoomCheckeredFloorMaterial(): MeshStandardMaterial {
+function createPartyRoomCheckeredFloorMaterial(repeatX = 9, repeatZ = 5.25): MeshStandardMaterial {
   if (typeof document === 'undefined') {
     return new MeshStandardMaterial({
       color: 0xd8d8d8,
@@ -2330,7 +2330,7 @@ function createPartyRoomCheckeredFloorMaterial(): MeshStandardMaterial {
   const texture = new CanvasTexture(canvas);
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.repeat.set(9, 5.25);
+  texture.repeat.set(repeatX, repeatZ);
   texture.needsUpdate = true;
 
   return new MeshStandardMaterial({
@@ -2338,6 +2338,19 @@ function createPartyRoomCheckeredFloorMaterial(): MeshStandardMaterial {
     roughness: 0.66,
     metalness: 0.08,
   });
+}
+
+function createPizzeriaCheckeredFloor(width: number, depth: number, centerX: number, centerZ: number, inset = 0): Mesh {
+  const floorWidth = Math.max(0.2, width - inset * 2);
+  const floorDepth = Math.max(0.2, depth - inset * 2);
+  const floor = new Mesh(
+    new PlaneGeometry(floorWidth, floorDepth),
+    createPartyRoomCheckeredFloorMaterial(floorWidth / 4, floorDepth / 4),
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(centerX, 0.007, centerZ);
+  floor.receiveShadow = true;
+  return floor;
 }
 
 function createPirateCoveCarpetMaterial(repeatX: number, repeatZ: number): MeshStandardMaterial {
@@ -5965,6 +5978,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ceilingHeight: WALL_HEIGHT,
   };
   root.add(createFloor(floor, materials));
+  root.add(createPizzeriaCheckeredFloor(OFFICE_WIDTH, OFFICE_DEPTH, OFFICE_CENTER_X, OFFICE_CENTER_Z, WALL_THICKNESS));
 
   const halfWidth = OFFICE_WIDTH / 2;
   const halfDepth = OFFICE_DEPTH / 2;
@@ -6141,6 +6155,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       center: hallFloor.center,
       ceilingHeight: WALL_HEIGHT,
     }, materials));
+    root.add(createPizzeriaCheckeredFloor(
+      hallFloor.width,
+      hallFloor.depth,
+      hallFloor.center[0],
+      hallFloor.center[1],
+      0.12,
+    ));
   });
 
   const hallWalls: WallDefinition[] = abandonedStraightHalls
@@ -6495,18 +6516,21 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     center: [northPartyHallCenterX, northPartyHallCenterZ],
     ceilingHeight: WALL_HEIGHT,
   }, materials));
+  root.add(createPizzeriaCheckeredFloor(northPartyHallWidth, northPartyHallLength, northPartyHallCenterX, northPartyHallCenterZ, 0.12));
   root.add(createFloor({
     width: kitchenDepth,
     depth: kitchenWidth,
     center: [kitchenCenterX, kitchenCenterZ],
     ceilingHeight: WALL_HEIGHT,
   }, materials));
+  root.add(createPizzeriaCheckeredFloor(kitchenDepth, kitchenWidth, kitchenCenterX, kitchenCenterZ, WALL_THICKNESS));
   root.add(createFloor({
     width: northPartySideRoomWidth,
     depth: northPartySideRoomDepth,
     center: [northPartySideRoomCenterX, northPartySideRoomCenterZ],
     ceilingHeight: BALL_PIT_ROOM_HEIGHT,
   }, materials));
+  root.add(createPizzeriaCheckeredFloor(northPartySideRoomWidth, northPartySideRoomDepth, northPartySideRoomCenterX, northPartySideRoomCenterZ, WALL_THICKNESS));
 
   const northPartyHallWalls: WallDefinition[] = [
     {
@@ -6658,6 +6682,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       ceilingHeight: WALL_HEIGHT,
     }, materials),
   );
+  root.add(
+    createPizzeriaCheckeredFloor(backstageHallWidth, backstageHallLength, backstageHallCenterX, backstageHallCenterZ, 0.12),
+    createPizzeriaCheckeredFloor(backstageStorageWidth, backstageStorageDepth, backstageStorageCenterX, backstageStorageCenterZ, WALL_THICKNESS),
+    createPizzeriaCheckeredFloor(
+      abandonedStraightHalls ? storageClosetWidth : storageClosetDepth,
+      abandonedStraightHalls ? storageClosetDepth : storageClosetWidth,
+      storageClosetCenterX,
+      storageClosetCenterZ,
+      WALL_THICKNESS,
+    ),
+    createPizzeriaCheckeredFloor(bathroomHallLength, bathroomHallWidth, bathroomHallCenterX, bathroomEntryCenterZ, 0.12),
+    createPizzeriaCheckeredFloor(bathroomRoomWidth, bathroomRoomDepth, bathroomRoomCenterX, womenBathroomCenterZ, WALL_THICKNESS),
+    createPizzeriaCheckeredFloor(bathroomRoomWidth, bathroomRoomDepth, bathroomRoomCenterX, menBathroomCenterZ, WALL_THICKNESS),
+  );
   if (backstageHallExtensionLength > 0.05) {
     root.add(createFloor({
       width: backstageHallWidth,
@@ -6665,6 +6703,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       center: [backstageHallCenterX, backstageHallExtensionCenterZ],
       ceilingHeight: WALL_HEIGHT,
     }, materials));
+    root.add(createPizzeriaCheckeredFloor(
+      backstageHallWidth,
+      backstageHallExtensionLength,
+      backstageHallCenterX,
+      backstageHallExtensionCenterZ,
+      0.12,
+    ));
   }
   if (!abandonedStraightHalls) {
     const employeeRoomFloor = new Group();
@@ -6690,6 +6735,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       floorSegment.position.set((minX + maxX) / 2, 0, (minZ + maxZ) / 2);
       floorSegment.receiveShadow = true;
       employeeRoomFloor.add(floorSegment);
+      employeeRoomFloor.add(createPizzeriaCheckeredFloor(width, depth, (minX + maxX) / 2, (minZ + maxZ) / 2));
     };
 
     addEmployeeFloorSegment(employeeRoomMinX, openingMinX, employeeRoomMinZ, employeeRoomMaxZ);
