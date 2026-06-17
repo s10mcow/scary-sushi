@@ -1317,6 +1317,8 @@ export class Game {
         if (
           !this.officeChapterActive
           || this.officeChapter !== this.mainOfficeChapter
+          || !this.officeGameModeActive
+          || (this.officeMode === 'game' && !this.officeGameModeNightPhase)
           || this.activeOfficeJumpscare
           || this.officeDeathNoticePhase
           || this.officeFoxyKnockdownTimer > 0
@@ -2963,6 +2965,7 @@ export class Game {
         this.player.getPosition(),
         this.officePlayerVoiceLevel,
         this.officeInsultHeardTimer > 0,
+        this.officeGameModeActive && (this.officeMode !== 'game' || this.officeGameModeNightPhase),
       );
       this.updateOfficeDoorSoundPlayback();
       this.updateOfficeDoorSparks(deltaSeconds);

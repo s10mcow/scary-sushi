@@ -439,7 +439,13 @@ export interface OfficeChapterData {
   isPartyShowActive(): boolean;
   isPartyShowMusicActive(): boolean;
   getPartyShowMusicTime(): number;
-  update(deltaSeconds: number, playerPosition?: Vector3, playerVoiceLevel?: number, provocativeSpeech?: boolean): void;
+  update(
+    deltaSeconds: number,
+    playerPosition?: Vector3,
+    playerVoiceLevel?: number,
+    provocativeSpeech?: boolean,
+    goldenBoriRoamAllowed?: boolean,
+  ): void;
   resetGoldenBori(): void;
   reset(): void;
 }
@@ -11375,6 +11381,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     playerPosition?: Vector3,
     playerVoiceLevel = 0,
     provocativeSpeech = false,
+    goldenBoriRoamAllowed = true,
   ): void => {
     visualUpdateTimer += deltaSeconds;
     const runVisualUpdate = visualUpdateTimer >= OFFICE_VISUAL_UPDATE_INTERVAL;
@@ -11636,7 +11643,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       });
     }
 
-    updateGoldenBoriWander(deltaSeconds, playerPosition, playerVoiceLevel, provocativeSpeech);
+    if (goldenBoriRoamAllowed) {
+      updateGoldenBoriWander(deltaSeconds, playerPosition, playerVoiceLevel, provocativeSpeech);
+    } else {
+      resetGoldenBori();
+    }
     updateBasketballThrow(deltaSeconds);
     updateFoxyPlay(deltaSeconds);
     updateFoxyStory(deltaSeconds);
