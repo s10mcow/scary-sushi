@@ -27,10 +27,13 @@ import { GAME_CONFIG } from '../config/gameConfig';
 import { createFloor } from './createFloor';
 import { createLevelMaterials } from './materials';
 import { createWalls } from './createWalls';
+import { isBlocked } from '../systems/collision/isBlocked';
 
 const OFFICE_ZERO_VECTOR = new Vector3(0, 0, 0);
 const OFFICE_VISUAL_UPDATE_INTERVAL = 1 / 12;
 const OFFICE_SECURITY_CAMERA_SCAN_LIGHTS_ENABLED = false;
+const GOLDEN_BORI_COLLISION_RADIUS = 0.62;
+const GOLDEN_BORI_PATH_SAMPLE_DISTANCE = 0.46;
 
 export interface OfficeChapterSeat {
   label: string;
@@ -10212,13 +10215,52 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let partyShowReturnStartRotationY = Math.PI;
   const goldenBoriWanderPoints = [
     new Vector3(kitchenHallRoomCenterX, 0, kitchenHallRoomStageZ + 0.18),
-    new Vector3(kitchenHallRoomMaxX - 2.25, 0, kitchenHallRoomNorthZ + 8.45),
-    new Vector3(kitchenHallRoomMaxX - 2.05, 0, 115.05),
-    new Vector3(kitchenHallRoomMaxX - 3.35, 0, 124.75),
-    new Vector3(kitchenHallRoomCenterX + 2.2, 0, kitchenHallRoomSouthZ - 3.15),
-    new Vector3(kitchenHallRoomMinX + 2.45, 0, kitchenHallRoomSouthZ - 3.35),
-    new Vector3(kitchenHallRoomMinX + 2.35, 0, 115.05),
-    new Vector3(kitchenHallRoomCenterX - 4.85, 0, kitchenHallRoomNorthZ + 8.45),
+    new Vector3(kitchenHallRoomCenterX + 2.2, 0, kitchenHallRoomCenterZ),
+    new Vector3(northPartyHallCenterX, 0, northPartyHallNorthZ + 2.35),
+    new Vector3(northPartyHallCenterX, 0, northPartyHallCenterZ),
+    new Vector3(northPartyHallCenterX, 0, partyRoomNorthZ - 1.55),
+    new Vector3(partyRoomCenterX, 0, partyRoomCenterZ),
+    new Vector3(partyRoomCenterX, 0, partyRoomNorthZ + 2.9),
+    new Vector3(secondHallCenterX, 0, secondHallCenterZ),
+    new Vector3(secondRoomCenterX, 0, secondRoomCenterZ),
+    new Vector3(backstageHallCenterX, 0, backstageHallCenterZ),
+    new Vector3(backstageStorageCenterX, 0, backstageStorageCenterZ),
+    new Vector3(storageClosetCenterX, 0, storageClosetCenterZ),
+    new Vector3(bathroomHallCenterX, 0, bathroomEntryCenterZ),
+    new Vector3(bathroomRoomCenterX, 0, menBathroomCenterZ),
+    new Vector3(bathroomRoomCenterX, 0, womenBathroomCenterZ),
+    new Vector3(kitchenCenterX, 0, kitchenCenterZ),
+    new Vector3(northPartySideRoomCenterX, 0, northPartySideRoomCenterZ),
+    new Vector3(leftTurnCenterX, 0, northTurnCenterZ),
+    new Vector3(leftStraightCenterX, 0, shiftedDoorZ),
+    new Vector3(rightStraightCenterX, 0, shiftedDoorZ),
+    new Vector3(rightTurnCenterX, 0, northTurnCenterZ),
+  ];
+  const goldenBoriRouteLinks: number[][] = [
+    [1],
+    [0, 2],
+    [1, 3, 15, 16],
+    [2, 4],
+    [3, 5],
+    [4, 6, 7, 9, 12, 17, 20],
+    [5],
+    [5, 8],
+    [7],
+    [5, 10, 11],
+    [9],
+    [9],
+    [5, 13, 14],
+    [12],
+    [12],
+    [2],
+    [2],
+    [5, 18],
+    [17],
+    [20],
+    [5, 19],
+  ];
+  const goldenBoriPatrolRoute = [
+    0, 1, 2, 15, 2, 16, 2, 3, 4, 5, 6, 5, 7, 8, 7, 5, 9, 10, 9, 11, 9, 5, 12, 13, 12, 14, 12, 5, 17, 18, 17, 5, 20, 19, 20, 5, 4, 3, 2, 1,
   ];
   let goldenBoriWanderIndex = 1;
   let goldenBoriWanderPause = 0.65;
@@ -10228,21 +10270,178 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let goldenBoriStepSoundIndex = -1;
   let goldenBoriCatchCooldown = 0;
   const goldenBoriChaseTarget = new Vector3();
-  const goldenBoriRoomMinX = kitchenHallRoomMinX + 1.1;
-  const goldenBoriRoomMaxX = kitchenHallRoomMaxX - 1.1;
-  const goldenBoriRoomMinZ = kitchenHallRoomNorthZ + 1.35;
-  const goldenBoriRoomMaxZ = kitchenHallRoomSouthZ - 1.1;
-  const isPlayerNearGoldenBoriRoom = (position: Vector3): boolean => (
-    position.x >= goldenBoriRoomMinX - 8
-    && position.x <= goldenBoriRoomMaxX + 8
-    && position.z >= goldenBoriRoomMinZ - 10
-    && position.z <= goldenBoriRoomMaxZ + 10
+  const goldenBoriStageFloors = [kitchenHallRoomStageFloor, stageFloor, foxStageFloor];
+  const getGoldenBoriRootY = (x: number, z: number): number => {
+    const stage = goldenBoriStageFloors.find((floor) => (
+      Math.abs(x - floor.center.x) <= floor.halfWidth
+      && Math.abs(z - floor.center.z) <= floor.halfDepth
+    ));
+    return stage
+      ? Math.max(0, stage.floorY - GAME_CONFIG.player.height) + PARTY_STAGE_ANIMATRONIC_FOOT_LIFT
+      : PARTY_STAGE_ANIMATRONIC_FOOT_LIFT;
+  };
+  const isGoldenBoriBlocked = (x: number, z: number, radius = GOLDEN_BORI_COLLISION_RADIUS): boolean => (
+    colliders.some((collider) => collider !== goldenBoriCollider && collider.enabled !== false && isBlocked(x, z, [collider], radius))
   );
-  const clampGoldenBoriTargetToRoom = (position: Vector3, target: Vector3): Vector3 => target.set(
-    MathUtils.clamp(position.x, goldenBoriRoomMinX, goldenBoriRoomMaxX),
-    0,
-    MathUtils.clamp(position.z, goldenBoriRoomMinZ, goldenBoriRoomMaxZ),
-  );
+  const canGoldenBoriStandAt = (x: number, z: number, radius = GOLDEN_BORI_COLLISION_RADIUS): boolean => !isGoldenBoriBlocked(x, z, radius);
+  const isGoldenBoriPathClear = (
+    fromX: number,
+    fromZ: number,
+    toX: number,
+    toZ: number,
+    radius = GOLDEN_BORI_COLLISION_RADIUS * 0.82,
+  ): boolean => {
+    const dx = toX - fromX;
+    const dz = toZ - fromZ;
+    const distance = Math.hypot(dx, dz);
+    const steps = Math.max(2, Math.ceil(distance / GOLDEN_BORI_PATH_SAMPLE_DISTANCE));
+    for (let index = 1; index <= steps; index += 1) {
+      const progress = index / steps;
+      if (isGoldenBoriBlocked(fromX + dx * progress, fromZ + dz * progress, radius)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  const getNearestGoldenBoriRouteIndex = (position: Vector3): number => {
+    let bestIndex = 0;
+    let bestScore = Infinity;
+    goldenBoriWanderPoints.forEach((point, index) => {
+      const distance = Math.hypot(position.x - point.x, position.z - point.z);
+      const pathPenalty = isGoldenBoriPathClear(position.x, position.z, point.x, point.z, GOLDEN_BORI_COLLISION_RADIUS * 0.58)
+        ? 0
+        : 6;
+      const score = distance + pathPenalty;
+      if (score < bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+    return bestIndex;
+  };
+  const getGoldenBoriNextRouteIndex = (fromIndex: number, toIndex: number): number => {
+    if (fromIndex === toIndex) {
+      return fromIndex;
+    }
+
+    const parents = new Array<number>(goldenBoriWanderPoints.length).fill(-1);
+    const queue = [fromIndex];
+    parents[fromIndex] = fromIndex;
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+      const current = queue[cursor];
+      if (current === toIndex) {
+        break;
+      }
+      (goldenBoriRouteLinks[current] ?? []).forEach((next) => {
+        if (parents[next] !== -1) {
+          return;
+        }
+        parents[next] = current;
+        queue.push(next);
+      });
+    }
+
+    if (parents[toIndex] === -1) {
+      return toIndex;
+    }
+
+    let routeIndex = toIndex;
+    while (parents[routeIndex] !== fromIndex && parents[routeIndex] !== routeIndex) {
+      routeIndex = parents[routeIndex];
+    }
+    return routeIndex;
+  };
+  const openGoldenBoriInteriorDoorsNear = (lookAheadX: number, lookAheadZ: number): void => {
+    const shouldOpenDoor = (door: { collider: CollisionBox; open: boolean; targetOpenAmount: number; interactPosition: Vector3 }): void => {
+      if (door.open || door.targetOpenAmount > 0.5 || door.collider.enabled === false) {
+        return;
+      }
+
+      const distanceToCollider = Math.hypot(lookAheadX - door.collider.centerX, lookAheadZ - door.collider.centerZ);
+      const distanceToInteract = Math.hypot(goldenBori.root.position.x - door.interactPosition.x, goldenBori.root.position.z - door.interactPosition.z);
+      if (Math.min(distanceToCollider, distanceToInteract) > 2.05) {
+        return;
+      }
+
+      door.targetOpenAmount = 1;
+      door.open = true;
+    };
+
+    shouldOpenDoor(kitchenEntranceDoor);
+    shouldOpenDoor(backstageStorageDoor);
+    shouldOpenDoor(storageClosetDoor);
+    shouldOpenDoor(bathroomEntranceDoor);
+    bathroomRoomDoors.forEach((door) => shouldOpenDoor(door));
+  };
+  const moveGoldenBoriToward = (target: Vector3, speed: number, deltaSeconds: number): boolean => {
+    const rootPosition = goldenBori.root.position;
+    const dx = target.x - rootPosition.x;
+    const dz = target.z - rootPosition.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance <= 0.001) {
+      return false;
+    }
+
+    const directionX = dx / distance;
+    const directionZ = dz / distance;
+    const step = Math.min(distance, speed * deltaSeconds);
+    let bestMove: { x: number; z: number; faceX: number; faceZ: number; score: number } | null = null;
+    const considerMove = (moveX: number, moveZ: number, faceX: number, faceZ: number, penalty: number): void => {
+      const faceLength = Math.hypot(faceX, faceZ);
+      if (faceLength <= 0.001) {
+        return;
+      }
+
+      const normalizedFaceX = faceX / faceLength;
+      const normalizedFaceZ = faceZ / faceLength;
+      const lookAheadX = moveX + normalizedFaceX * 0.84;
+      const lookAheadZ = moveZ + normalizedFaceZ * 0.84;
+      openGoldenBoriInteriorDoorsNear(lookAheadX, lookAheadZ);
+      if (
+        !canGoldenBoriStandAt(moveX, moveZ)
+        || !canGoldenBoriStandAt(lookAheadX, lookAheadZ, GOLDEN_BORI_COLLISION_RADIUS * 0.72)
+        || !isGoldenBoriPathClear(rootPosition.x, rootPosition.z, moveX, moveZ)
+      ) {
+        return;
+      }
+
+      const score = Math.hypot(target.x - moveX, target.z - moveZ) + penalty;
+      if (!bestMove || score < bestMove.score) {
+        bestMove = { x: moveX, z: moveZ, faceX: normalizedFaceX, faceZ: normalizedFaceZ, score };
+      }
+    };
+
+    [-0.88, -0.48, -0.22, 0, 0.22, 0.48, 0.88].forEach((angle) => {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const moveX = directionX * cos - directionZ * sin;
+      const moveZ = directionX * sin + directionZ * cos;
+      considerMove(
+        rootPosition.x + moveX * step,
+        rootPosition.z + moveZ * step,
+        moveX,
+        moveZ,
+        Math.abs(angle) * 0.24,
+      );
+    });
+    considerMove(rootPosition.x + directionX * step, rootPosition.z, directionX, 0, 0.42);
+    considerMove(rootPosition.x, rootPosition.z + directionZ * step, 0, directionZ, 0.42);
+
+    const selectedMove = bestMove as { x: number; z: number; faceX: number; faceZ: number; score: number } | null;
+    if (!selectedMove) {
+      return false;
+    }
+
+    rootPosition.x = selectedMove.x;
+    rootPosition.z = selectedMove.z;
+    goldenBori.root.rotation.y = MathUtils.lerp(
+      goldenBori.root.rotation.y,
+      Math.atan2(selectedMove.faceX, selectedMove.faceZ) + Math.PI,
+      1 - Math.exp(-deltaSeconds * 5.8),
+    );
+    goldenBori.homePosition.y = getGoldenBoriRootY(rootPosition.x, rootPosition.z);
+    return true;
+  };
   const triggerGoldenBoriStep = (): void => {
     const stepIndex = Math.floor(goldenBoriWalkTime / Math.PI);
     if (stepIndex === goldenBoriStepSoundIndex) {
@@ -10795,21 +10994,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     provocativeSpeech = false,
   ): void => {
     goldenBoriCatchCooldown = Math.max(0, goldenBoriCatchCooldown - deltaSeconds);
-    const onStage = Math.abs(goldenBori.root.position.x - kitchenHallRoomStageFloor.center.x) <= kitchenHallRoomStageFloor.halfWidth
-      && Math.abs(goldenBori.root.position.z - kitchenHallRoomStageFloor.center.z) <= kitchenHallRoomStageFloor.halfDepth;
-    goldenBori.homePosition.y = (onStage ? kitchenHallRoomStageHeight : 0) + PARTY_STAGE_ANIMATRONIC_FOOT_LIFT;
+    goldenBori.homePosition.y = getGoldenBoriRootY(goldenBori.root.position.x, goldenBori.root.position.z);
 
     if (playerPosition) {
       const dxToPlayer = playerPosition.x - goldenBori.root.position.x;
       const dzToPlayer = playerPosition.z - goldenBori.root.position.z;
       const playerDistance = Math.hypot(dxToPlayer, dzToPlayer);
-      const voiceRange = MathUtils.lerp(9, 38, MathUtils.clamp(playerVoiceLevel / 0.58, 0, 1));
+      const playerOnMainFloor = playerPosition.y > -1 && playerPosition.y < WALL_HEIGHT + 3.2;
+      const voiceRange = MathUtils.lerp(14, 78, MathUtils.clamp(playerVoiceLevel / 0.58, 0, 1));
       const heardVoice = playerVoiceLevel >= 0.12
         && playerDistance <= voiceRange
-        && isPlayerNearGoldenBoriRoom(playerPosition);
+        && playerOnMainFloor;
       const heardProvocation = provocativeSpeech
-        && playerDistance <= 42
-        && isPlayerNearGoldenBoriRoom(playerPosition);
+        && playerDistance <= 86
+        && playerOnMainFloor;
       if (heardVoice || heardProvocation) {
         goldenBoriChaseActive = true;
         goldenBoriChaseTimer = Math.max(goldenBoriChaseTimer, heardProvocation || playerVoiceLevel >= 0.48 ? 12 : 7);
@@ -10837,27 +11035,54 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       return;
     }
 
-    const target = goldenBoriChaseActive && playerPosition
-      ? clampGoldenBoriTargetToRoom(playerPosition, goldenBoriChaseTarget)
-      : goldenBoriWanderPoints[goldenBoriWanderIndex] ?? goldenBoriWanderPoints[0];
+    if (goldenBoriChaseActive && playerPosition && isGoldenBoriPathClear(
+      goldenBori.root.position.x,
+      goldenBori.root.position.z,
+      playerPosition.x,
+      playerPosition.z,
+      GOLDEN_BORI_COLLISION_RADIUS * 0.58,
+    )) {
+      goldenBoriChaseTarget.copy(playerPosition);
+      goldenBoriChaseTarget.y = 0;
+    } else if (goldenBoriChaseActive && playerPosition) {
+      const currentRouteIndex = getNearestGoldenBoriRouteIndex(goldenBori.root.position);
+      const playerRouteIndex = getNearestGoldenBoriRouteIndex(playerPosition);
+      const nextRouteIndex = getGoldenBoriNextRouteIndex(currentRouteIndex, playerRouteIndex);
+      goldenBoriChaseTarget.copy(goldenBoriWanderPoints[nextRouteIndex] ?? goldenBoriWanderPoints[currentRouteIndex] ?? goldenBori.root.position);
+    } else {
+      const patrolRouteIndex = goldenBoriPatrolRoute[goldenBoriWanderIndex] ?? goldenBoriPatrolRoute[0] ?? 0;
+      goldenBoriChaseTarget.copy(goldenBoriWanderPoints[patrolRouteIndex] ?? goldenBoriWanderPoints[0]);
+    }
+
+    const target = goldenBoriChaseTarget;
     const dx = target.x - goldenBori.root.position.x;
     const dz = target.z - goldenBori.root.position.z;
     const distance = Math.hypot(dx, dz);
 
     if (goldenBoriChaseActive) {
       goldenBoriChaseTimer = Math.max(0, goldenBoriChaseTimer - deltaSeconds);
-      if (playerPosition && isPlayerNearGoldenBoriRoom(playerPosition)) {
+      if (playerPosition && playerPosition.y > -1 && playerPosition.y < WALL_HEIGHT + 3.2) {
         const playerDistance = Math.hypot(
           playerPosition.x - goldenBori.root.position.x,
           playerPosition.z - goldenBori.root.position.z,
         );
-        if (playerDistance <= 1.05 && goldenBoriCatchCooldown <= 0) {
+        if (
+          playerDistance <= 1.05
+          && goldenBoriCatchCooldown <= 0
+          && isGoldenBoriPathClear(
+            goldenBori.root.position.x,
+            goldenBori.root.position.z,
+            playerPosition.x,
+            playerPosition.z,
+            GOLDEN_BORI_COLLISION_RADIUS * 0.45,
+          )
+        ) {
           goldenBoriCatchCooldown = 2.4;
           options.onGoldenBoriCatch?.();
         }
       }
 
-      if (goldenBoriChaseTimer <= 0 || !playerPosition || !isPlayerNearGoldenBoriRoom(playerPosition)) {
+      if (goldenBoriChaseTimer <= 0 || !playerPosition || playerPosition.y <= -1 || playerPosition.y >= WALL_HEIGHT + 3.2) {
         goldenBoriChaseActive = false;
         goldenBoriWanderPause = 0.35;
       }
@@ -10867,23 +11092,24 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       if (goldenBoriChaseActive) {
         resetAnimatronicPartsTowardHome(goldenBori, 1 - Math.exp(-deltaSeconds * 5.5));
       } else {
-        goldenBoriWanderIndex = (goldenBoriWanderIndex + 1) % goldenBoriWanderPoints.length;
+        goldenBoriWanderIndex = (goldenBoriWanderIndex + 1) % goldenBoriPatrolRoute.length;
         goldenBoriWanderPause = MathUtils.lerp(0.45, 1.25, Math.random());
       }
       return;
     }
 
     const speed = goldenBoriChaseActive ? 5.95 : 1.22;
-    const step = Math.min(distance, speed * deltaSeconds);
-    const directionX = dx / distance;
-    const directionZ = dz / distance;
-    goldenBori.root.position.x += directionX * step;
-    goldenBori.root.position.z += directionZ * step;
-    goldenBori.root.rotation.y = MathUtils.lerp(
-      goldenBori.root.rotation.y,
-      Math.atan2(directionX, directionZ) + Math.PI,
-      1 - Math.exp(-deltaSeconds * 5.2),
-    );
+    const moved = moveGoldenBoriToward(target, speed, deltaSeconds);
+    if (!moved) {
+      if (!goldenBoriChaseActive) {
+        goldenBoriWanderIndex = (goldenBoriWanderIndex + 1) % goldenBoriPatrolRoute.length;
+      }
+      goldenBoriWanderPause = goldenBoriChaseActive ? 0.12 : 0.38;
+      goldenBoriCollider.centerX = goldenBori.root.position.x;
+      goldenBoriCollider.centerZ = goldenBori.root.position.z;
+      return;
+    }
+
     goldenBoriWalkTime += deltaSeconds * (goldenBoriChaseActive ? 10.8 : 6.25);
     triggerGoldenBoriStep();
     animateLegWalkCycle(goldenBori, goldenBoriWalkTime, goldenBoriChaseActive ? 1.05 : 0.84);
