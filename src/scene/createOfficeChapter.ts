@@ -2152,6 +2152,46 @@ function createPartyRoomCheckeredFloorMaterial(): MeshStandardMaterial {
   });
 }
 
+function createPirateCoveCarpetMaterial(repeatX: number, repeatZ: number): MeshStandardMaterial {
+  if (typeof document === 'undefined') {
+    return new MeshStandardMaterial({
+      color: 0x4a1116,
+      roughness: 0.9,
+      metalness: 0.01,
+    });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  if (context) {
+    context.fillStyle = '#111111';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#7f1821';
+    context.fillRect(0, 0, 32, canvas.height);
+    context.fillRect(64, 0, 32, canvas.height);
+    context.fillStyle = 'rgba(255, 190, 120, 0.08)';
+    context.fillRect(0, 0, canvas.width, 6);
+    context.fillRect(0, 62, canvas.width, 4);
+    context.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    context.fillRect(30, 0, 4, canvas.height);
+    context.fillRect(94, 0, 4, canvas.height);
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(repeatX, repeatZ);
+  texture.needsUpdate = true;
+
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.92,
+    metalness: 0.01,
+  });
+}
+
 const PRIZE_WHEEL_PRIZES = [
   'Stuffie',
   'Glass Cup',
@@ -3234,6 +3274,73 @@ function createFoxPirateStage(x: number, z: number): Group {
   const tailTip = new Mesh(new CylinderGeometry(0.035, 0.085, 0.18, 12), bellyMaterial);
   tailTip.position.set(0, 1.16, 0.74);
   tailTip.rotation.x = -0.88;
+  const parrotRoot = new Group();
+  parrotRoot.position.set(-0.44, 1.72, -0.2);
+  parrotRoot.rotation.set(-0.12, -0.28, -0.12);
+  const parrotGreenMaterial = new MeshStandardMaterial({
+    color: 0x2fa84f,
+    emissive: 0x041b0a,
+    emissiveIntensity: 0.14,
+    roughness: 0.52,
+    metalness: 0.18,
+  });
+  const parrotBlueMaterial = new MeshStandardMaterial({
+    color: 0x2378d4,
+    emissive: 0x03132e,
+    emissiveIntensity: 0.14,
+    roughness: 0.48,
+    metalness: 0.2,
+  });
+  const parrotYellowMaterial = new MeshStandardMaterial({
+    color: 0xf0c744,
+    emissive: 0x2a1d03,
+    emissiveIntensity: 0.14,
+    roughness: 0.46,
+    metalness: 0.16,
+  });
+  const parrotMetalMaterial = new MeshStandardMaterial({
+    color: 0x8fa0a8,
+    emissive: 0x091116,
+    emissiveIntensity: 0.14,
+    roughness: 0.34,
+    metalness: 0.72,
+  });
+  const parrotEyeMaterial = new MeshBasicMaterial({ color: 0xff2720 });
+  const parrotBody = new Mesh(new SphereGeometry(0.16, 14, 10), parrotGreenMaterial);
+  parrotBody.scale.set(0.86, 1.26, 0.72);
+  parrotBody.position.y = 0.08;
+  const parrotChest = new Mesh(new SphereGeometry(0.095, 12, 8), parrotYellowMaterial);
+  parrotChest.scale.set(0.9, 1, 0.34);
+  parrotChest.position.set(0, 0.03, -0.1);
+  const parrotHead = new Mesh(new SphereGeometry(0.11, 14, 10), parrotGreenMaterial);
+  parrotHead.position.set(0, 0.29, -0.02);
+  const parrotBeak = new Mesh(new ConeGeometry(0.045, 0.12, 8), parrotYellowMaterial);
+  parrotBeak.rotation.x = Math.PI / 2;
+  parrotBeak.position.set(0, 0.28, -0.12);
+  [-0.045, 0.045].forEach((eyeX) => {
+    const eye = new Mesh(new SphereGeometry(0.016, 8, 6), parrotEyeMaterial);
+    eye.position.set(eyeX, 0.32, -0.085);
+    parrotRoot.add(eye);
+  });
+  const leftWing = new Mesh(new SphereGeometry(0.11, 12, 8), parrotBlueMaterial);
+  leftWing.scale.set(0.36, 1.12, 0.72);
+  leftWing.position.set(-0.13, 0.07, 0);
+  leftWing.rotation.z = -0.18;
+  const rightWing = leftWing.clone();
+  rightWing.position.x = 0.13;
+  rightWing.rotation.z = 0.18;
+  const tailFeathers = new Mesh(new ConeGeometry(0.08, 0.3, 4), parrotBlueMaterial);
+  tailFeathers.position.set(0, -0.14, 0.12);
+  tailFeathers.rotation.x = -0.48;
+  const neckServo = new Mesh(new CylinderGeometry(0.035, 0.04, 0.08, 10), parrotMetalMaterial);
+  neckServo.position.set(0, 0.2, -0.01);
+  [-0.055, 0.055].forEach((footX) => {
+    const foot = new Mesh(new CylinderGeometry(0.012, 0.014, 0.12, 8), parrotMetalMaterial);
+    foot.rotation.x = Math.PI / 2;
+    foot.position.set(footX, -0.12, -0.02);
+    parrotRoot.add(foot);
+  });
+  parrotRoot.add(parrotBody, parrotChest, parrotHead, parrotBeak, leftWing, rightWing, tailFeathers, neckServo);
   foxRoot.add(
     body,
     belly,
@@ -3244,6 +3351,7 @@ function createFoxPirateStage(x: number, z: number): Group {
     rightLeg.root,
     tail,
     tailTip,
+    parrotRoot,
   );
   root.userData.foxyParts = {
     foxRoot,
@@ -6145,6 +6253,21 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       ceilingHeight: WALL_HEIGHT,
     }, materials),
   );
+  const pirateHallCarpet = new Mesh(
+    new PlaneGeometry(SECOND_PARTY_HALL_LENGTH - 0.42, SECOND_PARTY_HALL_WIDTH - 0.72),
+    createPirateCoveCarpetMaterial(6, 2),
+  );
+  pirateHallCarpet.rotation.x = -Math.PI / 2;
+  pirateHallCarpet.position.set(secondHallCenterX, 0.008, secondHallCenterZ);
+  pirateHallCarpet.receiveShadow = true;
+  const pirateCoveCarpet = new Mesh(
+    new PlaneGeometry(SECOND_PARTY_ROOM_WIDTH - WALL_THICKNESS * 2, SECOND_PARTY_ROOM_DEPTH - WALL_THICKNESS * 2),
+    createPirateCoveCarpetMaterial(8, 6),
+  );
+  pirateCoveCarpet.rotation.x = -Math.PI / 2;
+  pirateCoveCarpet.position.set(secondRoomCenterX, 0.008, secondRoomCenterZ);
+  pirateCoveCarpet.receiveShadow = true;
+  root.add(pirateHallCarpet, pirateCoveCarpet);
   const secondPartyWalls: WallDefinition[] = [
     {
       position: [secondHallCenterX, WALL_HEIGHT / 2, secondHallOpeningMinZ + WALL_THICKNESS / 2],

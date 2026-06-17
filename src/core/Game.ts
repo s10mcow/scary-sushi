@@ -105,7 +105,7 @@ import { VoiceInputController } from '../systems/input/VoiceInputController';
 import { BearJumpScareAudio } from '../systems/audio/BearJumpScareAudio';
 import { CoffeeMachineAudio } from '../systems/audio/CoffeeMachineAudio';
 import { GameplaySfxAudio, type OfficeJumpscareCue } from '../systems/audio/GameplaySfxAudio';
-import { FOXY_PLAY_LINE, FoxyPlayAudio } from '../systems/audio/FoxyPlayAudio';
+import { FOXY_PLAY_FOXY_LINE, FOXY_PLAY_PARROT_LINE, FoxyPlayAudio, type FoxyPlaySpeaker } from '../systems/audio/FoxyPlayAudio';
 import { LobbyCrashAudio } from '../systems/audio/LobbyCrashAudio';
 import { PartyShowAudio } from '../systems/audio/PartyShowAudio';
 import { PowerEventAudio } from '../systems/audio/PowerEventAudio';
@@ -17067,8 +17067,8 @@ export class Game {
 
       if (foxyPlay) {
         return this.officeChapter.isFoxyPlayActive()
-          ? 'Foxy is speaking and gesturing on his stage.'
-          : "Press E on Foxy's Play to start Foxy's stage speech.";
+          ? "Foxy dances on the Pirate Cove stage."
+          : "Press E on Foxy's Play to start Foxy's pirate dance.";
       }
 
       if (partyPlay) {
@@ -17833,7 +17833,7 @@ export class Game {
 
       if (foxyPlay) {
         return this.officeChapter.isFoxyPlayActive()
-          ? 'The Foxy stage curtains are open while Foxy gives his pirate greeting.'
+          ? 'The Foxy stage curtains are open while Foxy dances with his parrot.'
           : "Foxy's Play is a red wall button for the pirate fox stage.";
       }
 
@@ -20085,9 +20085,11 @@ export class Game {
     const foxyPlay = this.getNearestOfficeFoxyPlayButton();
     if (foxyPlay) {
       this.officeChapter.startFoxyPlay();
-      this.foxyPlayAudio.play();
+      const speaker: FoxyPlaySpeaker = Math.random() < 0.5 ? 'foxy' : 'parrot';
+      const line = speaker === 'foxy' ? FOXY_PLAY_FOXY_LINE : FOXY_PLAY_PARROT_LINE;
+      this.foxyPlayAudio.play(speaker);
       this.gameplaySfxAudio.playSmallPanel(false);
-      this.pushStatus(`Foxy starts a pirate dance and says: "${FOXY_PLAY_LINE}"`, 5.4);
+      this.pushStatus(`${speaker === 'foxy' ? 'Foxy' : "Foxy's parrot"} starts the pirate dance line: "${line}"`, 4.2);
       return;
     }
 

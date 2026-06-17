@@ -2,7 +2,10 @@ interface FoxyPlayAudioCtor {
   new (): AudioContext;
 }
 
-export const FOXY_PLAY_LINE = "Arr, hearties! I hope you're having a good time at Fredbear's Pizzeria. Make sure to have lots of fun.";
+export type FoxyPlaySpeaker = 'foxy' | 'parrot';
+
+export const FOXY_PLAY_FOXY_LINE = 'Hey there, kids.';
+export const FOXY_PLAY_PARROT_LINE = 'Aye aye, captain.';
 
 const FOXY_PLAY_MUSIC_DURATION = 10;
 const FOXY_PLAY_MASTER_GAIN = 0.42;
@@ -40,10 +43,10 @@ export class FoxyPlayAudio {
     void this.context.resume();
   }
 
-  play(): void {
+  play(speaker: FoxyPlaySpeaker): void {
     this.stopMusic();
     this.resume();
-    this.playSpeech();
+    this.playSpeech(speaker);
     this.playPirateMusic();
   }
 
@@ -58,7 +61,7 @@ export class FoxyPlayAudio {
     void this.context.close();
   }
 
-  private playSpeech(): void {
+  private playSpeech(speaker: FoxyPlaySpeaker): void {
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
       return;
     }
@@ -66,7 +69,7 @@ export class FoxyPlayAudio {
     const speechSynth = window.speechSynthesis;
     speechSynth.cancel();
     speechSynth.resume();
-    const utterance = new SpeechSynthesisUtterance(FOXY_PLAY_LINE);
+    const utterance = new SpeechSynthesisUtterance(speaker === 'foxy' ? FOXY_PLAY_FOXY_LINE : FOXY_PLAY_PARROT_LINE);
     const voice = selectPirateVoice(speechSynth.getVoices());
     if (voice) {
       utterance.voice = voice;
@@ -74,9 +77,9 @@ export class FoxyPlayAudio {
     } else {
       utterance.lang = 'en-GB';
     }
-    utterance.volume = 0.9;
-    utterance.rate = 0.86;
-    utterance.pitch = 0.72;
+    utterance.volume = speaker === 'foxy' ? 0.9 : 0.82;
+    utterance.rate = speaker === 'foxy' ? 0.86 : 1.14;
+    utterance.pitch = speaker === 'foxy' ? 0.72 : 1.45;
     utterance.onend = (): void => {
       if (this.activeSpeech === utterance) {
         this.activeSpeech = null;
