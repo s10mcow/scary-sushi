@@ -2130,6 +2130,170 @@ function createPartyTable(x: number, z: number, rotationY: number): Group {
   return root;
 }
 
+function createQuackyCardboardStandee(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const createFrontMaterial = (): MeshStandardMaterial => {
+    if (typeof document === 'undefined') {
+      return new MeshStandardMaterial({
+        color: 0xd79b38,
+        roughness: 0.86,
+        metalness: 0.02,
+      });
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 768;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#b87738';
+      context.strokeStyle = '#7c4c24';
+      context.lineWidth = 12;
+      context.beginPath();
+      context.roundRect(66, 44, 380, 670, 34);
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = '#fff6dd';
+      context.strokeStyle = '#402814';
+      context.lineWidth = 8;
+      context.beginPath();
+      context.roundRect(236, 70, 214, 96, 24);
+      context.fill();
+      context.stroke();
+      context.beginPath();
+      context.moveTo(282, 164);
+      context.lineTo(236, 210);
+      context.lineTo(314, 172);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = '#312019';
+      context.font = 'bold 37px Trebuchet MS, sans-serif';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText("Let's party.", 343, 118);
+
+      const drawArm = (side: -1 | 1): void => {
+        context.save();
+        context.translate(256 + side * 86, 380);
+        context.rotate(side * -0.74);
+        context.fillStyle = '#d89031';
+        context.strokeStyle = '#6c451c';
+        context.lineWidth = 8;
+        context.beginPath();
+        context.roundRect(side < 0 ? -120 : 0, -24, 120, 48, 24);
+        context.fill();
+        context.stroke();
+        context.fillStyle = '#f2c15b';
+        context.beginPath();
+        context.ellipse(side < 0 ? -134 : 134, 0, 26, 31, 0, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+        context.restore();
+      };
+      drawArm(-1);
+      drawArm(1);
+
+      context.fillStyle = '#d89031';
+      context.strokeStyle = '#6c451c';
+      context.lineWidth = 9;
+      context.beginPath();
+      context.ellipse(256, 424, 92, 146, 0, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = '#fff1b6';
+      context.beginPath();
+      context.ellipse(256, 430, 57, 91, 0, 0, Math.PI * 2);
+      context.fill();
+
+      context.fillStyle = '#d89031';
+      context.strokeStyle = '#6c451c';
+      context.lineWidth = 9;
+      context.beginPath();
+      context.ellipse(256, 250, 102, 80, 0, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = '#f2a336';
+      context.strokeStyle = '#7a4219';
+      context.lineWidth = 7;
+      context.beginPath();
+      context.ellipse(256, 272, 106, 38, 0, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+      context.strokeStyle = '#6a3514';
+      context.lineWidth = 4;
+      context.beginPath();
+      context.moveTo(166, 271);
+      context.lineTo(346, 271);
+      context.stroke();
+
+      context.fillStyle = '#151313';
+      [-34, 34].forEach((eyeX) => {
+        context.beginPath();
+        context.ellipse(256 + eyeX, 236, 12, 17, 0, 0, Math.PI * 2);
+        context.fill();
+      });
+
+      context.fillStyle = '#e3a23f';
+      context.strokeStyle = '#6c451c';
+      context.lineWidth = 7;
+      [-34, 34].forEach((footX) => {
+        context.beginPath();
+        context.ellipse(256 + footX, 588, 38, 18, 0, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+      });
+
+      context.fillStyle = 'rgba(255, 244, 203, 0.18)';
+      context.fillRect(86, 58, 16, 640);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      transparent: true,
+      roughness: 0.78,
+      metalness: 0.01,
+    });
+  };
+
+  const front = new Mesh(new PlaneGeometry(2.1, 3.15), createFrontMaterial());
+  front.position.set(0, 1.58, 0.018);
+
+  const back = new Mesh(
+    new PlaneGeometry(2.1, 3.15),
+    new MeshStandardMaterial({
+      color: 0xa56633,
+      roughness: 0.88,
+      metalness: 0.01,
+    }),
+  );
+  back.position.set(0, 1.58, -0.018);
+  back.rotation.y = Math.PI;
+
+  const baseMaterial = new MeshStandardMaterial({
+    color: 0x8d552b,
+    roughness: 0.82,
+    metalness: 0.03,
+  });
+  const base = new Mesh(new BoxGeometry(1.72, 0.14, 0.58), baseMaterial);
+  base.position.set(0, 0.07, 0);
+  const rearBrace = new Mesh(new BoxGeometry(0.16, 1.15, 0.08), baseMaterial);
+  rearBrace.position.set(0, 0.64, -0.22);
+  rearBrace.rotation.x = -0.44;
+
+  root.add(front, back, base, rearBrace);
+  return root;
+}
+
 function createPartyRoomCheckeredFloorMaterial(): MeshStandardMaterial {
   if (typeof document === 'undefined') {
     return new MeshStandardMaterial({
@@ -8885,6 +9049,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       addCollider(colliders, tableX, tableZ, 4.25, 1.88);
     });
   });
+  root.add(createQuackyCardboardStandee(-218.52, 135.53, -Math.PI / 2));
+  addCollider(colliders, -218.52, 135.53, 0.62, 1.78);
 
   const prizeWheel = createPrizeWheel(-222.02, 2, 146.89);
   root.add(prizeWheel.root);
