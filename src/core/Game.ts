@@ -20099,8 +20099,17 @@ export class Game {
     const foxyStory = this.getNearestOfficeFoxyStoryButton();
     if (foxyStory) {
       this.officeChapter.startFoxyStory();
-      this.foxyPlayAudio.playStoryNarration();
-      this.foxyPlayAudio.playStoryFightEffects();
+      this.foxyPlayAudio.playStoryNarration({
+        onSceneChange: (sceneIndex) => {
+          this.officeChapter.setFoxyStoryScene(sceneIndex);
+          if (sceneIndex === 4) {
+            this.foxyPlayAudio.playStoryFightEffects(0.55);
+          }
+        },
+        onComplete: () => {
+          this.officeChapter.finishFoxyStory();
+        },
+      });
       this.gameplaySfxAudio.playSmallPanel(false);
       this.pushStatus("Pirate Foxy's wooden puppet show begins behind the stage.", 4.2);
       return;

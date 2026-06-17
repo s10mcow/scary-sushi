@@ -425,6 +425,8 @@ export interface OfficeChapterData {
   startPartyShow(playerPosition?: Vector3): void;
   startFoxyPlay(action?: OfficeChapterFoxyPlayAction): void;
   startFoxyStory(): void;
+  setFoxyStoryScene(sceneIndex: number): void;
+  finishFoxyStory(): void;
   startBasketballThrow(scored: boolean, targetHoop: 'left' | 'right', throwStartWorldPosition?: Vector3): void;
   setBasketballHeld(held: boolean): void;
   isBasketballThrowActive(): boolean;
@@ -9788,6 +9790,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let foxyPlayAction: OfficeChapterFoxyPlayAction = 'foxy';
   let foxyStoryActive = false;
   let foxyStoryTime = 0;
+  let foxyStorySceneIndex = 0;
+  let foxyStorySceneTime = 0;
 
   const startFoxyPlay = (action: OfficeChapterFoxyPlayAction = 'foxy'): void => {
     foxyPlayActive = true;
@@ -9804,6 +9808,21 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     foxyPlayTime = 0;
     foxyStoryActive = true;
     foxyStoryTime = 0;
+    foxyStorySceneIndex = 0;
+    foxyStorySceneTime = 0;
+  };
+
+  const setFoxyStoryScene = (sceneIndex: number): void => {
+    foxyStoryActive = true;
+    foxyStorySceneIndex = MathUtils.clamp(Math.floor(sceneIndex), 0, FOXY_STORY_SCENE_DURATIONS.length - 1);
+    foxyStorySceneTime = 0;
+  };
+
+  const finishFoxyStory = (): void => {
+    foxyStoryActive = false;
+    foxyStoryTime = 0;
+    foxyStorySceneIndex = 0;
+    foxyStorySceneTime = 0;
   };
 
   const isFoxyStoryActive = (): boolean => foxyStoryActive;
@@ -10026,27 +10045,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
     if (!foxyStoryActive) {
       storyRoot.visible = false;
+      if (parts?.foxRoot) {
+        parts.foxRoot.visible = true;
+      }
       return;
     }
 
     foxyStoryTime += deltaSeconds;
+    foxyStorySceneTime += deltaSeconds;
     storyRoot.visible = true;
     if (parts?.foxRoot) {
       parts.foxRoot.visible = false;
     }
 
-    let elapsedStoryTime = 0;
-    let sceneIndex = 0;
-    for (let index = 0; index < FOXY_STORY_SCENE_DURATIONS.length; index += 1) {
-      const sceneDuration = FOXY_STORY_SCENE_DURATIONS[index];
-      if (foxyStoryTime < elapsedStoryTime + sceneDuration || index === FOXY_STORY_SCENE_DURATIONS.length - 1) {
-        sceneIndex = index;
-        break;
-      }
-      elapsedStoryTime += sceneDuration;
-    }
+    const sceneIndex = foxyStorySceneIndex;
     const sceneLength = FOXY_STORY_SCENE_DURATIONS[sceneIndex];
-    const sceneProgress = MathUtils.clamp((foxyStoryTime - elapsedStoryTime) / sceneLength, 0, 1);
+    const sceneProgress = MathUtils.clamp(foxyStorySceneTime / sceneLength, 0, 1);
     storyParts.captions.forEach((caption, index) => {
       caption.visible = index === sceneIndex;
     });
@@ -10134,9 +10148,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       storyParts.donation.rotation.z = Math.sin(foxyStoryTime * 4) * 0.04;
     }
 
-    if (foxyStoryTime >= FOXY_STORY_DURATION) {
-      foxyStoryActive = false;
-      foxyStoryTime = 0;
+    if (foxyStoryTime >= FOXY_STORY_DURATION + 8) {
+      finishFoxyStory();
       storyRoot.visible = false;
       storyParts.captions.forEach((caption) => {
         caption.visible = false;
@@ -11009,6 +11022,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     startPartyShow,
     startFoxyPlay,
     startFoxyStory,
+    setFoxyStoryScene,
+    finishFoxyStory,
     startBasketballThrow,
     setBasketballHeld,
     isBasketballThrowActive,
