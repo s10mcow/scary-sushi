@@ -481,7 +481,8 @@ const PARTY_SHOW_MUSIC_DURATION = 10;
 const PARTY_SHOW_RETURN_DURATION = 2.4;
 const BASKETBALL_THROW_DURATION = 1.65;
 const FOXY_PLAY_DURATION = 2.7;
-const FOXY_STORY_DURATION = 52;
+const FOXY_STORY_SCENE_DURATIONS = [6.2, 7.2, 7.8, 5.6, 6.6, 5.6, 8.6] as const;
+const FOXY_STORY_DURATION = FOXY_STORY_SCENE_DURATIONS.reduce((total, duration) => total + duration, 0);
 
 type OfficeChapterFoxyPlayAction = 'foxy' | 'parrot';
 
@@ -3318,6 +3319,8 @@ function createPuppetShip(): Group {
   hull.position.y = -0.55;
   const deck = new Mesh(new PlaneGeometry(1.0, 0.08), trimMaterial);
   deck.position.set(0, -0.36, 0.02);
+  const rail = new Mesh(new PlaneGeometry(1.08, 0.06), brassMaterial);
+  rail.position.set(0, -0.26, 0.04);
   const mast = new Mesh(new PlaneGeometry(0.05, 0.86), woodMaterial);
   mast.position.y = -0.05;
   const sail = new Mesh(new PlaneGeometry(0.52, 0.58), sailMaterial);
@@ -3329,7 +3332,7 @@ function createPuppetShip(): Group {
     porthole.position.set(portholeX, -0.55, 0.04);
     root.add(porthole);
   });
-  root.add(hull, deck, mast, sail, flag);
+  root.add(hull, deck, rail, mast, sail, flag);
   return root;
 }
 
@@ -3394,16 +3397,16 @@ function createFoxyPuppetShowStage(): Group {
   rightFrame.position.set(3.68, 0, 0.04);
 
   const captions = [
-    ['Once upon a time,', 'there was a sailor.'],
-    ['Many pirates chased him,', 'for he knew where the treasure was.'],
-    ['A crew dragged him aboard', 'and forced the secret out.'],
-    ['They sailed away', 'to pick up the treasure.'],
-    ['Then I, Pirate Foxy, arrived', 'and beat all the bad pirates!'],
-    ['Foxy and the sailor', 'found the treasure together.'],
-    ['They became wealthy and kind,', 'donating to poor places. The end.'],
+    ['Once upon a time, there was a sailor', 'sailing slowly through the water.'],
+    ['Many, many pirates chased him,', 'because he knew where the treasure was hidden.'],
+    ['One day, a pirate crew dragged him', 'onto their ship and forced the secret out of him.'],
+    ['They sailed away', 'to get the treasure for themselves.'],
+    ['Then I, Pirate Foxy, came along', 'and beat all the bad pirates up.'],
+    ['After that, Pirate Foxy and the sailor', 'went to get the treasure together.'],
+    ['They became super rich, wealthy, and kind,', 'donating lots of money to poor places.', 'The end.'],
   ].map((lines) => {
-    const caption = new Mesh(new PlaneGeometry(3.9, 0.72), createPuppetShowTextMaterial(lines));
-    caption.position.set(0, 1.08, 0.08);
+    const caption = new Mesh(new PlaneGeometry(4.85, 0.78), createPuppetShowTextMaterial(lines, lines.length > 2 ? 27 : 29));
+    caption.position.set(0, 1.1, 0.08);
     caption.visible = false;
     return caption;
   });
@@ -10032,9 +10035,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       parts.foxRoot.visible = false;
     }
 
-    const sceneLength = FOXY_STORY_DURATION / storyParts.captions.length;
-    const sceneIndex = Math.min(storyParts.captions.length - 1, Math.floor(foxyStoryTime / sceneLength));
-    const sceneProgress = MathUtils.clamp((foxyStoryTime - sceneIndex * sceneLength) / sceneLength, 0, 1);
+    let elapsedStoryTime = 0;
+    let sceneIndex = 0;
+    for (let index = 0; index < FOXY_STORY_SCENE_DURATIONS.length; index += 1) {
+      const sceneDuration = FOXY_STORY_SCENE_DURATIONS[index];
+      if (foxyStoryTime < elapsedStoryTime + sceneDuration || index === FOXY_STORY_SCENE_DURATIONS.length - 1) {
+        sceneIndex = index;
+        break;
+      }
+      elapsedStoryTime += sceneDuration;
+    }
+    const sceneLength = FOXY_STORY_SCENE_DURATIONS[sceneIndex];
+    const sceneProgress = MathUtils.clamp((foxyStoryTime - elapsedStoryTime) / sceneLength, 0, 1);
     storyParts.captions.forEach((caption, index) => {
       caption.visible = index === sceneIndex;
     });
@@ -10075,21 +10087,24 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       storyParts.pirates.position.set(MathUtils.lerp(-3.0, -0.42, sceneProgress), -0.7 - bob * 0.6, 0.16);
       storyParts.pirates.rotation.z = Math.sin(foxyStoryTime * 8) * 0.05;
     } else if (sceneIndex === 2) {
-      storyParts.ship.position.set(0, -0.18 + bob * 0.4, 0.1);
-      storyParts.sailor.position.set(-0.18, -0.42 + bob, 0.16);
-      storyParts.pirates.position.set(0.7, -0.42 - bob, 0.18);
+      storyParts.ship.scale.setScalar(2.15);
+      storyParts.ship.position.set(0, 0.02 + bob * 0.28, 0.08);
+      storyParts.sailor.position.set(-0.58, -0.36 + bob * 0.4, 0.3);
+      storyParts.pirates.position.set(0.64, -0.36 - bob * 0.25, 0.32);
       storyParts.pirates.rotation.z = Math.sin(foxyStoryTime * 7) * 0.08;
     } else if (sceneIndex === 3) {
-      storyParts.ship.position.set(MathUtils.lerp(-2.2, 1.8, sceneProgress), -0.18 + bob * 0.4, 0.1);
-      storyParts.sailor.position.set(MathUtils.lerp(-2.0, 1.38, sceneProgress), -0.42 + bob, 0.16);
-      storyParts.pirates.position.set(MathUtils.lerp(-1.35, 2.1, sceneProgress), -0.42 - bob, 0.18);
+      storyParts.ship.scale.setScalar(1.95);
+      storyParts.ship.position.set(MathUtils.lerp(-1.9, 1.45, sceneProgress), 0.02 + bob * 0.28, 0.08);
+      storyParts.sailor.position.set(MathUtils.lerp(-1.98, 1.02, sceneProgress), -0.36 + bob * 0.4, 0.3);
+      storyParts.pirates.position.set(MathUtils.lerp(-0.92, 2.02, sceneProgress), -0.36 - bob * 0.25, 0.32);
     } else if (sceneIndex === 4) {
       const fightHits = [0.18, 0.42, 0.68];
       const activeHitIndex = fightHits.findIndex((hitTime) => Math.abs(sceneProgress - hitTime) < 0.08);
       const strikeWindup = Math.sin(sceneProgress * Math.PI * 6);
       const jumpIn = MathUtils.smoothstep(sceneProgress, 0, 0.18);
-      storyParts.ship.position.set(-1.25, -0.18 + bob * 0.4, 0.1);
-      storyParts.sailor.position.set(-1.0, -0.42 + bob, 0.16);
+      storyParts.ship.scale.setScalar(1.7);
+      storyParts.ship.position.set(-1.18, -0.02 + bob * 0.28, 0.08);
+      storyParts.sailor.position.set(-1.0, -0.34 + bob * 0.4, 0.3);
       storyParts.foxy.position.set(MathUtils.lerp(2.8, -0.15, jumpIn), -0.34 + Math.abs(strikeWindup) * 0.08, 0.26);
       storyParts.foxy.rotation.z = -0.42 + strikeWindup * 0.32;
       storyParts.pirates.position.set(MathUtils.lerp(0.6, -2.25, sceneProgress), -0.42 - bob, 0.18);

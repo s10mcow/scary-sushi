@@ -64,8 +64,8 @@ export class FoxyPlayAudio {
     }
 
     this.resume();
-    const startTime = this.context.currentTime + 30.2;
-    [0, 1.75, 3.5].forEach((offset, index) => {
+    const startTime = this.context.currentTime + 28.0;
+    [0, 1.58, 3.3].forEach((offset, index) => {
       this.schedulePuppetPunch(startTime + offset, index === 1 ? 0.16 : 0.22);
       this.schedulePirateArr(startTime + offset + 0.18, 118 - index * 9);
     });
@@ -102,7 +102,7 @@ export class FoxyPlayAudio {
     const enthusiasticFoxy = speaker === 'foxy' && spokenLine === FOXY_PLAY_FOXY_SOON_LINE;
     const storyFoxy = speaker === 'foxy' && spokenLine === FOXY_PLAY_STORY_NARRATION;
     utterance.volume = speaker === 'foxy' ? 0.92 : 0.82;
-    utterance.rate = storyFoxy ? 0.92 : enthusiasticFoxy ? 1.02 : speaker === 'foxy' ? 0.86 : 1.28;
+    utterance.rate = storyFoxy ? 0.98 : enthusiasticFoxy ? 1.02 : speaker === 'foxy' ? 0.86 : 1.28;
     utterance.pitch = storyFoxy ? 0.82 : enthusiasticFoxy ? 0.94 : speaker === 'foxy' ? 0.72 : 1.82;
     utterance.onend = (): void => {
       if (this.activeSpeech === utterance) {
