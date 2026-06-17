@@ -3659,6 +3659,121 @@ function createWallSign(label: string, subtitle = ''): Mesh {
   return sign;
 }
 
+type AnimatronicPosterKind = 'bori' | 'quacky' | 'fluffle' | 'foxy' | 'golden';
+
+function createAnimatronicPosterMaterial(kind: AnimatronicPosterKind, slogan: string): MeshStandardMaterial {
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 448;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return new MeshStandardMaterial({ color: 0x2a2730, roughness: 0.58, metalness: 0.04, side: DoubleSide });
+  }
+
+  const palette: Record<AnimatronicPosterKind, { title: string; color: string; accent: string; bg: string }> = {
+    bori: { title: 'BORI', color: '#8b5a32', accent: '#f4c36a', bg: '#2d1b14' },
+    quacky: { title: 'QUACKY', color: '#dfb23f', accent: '#ff6a57', bg: '#14353d' },
+    fluffle: { title: 'FLUFFLES', color: '#b7a7dd', accent: '#f7e8ff', bg: '#27203c' },
+    foxy: { title: 'FOXY', color: '#b44a2b', accent: '#f1cf77', bg: '#1b1726' },
+    golden: { title: 'GOLDEN BORI', color: '#d8a735', accent: '#fff09a', bg: '#23190d' },
+  };
+  const poster = palette[kind];
+
+  const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, poster.bg);
+  gradient.addColorStop(1, '#0d0e13');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.strokeStyle = poster.accent;
+  context.lineWidth = 12;
+  context.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
+  context.strokeStyle = '#0b0c10';
+  context.lineWidth = 5;
+  context.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
+
+  context.fillStyle = poster.color;
+  context.beginPath();
+  context.ellipse(160, 170, kind === 'foxy' ? 78 : 72, kind === 'quacky' ? 56 : 68, 0, 0, Math.PI * 2);
+  context.fill();
+  if (kind === 'foxy') {
+    context.fillStyle = poster.color;
+    context.beginPath();
+    context.moveTo(102, 112);
+    context.lineTo(118, 54);
+    context.lineTo(148, 114);
+    context.fill();
+    context.beginPath();
+    context.moveTo(218, 112);
+    context.lineTo(200, 54);
+    context.lineTo(172, 114);
+    context.fill();
+  } else if (kind === 'fluffle') {
+    context.fillStyle = poster.color;
+    context.fillRect(96, 48, 32, 92);
+    context.fillRect(192, 48, 32, 92);
+  } else if (kind === 'quacky') {
+    context.fillStyle = poster.accent;
+    context.beginPath();
+    context.ellipse(160, 188, 64, 28, 0, 0, Math.PI * 2);
+    context.fill();
+  } else {
+    context.fillStyle = poster.color;
+    context.beginPath();
+    context.ellipse(102, 112, 24, 28, 0, 0, Math.PI * 2);
+    context.ellipse(218, 112, 24, 28, 0, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.fillStyle = '#101217';
+  context.beginPath();
+  context.arc(132, 158, 12, 0, Math.PI * 2);
+  context.arc(188, 158, 12, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = '#ff3535';
+  context.beginPath();
+  context.arc(132, 158, 5, 0, Math.PI * 2);
+  context.arc(188, 158, 5, 0, Math.PI * 2);
+  context.fill();
+
+  context.strokeStyle = '#120b0a';
+  context.lineWidth = 8;
+  context.beginPath();
+  context.arc(160, 192, 40, 0.12, Math.PI - 0.12);
+  context.stroke();
+
+  context.fillStyle = poster.accent;
+  context.font = kind === 'golden' ? 'bold 38px Trebuchet MS, sans-serif' : 'bold 48px Trebuchet MS, sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(poster.title, canvas.width / 2, 292);
+  context.font = 'bold 25px Trebuchet MS, sans-serif';
+  const words = slogan.toUpperCase().split(' ');
+  const lineOne = words.slice(0, Math.ceil(words.length / 2)).join(' ');
+  const lineTwo = words.slice(Math.ceil(words.length / 2)).join(' ');
+  context.fillStyle = '#f8f1d0';
+  context.fillText(lineOne, canvas.width / 2, 350);
+  if (lineTwo) {
+    context.fillText(lineTwo, canvas.width / 2, 383);
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.08,
+    roughness: 0.48,
+    metalness: 0.02,
+    side: DoubleSide,
+  });
+}
+
+function createAnimatronicPoster(kind: AnimatronicPosterKind, slogan: string): Mesh {
+  const poster = new Mesh(new PlaneGeometry(1.42, 1.98), createAnimatronicPosterMaterial(kind, slogan));
+  poster.castShadow = false;
+  return poster;
+}
+
 function createToiletFixture(): Group {
   const root = new Group();
   const porcelainMaterial = new MeshStandardMaterial({
@@ -7498,6 +7613,44 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     westWallpaper.position.set(secondRoomMinX + WALL_THICKNESS + wallpaperInset, wallpaperY, startZ + width / 2);
     westWallpaper.rotation.y = Math.PI / 2;
     root.add(westWallpaper);
+  });
+
+  const addAnimatronicWallPoster = (
+    kind: AnimatronicPosterKind,
+    slogan: string,
+    x: number,
+    z: number,
+    rotationY: number,
+    y = 2.08,
+  ): void => {
+    const poster = createAnimatronicPoster(kind, slogan);
+    poster.position.set(x, y, z);
+    poster.rotation.y = rotationY;
+    root.add(poster);
+  };
+  [
+    { kind: 'bori' as const, slogan: "Let's party and have fun", x: partyRoomCenterX - 7.6, z: partyRoomSouthZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
+    { kind: 'quacky' as const, slogan: 'Sing loud with Quacky', x: partyRoomCenterX + 1.2, z: partyRoomSouthZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
+    { kind: 'fluffle' as const, slogan: 'Hop in for birthday fun', x: partyRoomMinX + WALL_THICKNESS + 0.026, z: partyRoomCenterZ - 2.6, rotationY: Math.PI / 2 },
+    { kind: 'foxy' as const, slogan: 'Adventure starts at Pirate Cove', x: partyRoomMaxX - WALL_THICKNESS - 0.026, z: partyRoomCenterZ + 2.85, rotationY: -Math.PI / 2 },
+    { kind: 'golden' as const, slogan: 'Golden fun never stops', x: kitchenHallRoomCenterX - 4.2, z: kitchenHallRoomNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { kind: 'bori' as const, slogan: 'Play games win prizes', x: kitchenHallRoomMaxX - WALL_THICKNESS - 0.026, z: kitchenHallRoomCenterZ - 1.6, rotationY: -Math.PI / 2 },
+    { kind: 'quacky' as const, slogan: 'Quack laugh party', x: kitchenHallRoomMinX + WALL_THICKNESS + 0.026, z: kitchenHallRoomCenterZ + 4.2, rotationY: Math.PI / 2 },
+    { kind: 'fluffle' as const, slogan: 'Fast games big smiles', x: northPartyHallCenterX, z: northPartyHallNorthZ + 4.8, rotationY: Math.PI / 2 },
+    { kind: 'foxy' as const, slogan: 'Ahoy kids play nice', x: secondHallCenterX, z: secondHallOpeningMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
+    { kind: 'foxy' as const, slogan: 'Pirate shows every day', x: secondRoomCenterX - 2.4, z: secondRoomMaxZ - WALL_THICKNESS - 0.03, rotationY: Math.PI },
+    { kind: 'bori' as const, slogan: 'Treasure the party', x: secondRoomMaxX - WALL_THICKNESS - 0.03, z: secondRoomCenterZ - 3.2, rotationY: -Math.PI / 2 },
+    { kind: 'quacky' as const, slogan: 'Dive into the ball pit', x: northPartySideRoomMaxX - WALL_THICKNESS - 0.026, z: northPartySideRoomCenterZ + 3.2, rotationY: -Math.PI / 2 },
+    { kind: 'fluffle' as const, slogan: 'Bounce laugh repeat', x: northPartySideRoomCenterX, z: northPartySideRoomMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { kind: 'bori' as const, slogan: 'Staff smiles backstage', x: backstageHallCenterX, z: backstageHallNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { kind: 'golden' as const, slogan: 'Shine bright after dark', x: backstageStorageCenterX + 2.8, z: backstageStorageMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { kind: 'fluffle' as const, slogan: 'Clean up then party', x: storageClosetCenterX, z: storageClosetMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
+    { kind: 'quacky' as const, slogan: 'Fresh pizza fresh songs', x: kitchenWestX + WALL_THICKNESS + 0.026, z: kitchenCenterZ - 2.4, rotationY: Math.PI / 2 },
+    { kind: 'bori' as const, slogan: 'Wash hands then party', x: bathroomHallCenterX - 0.55, z: bathroomEntryMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { kind: 'foxy' as const, slogan: 'No running matey', x: bathroomRoomMinX + WALL_THICKNESS + 0.026, z: menBathroomCenterZ, rotationY: Math.PI / 2 },
+    { kind: 'quacky' as const, slogan: 'Smile for the show', x: bathroomRoomMinX + WALL_THICKNESS + 0.026, z: womenBathroomCenterZ, rotationY: Math.PI / 2 },
+  ].forEach((poster) => {
+    addAnimatronicWallPoster(poster.kind, poster.slogan, poster.x, poster.z, poster.rotationY);
   });
 
   const stageMaterial = new MeshStandardMaterial({
