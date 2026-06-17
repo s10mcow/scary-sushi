@@ -259,6 +259,9 @@ export interface OfficeChapterPosterPrinter {
   root: Group;
   interactPosition: Vector3;
   keycardRoot: Group;
+  instructionHint: Mesh;
+  readyHint: Mesh;
+  printedHint: Mesh;
   printed: boolean;
 }
 
@@ -10464,13 +10467,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   posterPrinterModel.root.rotation.y = -Math.PI / 2;
   const posterPrinterHint = createInstructionHoverLabel('Take pictures of all the posters', 2.55, 0.52);
   posterPrinterHint.position.set(0, 0.72, 0);
-  posterPrinterModel.root.add(posterPrinterHint);
+  const posterPrinterReadyHint = createInstructionHoverLabel('Press E to print keycard', 2.45, 0.5);
+  posterPrinterReadyHint.position.set(0, 0.72, 0);
+  posterPrinterReadyHint.visible = false;
+  const posterPrinterPrintedHint = createInstructionHoverLabel('Keycard printed', 2.1, 0.46);
+  posterPrinterPrintedHint.position.set(0, 0.72, 0);
+  posterPrinterPrintedHint.visible = false;
+  posterPrinterModel.root.add(posterPrinterHint, posterPrinterReadyHint, posterPrinterPrintedHint);
   root.add(posterPrinterModel.root);
   const posterPrinter: OfficeChapterPosterPrinter = {
     label: 'Poster Keycard Printer',
     root: posterPrinterModel.root,
     interactPosition: new Vector3(backstageStorageMaxX - 1.36, 1.86, backstageStorageCenterZ - 0.95),
     keycardRoot: posterPrinterModel.keycardRoot,
+    instructionHint: posterPrinterHint,
+    readyHint: posterPrinterReadyHint,
+    printedHint: posterPrinterPrintedHint,
     printed: false,
   };
 
@@ -12724,6 +12736,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     photoCameraPickup.root.visible = true;
     posterPrinter.printed = false;
     posterPrinter.keycardRoot.visible = false;
+    posterPrinter.instructionHint.visible = true;
+    posterPrinter.readyHint.visible = false;
+    posterPrinter.printedHint.visible = false;
     basementRoomDoors.forEach((door) => {
       door.open = false;
       door.openAmount = 0;

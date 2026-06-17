@@ -5944,6 +5944,19 @@ export class Game {
     this.officePhotoCameraNumberBufferTimer = 0;
     this.officeChapter.posterPrinter.printed = false;
     this.officeChapter.posterPrinter.keycardRoot.visible = false;
+    this.updateOfficePosterPrinterHint();
+  }
+
+  private updateOfficePosterPrinterHint(): void {
+    const printer = this.officeChapter.posterPrinter;
+    const readyToPrint = !this.officePrintedPosterKeycard
+      && !printer.printed
+      && this.officeChapter.posterTargets.length > 0
+      && this.officePosterPhotoIds.size >= this.officeChapter.posterTargets.length;
+    const printed = this.officePrintedPosterKeycard || printer.printed;
+    printer.instructionHint.visible = !readyToPrint && !printed;
+    printer.readyHint.visible = readyToPrint;
+    printer.printedHint.visible = printed;
   }
 
   private setOfficeHeldPrizeItem(item: OfficePrizeItemId, showStatus = true): void {
@@ -19578,6 +19591,7 @@ export class Game {
     this.officePosterPhotoIndex = this.officePosterPhotos.length - 1;
     this.gameplaySfxAudio.playSmallPanel(true);
     this.showOfficePosterPhoto(photo, true);
+    this.updateOfficePosterPrinterHint();
     this.pushStatus(
       firstCapture
         ? `Photo ${photoId}: glimpse of ${poster.label} marked at ${posterCoordinates}. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`
@@ -19625,6 +19639,7 @@ export class Game {
     printer.keycardRoot.visible = true;
     this.addOfficePrizeItem('poster-keycard', 1);
     this.gameplaySfxAudio.playPrinterPrint();
+    this.updateOfficePosterPrinterHint();
     this.pushStatus('The printer whirs, feeds paper through, and spits out a basement poster keycard into hotbar slot 10.', 3.4);
     this.syncHud();
   }
