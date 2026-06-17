@@ -3355,6 +3355,56 @@ function createPuppetTreasure(): Group {
   return root;
 }
 
+function createPuppetTreasureIsland(): Group {
+  const root = new Group();
+  const sandMaterial = new MeshStandardMaterial({ color: 0xd9b36a, roughness: 0.86, side: DoubleSide });
+  const shoreMaterial = new MeshStandardMaterial({ color: 0xf0d38c, roughness: 0.78, side: DoubleSide });
+  const grassMaterial = new MeshStandardMaterial({ color: 0x4c8f3f, roughness: 0.8, side: DoubleSide });
+  const trunkMaterial = new MeshStandardMaterial({ color: 0x6b3d20, roughness: 0.82, side: DoubleSide });
+  const leafMaterial = new MeshStandardMaterial({ color: 0x2f8a45, roughness: 0.74, side: DoubleSide });
+  const waterMaterial = new MeshStandardMaterial({
+    color: 0x2e9fd2,
+    emissive: 0x0d3554,
+    emissiveIntensity: 0.18,
+    roughness: 0.42,
+    side: DoubleSide,
+    transparent: true,
+    opacity: 0.72,
+  });
+
+  const water = new Mesh(new PlaneGeometry(3.8, 0.52), waterMaterial);
+  water.position.set(0, -0.94, -0.02);
+  const shore = new Mesh(new CircleGeometry(1.38, 32), shoreMaterial);
+  shore.scale.set(1.48, 0.38, 1);
+  shore.position.set(0, -0.73, 0.02);
+  const sand = new Mesh(new CircleGeometry(1.12, 32), sandMaterial);
+  sand.scale.set(1.42, 0.34, 1);
+  sand.position.set(0, -0.7, 0.04);
+  const grassPatch = new Mesh(new CircleGeometry(0.42, 18), grassMaterial);
+  grassPatch.scale.set(1.22, 0.24, 1);
+  grassPatch.position.set(-0.9, -0.56, 0.06);
+
+  const trunk = new Mesh(new PlaneGeometry(0.12, 0.72), trunkMaterial);
+  trunk.position.set(-1.17, -0.23, 0.08);
+  trunk.rotation.z = -0.18;
+  const leaves = new Group();
+  [
+    [-0.2, 0.16, -0.72],
+    [0.12, 0.24, 0.18],
+    [0.3, 0.08, 0.78],
+    [-0.05, -0.02, 1.38],
+  ].forEach(([x, y, rotation]) => {
+    const leaf = new Mesh(new PlaneGeometry(0.62, 0.18), leafMaterial);
+    leaf.position.set(x, y, 0.1);
+    leaf.rotation.z = rotation;
+    leaves.add(leaf);
+  });
+  leaves.position.set(-1.28, 0.22, 0.08);
+
+  root.add(water, shore, sand, grassPatch, trunk, leaves);
+  return root;
+}
+
 function createPuppetHitBurst(): Group {
   const root = new Group();
   const flashMaterial = new MeshStandardMaterial({
@@ -3424,6 +3474,7 @@ function createFoxyPuppetShowStage(): Group {
   const ship = createPuppetShip();
   const foxy = createPuppetPerson('foxy');
   const treasure = createPuppetTreasure();
+  const island = createPuppetTreasureIsland();
   const donation = new Mesh(new PlaneGeometry(1.2, 0.56), createPuppetShowTextMaterial(['DONATIONS', 'FOR GOOD'], 28));
   const hitBursts = new Group();
   [-0.7, 0, 0.7].forEach((x) => {
@@ -3432,8 +3483,8 @@ function createFoxyPuppetShowStage(): Group {
     hitBursts.add(burst);
   });
 
-  root.add(background, topFrame, bottomFrame, leftFrame, rightFrame, ...captions, sailor, pirates, ship, foxy, treasure, donation, hitBursts);
-  root.userData.foxyStoryParts = { captions, sailor, pirates, ship, foxy, treasure, donation, hitBursts };
+  root.add(background, island, topFrame, bottomFrame, leftFrame, rightFrame, ...captions, sailor, pirates, ship, foxy, treasure, donation, hitBursts);
+  root.userData.foxyStoryParts = { captions, sailor, pirates, ship, foxy, treasure, island, donation, hitBursts };
   return root;
 }
 
@@ -10036,6 +10087,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       ship: Group;
       foxy: Group;
       treasure: Group;
+      island: Group;
       donation: Mesh;
       hitBursts: Group;
     } | undefined;
@@ -10071,6 +10123,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     storyParts.ship.visible = sceneIndex === 0 || (sceneIndex >= 2 && sceneIndex <= 4);
     storyParts.foxy.visible = sceneIndex >= 4 && sceneIndex <= 6;
     storyParts.treasure.visible = sceneIndex >= 5;
+    storyParts.island.visible = sceneIndex >= 5;
     storyParts.donation.visible = sceneIndex === 6;
     storyParts.hitBursts.visible = sceneIndex === 4;
     storyParts.hitBursts.children.forEach((burst) => {
@@ -10083,10 +10136,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     storyParts.ship.scale.setScalar(1);
     storyParts.foxy.scale.setScalar(0.86);
     storyParts.treasure.scale.setScalar(0.82);
+    storyParts.island.scale.setScalar(1);
     storyParts.donation.scale.setScalar(1);
     storyParts.sailor.rotation.set(0, 0, 0);
     storyParts.ship.rotation.set(0, 0, 0);
     storyParts.foxy.rotation.set(0, 0, 0);
+    storyParts.island.rotation.set(0, 0, 0);
     storyParts.pirates.children.forEach((pirate) => {
       pirate.rotation.set(0, 0, 0);
       pirate.position.y = 0;
@@ -10136,14 +10191,18 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
         }
       }
     } else if (sceneIndex === 5) {
-      storyParts.sailor.position.set(-1.05, -0.58 + bob, 0.16);
-      storyParts.foxy.position.set(-0.35, -0.54 - bob, 0.18);
-      storyParts.treasure.position.set(1.25, -0.68 + Math.abs(bob), 0.22);
+      storyParts.island.position.set(0.16, 0.02, 0.08);
+      storyParts.island.scale.set(1.08, 1.0, 1.0);
+      storyParts.sailor.position.set(-0.92, -0.52 + bob * 0.45, 0.18);
+      storyParts.foxy.position.set(-0.08, -0.5 - bob * 0.35, 0.2);
+      storyParts.treasure.position.set(1.12, -0.62 + Math.abs(bob) * 0.24, 0.26);
       storyParts.treasure.rotation.z = Math.sin(foxyStoryTime * 5) * 0.04;
     } else {
-      storyParts.sailor.position.set(-1.45, -0.58 + bob, 0.16);
-      storyParts.foxy.position.set(-0.62, -0.54 - bob, 0.18);
-      storyParts.treasure.position.set(0.45, -0.7 + Math.abs(bob), 0.22);
+      storyParts.island.position.set(-0.22, 0.02, 0.08);
+      storyParts.island.scale.set(1.02, 1.0, 1.0);
+      storyParts.sailor.position.set(-1.36, -0.52 + bob * 0.45, 0.18);
+      storyParts.foxy.position.set(-0.52, -0.5 - bob * 0.35, 0.2);
+      storyParts.treasure.position.set(0.38, -0.62 + Math.abs(bob) * 0.24, 0.26);
       storyParts.donation.position.set(1.72, -0.48, 0.22);
       storyParts.donation.rotation.z = Math.sin(foxyStoryTime * 4) * 0.04;
     }
