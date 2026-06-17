@@ -3766,6 +3766,9 @@ function createAnimatronicPosterMaterial(kind: AnimatronicPosterKind, slogan: st
     emissiveIntensity: 0.08,
     roughness: 0.48,
     metalness: 0.02,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
     side: DoubleSide,
   });
 }
@@ -3773,6 +3776,7 @@ function createAnimatronicPosterMaterial(kind: AnimatronicPosterKind, slogan: st
 function createAnimatronicPoster(kind: AnimatronicPosterKind, slogan: string): Mesh {
   const poster = new Mesh(new PlaneGeometry(1.42, 1.98), createAnimatronicPosterMaterial(kind, slogan));
   poster.castShadow = false;
+  poster.renderOrder = 4;
   return poster;
 }
 
@@ -7625,8 +7629,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     rotationY: number,
     y = 2.08,
   ): void => {
+    const posterWallGap = 0.045;
     const poster = createAnimatronicPoster(kind, slogan);
-    poster.position.set(x, y, z);
+    poster.position.set(
+      x + Math.sin(rotationY) * posterWallGap,
+      y,
+      z + Math.cos(rotationY) * posterWallGap,
+    );
     poster.rotation.y = rotationY;
     root.add(poster);
   };
@@ -7638,13 +7647,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { kind: 'golden' as const, slogan: 'Golden fun never stops', x: kitchenHallRoomCenterX - 4.2, z: kitchenHallRoomNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
     { kind: 'bori' as const, slogan: 'Play games win prizes', x: kitchenHallRoomMaxX - WALL_THICKNESS - 0.026, z: kitchenHallRoomCenterZ - 1.6, rotationY: -Math.PI / 2 },
     { kind: 'quacky' as const, slogan: 'Quack laugh party', x: kitchenHallRoomMinX + WALL_THICKNESS + 0.026, z: kitchenHallRoomCenterZ + 4.2, rotationY: Math.PI / 2 },
-    { kind: 'fluffle' as const, slogan: 'Fast games big smiles', x: northPartyHallCenterX, z: northPartyHallNorthZ + 4.8, rotationY: Math.PI / 2 },
+    { kind: 'fluffle' as const, slogan: 'Fast games big smiles', x: northPartyHallOpeningMinX + WALL_THICKNESS + 0.026, z: northPartyHallNorthZ + 4.8, rotationY: Math.PI / 2 },
     { kind: 'foxy' as const, slogan: 'Ahoy kids play nice', x: secondHallCenterX, z: secondHallOpeningMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
     { kind: 'foxy' as const, slogan: 'Pirate shows every day', x: secondRoomCenterX - 2.4, z: secondRoomMaxZ - WALL_THICKNESS - 0.03, rotationY: Math.PI },
     { kind: 'bori' as const, slogan: 'Treasure the party', x: secondRoomMaxX - WALL_THICKNESS - 0.03, z: secondRoomCenterZ - 3.2, rotationY: -Math.PI / 2 },
     { kind: 'quacky' as const, slogan: 'Dive into the ball pit', x: northPartySideRoomMaxX - WALL_THICKNESS - 0.026, z: northPartySideRoomCenterZ + 3.2, rotationY: -Math.PI / 2 },
     { kind: 'fluffle' as const, slogan: 'Bounce laugh repeat', x: northPartySideRoomCenterX, z: northPartySideRoomMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
-    { kind: 'bori' as const, slogan: 'Staff smiles backstage', x: backstageHallCenterX, z: backstageHallNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { kind: 'bori' as const, slogan: 'Staff smiles backstage', x: backstageHallCenterX, z: backstageHallExtensionNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
     { kind: 'golden' as const, slogan: 'Shine bright after dark', x: backstageStorageCenterX + 2.8, z: backstageStorageMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
     { kind: 'fluffle' as const, slogan: 'Clean up then party', x: storageClosetCenterX, z: storageClosetMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
     { kind: 'quacky' as const, slogan: 'Fresh pizza fresh songs', x: kitchenWestX + WALL_THICKNESS + 0.026, z: kitchenCenterZ - 2.4, rotationY: Math.PI / 2 },
