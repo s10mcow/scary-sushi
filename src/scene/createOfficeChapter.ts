@@ -9961,7 +9961,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const bob = Math.sin(foxyStoryTime * 6) * 0.045;
     storyParts.sailor.visible = sceneIndex <= 6;
     storyParts.pirates.visible = sceneIndex >= 1 && sceneIndex <= 4;
-    storyParts.ship.visible = sceneIndex >= 2 && sceneIndex <= 4;
+    storyParts.ship.visible = sceneIndex === 0 || (sceneIndex >= 2 && sceneIndex <= 4);
     storyParts.foxy.visible = sceneIndex >= 4 && sceneIndex <= 6;
     storyParts.treasure.visible = sceneIndex >= 5;
     storyParts.donation.visible = sceneIndex === 6;
@@ -9974,7 +9974,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     storyParts.donation.scale.setScalar(1);
 
     if (sceneIndex === 0) {
-      storyParts.sailor.position.set(MathUtils.lerp(-2.6, -0.7, sceneProgress), -0.68 + bob, 0.12);
+      storyParts.ship.position.set(MathUtils.lerp(-3.0, 2.35, sceneProgress), -0.22 + bob * 0.45, 0.1);
+      storyParts.sailor.position.set(MathUtils.lerp(-2.58, 1.0, sceneProgress), -0.48 + bob, 0.16);
       storyParts.sailor.rotation.z = Math.sin(foxyStoryTime * 4) * 0.06;
     } else if (sceneIndex === 1) {
       storyParts.sailor.position.set(MathUtils.lerp(-1.8, 0.85, sceneProgress), -0.68 + bob, 0.12);
