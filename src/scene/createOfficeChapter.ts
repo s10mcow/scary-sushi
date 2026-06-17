@@ -9343,8 +9343,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       addCollider(colliders, tableX, tableZ, 4.25, 1.88);
     });
   });
-  root.add(createQuackyCardboardStandee(-218.52, 135.53, -1.18));
-  addCollider(colliders, -218.52, 135.53, 1.16, 1.62);
+  root.add(createQuackyCardboardStandee(-218.52, 135.53, 0.82));
+  addCollider(colliders, -218.52, 135.53, 1.6, 1.66);
 
   const prizeWheel = createPrizeWheel(-222.02, 2, 146.89);
   root.add(prizeWheel.root);
