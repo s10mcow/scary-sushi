@@ -7876,7 +7876,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
   const posterTargets: OfficeChapterPosterTarget[] = [];
   [
-    { id: 'main-south-bori', kind: 'bori' as const, slogan: "Let's party and have fun", x: partyRoomCenterX - 7.6, z: partyRoomSouthZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
     { id: 'main-south-quacky', kind: 'quacky' as const, slogan: 'Sing loud with Quacky', x: partyRoomCenterX + 1.2, z: partyRoomSouthZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
     { id: 'main-west-fluffle', kind: 'fluffle' as const, slogan: 'Hop in for birthday fun', x: partyRoomMinX + WALL_THICKNESS + 0.026, z: partyRoomCenterZ - 2.6, rotationY: Math.PI / 2 },
     { id: 'main-east-foxy', kind: 'foxy' as const, slogan: 'Adventure starts at Pirate Cove', x: partyRoomMaxX - WALL_THICKNESS - 0.026, z: partyRoomCenterZ + 2.85, rotationY: -Math.PI / 2 },
@@ -7894,8 +7893,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { id: 'storage-closet-fluffle', kind: 'fluffle' as const, slogan: 'Clean up then party', x: storageClosetCenterX, z: storageClosetMaxZ - WALL_THICKNESS - 0.026, rotationY: Math.PI },
     { id: 'kitchen-quacky', kind: 'quacky' as const, slogan: 'Fresh pizza fresh songs', x: kitchenWestX + WALL_THICKNESS + 0.026, z: kitchenCenterZ - 2.4, rotationY: Math.PI / 2 },
     { id: 'bathroom-hall-bori', kind: 'bori' as const, slogan: 'Wash hands then party', x: bathroomHallCenterX - 0.55, z: bathroomEntryMinZ + WALL_THICKNESS + 0.026, rotationY: 0 },
-    { id: 'mens-room-foxy', kind: 'foxy' as const, slogan: 'No running matey', x: bathroomHallMinX + WALL_THICKNESS + 0.026, z: bathroomEntryCenterZ - 1.68, rotationY: Math.PI / 2 },
-    { id: 'womens-room-quacky', kind: 'quacky' as const, slogan: 'Smile for the show', x: bathroomHallMinX + WALL_THICKNESS + 0.026, z: bathroomEntryCenterZ + 1.68, rotationY: Math.PI / 2 },
   ].forEach((poster) => {
     addAnimatronicWallPoster(poster.id, poster.kind, poster.slogan, poster.x, poster.z, poster.rotationY);
   });
