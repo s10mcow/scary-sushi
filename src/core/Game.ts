@@ -586,9 +586,6 @@ const OFFICE_VENT_BOY_SPEED = 0.82;
 const OFFICE_VENT_BOY_SEARCH_SPEED_MULTIPLIER = 3.15;
 const OFFICE_VENT_BOY_WATCHED_SPEED_MULTIPLIER = 0.72;
 const OFFICE_VENT_BOY_FLOOR_OFFSET = 1.08;
-const OFFICE_VENT_BOY_SOUND_RECORDING_IDS = ['013', '014', '016', '017', '018'];
-const OFFICE_VENT_BOY_SOUND_MIN_DISTANCE = 1.2;
-const OFFICE_VENT_BOY_SOUND_MAX_DISTANCE = 12;
 const OFFICE_VENT_BOY_ATTACK_RANGE = 0.78;
 const OFFICE_VENT_BOY_JUMPSCARE_SECONDS = 2.15;
 const OFFICE_GAME_MODE_CHASE_MATCH_SPEED = GAME_CONFIG.player.sprintSpeed * 1.06;
@@ -1260,8 +1257,6 @@ export class Game {
   private readonly cameraToolCaptures: CameraToolCapture[] = [];
   private officeVentBoy: OfficeVentBoyState | null = null;
   private activeOfficeVentBoyJumpscare: ActiveOfficeVentBoyJumpscare | null = null;
-  private officeVentBoySoundPlayback: HTMLAudioElement | null = null;
-  private officeVentBoySoundCooldown = 0;
   private hudSyncTimer = 0;
   private chapterTwoCardTime = 0;
   private chapterTwoCoffeeJob: ChapterTwoCoffeeJob | null = null;
@@ -9352,13 +9347,11 @@ export class Game {
       if (this.officeVentBoy) {
         this.officeVentBoy.root.visible = false;
       }
-      this.stopOfficeVentBoyLaugh();
       return;
     }
 
     const ventBoy = this.ensureOfficeVentBoy();
     ventBoy.root.visible = true;
-    this.updateOfficeVentBoyLaugh(deltaSeconds, ventBoy);
     const watched = this.isPlayerWatchingOfficeVentBoy(ventBoy);
     ventBoy.stareTimer = watched
       ? ventBoy.stareTimer + deltaSeconds
@@ -9442,81 +9435,8 @@ export class Game {
     ventBoy.root.rotation.y = Math.atan2(dx, dz) + Math.PI;
   }
 
-  private updateOfficeVentBoyLaugh(deltaSeconds: number, ventBoy: OfficeVentBoyState): void {
-    this.officeVentBoySoundCooldown = Math.max(0, this.officeVentBoySoundCooldown - deltaSeconds);
-    if (!this.officeVentActive || this.activeOfficeVentBoyJumpscare) {
-      this.stopOfficeVentBoyLaugh();
-      return;
-    }
-
-    const playerPosition = this.player.getPosition();
-    const distance = Math.hypot(
-      playerPosition.x - ventBoy.root.position.x,
-      playerPosition.z - ventBoy.root.position.z,
-    );
-    if (distance > OFFICE_VENT_BOY_SOUND_MAX_DISTANCE) {
-      this.stopOfficeVentBoyLaugh();
-      return;
-    }
-
-    const closeness = MathUtils.clamp(
-      1 - (distance - OFFICE_VENT_BOY_SOUND_MIN_DISTANCE) / (OFFICE_VENT_BOY_SOUND_MAX_DISTANCE - OFFICE_VENT_BOY_SOUND_MIN_DISTANCE),
-      0,
-      1,
-    );
-    const volume = MathUtils.clamp(0.08 + closeness * 0.92, 0.08, 1);
-
-    if (this.officeVentBoySoundPlayback) {
-      this.officeVentBoySoundPlayback.volume = volume;
-      if (!this.officeVentBoySoundPlayback.ended) {
-        return;
-      }
-      this.officeVentBoySoundPlayback = null;
-    }
-
-    if (this.officeVentBoySoundCooldown > 0) {
-      return;
-    }
-
-    this.playOfficeVentBoySound(volume);
-    this.officeVentBoySoundCooldown = MathUtils.lerp(3.2, 0.85, closeness);
-  }
-
   private stopOfficeVentBoyLaugh(): void {
-    this.officeVentBoySoundPlayback?.pause();
-    this.officeVentBoySoundPlayback = null;
-    this.officeVentBoySoundCooldown = 0;
-  }
-
-  private getOfficeVentBoySoundRecordings(): MicrophoneSoundRecording[] {
-    return OFFICE_VENT_BOY_SOUND_RECORDING_IDS
-      .map((recordingId) => this.getMicrophoneSoundRecordingById(recordingId))
-      .filter((recording): recording is MicrophoneSoundRecording => recording !== null);
-  }
-
-  private playOfficeVentBoySound(volume: number): boolean {
-    const recordings = this.getOfficeVentBoySoundRecordings();
-    if (recordings.length === 0) {
-      return false;
-    }
-
-    const recording = recordings[Math.floor(Math.random() * recordings.length)];
-    this.officeVentBoySoundPlayback?.pause();
-    const audio = new Audio(recording.dataUrl);
-    audio.loop = false;
-    audio.volume = MathUtils.clamp(volume, 0, 1);
-    this.officeVentBoySoundPlayback = audio;
-    audio.addEventListener('ended', () => {
-      if (this.officeVentBoySoundPlayback === audio) {
-        this.officeVentBoySoundPlayback = null;
-      }
-    }, { once: true });
-    void audio.play().catch(() => {
-      if (this.officeVentBoySoundPlayback === audio) {
-        this.officeVentBoySoundPlayback = null;
-      }
-    });
-    return true;
+    // Balloon Boy is intentionally silent; keep this for older cleanup call sites.
   }
 
   private triggerOfficeVentBoyJumpscare(): void {
@@ -9608,7 +9528,6 @@ export class Game {
       duration: OFFICE_VENT_BOY_JUMPSCARE_SECONDS,
     };
 
-    this.playOfficeVentBoySound(1);
     this.pushStatus('Balloon Boy crawls into your face.', 1.8);
   }
 
@@ -10503,72 +10422,69 @@ export class Game {
     }
 
     const running = animatronic.state === 'chase' || animatronic.state === 'rush' || animatronic.state === 'distracted';
-    const crawlSpeed = (running ? 13.6 : 7.2) * animatronic.walkCycleSpeedMultiplier;
-    const crawlStrength = (running ? 1.22 : 0.78) * animatronic.walkCycleStrideMultiplier;
-    const crawlCycle = this.elapsed * crawlSpeed + animatronic.walkCyclePhase;
-    const leftHandAndRightKnee = Math.sin(crawlCycle);
-    const rightHandAndLeftKnee = Math.sin(crawlCycle + Math.PI);
-    const crawlPush = Math.abs(Math.sin(crawlCycle));
-    const leftPairLift = Math.max(0, leftHandAndRightKnee);
-    const rightPairLift = Math.max(0, rightHandAndLeftKnee);
+    const walkSpeed = (running ? 11.2 : 6.6) * animatronic.walkCycleSpeedMultiplier;
+    const walkStrength = (running ? 1.18 : 0.78) * animatronic.walkCycleStrideMultiplier;
+    const walkCycle = this.elapsed * walkSpeed + animatronic.walkCyclePhase;
+    const leftStep = Math.sin(walkCycle);
+    const rightStep = Math.sin(walkCycle + Math.PI);
+    const footPlant = Math.abs(Math.sin(walkCycle));
     const animationFloorY = this.getOfficeGameModeAnimatronicFloorY(animatronic.animatronic, animatronic.model.root.position.x, animatronic.model.root.position.z);
-    const crawlYOffset = animatronic.animatronic === 'foxy' ? -0.48 : -0.58;
-    const crawlBob = crawlPush * (running ? 0.045 : 0.026) * animatronic.walkCycleBounceMultiplier;
+    const walkBob = footPlant * (running ? 0.075 : 0.04) * animatronic.walkCycleBounceMultiplier;
 
     animatronic.model.root.rotation.x = MathUtils.lerp(
       animatronic.model.root.rotation.x,
-      1.2 - crawlPush * 0.06,
-      0.36,
+      running ? -0.035 : 0.01,
+      0.32,
     );
     animatronic.model.root.rotation.z = MathUtils.lerp(
       animatronic.model.root.rotation.z,
-      Math.sin(crawlCycle * 0.5) * (running ? 0.055 : 0.034) * animatronic.walkCycleSideMultiplier,
-      0.34,
+      Math.sin(walkCycle * 0.5) * (running ? 0.045 : 0.024) * animatronic.walkCycleSideMultiplier,
+      0.28,
     );
-    animatronic.model.root.position.y = animationFloorY + crawlYOffset + crawlBob;
+    animatronic.model.root.position.y = animationFloorY + walkBob;
 
     animatronic.model.head.rotation.x = MathUtils.lerp(
       animatronic.model.head.rotation.x,
-      -1.02 + Math.sin(crawlCycle * 0.5) * 0.05,
+      (running ? -0.02 : 0.06) + Math.sin(walkCycle * 0.5) * 0.035,
       0.24,
     );
-    animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 7.4 : 4.8) * animatronic.walkCycleSpeedMultiplier + animatronic.walkCyclePhase * 0.6)
-      * 0.11
-      * (running ? 1.15 : 0.62)
+    animatronic.model.head.rotation.y = Math.sin(this.elapsed * (running ? 5.8 : 3.8) * animatronic.walkCycleSpeedMultiplier + animatronic.walkCyclePhase * 0.6)
+      * 0.08
+      * (running ? 1.05 : 0.6)
       * animatronic.walkCycleBounceMultiplier;
 
-    const handReach = (running ? 0.28 : 0.2) * crawlStrength * animatronic.walkCycleArmMultiplier;
-    const handPlant = (running ? 0.22 : 0.16) * crawlStrength;
-    const kneeReach = (running ? 0.32 : 0.22) * crawlStrength * animatronic.walkCycleStrideMultiplier;
+    const armSwing = (running ? 0.7 : 0.42) * walkStrength * animatronic.walkCycleArmMultiplier;
+    const legSwing = (running ? 0.52 : 0.34) * walkStrength;
+    const kneeBend = (running ? 0.28 : 0.18) * walkStrength;
     animatronic.model.leftArm.rotation.set(
-      -1.68 + leftHandAndRightKnee * handReach,
-      0.28,
-      0.72 - rightPairLift * handPlant,
+      -0.14 + rightStep * armSwing,
+      0.08,
+      -0.48,
     );
     animatronic.model.rightArm.rotation.set(
-      -1.68 + rightHandAndLeftKnee * handReach,
-      -0.28,
-      -0.72 + leftPairLift * handPlant,
+      -0.14 + leftStep * armSwing,
+      -0.08,
+      0.48,
     );
-    animatronic.model.leftArmJoint.rotation.x = -1.08 - leftPairLift * 0.24 * crawlStrength;
-    animatronic.model.rightArmJoint.rotation.x = -1.08 - rightPairLift * 0.24 * crawlStrength;
-    animatronic.model.leftArmJoint.rotation.z = -0.24 - rightPairLift * 0.12;
-    animatronic.model.rightArmJoint.rotation.z = 0.24 + leftPairLift * 0.12;
+    animatronic.model.leftArmJoint.rotation.x = -0.18 + Math.max(0, rightStep) * 0.18 * walkStrength;
+    animatronic.model.rightArmJoint.rotation.x = -0.18 + Math.max(0, leftStep) * 0.18 * walkStrength;
+    animatronic.model.leftArmJoint.rotation.z = -0.08;
+    animatronic.model.rightArmJoint.rotation.z = 0.08;
 
     animatronic.model.leftLeg.rotation.set(
-      1.48 + rightHandAndLeftKnee * kneeReach,
-      -0.08,
-      0.28 + leftPairLift * 0.12,
+      leftStep * legSwing,
+      -0.04,
+      0.08,
     );
     animatronic.model.rightLeg.rotation.set(
-      1.48 + leftHandAndRightKnee * kneeReach,
-      0.08,
-      -0.28 - rightPairLift * 0.12,
+      rightStep * legSwing,
+      0.04,
+      -0.08,
     );
-    animatronic.model.leftLegJoint.rotation.x = -1.46 + rightPairLift * 0.34 * crawlStrength;
-    animatronic.model.rightLegJoint.rotation.x = -1.46 + leftPairLift * 0.34 * crawlStrength;
-    animatronic.model.leftLegJoint.rotation.z = 0.14 + leftPairLift * 0.12;
-    animatronic.model.rightLegJoint.rotation.z = -0.14 - rightPairLift * 0.12;
+    animatronic.model.leftLegJoint.rotation.x = Math.max(0, -leftStep) * kneeBend;
+    animatronic.model.rightLegJoint.rotation.x = Math.max(0, -rightStep) * kneeBend;
+    animatronic.model.leftLegJoint.rotation.z = 0.04;
+    animatronic.model.rightLegJoint.rotation.z = -0.04;
     return false;
   }
 
