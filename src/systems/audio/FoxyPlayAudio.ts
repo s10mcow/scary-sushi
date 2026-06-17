@@ -58,6 +58,19 @@ export class FoxyPlayAudio {
     this.playSpeech('foxy', FOXY_PLAY_STORY_NARRATION);
   }
 
+  playStoryFightEffects(): void {
+    if (!this.context) {
+      return;
+    }
+
+    this.resume();
+    const startTime = this.context.currentTime + 30.2;
+    [0, 1.75, 3.5].forEach((offset, index) => {
+      this.schedulePuppetPunch(startTime + offset, index === 1 ? 0.16 : 0.22);
+      this.schedulePirateArr(startTime + offset + 0.18, 118 - index * 9);
+    });
+  }
+
   destroy(): void {
     this.stopSpeech();
     this.stopMusic();
@@ -131,6 +144,68 @@ export class FoxyPlayAudio {
         gain.disconnect();
       };
     });
+  }
+
+  private schedulePuppetPunch(startTime: number, volume: number): void {
+    if (!this.context) {
+      return;
+    }
+
+    const low = this.context.createOscillator();
+    const lowGain = this.context.createGain();
+    low.type = 'triangle';
+    low.frequency.setValueAtTime(142, startTime);
+    low.frequency.exponentialRampToValueAtTime(54, startTime + 0.16);
+    lowGain.gain.setValueAtTime(0.0001, startTime);
+    lowGain.gain.exponentialRampToValueAtTime(volume, startTime + 0.012);
+    lowGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.18);
+    low.connect(lowGain);
+    lowGain.connect(this.context.destination);
+    this.startSource(low, startTime, startTime + 0.2);
+
+    const knock = this.context.createOscillator();
+    const knockGain = this.context.createGain();
+    knock.type = 'square';
+    knock.frequency.setValueAtTime(560, startTime + 0.012);
+    knock.frequency.exponentialRampToValueAtTime(210, startTime + 0.08);
+    knockGain.gain.setValueAtTime(0.0001, startTime + 0.012);
+    knockGain.gain.exponentialRampToValueAtTime(volume * 0.42, startTime + 0.02);
+    knockGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.1);
+    knock.connect(knockGain);
+    knockGain.connect(this.context.destination);
+    this.startSource(knock, startTime + 0.012, startTime + 0.11);
+  }
+
+  private schedulePirateArr(startTime: number, baseFrequency: number): void {
+    if (!this.context) {
+      return;
+    }
+
+    const growl = this.context.createOscillator();
+    const gain = this.context.createGain();
+    const filter = this.context.createBiquadFilter();
+    growl.type = 'sawtooth';
+    growl.frequency.setValueAtTime(baseFrequency, startTime);
+    growl.frequency.exponentialRampToValueAtTime(baseFrequency * 0.58, startTime + 0.34);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(620, startTime);
+    filter.Q.value = 5.5;
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.075, startTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.44);
+    growl.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.context.destination);
+    this.startSource(growl, startTime, startTime + 0.48);
+  }
+
+  private startSource(source: AudioScheduledSourceNode, startTime: number, stopTime: number): void {
+    this.activeSources.add(source);
+    source.addEventListener('ended', () => {
+      this.activeSources.delete(source);
+    });
+    source.start(startTime);
+    source.stop(stopTime);
   }
 
   private stopSpeech(): void {

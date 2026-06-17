@@ -20100,6 +20100,7 @@ export class Game {
     if (foxyStory) {
       this.officeChapter.startFoxyStory();
       this.foxyPlayAudio.playStoryNarration();
+      this.foxyPlayAudio.playStoryFightEffects();
       this.gameplaySfxAudio.playSmallPanel(false);
       this.pushStatus("Pirate Foxy's wooden puppet show begins behind the stage.", 4.2);
       return;
