@@ -765,6 +765,7 @@ const MICROPHONE_JUMPSCARE_RECORDING_ID: string | null = null;
 const OFFICE_THROW_SOUND_RECORDING_ID = '006';
 const OFFICE_STUFFIE_SOUND_RECORDING_ID = '004';
 const OFFICE_PARTY_SHOW_RECORDING_ID = '017';
+const OFFICE_GOLDEN_BORI_INSULT_RECORDING_ID = '023';
 const CAMERA_TOOL_CAPTURES_STORAGE_KEY = 'scary-sushi:camera-tool:captures';
 const CAMERA_TOOL_NEXT_PICTURE_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-picture-index';
 const CAMERA_TOOL_NEXT_VIDEO_INDEX_STORAGE_KEY = 'scary-sushi:camera-tool:next-video-index';
@@ -1346,6 +1347,14 @@ export class Game {
           ?? OFFICE_JUMPSCARE_DEFINITIONS.find((entry) => entry.id === 'bori-3');
         if (definition) {
           this.startOfficeJumpscare(definition);
+        }
+      },
+      onGoldenBoriInsult: () => {
+        if (!this.officeChapterActive || this.officeChapter !== this.mainOfficeChapter || !this.officeGameModeActive) {
+          return;
+        }
+        if (!this.playMicrophoneSoundEffect(() => this.gameplaySfxAudio.playOfficeJumpscareCue('ear-snap'), OFFICE_GOLDEN_BORI_INSULT_RECORDING_ID)) {
+          this.gameplaySfxAudio.playOfficeJumpscareCue('ear-snap');
         }
       },
     });
@@ -3026,7 +3035,7 @@ export class Game {
         this.player.getPosition(),
         this.officePlayerVoiceLevel,
         this.officeInsultHeardTimer > 0,
-        this.officeGameModeActive && (this.officeMode !== 'game' || this.officeGameModeNightPhase),
+        this.officeGameModeActive,
       );
       this.updateOfficeDoorSoundPlayback();
       this.updateOfficeDoorSparks(deltaSeconds);

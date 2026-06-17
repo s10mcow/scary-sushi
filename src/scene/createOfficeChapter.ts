@@ -34,6 +34,8 @@ const OFFICE_VISUAL_UPDATE_INTERVAL = 1 / 12;
 const OFFICE_SECURITY_CAMERA_SCAN_LIGHTS_ENABLED = false;
 const GOLDEN_BORI_COLLISION_RADIUS = 0.62;
 const GOLDEN_BORI_PATH_SAMPLE_DISTANCE = 0.46;
+const GOLDEN_BORI_INSULT_RAGE_SECONDS = 10;
+const GOLDEN_BORI_INSULT_SOUND_COOLDOWN_SECONDS = 3.2;
 
 export interface OfficeChapterSeat {
   label: string;
@@ -483,6 +485,7 @@ interface OfficeChapterOptions {
   sandboxQuackyDesign?: boolean;
   onGoldenBoriStep?: () => void;
   onGoldenBoriCatch?: () => void;
+  onGoldenBoriInsult?: () => void;
 }
 
 const OFFICE_CENTER_X = -240;
@@ -10909,11 +10912,43 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const goldenBoriPatrolRoute = [
     0, 1, 2, 15, 2, 16, 2, 3, 4, 5, 6, 5, 7, 8, 7, 5, 9, 10, 9, 11, 9, 5, 12, 13, 12, 14, 12, 5, 17, 18, 17, 5, 20, 19, 20, 5, 4, 3, 2, 1,
   ];
+  const pickGoldenBoriRoamDestination = (currentIndex: number): number => {
+    const candidates = goldenBoriWanderPoints
+      .map((point, index) => ({ point, index }))
+      .filter(({ point, index }) => (
+        index !== currentIndex
+        && canGoldenBoriStandAt(point.x, point.z, GOLDEN_BORI_COLLISION_RADIUS * 0.72)
+      ));
+    if (candidates.length === 0) {
+      return currentIndex;
+    }
+
+    const currentPoint = goldenBoriWanderPoints[currentIndex] ?? goldenBori.root.position;
+    const weighted = candidates.map((candidate) => {
+      const distance = Math.hypot(candidate.point.x - currentPoint.x, candidate.point.z - currentPoint.z);
+      return {
+        index: candidate.index,
+        weight: Math.max(0.35, distance),
+      };
+    });
+    const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * totalWeight;
+    for (const entry of weighted) {
+      roll -= entry.weight;
+      if (roll <= 0) {
+        return entry.index;
+      }
+    }
+    return weighted[weighted.length - 1]?.index ?? currentIndex;
+  };
   let goldenBoriWanderIndex = 1;
+  let goldenBoriRoamDestinationIndex = 5;
   let goldenBoriWanderPause = 0.65;
   let goldenBoriWalkTime = 0;
   let goldenBoriChaseActive = false;
   let goldenBoriChaseTimer = 0;
+  let goldenBoriInsultRageTimer = 0;
+  let goldenBoriInsultSoundCooldown = 0;
   let goldenBoriStepSoundIndex = -1;
   let goldenBoriCatchCooldown = 0;
   let goldenBoriStuckTimer = 0;
@@ -11688,6 +11723,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     provocativeSpeech = false,
   ): void => {
     goldenBoriCatchCooldown = Math.max(0, goldenBoriCatchCooldown - deltaSeconds);
+    goldenBoriInsultRageTimer = Math.max(0, goldenBoriInsultRageTimer - deltaSeconds);
+    goldenBoriInsultSoundCooldown = Math.max(0, goldenBoriInsultSoundCooldown - deltaSeconds);
     goldenBori.homePosition.y = getGoldenBoriRootY(goldenBori.root.position.x, goldenBori.root.position.z);
 
     if (playerPosition) {
@@ -11705,6 +11742,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       if (heardVoice || heardProvocation) {
         goldenBoriChaseActive = true;
         goldenBoriChaseTimer = Math.max(goldenBoriChaseTimer, heardProvocation || playerVoiceLevel >= 0.48 ? 12 : 7);
+        if (heardProvocation) {
+          goldenBoriInsultRageTimer = Math.max(goldenBoriInsultRageTimer, GOLDEN_BORI_INSULT_RAGE_SECONDS);
+          if (goldenBoriInsultSoundCooldown <= 0) {
+            options.onGoldenBoriInsult?.();
+            goldenBoriInsultSoundCooldown = GOLDEN_BORI_INSULT_SOUND_COOLDOWN_SECONDS;
+          }
+        }
         goldenBoriWanderPause = 0;
       }
     }
@@ -11744,8 +11788,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       const nextRouteIndex = getGoldenBoriNextRouteIndex(currentRouteIndex, playerRouteIndex);
       goldenBoriChaseTarget.copy(goldenBoriWanderPoints[nextRouteIndex] ?? goldenBoriWanderPoints[currentRouteIndex] ?? goldenBori.root.position);
     } else {
-      const patrolRouteIndex = goldenBoriPatrolRoute[goldenBoriWanderIndex] ?? goldenBoriPatrolRoute[0] ?? 0;
-      goldenBoriChaseTarget.copy(goldenBoriWanderPoints[patrolRouteIndex] ?? goldenBoriWanderPoints[0]);
+      const currentRouteIndex = getNearestGoldenBoriRouteIndex(goldenBori.root.position);
+      if (
+        goldenBoriRoamDestinationIndex === currentRouteIndex
+        || !goldenBoriWanderPoints[goldenBoriRoamDestinationIndex]
+      ) {
+        goldenBoriRoamDestinationIndex = pickGoldenBoriRoamDestination(currentRouteIndex);
+      }
+      const nextRouteIndex = getGoldenBoriNextRouteIndex(currentRouteIndex, goldenBoriRoamDestinationIndex);
+      goldenBoriWanderIndex = Math.max(0, goldenBoriPatrolRoute.indexOf(nextRouteIndex));
+      goldenBoriChaseTarget.copy(goldenBoriWanderPoints[nextRouteIndex] ?? goldenBoriWanderPoints[currentRouteIndex] ?? goldenBoriWanderPoints[0]);
     }
 
     const target = goldenBoriChaseTarget;
@@ -11783,6 +11835,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
       if (goldenBoriChaseTimer <= 0 || !playerPosition || playerPosition.y <= -1 || playerPosition.y >= WALL_HEIGHT + 3.2) {
         goldenBoriChaseActive = false;
+        goldenBoriInsultRageTimer = 0;
         goldenBoriWanderPause = 0.35;
       }
     }
@@ -11791,13 +11844,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       if (goldenBoriChaseActive) {
         resetAnimatronicPartsTowardHome(goldenBori, 1 - Math.exp(-deltaSeconds * 5.5));
       } else {
-        goldenBoriWanderIndex = (goldenBoriWanderIndex + 1) % goldenBoriPatrolRoute.length;
-        goldenBoriWanderPause = MathUtils.lerp(0.45, 1.25, Math.random());
+        const currentRouteIndex = getNearestGoldenBoriRouteIndex(goldenBori.root.position);
+        if (currentRouteIndex === goldenBoriRoamDestinationIndex) {
+          goldenBoriRoamDestinationIndex = pickGoldenBoriRoamDestination(currentRouteIndex);
+          goldenBoriWanderPause = MathUtils.lerp(0.12, 0.58, Math.random());
+        } else {
+          goldenBoriWanderPause = MathUtils.lerp(0.04, 0.22, Math.random());
+        }
       }
       return;
     }
 
-    const speed = goldenBoriChaseActive ? 5.95 : 1.22;
+    const speed = goldenBoriInsultRageTimer > 0
+      ? GAME_CONFIG.player.sprintSpeed * 2
+      : goldenBoriChaseActive
+        ? 5.95
+        : 1.45;
     const moved = moveGoldenBoriToward(target, speed, deltaSeconds);
     if (!moved) {
       goldenBoriStuckTimer += deltaSeconds;
@@ -12355,10 +12417,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
 
   const resetGoldenBori = (): void => {
     goldenBoriWanderIndex = 1;
+    goldenBoriRoamDestinationIndex = 5;
     goldenBoriWanderPause = 0.65;
     goldenBoriWalkTime = 0;
     goldenBoriChaseActive = false;
     goldenBoriChaseTimer = 0;
+    goldenBoriInsultRageTimer = 0;
+    goldenBoriInsultSoundCooldown = 0;
     goldenBoriStepSoundIndex = -1;
     goldenBoriCatchCooldown = 3.5;
     goldenBoriStuckTimer = 0;
