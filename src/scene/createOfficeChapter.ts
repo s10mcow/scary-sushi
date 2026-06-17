@@ -6148,20 +6148,23 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       },
     );
   }
-  hallFloors.forEach((hallFloor) => {
+  hallFloors.forEach((hallFloor, index) => {
     root.add(createFloor({
       width: hallFloor.width,
       depth: hallFloor.depth,
       center: hallFloor.center,
       ceilingHeight: WALL_HEIGHT,
     }, materials));
-    root.add(createPizzeriaCheckeredFloor(
-      hallFloor.width,
-      hallFloor.depth,
-      hallFloor.center[0],
-      hallFloor.center[1],
-      0.12,
-    ));
+    const straightHallCheckerCoveredByTurn = !abandonedStraightHalls && index < 2;
+    if (!straightHallCheckerCoveredByTurn) {
+      root.add(createPizzeriaCheckeredFloor(
+        hallFloor.width,
+        hallFloor.depth,
+        hallFloor.center[0],
+        hallFloor.center[1],
+        0.12,
+      ));
+    }
   });
 
   const hallWalls: WallDefinition[] = abandonedStraightHalls
