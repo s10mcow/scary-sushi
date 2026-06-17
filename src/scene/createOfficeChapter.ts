@@ -184,6 +184,8 @@ export interface OfficeChapterBasementRoomDoor {
   doorPivot: Group;
   collider: CollisionBox;
   openDirection: -1 | 1;
+  locked?: boolean;
+  keycardRequired?: boolean;
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
@@ -8537,6 +8539,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const basementWallMaxX = employeeElevatorCenterX + employeeElevatorBasementRoomWidth / 2;
   const basementWallMinZ = employeeElevatorCenterZ - employeeElevatorBasementRoomDepth / 2;
   const basementWallMaxZ = employeeElevatorCenterZ + employeeElevatorBasementRoomDepth / 2;
+  const basementNorthHallEnabled = false;
   const basementHallwayCenterX = -256.07;
   const basementHallwayWidth = 2.48;
   const basementHallwayLength = GAME_CONFIG.player.sprintSpeed * 5;
@@ -8559,11 +8562,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const basementSideRoomWidth = 7.4;
   const basementSideRoomDoorWidth = 2.72;
   const basementSideRoomWallOpeningPadding = 0.7;
-  const basementSideRooms = [
-    { centerZ: 119.84, depth: 6.2, lightPhase: 2.35 },
-    { centerZ: 129.32, depth: 5.9, lightPhase: 3.1 },
-    { centerZ: 137.33, depth: 5.8, lightPhase: 3.85 },
-  ].map((room) => {
+  const basementSideRoomDefinitions: Array<{ centerZ: number; depth: number; lightPhase: number }> = [];
+  const basementSideRooms = basementSideRoomDefinitions.map((room) => {
     const doorMinZ = room.centerZ - basementSideRoomDoorWidth / 2;
     const doorMaxZ = room.centerZ + basementSideRoomDoorWidth / 2;
     return {
@@ -8580,12 +8580,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     };
   });
   const basementHallwayBounds = [
-    {
-      minX: basementHallwayMinX + 0.5,
-      maxX: basementHallwayMaxX - 0.5,
-      minZ: basementHallwayStartZ + 1.75,
-      maxZ: basementWallMinZ + 0.62,
-    },
+    ...(basementNorthHallEnabled
+      ? [{
+          minX: basementHallwayMinX + 0.5,
+          maxX: basementHallwayMaxX - 0.5,
+          minZ: basementHallwayStartZ + 1.75,
+          maxZ: basementWallMinZ + 0.62,
+        }]
+      : []),
     {
       minX: southBasementHallwayMinX + 0.5,
       maxX: southBasementHallwayMaxX - 0.5,
@@ -8908,25 +8910,118 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       targetOpenAmount: 0,
     });
   };
+  const addBasementKeycardDoor = (z: number, index: number): void => {
+    const doorWidth = southBasementHallwayWidth - 0.28;
+    const doorHeight = 2.55;
+    const pivotX = southBasementHallwayMinX + 0.12;
+    const doorMaterial = new MeshStandardMaterial({
+      color: 0x38434c,
+      emissive: 0x05080a,
+      emissiveIntensity: 0.12,
+      roughness: 0.48,
+      metalness: 0.58,
+    });
+    const trimMaterial = new MeshStandardMaterial({
+      color: 0x111820,
+      emissive: 0x020405,
+      emissiveIntensity: 0.1,
+      roughness: 0.36,
+      metalness: 0.72,
+    });
+    const readerMaterial = new MeshStandardMaterial({
+      color: 0x0b2830,
+      emissive: 0x21d6ff,
+      emissiveIntensity: 0.65,
+      roughness: 0.22,
+      metalness: 0.32,
+    });
+    const deniedMaterial = new MeshStandardMaterial({
+      color: 0x351012,
+      emissive: 0xff2430,
+      emissiveIntensity: 0.35,
+      roughness: 0.4,
+      metalness: 0.2,
+    });
+    const doorRoot = new Group();
+    doorRoot.position.set(pivotX, 0, z);
+    const doorPivot = new Group();
+    doorPivot.position.set(0, employeeElevatorBasementFloorY + doorHeight / 2, 0);
+    const panel = new Mesh(new BoxGeometry(doorWidth, doorHeight, 0.14), doorMaterial);
+    panel.position.set(doorWidth / 2, 0, 0);
+    panel.castShadow = true;
+    panel.receiveShadow = true;
+    const lowerInset = new Mesh(new BoxGeometry(doorWidth * 0.62, 0.74, 0.035), trimMaterial);
+    lowerInset.position.set(doorWidth / 2, -0.48, -0.084);
+    const upperInset = new Mesh(new BoxGeometry(doorWidth * 0.62, 0.58, 0.035), trimMaterial);
+    upperInset.position.set(doorWidth / 2, 0.58, -0.084);
+    const reader = new Mesh(new BoxGeometry(0.26, 0.42, 0.065), readerMaterial);
+    reader.position.set(doorWidth - 0.35, 0.02, -0.118);
+    const readerLight = new Mesh(new BoxGeometry(0.14, 0.07, 0.073), deniedMaterial);
+    readerLight.position.set(doorWidth - 0.35, -0.14, -0.156);
+    doorPivot.add(panel, lowerInset, upperInset, reader, readerLight);
+    doorRoot.add(doorPivot);
+
+    const frameCenterY = employeeElevatorBasementFloorY + doorHeight / 2;
+    const westFrame = new Mesh(new BoxGeometry(0.18, doorHeight + 0.24, 0.22), trimMaterial);
+    westFrame.position.set(southBasementHallwayMinX + 0.04, frameCenterY, z);
+    const eastFrame = new Mesh(new BoxGeometry(0.18, doorHeight + 0.24, 0.22), trimMaterial);
+    eastFrame.position.set(southBasementHallwayMaxX - 0.04, frameCenterY, z);
+    const header = new Mesh(new BoxGeometry(southBasementHallwayWidth + 0.16, 0.18, 0.24), trimMaterial);
+    header.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY + doorHeight + 0.08, z);
+    const threshold = new Mesh(new BoxGeometry(southBasementHallwayWidth + 0.08, 0.045, 0.28), trimMaterial);
+    threshold.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY + 0.012, z);
+    employeeElevatorRoot.add(doorRoot, westFrame, eastFrame, header, threshold);
+
+    const doorCollider: CollisionBox = {
+      centerX: southBasementHallwayCenterX,
+      centerZ: z,
+      halfWidth: southBasementHallwayWidth / 2,
+      halfDepth: 0.13,
+      enabled: true,
+    };
+    colliders.push(doorCollider);
+    basementRoomDoors.push({
+      label: `Basement Key Card Door ${index + 1}`,
+      root: doorRoot,
+      interactPosition: new Vector3(southBasementHallwayCenterX, employeeElevatorBasementFloorY + 1.22, z - 0.82),
+      doorPivot,
+      collider: doorCollider,
+      openDirection: -1,
+      locked: true,
+      keycardRequired: true,
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
+    });
+  };
   [
     { x: basementWallMinX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
     { x: basementWallMaxX, z: employeeElevatorCenterZ, sx: 0.14, sz: employeeElevatorBasementRoomDepth },
   ].forEach(addBasementWallSegment);
-  const northLeftWidth = Math.max(0, basementHallwayMinX - basementWallMinX);
-  const northRightWidth = Math.max(0, basementWallMaxX - basementHallwayMaxX);
-  if (northLeftWidth > 0.08) {
+  if (basementNorthHallEnabled) {
+    const northLeftWidth = Math.max(0, basementHallwayMinX - basementWallMinX);
+    const northRightWidth = Math.max(0, basementWallMaxX - basementHallwayMaxX);
+    if (northLeftWidth > 0.08) {
+      addBasementWallSegment({
+        x: basementWallMinX + northLeftWidth / 2,
+        z: basementWallMinZ,
+        sx: northLeftWidth,
+        sz: 0.14,
+      });
+    }
+    if (northRightWidth > 0.08) {
+      addBasementWallSegment({
+        x: basementHallwayMaxX + northRightWidth / 2,
+        z: basementWallMinZ,
+        sx: northRightWidth,
+        sz: 0.14,
+      });
+    }
+  } else {
     addBasementWallSegment({
-      x: basementWallMinX + northLeftWidth / 2,
+      x: basementHallwayCenterX,
       z: basementWallMinZ,
-      sx: northLeftWidth,
-      sz: 0.14,
-    });
-  }
-  if (northRightWidth > 0.08) {
-    addBasementWallSegment({
-      x: basementHallwayMaxX + northRightWidth / 2,
-      z: basementWallMinZ,
-      sx: northRightWidth,
+      sx: basementHallwayWidth,
       sz: 0.14,
     });
   }
@@ -8953,10 +9048,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     [basementWallMaxX, basementWallMinZ],
     [basementWallMinX, basementWallMaxZ],
     [basementWallMaxX, basementWallMaxZ],
-    [basementHallwayMinX, basementHallwayVisualStartZ],
-    [basementHallwayMaxX, basementHallwayVisualStartZ],
-    [basementHallwayMinX, basementWallMinZ],
-    [basementHallwayMaxX, basementWallMinZ],
+    ...(basementNorthHallEnabled
+      ? [
+          [basementHallwayMinX, basementHallwayVisualStartZ],
+          [basementHallwayMaxX, basementHallwayVisualStartZ],
+          [basementHallwayMinX, basementWallMinZ],
+          [basementHallwayMaxX, basementWallMinZ],
+        ]
+      : []),
     [southBasementHallwayMinX, basementWallMaxZ],
     [southBasementHallwayMaxX, basementWallMaxZ],
   ].forEach(([x, z]) => {
@@ -8966,7 +9065,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   hallwayHeader.position.set(basementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight - 0.23, basementWallMinZ);
   const southHallwayHeader = new Mesh(new BoxGeometry(southBasementHallwayWidth, 0.46, 0.14), basementWallMaterial);
   southHallwayHeader.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight - 0.23, basementWallMaxZ);
-  employeeElevatorRoot.add(hallwayHeader);
+  if (basementNorthHallEnabled) {
+    employeeElevatorRoot.add(hallwayHeader);
+  }
   const hallwayFloor = new Mesh(
     new BoxGeometry(basementHallwayWidth, 0.1, basementHallwayVisualLength),
     hallwayFloorMaterial,
@@ -9009,8 +9110,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   );
   blockedRoomCeiling.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY + basementWallHeight, blockedBasementRoomCenterZ);
   employeeElevatorRoot.add(
-    hallwayFloor,
-    hallwayCeiling,
     southHallwayHeader,
     southHallwayFloor,
     southHallwayCeiling,
@@ -9019,11 +9118,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     blockedRoomFloor,
     blockedRoomCeiling,
   );
-  const northHallwayFarEndWall = new Mesh(new BoxGeometry(basementHallwayWidth, basementWallHeight, 0.16), basementWallMaterial);
-  northHallwayFarEndWall.position.set(basementHallwayCenterX, basementWallCenterY, basementHallwayVisualStartZ);
-  employeeElevatorRoot.add(northHallwayFarEndWall);
-  addSegmentedHallwayWall(basementHallwayMinX, basementHallwayVisualStartZ, basementHallwayEndZ);
-  addSegmentedHallwayWall(basementHallwayMaxX, basementHallwayVisualStartZ, basementHallwayEndZ);
+  if (basementNorthHallEnabled) {
+    employeeElevatorRoot.add(hallwayFloor, hallwayCeiling);
+    const northHallwayFarEndWall = new Mesh(new BoxGeometry(basementHallwayWidth, basementWallHeight, 0.16), basementWallMaterial);
+    northHallwayFarEndWall.position.set(basementHallwayCenterX, basementWallCenterY, basementHallwayVisualStartZ);
+    employeeElevatorRoot.add(northHallwayFarEndWall);
+    addSegmentedHallwayWall(basementHallwayMinX, basementHallwayVisualStartZ, basementHallwayEndZ);
+    addSegmentedHallwayWall(basementHallwayMaxX, basementHallwayVisualStartZ, basementHallwayEndZ);
+  }
   addSegmentedHallwayWallOutsideOpenings(
     southBasementHallwayMinX,
     southBasementHallwayStartZ,
@@ -9037,6 +9139,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   addSegmentedHallwayWall(southBasementHallwayMinX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
   addSegmentedHallwayWall(southBasementHallwayMaxX, southBasementHallwayEndZ, blockedBasementRoomMinZ);
   basementSideRooms.forEach(addBasementSideRoom);
+  [152.81, 158.38, 165.42].forEach(addBasementKeycardDoor);
   const blockedRoomSideWallDepth = blockedBasementRoomDepth;
   [
     { x: blockedBasementRoomMinX, z: blockedBasementRoomCenterZ, sx: 0.14, sz: blockedRoomSideWallDepth },
@@ -9068,21 +9171,23 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     addBasementWallSeamPost(x, z);
   });
   addBasementFlickerFixture(employeeElevatorCenterX + 1.3, employeeElevatorCenterZ - 1.7, 2.45, 0.2, 22, 'normal');
-  [
-    basementWallMinZ - 5.5,
-    basementWallMinZ - 17.5,
-    basementWallMinZ - 31.5,
-    basementWallMinZ - 45.5,
-  ].filter((z) => z > basementHallwayStartZ + 3).forEach((z, index) => {
-    addBasementFlickerFixture(
-      basementHallwayCenterX,
-      z,
-      2.0 + (index % 2) * 0.24,
-      0.75 + index * 0.63,
-      22,
-      index % 2 === 0 ? 'broken' : 'dim',
-    );
-  });
+  if (basementNorthHallEnabled) {
+    [
+      basementWallMinZ - 5.5,
+      basementWallMinZ - 17.5,
+      basementWallMinZ - 31.5,
+      basementWallMinZ - 45.5,
+    ].filter((z) => z > basementHallwayStartZ + 3).forEach((z, index) => {
+      addBasementFlickerFixture(
+        basementHallwayCenterX,
+        z,
+        2.0 + (index % 2) * 0.24,
+        0.75 + index * 0.63,
+        22,
+        index % 2 === 0 ? 'broken' : 'dim',
+      );
+    });
+  }
   [
     basementWallMaxZ + 7.5,
     basementWallMaxZ + 21.5,
@@ -12117,6 +12222,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       door.open = false;
       door.openAmount = 0;
       door.targetOpenAmount = 0;
+      if (door.keycardRequired) {
+        door.locked = true;
+      }
       door.doorPivot.rotation.y = 0;
       door.collider.enabled = true;
     });

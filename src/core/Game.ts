@@ -17121,6 +17121,11 @@ export class Game {
       }
 
       if (basementRoomDoor) {
+        if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
+          return this.officeChapter.employeeKeyBriefcase.keyCollected
+            ? `Press E to unlock ${basementRoomDoor.label.toLowerCase()} with the key card.`
+            : `${basementRoomDoor.label} needs the employees-only key card.`;
+        }
         return basementRoomDoor.open
           ? `Press E to close ${basementRoomDoor.label.toLowerCase()}.`
           : `Press E to open ${basementRoomDoor.label.toLowerCase()}.`;
@@ -17900,6 +17905,11 @@ export class Game {
       }
 
       if (basementRoomDoor) {
+        if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
+          return this.officeChapter.employeeKeyBriefcase.keyCollected
+            ? `${basementRoomDoor.label} is locked. Press E to swipe the employees-only key card.`
+            : `${basementRoomDoor.label} is locked. Find the employees-only key card first.`;
+        }
         return basementRoomDoor.open
           ? `${basementRoomDoor.label} is open. Press E to close it.`
           : `${basementRoomDoor.label} is closed. Press E to open it.`;
@@ -20124,13 +20134,32 @@ export class Game {
 
     const basementRoomDoor = this.getNearestOfficeBasementRoomDoor();
     if (basementRoomDoor) {
+      if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
+        if (!this.officeChapter.employeeKeyBriefcase.keyCollected) {
+          this.gameplaySfxAudio.playSmallPanel(false);
+          this.pushStatus(`${basementRoomDoor.label} needs the employees-only key card from the briefcase.`, 2.6);
+          return;
+        }
+
+        basementRoomDoor.locked = false;
+        basementRoomDoor.targetOpenAmount = 1;
+        basementRoomDoor.open = true;
+        this.gameplaySfxAudio.playClosetDoor(true);
+        this.pushStatus(`The key card unlocks ${basementRoomDoor.label.toLowerCase()}.`, 2.5);
+        return;
+      }
       basementRoomDoor.targetOpenAmount = basementRoomDoor.targetOpenAmount > 0.5 ? 0 : 1;
       basementRoomDoor.open = basementRoomDoor.targetOpenAmount > 0.5;
+      if (basementRoomDoor.keycardRequired && !basementRoomDoor.open) {
+        basementRoomDoor.locked = true;
+      }
       this.gameplaySfxAudio.playClosetDoor(basementRoomDoor.open);
       this.pushStatus(
         basementRoomDoor.open
           ? `${basementRoomDoor.label} swings open into the room.`
-          : `${basementRoomDoor.label} swings closed.`,
+          : basementRoomDoor.keycardRequired
+            ? `${basementRoomDoor.label} swings closed and locks.`
+            : `${basementRoomDoor.label} swings closed.`,
         2.1,
       );
       return;
