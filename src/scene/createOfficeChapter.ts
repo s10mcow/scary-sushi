@@ -32,7 +32,7 @@ import { isBlocked } from '../systems/collision/isBlocked';
 const OFFICE_ZERO_VECTOR = new Vector3(0, 0, 0);
 const OFFICE_VISUAL_UPDATE_INTERVAL = 1 / 12;
 const OFFICE_SECURITY_CAMERA_SCAN_LIGHTS_ENABLED = false;
-const GOLDEN_BORI_COLLISION_RADIUS = 0.62;
+const GOLDEN_BORI_COLLISION_RADIUS = 0.52;
 const GOLDEN_BORI_PATH_SAMPLE_DISTANCE = 0.46;
 const GOLDEN_BORI_INSULT_RAGE_SECONDS = 10;
 const GOLDEN_BORI_INSULT_STARE_SECONDS = 1.35;
@@ -7433,8 +7433,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const goldenBoriCollider: CollisionBox = {
     centerX: kitchenHallRoomCenterX,
     centerZ: kitchenHallRoomStageZ + 0.18,
-    halfWidth: 0.89,
-    halfDepth: 0.72,
+    halfWidth: 0.68,
+    halfDepth: 0.62,
   };
   colliders.push(goldenBoriCollider);
   root.add(createFoosballTable(-218.34, 125.89, 0));
