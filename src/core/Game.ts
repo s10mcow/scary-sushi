@@ -6486,7 +6486,7 @@ export class Game {
             ? 'The puppet is staring at you. Put the camera back up within two seconds.'
             : 'The puppet reaches you.'
       : this.officeTabletCameraFeedActive
-        ? `Viewing ${camera?.label ?? 'desk camera'} on the desk iPad. Press number keys to switch, or left click again to return.`
+        ? `Viewing ${camera?.label ?? 'desk camera'} on the desk iPad. Spin the mouse wheel or press number keys to switch, or left click again to return.`
         : 'Camera iPad view closed.',
       clearedPuppetThreat || this.officeCameraPuppetPhase !== 'idle' ? 2.4 : this.officeTabletCameraFeedActive ? 2.6 : 1.4,
     );
@@ -16427,7 +16427,7 @@ export class Game {
     const state = this.officeTabletCameraFeedActive
       ? `viewing ${this.getActiveOfficeTabletCamera()?.label ?? 'no camera'}`
       : 'idle';
-    return `Desk iPad: ${state} / stand at the desk and press E or left click`;
+    return `Desk iPad: ${state} / stand at the desk and press E or left click / mouse wheel switches feeds`;
   }
 
   private getMicrophoneSoundToolInventoryLine(): string {
@@ -17203,7 +17203,7 @@ export class Game {
       }
 
       if (this.officeTabletCameraFeedActive) {
-        return `${this.getActiveOfficeTabletCamera()?.label ?? 'No camera installed'}. Press a camera number to switch cameras, or left click to return to your normal view.`;
+        return `${this.getActiveOfficeTabletCamera()?.label ?? 'No camera installed'}. Spin the mouse wheel or press a camera number to switch cameras, or left click to return to your normal view.`;
       }
 
       if (this.getNearestOfficeCameraMonitors()) {
@@ -17742,7 +17742,7 @@ export class Game {
     }
 
     if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
-      return `Desk camera feed active. ${this.getActiveOfficeTabletCamera()?.label ?? 'No camera installed'}. Press a camera number to switch, or left click to return.`;
+      return `Desk camera feed active. ${this.getActiveOfficeTabletCamera()?.label ?? 'No camera installed'}. Spin the mouse wheel or press a camera number to switch, or left click to return.`;
     }
 
     if (this.chapterFourActive && this.chapterFourBoxActive) {

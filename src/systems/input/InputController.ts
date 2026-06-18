@@ -303,7 +303,9 @@ export class InputController {
   };
 
   private readonly handleWheel = (event: WheelEvent): void => {
-    if (!this.target.document.pointerLockElement || event.deltaY === 0) {
+    const targetElement = event.target instanceof Element ? event.target : null;
+    const overGameSurface = Boolean(targetElement?.closest('#viewport, canvas'));
+    if ((!this.target.document.pointerLockElement && !overGameSurface) || event.deltaY === 0) {
       return;
     }
 

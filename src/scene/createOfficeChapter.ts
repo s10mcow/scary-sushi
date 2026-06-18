@@ -10160,6 +10160,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       ]
       : []),
   ];
+  const getSecurityCameraDisplayNumber = (securityCamera: OfficeChapterSecurityCamera): number => {
+    const match = /^Camera\s+(\d+)/.exec(securityCamera.label);
+    return match ? Number.parseInt(match[1] ?? String(securityCamera.id), 10) : securityCamera.id;
+  };
+  securityCameras.sort((a, b) => getSecurityCameraDisplayNumber(a) - getSecurityCameraDisplayNumber(b));
   securityCameras.forEach((securityCamera) => root.add(securityCamera.root));
   const markerSixSecurityCamera = securityCameras.find((securityCamera) => securityCamera.id === 1) ?? securityCameras[0];
 
