@@ -1226,6 +1226,7 @@ export class Game {
   private chapterSevenOvenHidden = false;
   private chapterSevenSwingSeated = false;
   private chapterSevenHoseWaterSoundCooldown = 0;
+  private chapterSevenCricketCooldown = 0;
   private chapterSevenNightMode = true;
   private chapterSevenPhaseTime = 0;
   private chapterFourPurpleJumpscareTimer = 0;
@@ -3024,6 +3025,7 @@ export class Game {
     this.updateOfficeVentToxicity(deltaSeconds);
     this.updateHealth(deltaSeconds);
     this.updateChapterSevenDayNightCycle(deltaSeconds);
+    this.updateChapterSevenAmbientAudio(deltaSeconds);
     this.updateAtmosphere();
     if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
@@ -11929,6 +11931,29 @@ export class Game {
         : 'The grandfather clock chimes. Day mode returns to the house.',
       3,
     );
+  }
+
+  private updateChapterSevenAmbientAudio(deltaSeconds: number): void {
+    if (!this.chapterSevenActive) {
+      this.chapterSevenCricketCooldown = 0;
+      this.gameplaySfxAudio.stopChapterSevenAmbient();
+      return;
+    }
+
+    this.gameplaySfxAudio.resume();
+    this.gameplaySfxAudio.setChapterSevenAmbient(this.chapterSevenNightMode ? 'night' : 'day');
+    if (!this.chapterSevenNightMode) {
+      this.chapterSevenCricketCooldown = 0;
+      return;
+    }
+
+    this.chapterSevenCricketCooldown -= deltaSeconds;
+    if (this.chapterSevenCricketCooldown > 0) {
+      return;
+    }
+
+    this.gameplaySfxAudio.playChapterSevenCricketChirp();
+    this.chapterSevenCricketCooldown = 0.45 + Math.random() * 1.35;
   }
 
   private updateAtmosphere(): void {
@@ -24387,6 +24412,7 @@ export class Game {
     this.chapterFourCrouching = false;
     this.chapterSevenNightMode = true;
     this.chapterSevenPhaseTime = 0;
+    this.chapterSevenCricketCooldown = 0;
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
     this.chapterFourBoxWideAnchor.visible = false;

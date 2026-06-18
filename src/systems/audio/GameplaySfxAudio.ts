@@ -21,6 +21,9 @@ export class GameplaySfxAudio {
   private readonly masterGain?: GainNode;
   private readonly noiseBuffer?: AudioBuffer;
   private readonly activeSources = new Set<AudioScheduledSourceNode>();
+  private chapterSevenAmbientMode: 'day' | 'night' | null = null;
+  private chapterSevenAmbientSources: AudioScheduledSourceNode[] = [];
+  private chapterSevenAmbientGain?: GainNode;
   private footstepCooldown = 0;
   private footstepSide = 0;
   private ballPitRustleCooldown = 0;
@@ -51,6 +54,7 @@ export class GameplaySfxAudio {
   }
 
   destroy(): void {
+    this.stopChapterSevenAmbient();
     this.stopAllSources();
 
     if (!this.context || this.context.state === 'closed') {
@@ -619,6 +623,84 @@ export class GameplaySfxAudio {
     this.startSource(water, now, now + length);
   }
 
+  setChapterSevenAmbient(mode: 'day' | 'night' | null): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+    if (this.chapterSevenAmbientMode === mode) {
+      return;
+    }
+
+    this.stopChapterSevenAmbient();
+    if (!mode) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.012;
+    const ambientGain = this.context.createGain();
+    ambientGain.gain.setValueAtTime(0.0001, now);
+    ambientGain.gain.exponentialRampToValueAtTime(mode === 'day' ? 0.082 : 0.052, now + 0.6);
+    ambientGain.connect(this.masterGain);
+    this.chapterSevenAmbientGain = ambientGain;
+    this.chapterSevenAmbientMode = mode;
+
+    if (mode === 'day') {
+      this.startChapterSevenDayMusic(now, ambientGain);
+    } else {
+      this.startChapterSevenNightBed(now, ambientGain);
+    }
+  }
+
+  stopChapterSevenAmbient(): void {
+    if (!this.context) {
+      this.chapterSevenAmbientMode = null;
+      this.chapterSevenAmbientSources.length = 0;
+      this.chapterSevenAmbientGain = undefined;
+      return;
+    }
+
+    const now = this.context.currentTime;
+    if (this.chapterSevenAmbientGain) {
+      this.chapterSevenAmbientGain.gain.cancelScheduledValues(now);
+      this.chapterSevenAmbientGain.gain.setTargetAtTime(0.0001, now, 0.18);
+    }
+    this.chapterSevenAmbientSources.forEach((source) => {
+      try {
+        source.stop(now + 0.55);
+      } catch {
+        // Ignore sources already stopped by the browser.
+      }
+      this.activeSources.delete(source);
+    });
+    this.chapterSevenAmbientSources.length = 0;
+    this.chapterSevenAmbientGain = undefined;
+    this.chapterSevenAmbientMode = null;
+  }
+
+  playChapterSevenCricketChirp(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.008;
+    const chirpCount = 2 + Math.floor(Math.random() * 3);
+    for (let index = 0; index < chirpCount; index += 1) {
+      const start = now + index * (0.065 + Math.random() * 0.018);
+      const gain = this.context.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.026 + Math.random() * 0.014, start + 0.009);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.072);
+      gain.connect(this.masterGain);
+
+      const chirp = this.context.createOscillator();
+      chirp.type = 'sine';
+      chirp.frequency.setValueAtTime(4200 + Math.random() * 520, start);
+      chirp.frequency.exponentialRampToValueAtTime(3100 + Math.random() * 420, start + 0.064);
+      chirp.connect(gain);
+      this.startSource(chirp, start, start + 0.08);
+    }
+  }
+
   playPrizeWheelClick(intensity = 1): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;
@@ -1043,6 +1125,112 @@ export class GameplaySfxAudio {
     thud.frequency.exponentialRampToValueAtTime(42, startTime + 0.14);
     thud.connect(thudGain);
     this.startSource(thud, startTime, startTime + 0.17);
+  }
+
+  private startChapterSevenDayMusic(startTime: number, destination: GainNode): void {
+    if (!this.context) {
+      return;
+    }
+
+    const melodyBus = this.context.createGain();
+    melodyBus.gain.value = 0.74;
+    melodyBus.connect(destination);
+    const echo = this.context.createDelay(0.6);
+    echo.delayTime.value = 0.28;
+    const echoGain = this.context.createGain();
+    echoGain.gain.value = 0.22;
+    melodyBus.connect(echo);
+    echo.connect(echoGain);
+    echoGain.connect(destination);
+
+    const notes = [
+      { frequency: 261.63, offset: 0, length: 1.8 },
+      { frequency: 329.63, offset: 2, length: 1.4 },
+      { frequency: 392, offset: 3.6, length: 2.1 },
+      { frequency: 329.63, offset: 6, length: 1.6 },
+      { frequency: 293.66, offset: 7.8, length: 1.7 },
+      { frequency: 349.23, offset: 9.7, length: 1.6 },
+      { frequency: 392, offset: 11.4, length: 2.3 },
+      { frequency: 261.63, offset: 14.1, length: 2.4 },
+    ];
+    const loopLength = 17.4;
+    for (let loop = 0; loop < 6; loop += 1) {
+      const loopStart = startTime + loop * loopLength;
+      notes.forEach((note) => {
+        const noteStart = loopStart + note.offset;
+        const noteGain = this.context!.createGain();
+        noteGain.gain.setValueAtTime(0.0001, noteStart);
+        noteGain.gain.exponentialRampToValueAtTime(0.052, noteStart + 0.08);
+        noteGain.gain.linearRampToValueAtTime(0.034, noteStart + note.length * 0.7);
+        noteGain.gain.exponentialRampToValueAtTime(0.0001, noteStart + note.length);
+        noteGain.connect(melodyBus);
+
+        const tone = this.context!.createOscillator();
+        tone.type = 'triangle';
+        tone.frequency.setValueAtTime(note.frequency, noteStart);
+        tone.connect(noteGain);
+        this.trackChapterSevenAmbientSource(tone, noteStart, noteStart + note.length);
+      });
+    }
+
+    const padGain = this.context.createGain();
+    padGain.gain.setValueAtTime(0.0001, startTime);
+    padGain.gain.exponentialRampToValueAtTime(0.026, startTime + 1.4);
+    padGain.connect(destination);
+    [130.81, 196, 261.63].forEach((frequency) => {
+      const pad = this.context!.createOscillator();
+      pad.type = 'sine';
+      pad.frequency.setValueAtTime(frequency, startTime);
+      pad.connect(padGain);
+      this.trackChapterSevenAmbientSource(pad, startTime, startTime + 90);
+    });
+  }
+
+  private startChapterSevenNightBed(startTime: number, destination: GainNode): void {
+    if (!this.context || !this.noiseBuffer) {
+      return;
+    }
+
+    const nightGain = this.context.createGain();
+    nightGain.gain.setValueAtTime(0.0001, startTime);
+    nightGain.gain.exponentialRampToValueAtTime(0.032, startTime + 1.0);
+    nightGain.connect(destination);
+
+    const insects = this.context.createBufferSource();
+    insects.buffer = this.noiseBuffer;
+    insects.loop = true;
+    insects.playbackRate.value = 0.42;
+
+    const highpass = this.context.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 1800;
+    const band = this.context.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 3600;
+    band.Q.value = 2.2;
+
+    insects.connect(highpass);
+    highpass.connect(band);
+    band.connect(nightGain);
+    this.trackChapterSevenAmbientSource(insects, startTime, startTime + 90);
+  }
+
+  private trackChapterSevenAmbientSource(
+    source: AudioScheduledSourceNode,
+    startTime: number,
+    stopTime: number,
+  ): void {
+    this.chapterSevenAmbientSources.push(source);
+    this.activeSources.add(source);
+    source.addEventListener('ended', () => {
+      this.activeSources.delete(source);
+      const index = this.chapterSevenAmbientSources.indexOf(source);
+      if (index >= 0) {
+        this.chapterSevenAmbientSources.splice(index, 1);
+      }
+    });
+    source.start(startTime);
+    source.stop(stopTime);
   }
 
   private startSource(
