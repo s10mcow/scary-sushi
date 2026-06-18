@@ -4171,12 +4171,12 @@ export function createChapterSeven(): ChapterSevenData {
     appliance.position.set(localX, 0, localZ);
     appliance.rotation.y = rotationY;
 
-    const width = 1.82;
-    const depth = 1.34;
-    const height = KITCHEN_COUNTER_SURFACE_Y - 0.1;
+    const width = 1.98;
+    const depth = 1.44;
+    const height = KITCHEN_COUNTER_SURFACE_Y + 0.04;
     const tubCenterY = height * 0.48;
-    const doorRadius = 0.39;
-    const doorWindowRadius = 0.25;
+    const doorRadius = 0.43;
+    const doorWindowRadius = 0.28;
     const body = new Mesh(new BoxGeometry(width, height, depth), applianceWhiteMaterial);
     body.position.y = height / 2;
     const top = new Mesh(new BoxGeometry(width + 0.08, 0.1, depth + 0.08), porcelainMaterial);
