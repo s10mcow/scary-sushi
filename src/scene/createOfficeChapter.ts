@@ -7131,6 +7131,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const kitchenHallRoomCenterZ = (kitchenHallRoomNorthZ + kitchenHallRoomSouthZ) / 2;
   const kitchenHallRoomMinX = kitchenHallRoomCenterX - kitchenHallRoomWidth / 2;
   const kitchenHallRoomMaxX = kitchenHallRoomCenterX + kitchenHallRoomWidth / 2;
+  const gameRoomGoldenBoriBypassX = kitchenHallRoomMaxX - 1.15;
+  const gameRoomGoldenBoriBypassZ = kitchenHallRoomCenterZ + 1.35;
   const kitchenDoorCenterZ = 141.67;
   const kitchenDoorWidth = 4.4;
   const kitchenDoorMinZ = kitchenDoorCenterZ - kitchenDoorWidth / 2;
@@ -7437,6 +7439,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     halfDepth: 0.62,
   };
   colliders.push(goldenBoriCollider);
+  const goldenBoriGameRoomDividerAvoidance: CollisionBox[] = [
+    { centerX: -224.775, centerZ: 118.535, halfWidth: 0.9, halfDepth: 5.66 },
+    { centerX: -228.225, centerZ: 113.66, halfWidth: 3.48, halfDepth: 0.86 },
+    { centerX: -221.49, centerZ: 113.49, halfWidth: 3.28, halfDepth: 0.86 },
+  ];
   root.add(createFoosballTable(-218.34, 125.89, 0));
   addCollider(colliders, -218.34, 125.89, 3.9, 2.25);
   [
@@ -10949,7 +10956,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let partyShowReturnStartRotationY = Math.PI;
   const goldenBoriWanderPoints = [
     new Vector3(kitchenHallRoomCenterX, 0, kitchenHallRoomStageZ + 0.18),
-    new Vector3(kitchenHallRoomCenterX + 2.2, 0, kitchenHallRoomCenterZ),
+    new Vector3(gameRoomGoldenBoriBypassX, 0, gameRoomGoldenBoriBypassZ),
     new Vector3(northPartyHallCenterX, 0, northPartyHallNorthZ + 2.35),
     new Vector3(northPartyHallCenterX, 0, northPartyHallCenterZ),
     new Vector3(northPartyHallCenterX, 0, partyRoomNorthZ - 1.55),
@@ -11049,7 +11056,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       : PARTY_STAGE_ANIMATRONIC_FOOT_LIFT;
   };
   const isGoldenBoriBlocked = (x: number, z: number, radius = GOLDEN_BORI_COLLISION_RADIUS): boolean => (
-    colliders.some((collider) => collider !== goldenBoriCollider && collider.enabled !== false && isBlocked(x, z, [collider], radius))
+    goldenBoriGameRoomDividerAvoidance.some((zone) => isBlocked(x, z, [zone], radius))
+    || colliders.some((collider) => collider !== goldenBoriCollider && collider.enabled !== false && isBlocked(x, z, [collider], radius))
   );
   const canGoldenBoriStandAt = (x: number, z: number, radius = GOLDEN_BORI_COLLISION_RADIUS): boolean => !isGoldenBoriBlocked(x, z, radius);
   const isGoldenBoriPathClear = (
