@@ -1230,6 +1230,7 @@ export class Game {
   private chapterSevenNightMode = true;
   private chapterSevenPhaseTime = 0;
   private chapterSevenDayCount = 1;
+  private chapterSevenCookieCount = 0;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -12499,6 +12500,7 @@ export class Game {
                     : 'Chapter: scary-sushi',
     );
     this.hud.setChapterSevenDayCounter(this.chapterSevenActive, this.chapterSevenDayCount);
+    this.hud.setChapterSevenCookieCounter(this.chapterSevenActive, this.chapterSevenCookieCount);
     this.hud.setChapterMenu(this.chapterMenuOpen, currentChapter);
     this.hud.setCuratorTool(this.curatorToolOpen);
     this.hud.setCompass(
@@ -24428,6 +24430,7 @@ export class Game {
     this.chapterSevenNightMode = true;
     this.chapterSevenPhaseTime = 0;
     this.chapterSevenDayCount = 1;
+    this.chapterSevenCookieCount = 0;
     this.chapterSevenCricketCooldown = 0;
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;

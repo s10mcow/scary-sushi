@@ -102,6 +102,7 @@ export interface HudController {
   setChapterCard(active: boolean, title: string, body: string): void;
   setChapterLabel(text: string): void;
   setChapterSevenDayCounter(active: boolean, day: number): void;
+  setChapterSevenCookieCounter(active: boolean, cookies: number): void;
   setChapterMenu(active: boolean, currentChapter: HudChapterId): void;
   setCompass(active: boolean, headingDegrees: number): void;
   setChapterFiveMonitor(active: boolean, state: HudChapterFiveMonitorState): void;
@@ -1025,6 +1026,20 @@ export function createHud(host: HTMLElement): HudController {
 
   chapterSevenDayCounter.append(chapterSevenDayLabel, chapterSevenDayValue);
 
+  const chapterSevenCookieCounter = document.createElement('section');
+  chapterSevenCookieCounter.className = 'hud__chapter-seven-cookies';
+  chapterSevenCookieCounter.dataset.active = 'false';
+
+  const chapterSevenCookieLabel = document.createElement('p');
+  chapterSevenCookieLabel.className = 'hud__label';
+  chapterSevenCookieLabel.textContent = 'Cookies';
+
+  const chapterSevenCookieValue = document.createElement('p');
+  chapterSevenCookieValue.className = 'hud__chapter-seven-cookie-value';
+  chapterSevenCookieValue.textContent = '0';
+
+  chapterSevenCookieCounter.append(chapterSevenCookieLabel, chapterSevenCookieValue);
+
   const statusPanel = document.createElement('section');
   statusPanel.className = 'hud__panel hud__panel--right';
 
@@ -1837,6 +1852,7 @@ export function createHud(host: HTMLElement): HudController {
     compass,
     chapterFiveMonitor,
     chapterSevenDayCounter,
+    chapterSevenCookieCounter,
     crosshair,
     meterPanel,
     statusPanel,
@@ -2509,6 +2525,10 @@ export function createHud(host: HTMLElement): HudController {
     setChapterSevenDayCounter(active, day): void {
       chapterSevenDayCounter.dataset.active = String(active);
       chapterSevenDayValue.textContent = `Day ${Math.max(1, Math.floor(day))}`;
+    },
+    setChapterSevenCookieCounter(active, cookies): void {
+      chapterSevenCookieCounter.dataset.active = String(active);
+      chapterSevenCookieValue.textContent = `${Math.max(0, Math.floor(cookies))}`;
     },
     setChapterMenu(active, currentChapter): void {
       chapterMenu.dataset.active = String(active);
