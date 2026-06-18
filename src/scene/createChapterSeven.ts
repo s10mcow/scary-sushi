@@ -4990,7 +4990,7 @@ export function createChapterSeven(): ChapterSevenData {
   });
   const welcomeMat = new Mesh(new PlaneGeometry(3.25, 1.55), welcomeMatMaterial);
   welcomeMat.rotation.x = -Math.PI / 2;
-  welcomeMat.position.set(1210.19 - CENTER_X, 0.236, 100.79 - HOUSE_CENTER_Z);
+  welcomeMat.position.set(1210.19 - CENTER_X, 0.285, 100.79 - HOUSE_CENTER_Z);
   const porchSideRailDepth = porchDepth - 0.35;
   const porchFrontZ = HOUSE_DEPTH / 2 + porchDepth + 0.18;
   const frontRailSegmentWidth = (porchWidth - porchGapWidth) / 2;
@@ -5442,6 +5442,13 @@ export function createChapterSeven(): ChapterSevenData {
       const insideOven = Math.abs(position.x - houseOven.centerX) <= houseOven.halfWidth + GAME_CONFIG.player.radius + 0.16
         && Math.abs(position.z - houseOven.centerZ) <= houseOven.halfDepth + GAME_CONFIG.player.radius + 0.18;
       if (insideOven) {
+        return true;
+      }
+
+      const insideClosedCardboardBox = cardboardBox.openAmount < 0.72
+        && Math.abs(position.x - cardboardBox.centerX) <= cardboardBox.halfWidth + GAME_CONFIG.player.radius + 0.12
+        && Math.abs(position.z - cardboardBox.centerZ) <= cardboardBox.halfDepth + GAME_CONFIG.player.radius + 0.12;
+      if (insideClosedCardboardBox) {
         return true;
       }
 

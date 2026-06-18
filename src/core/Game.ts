@@ -2661,9 +2661,9 @@ export class Game {
       && this.chapterSeven.isPlayerInsideOven(this.player.getPosition());
     const chapterSevenInForcedCrawlSpace = this.chapterSevenActive
       && this.chapterSeven.isPlayerInForcedCrawlSpace(this.player.getPosition());
-    if (!this.chapterSevenActive || this.chapterSevenBoxHidden || this.chapterSevenSwingSeated) {
+    if (!this.chapterSevenActive || this.chapterSevenSwingSeated) {
       this.chapterSevenForcedCrawl = false;
-    } else if (chapterSevenInForcedCrawlSpace) {
+    } else if (this.chapterSevenBoxHidden || chapterSevenInForcedCrawlSpace) {
       this.chapterSevenForcedCrawl = true;
     } else if (!chapterSevenSpaceCrawlHeld && !this.chapterSevenOvenHidden) {
       this.chapterSevenForcedCrawl = false;
@@ -2674,9 +2674,13 @@ export class Game {
       && !this.chapterMenuOpen
       && !this.officeJumpscareMenuOpen
       && !this.officeModeMenuOpen
-      && !this.chapterSevenBoxHidden
       && !this.chapterSevenSwingSeated
-      && (chapterSevenSpaceCrawlHeld || chapterSevenUnderBed || chapterSevenInsideOven || this.chapterSevenForcedCrawl || this.chapterSevenOvenHidden);
+      && (chapterSevenSpaceCrawlHeld
+        || chapterSevenUnderBed
+        || chapterSevenInsideOven
+        || this.chapterSevenForcedCrawl
+        || this.chapterSevenOvenHidden
+        || this.chapterSevenBoxHidden);
     let jumpRequested = !this.doomModeActive
       && !this.chapterFourActive
       && !this.chapterFiveActive
@@ -21432,8 +21436,8 @@ export class Game {
   private hideInsideChapterSevenCardboardBox(): void {
     const box = this.chapterSeven.cardboardBox;
     this.chapterSevenBoxHidden = true;
-    this.chapterSevenCrawling = false;
-    this.chapterSevenForcedCrawl = false;
+    this.chapterSevenCrawling = true;
+    this.chapterSevenForcedCrawl = true;
     box.root.visible = true;
     box.targetOpenAmount = 0;
     box.open = false;
