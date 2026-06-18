@@ -9631,8 +9631,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     metalness: 0.12,
   });
   const boriAiControlRoot = new Group();
-  boriAiControlRoot.position.set(blockedBasementRoomMaxX - 0.16, 0, blockedBasementRoomCenterZ);
-  boriAiControlRoot.rotation.y = -Math.PI / 2;
+  boriAiControlRoot.position.set(blockedBasementRoomMaxX - 0.14, 0, blockedBasementRoomCenterZ);
   const boriAiPanel = new Mesh(new BoxGeometry(0.14, 1.38, 2.55), controlPanelMaterial);
   boriAiPanel.position.y = employeeElevatorBasementFloorY + 1.08;
   const boriAiLabel = createInstructionHoverLabel("Bori's AI", 1.5, 0.46);

@@ -6014,6 +6014,7 @@ export class Game {
   private resetOfficePrizeInventory(): void {
     this.officePrizeInventory.clear();
     this.officePrizeInventory.set('lollipop', OFFICE_STARTING_LOLLIPOPS);
+    this.officePrizeInventory.set('poster-keycard', 1);
     this.officePrizeBonusMultiplier = 1;
     this.officeLollipopBoostRemaining = 0;
     this.officeLollipopUseTimer = 0;
@@ -6026,15 +6027,15 @@ export class Game {
   }
 
   private resetOfficePosterPhotography(): void {
-    this.officePrintedPosterKeycard = false;
+    this.officePrintedPosterKeycard = true;
     this.officePosterPhotoIds.clear();
     this.officePosterPhotos.length = 0;
     this.officePosterPhotoIndex = 0;
     this.officePhotoCameraFlashTimer = 0;
     this.officePhotoCameraNumberBuffer = '';
     this.officePhotoCameraNumberBufferTimer = 0;
-    this.officeChapter.posterPrinter.printed = false;
-    this.officeChapter.posterPrinter.keycardRoot.visible = false;
+    this.officeChapter.posterPrinter.printed = true;
+    this.officeChapter.posterPrinter.keycardRoot.visible = true;
     this.updateOfficePosterPrinterHint();
   }
 
