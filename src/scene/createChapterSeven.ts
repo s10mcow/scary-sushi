@@ -563,6 +563,55 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
   const amazonTapeLabelMaterial = createAmazonTapeLabelMaterial();
+  const createWelcomeMatMaterial = (): MeshStandardMaterial => {
+    if (typeof document === 'undefined') {
+      return new MeshStandardMaterial({
+        color: 0x6a3f25,
+        roughness: 0.96,
+        metalness: 0.01,
+        side: DoubleSide,
+      });
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#6a3f25';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#7f4f30';
+      for (let stripe = 0; stripe < 18; stripe += 1) {
+        context.fillRect(0, stripe * 16, canvas.width, 5);
+      }
+      context.strokeStyle = '#2d1b12';
+      context.lineWidth = 14;
+      context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+      context.strokeStyle = '#b88a5d';
+      context.lineWidth = 5;
+      context.strokeRect(34, 34, canvas.width - 68, canvas.height - 68);
+      context.fillStyle = '#f0d7a8';
+      context.font = 'bold 66px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('WELCOME', canvas.width / 2, canvas.height / 2 + 4);
+      context.fillStyle = 'rgba(42, 24, 14, 0.22)';
+      for (let dot = 0; dot < 170; dot += 1) {
+        const x = (dot * 47) % canvas.width;
+        const y = (dot * 89) % canvas.height;
+        context.fillRect(x, y, 2, 2);
+      }
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.98,
+      metalness: 0.01,
+      side: DoubleSide,
+    });
+  };
+  const welcomeMatMaterial = createWelcomeMatMaterial();
   const plantPotMaterial = new MeshStandardMaterial({
     color: 0x8b4a31,
     emissive: 0x160705,
@@ -4921,6 +4970,10 @@ export function createChapterSeven(): ChapterSevenData {
     plankLine.position.set(plankX, 0.24, porchCenterZ);
     return plankLine;
   });
+  const welcomeMat = new Mesh(new PlaneGeometry(3.25, 1.55), welcomeMatMaterial);
+  welcomeMat.rotation.x = -Math.PI / 2;
+  welcomeMat.position.set(1210.19 - CENTER_X, 0.236, 100.79 - HOUSE_CENTER_Z);
+  welcomeMat.rotation.z = Math.PI / 2;
   const porchSideRailDepth = porchDepth - 0.35;
   const porchFrontZ = HOUSE_DEPTH / 2 + porchDepth + 0.18;
   const frontRailSegmentWidth = (porchWidth - porchGapWidth) / 2;
@@ -5020,6 +5073,7 @@ export function createChapterSeven(): ChapterSevenData {
   house.add(
     porchFloor,
     ...porchPlanks,
+    welcomeMat,
     ...leftPorchRail,
     ...rightPorchRail,
     ...frontLeftRail,

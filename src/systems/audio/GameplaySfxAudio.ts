@@ -181,16 +181,32 @@ export class GameplaySfxAudio {
 
     const now = this.context.currentTime + 0.012;
     const bellHits = [
-      { frequency: 392, delay: 0, gain: 0.24, duration: 1.45 },
-      { frequency: 261.63, delay: 0.82, gain: 0.3, duration: 1.85 },
+      { frequency: 174.61, delay: 0, gain: 0.28 },
+      { frequency: 172.4, delay: 0.58, gain: 0.3 },
+      { frequency: 175.8, delay: 1.16, gain: 0.29 },
+      { frequency: 171.7, delay: 1.74, gain: 0.32 },
     ];
-    bellHits.forEach(({ frequency, delay, gain: peakGain, duration }) => {
+    bellHits.forEach(({ frequency, delay, gain: peakGain }) => {
       const start = now + delay;
+      const duration = 1.28;
+
+      const strikeGain = this.context!.createGain();
+      strikeGain.gain.setValueAtTime(0.0001, start);
+      strikeGain.gain.exponentialRampToValueAtTime(peakGain * 0.42, start + 0.004);
+      strikeGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.06);
+      strikeGain.connect(this.masterGain!);
+
+      const strike = this.context!.createOscillator();
+      strike.type = 'square';
+      strike.frequency.setValueAtTime(frequency * 6.1, start);
+      strike.frequency.exponentialRampToValueAtTime(frequency * 3.2, start + 0.05);
+      strike.connect(strikeGain);
+      this.startSource(strike, start, start + 0.065);
 
       const gain = this.context!.createGain();
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(peakGain, start + 0.012);
-      gain.gain.exponentialRampToValueAtTime(peakGain * 0.2, start + 0.34);
+      gain.gain.exponentialRampToValueAtTime(peakGain, start + 0.018);
+      gain.gain.exponentialRampToValueAtTime(peakGain * 0.18, start + 0.28);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
       gain.connect(this.masterGain!);
 
@@ -202,27 +218,27 @@ export class GameplaySfxAudio {
 
       const overtoneGain = this.context!.createGain();
       overtoneGain.gain.setValueAtTime(0.0001, start);
-      overtoneGain.gain.exponentialRampToValueAtTime(peakGain * 0.36, start + 0.009);
-      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.62);
+      overtoneGain.gain.exponentialRampToValueAtTime(peakGain * 0.34, start + 0.012);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.58);
       overtoneGain.connect(this.masterGain!);
 
       const overtone = this.context!.createOscillator();
       overtone.type = 'sine';
-      overtone.frequency.setValueAtTime(frequency * 2.38, start);
+      overtone.frequency.setValueAtTime(frequency * 2.72, start);
       overtone.connect(overtoneGain);
-      this.startSource(overtone, start, start + duration * 0.66);
+      this.startSource(overtone, start, start + duration * 0.62);
 
       const shimmerGain = this.context!.createGain();
       shimmerGain.gain.setValueAtTime(0.0001, start);
-      shimmerGain.gain.exponentialRampToValueAtTime(peakGain * 0.18, start + 0.018);
-      shimmerGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.42);
+      shimmerGain.gain.exponentialRampToValueAtTime(peakGain * 0.12, start + 0.02);
+      shimmerGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.34);
       shimmerGain.connect(this.masterGain!);
 
       const shimmer = this.context!.createOscillator();
       shimmer.type = 'triangle';
-      shimmer.frequency.setValueAtTime(frequency * 3.02, start);
+      shimmer.frequency.setValueAtTime(frequency * 4.12, start);
       shimmer.connect(shimmerGain);
-      this.startSource(shimmer, start, start + duration * 0.48);
+      this.startSource(shimmer, start, start + duration * 0.38);
     });
   }
 
