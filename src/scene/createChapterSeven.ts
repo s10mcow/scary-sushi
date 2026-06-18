@@ -4832,7 +4832,7 @@ export function createChapterSeven(): ChapterSevenData {
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
   addSideGrandfatherClock(1217.94 - CENTER_X, 87.41 - HOUSE_CENTER_Z, -1);
-  addBookshelf(1221.05 - CENTER_X, 96.06 - HOUSE_CENTER_Z, Math.PI, 0.84, 0.96);
+  addBookshelf(1220.53 - CENTER_X, 98.69 - HOUSE_CENTER_Z - 0.64, Math.PI, 0.84, 0.96);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
   const oldWoodenCloset = addOldWoodenCloset(-24.45, -2.55, Math.PI / 2);
   const frontBedroomOldWoodenCloset = addOldWoodenCloset(

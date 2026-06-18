@@ -181,38 +181,39 @@ export class GameplaySfxAudio {
 
     const now = this.context.currentTime + 0.012;
     const bellHits = [
-      { frequency: 155.56, delay: 0, gain: 0.28 },
-      { frequency: 154.2, delay: 0.72, gain: 0.3 },
-      { frequency: 156.4, delay: 1.44, gain: 0.29 },
-      { frequency: 153.6, delay: 2.16, gain: 0.32 },
+      { frequency: 146.83, delay: 0, gain: 0.32 },
+      { frequency: 110.0, delay: 0.82, gain: 0.34 },
+      { frequency: 146.83, delay: 1.72, gain: 0.31 },
+      { frequency: 110.0, delay: 2.54, gain: 0.36 },
     ];
     bellHits.forEach(({ frequency, delay, gain: peakGain }) => {
       const start = now + delay;
-      const duration = 1.95;
+      const duration = 2.65;
 
       const strikeGain = this.context!.createGain();
       strikeGain.gain.setValueAtTime(0.0001, start);
-      strikeGain.gain.exponentialRampToValueAtTime(peakGain * 0.16, start + 0.003);
-      strikeGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.045);
+      strikeGain.gain.exponentialRampToValueAtTime(peakGain * 0.24, start + 0.003);
+      strikeGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.055);
       strikeGain.connect(this.masterGain!);
 
       const strike = this.context!.createOscillator();
       strike.type = 'triangle';
-      strike.frequency.setValueAtTime(frequency * 7.4, start);
-      strike.frequency.exponentialRampToValueAtTime(frequency * 3.8, start + 0.04);
+      strike.frequency.setValueAtTime(frequency * 8.8, start);
+      strike.frequency.exponentialRampToValueAtTime(frequency * 4.2, start + 0.045);
       strike.connect(strikeGain);
-      this.startSource(strike, start, start + 0.05);
+      this.startSource(strike, start, start + 0.06);
 
       [
         { ratio: 1, level: 1, decay: 1 },
-        { ratio: 2.01, level: 0.42, decay: 0.74 },
-        { ratio: 2.87, level: 0.28, decay: 0.56 },
-        { ratio: 4.18, level: 0.15, decay: 0.36 },
+        { ratio: 1.49, level: 0.32, decay: 0.82 },
+        { ratio: 2.01, level: 0.48, decay: 0.76 },
+        { ratio: 2.72, level: 0.2, decay: 0.54 },
+        { ratio: 4.11, level: 0.12, decay: 0.38 },
       ].forEach((partial) => {
         const partialGain = this.context!.createGain();
         partialGain.gain.setValueAtTime(0.0001, start);
-        partialGain.gain.exponentialRampToValueAtTime(peakGain * partial.level, start + 0.018);
-        partialGain.gain.exponentialRampToValueAtTime(peakGain * partial.level * 0.16, start + 0.34);
+        partialGain.gain.exponentialRampToValueAtTime(peakGain * partial.level, start + 0.022);
+        partialGain.gain.exponentialRampToValueAtTime(peakGain * partial.level * 0.18, start + 0.46);
         partialGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * partial.decay);
         partialGain.connect(this.masterGain!);
 
