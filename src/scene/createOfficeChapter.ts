@@ -514,6 +514,7 @@ export interface OfficeChapterData {
     goldenBoriRoamAllowed?: boolean,
   ): void;
   getGoldenBoriPhotoTarget(): { root: Group; label: string; moving: boolean };
+  getGoldenBoriStatus(): { position: Vector3; moving: boolean; chasing: boolean; angry: boolean };
   resetGoldenBori(): void;
   reset(): void;
 }
@@ -7494,7 +7495,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ));
     addCollider(colliders, cabinet.x, cabinet.z, 0.92, 1.12);
   });
-  root.add(createRollerCoasterSimulator(-223.06, 115.06, Math.PI / 2));
+  const rollerCoasterX = -223.06;
+  const rollerCoasterZ = 115.06;
+  const rollerCoasterRearTarget = new Vector3(-221.2, 0, 113.94);
+  const rollerCoasterRotation = Math.atan2(
+    -(rollerCoasterRearTarget.x - rollerCoasterX),
+    -(rollerCoasterRearTarget.z - rollerCoasterZ),
+  );
+  root.add(createRollerCoasterSimulator(rollerCoasterX, rollerCoasterZ, rollerCoasterRotation));
   addCollider(colliders, -223.06, 115.06, 2.45, 3.45);
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
@@ -9638,6 +9646,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   leverHandle.position.set(-0.25, 0, 0);
   leverHandle.rotation.z = Math.PI / 2;
   boriAiLeverPivot.add(leverBase, leverHandle);
+  const addControlPanelLabel = (text: string, y: number, z: number, width = 0.82): void => {
+    const label = createInstructionHoverLabel(text, width, 0.18);
+    label.position.set(-0.098, y, z);
+    label.rotation.y = Math.PI / 2;
+    boriAiControlRoot.add(label);
+  };
+  addControlPanelLabel('MAIN POWER', employeeElevatorBasementFloorY + 1.42, -0.72, 0.96);
+  addControlPanelLabel('Bori AI', employeeElevatorBasementFloorY + 0.72, -0.72, 0.72);
   for (let button = 0; button < 12; button += 1) {
     const buttonMesh = new Mesh(
       new BoxGeometry(0.035, 0.1, 0.16),
@@ -9650,6 +9666,34 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     );
     boriAiControlRoot.add(buttonMesh);
   }
+  ([
+    ['STAGE LIGHTS', employeeElevatorBasementFloorY + 1.25, -0.06],
+    ['DOOR LOCKS', employeeElevatorBasementFloorY + 1.25, 0.5],
+    ['VENT FANS', employeeElevatorBasementFloorY + 0.97, -0.06],
+    ['CAMERA GRID', employeeElevatorBasementFloorY + 0.97, 0.5],
+    ['SHOW AUDIO', employeeElevatorBasementFloorY + 0.69, -0.06],
+    ['ELEVATOR BRAKE', employeeElevatorBasementFloorY + 0.69, 0.5],
+  ] as Array<[string, number, number]>).forEach(([text, y, z]) => {
+    addControlPanelLabel(text, y, z, 0.74);
+  });
+  for (let lever = 0; lever < 5; lever += 1) {
+    const auxLeverRoot = new Group();
+    auxLeverRoot.position.set(
+      -0.108,
+      employeeElevatorBasementFloorY + 0.45 + lever * 0.17,
+      0.96,
+    );
+    auxLeverRoot.rotation.z = -0.2 + lever * 0.1;
+    const auxBase = new Mesh(new CylinderGeometry(0.055, 0.055, 0.03, 12), controlGlowMaterial);
+    auxBase.rotation.z = Math.PI / 2;
+    const auxHandle = new Mesh(new CylinderGeometry(0.018, 0.024, 0.28, 8), lever % 2 === 0 ? controlWarningMaterial : controlGlowMaterial);
+    auxHandle.position.x = -0.13;
+    auxHandle.rotation.z = Math.PI / 2;
+    auxLeverRoot.add(auxBase, auxHandle);
+    boriAiControlRoot.add(auxLeverRoot);
+  }
+  addControlPanelLabel('VOICE BOX', employeeElevatorBasementFloorY + 0.44, 0.72, 0.68);
+  addControlPanelLabel('SPARE BUTTONS', employeeElevatorBasementFloorY + 1.52, 0.58, 0.84);
   boriAiControlRoot.add(boriAiPanel, boriAiLabel, boriAiLeverPivot);
   employeeElevatorRoot.add(boriAiControlRoot);
   const boriAiControl: OfficeChapterBoriAiControl = {
@@ -13047,6 +13091,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
         root: goldenBori.root,
         label: 'Golden Bori',
         moving: goldenBoriPhotoMoving,
+      };
+    },
+    getGoldenBoriStatus() {
+      return {
+        position: goldenBori.root.position.clone(),
+        moving: goldenBoriPhotoMoving,
+        chasing: goldenBoriChaseActive,
+        angry: goldenBoriInsultStareTimer > 0 || goldenBoriInsultRageTimer > 0,
       };
     },
     resetGoldenBori,

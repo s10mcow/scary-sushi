@@ -1175,6 +1175,8 @@ export class Game {
   private officeBasementRubbleHits = 0;
   private officeBoriAiRehearsalTimer = 0;
   private officeBoriAiLineIndex = 0;
+  private officeBoriAiActivationAlarmTimer = 0;
+  private officeBoriAiActivationAlarmPulseTimer = 0;
   private readonly officePosterPhotoIds = new Set<string>();
   private readonly officePosterPhotos: OfficePosterPhoto[] = [];
   private officePosterPhotoIndex = 0;
@@ -3062,6 +3064,7 @@ export class Game {
         this.officeInsultHeardTimer > 0,
         this.officeGameModeActive && this.officeGameModeNightPhase,
       );
+      this.updateOfficeBoriAiActivationAlarm(deltaSeconds);
       this.updateOfficeBoriAiRehearsal(deltaSeconds);
       this.updateOfficeDoorSoundPlayback();
       this.updateOfficeDoorSparks(deltaSeconds);
@@ -6017,6 +6020,8 @@ export class Game {
     this.officeBasementRubbleHits = 0;
     this.officeBoriAiRehearsalTimer = 0;
     this.officeBoriAiLineIndex = 0;
+    this.officeBoriAiActivationAlarmTimer = 0;
+    this.officeBoriAiActivationAlarmPulseTimer = 0;
     this.clearOfficeHeldPrizeItem();
   }
 
@@ -19939,6 +19944,31 @@ export class Game {
     this.syncHud();
   }
 
+  private speakOfficeBoriAiLine(line: string, mode: 'robot' | 'rehearsal' | 'angry' = 'rehearsal'): void {
+    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(line);
+    utterance.rate = mode === 'robot' ? 0.72 : mode === 'angry' ? 0.94 : 0.86;
+    utterance.pitch = mode === 'robot' ? 0.34 : mode === 'angry' ? 0.56 : 0.72;
+    utterance.volume = mode === 'robot' ? 0.95 : 0.84;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  private updateOfficeBoriAiActivationAlarm(deltaSeconds: number): void {
+    if (this.officeBoriAiActivationAlarmTimer <= 0) {
+      return;
+    }
+
+    this.officeBoriAiActivationAlarmTimer = Math.max(0, this.officeBoriAiActivationAlarmTimer - deltaSeconds);
+    this.officeBoriAiActivationAlarmPulseTimer -= deltaSeconds;
+    if (this.officeBoriAiActivationAlarmPulseTimer <= 0) {
+      this.gameplaySfxAudio.playSpaceshipAlarm();
+      this.officeBoriAiActivationAlarmPulseTimer = 2.45;
+    }
+  }
+
   private updateOfficeBoriAiRehearsal(deltaSeconds: number): void {
     if (!this.officeChapterActive || !this.officeChapter.boriAiControl.enabled) {
       this.officeBoriAiRehearsalTimer = 0;
@@ -19950,25 +19980,51 @@ export class Game {
       return;
     }
 
-    const lines = [
+    const status = this.officeChapter.getGoldenBoriStatus();
+    const playerPosition = this.player.getPosition();
+    const distanceToPlayer = Math.hypot(
+      status.position.x - playerPosition.x,
+      status.position.z - playerPosition.z,
+    );
+    const angryLines = [
+      "I'm gonna getcha.",
+      "I hear you. Keep running.",
+      "Rehearsal changed. You're the scene now.",
+      "Too loud. Too close. Too late.",
+      "Bori sees you.",
+    ];
+    const nearbyLines = [
+      'Hello there. You came close to the stage.',
+      'Stand right there. Bori needs an audience.',
+      'Do you want to hear the next line?',
+      'I can talk whenever I want now.',
+      'The control room woke me up.',
+    ];
+    const rehearsalLines = [
       "Welcome to Bori's Pizzeria. Let's make tonight sound perfect.",
       'Mic check. Smile wide. Wave slowly. Say hello to the party room.',
       'Rehearsal mode active. Bori is ready for the next performance.',
       'Testing voice box. Birthday greeting line one, line two, line three.',
       'Remember, kids, the show starts when the lights go down.',
+      "Practice line: the party never ends at Bori's.",
+      'Voice box free mode. Choosing my own words now.',
+      'Stage greeting loaded. Drum cue ready. Smile program ready.',
+      'I can rehearse a joke, a warning, or a welcome whenever I feel like it.',
     ];
-    const line = lines[this.officeBoriAiLineIndex % lines.length] ?? lines[0];
+    const lines = status.angry || status.chasing
+      ? angryLines
+      : distanceToPlayer <= 8.5
+        ? nearbyLines
+        : rehearsalLines;
+    const line = lines[this.officeBoriAiLineIndex % lines.length] ?? rehearsalLines[0];
     this.officeBoriAiLineIndex += 1;
-    this.officeBoriAiRehearsalTimer = 18 + Math.random() * 24;
+    this.officeBoriAiRehearsalTimer = (status.angry || status.chasing)
+      ? 7 + Math.random() * 10
+      : distanceToPlayer <= 8.5
+        ? 10 + Math.random() * 14
+        : 14 + Math.random() * 24;
 
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(line);
-      utterance.rate = 0.86;
-      utterance.pitch = 0.72;
-      utterance.volume = 0.82;
-      window.speechSynthesis.speak(utterance);
-    }
-
+    this.speakOfficeBoriAiLine(line, status.angry || status.chasing ? 'angry' : 'rehearsal');
     this.pushStatus(`Bori rehearses: "${line}"`, 3.2);
   }
 
@@ -21060,9 +21116,12 @@ export class Game {
       }
 
       boriAiControl.enabled = true;
-      this.officeBoriAiRehearsalTimer = 3.5;
+      this.officeBoriAiRehearsalTimer = 7.0;
+      this.officeBoriAiActivationAlarmTimer = 5.0;
+      this.officeBoriAiActivationAlarmPulseTimer = 0;
       this.gameplaySfxAudio.playSmallPanel(true);
-      this.pushStatus("The keycard swipes green. Bori's AI turns on in rehearsal mode.", 3.2);
+      this.speakOfficeBoriAiLine("Bori's AI has been activated! Caution! Use at your own risk!", 'robot');
+      this.pushStatus("Alarm active. Bori's AI has been activated. Caution: use at your own risk.", 5.0);
       return;
     }
 
