@@ -314,6 +314,7 @@ interface PlacementMarker {
 }
 
 type OfficeJumpscareAnimatronic = 'quacky' | 'fluffle' | 'bori' | 'foxy';
+type OfficeKeycardPhotoTargetId = OfficeJumpscareAnimatronic | 'golden-bori';
 type OfficeFuseWireColor = 'green' | 'blue' | 'red';
 type OfficeGameModeDifficulty = OfficeModeMenuDifficulty;
 type OfficeCameraPuppetPhase = 'idle' | OfficeCameraPuppetHudPhase;
@@ -472,6 +473,13 @@ interface OfficePosterPhoto {
   posterId: string | null;
   label: string;
   imageUrl: string;
+}
+
+interface OfficeAnimatronicPhotoTarget {
+  id: OfficeKeycardPhotoTargetId;
+  label: string;
+  root: Group;
+  moving: boolean;
 }
 
 interface OfficeGameModeConfig {
@@ -789,6 +797,13 @@ const OFFICE_TINY_BEAR_VISIBLE_SECONDS = 4.2;
 const OFFICE_LOLLIPOP_BOOST_SECONDS = 10;
 const OFFICE_LOLLIPOP_SPEED_MULTIPLIER = 2;
 const OFFICE_STARTING_LOLLIPOPS = 5;
+const OFFICE_KEYCARD_PHOTO_TARGET_LABELS: Record<OfficeKeycardPhotoTargetId, string> = {
+  quacky: 'Quacky',
+  fluffle: 'Fluffle',
+  bori: 'Bori',
+  foxy: 'Foxy',
+  'golden-bori': 'Golden Bori',
+};
 const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
   'photo-camera': 'Photo Camera',
   glass: 'Glass Cup',
@@ -796,7 +811,7 @@ const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
   lollipop: 'Lollipop',
   'duck-toy': 'Duck Toy',
   stuffie: 'Stuffie',
-  'poster-keycard': 'Poster Keycard',
+  'poster-keycard': 'Animatronic Keycard',
 };
 const OFFICE_PRIZE_HOTBAR_SLOTS: Array<{ slot: number; item: OfficePrizeItemId }> = [
   { slot: 5, item: 'photo-camera' },
@@ -3759,14 +3774,18 @@ export class Game {
       context.fillStyle = '#76e8ff';
       context.font = 'bold 18px Trebuchet MS, sans-serif';
       context.textAlign = 'center';
-      context.fillText('POSTER', canvas.width / 2, 29);
+      context.fillText('ANIMATRONIC', canvas.width / 2, 29);
       context.fillText('KEYCARD', canvas.width / 2, 51);
       const colors = ['#8b5a32', '#dfb23f', '#b7a7dd', '#b44a2b', '#6fa8dc'];
-      for (let index = 0; index < 15; index += 1) {
+      for (let index = 0; index < 10; index += 1) {
         const col = index % 5;
         const row = Math.floor(index / 5);
         context.fillStyle = colors[index % colors.length] ?? '#ffffff';
-        context.fillRect(26 + col * 28, 66 + row * 16, 18, 11);
+        context.fillRect(26 + col * 28, 68 + row * 20, 18, 13);
+        context.fillStyle = '#101722';
+        context.beginPath();
+        context.arc(35 + col * 28, 75 + row * 20, 3, 0, Math.PI * 2);
+        context.fill();
       }
       context.fillStyle = '#eaf8ff';
       context.font = 'bold 10px Trebuchet MS, sans-serif';
@@ -5951,8 +5970,7 @@ export class Game {
     const printer = this.officeChapter.posterPrinter;
     const readyToPrint = !this.officePrintedPosterKeycard
       && !printer.printed
-      && this.officeChapter.posterTargets.length > 0
-      && this.officePosterPhotoIds.size >= this.officeChapter.posterTargets.length;
+      && this.officePosterPhotoIds.size >= this.getOfficeKeycardPhotoTargetCount();
     const printed = this.officePrintedPosterKeycard || printer.printed;
     printer.instructionHint.visible = !readyToPrint && !printed;
     printer.readyHint.visible = readyToPrint;
@@ -5995,7 +6013,7 @@ export class Game {
       const action = item === 'glass'
         ? 'Left click to throw it and shatter it.'
         : item === 'photo-camera'
-          ? 'Left click to take a poster photo. Mouse wheel switches items; type a photo number to review photos.'
+          ? 'Left click at night to photograph moving animatronics. Mouse wheel switches items; type a photo number to review photos.'
         : item === 'tiny-bear'
           ? 'Left click to throw it and squeak it as a distraction.'
           : item === 'lollipop'
@@ -13263,7 +13281,7 @@ export class Game {
         this.pushStatus('The stuffie peeps when you squish it.', 1.8);
         return true;
       case 'poster-keycard':
-        this.pushStatus('The poster keycard is ready for the basement keycard doors.', 1.8);
+        this.pushStatus('The animatronic keycard is ready for the basement keycard doors.', 1.8);
         return true;
       case 'duck-toy':
         this.pushStatus('The tiny duck toy looks like Quacky in your hand.', 1.8);
@@ -16451,13 +16469,13 @@ export class Game {
         ? 'held'
         : 'in hotbar'
       : 'on storage closet shelf';
-    return `Photo Camera: ${cameraState} / photos ${this.officePosterPhotos.length} / posters ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length} / poster keycard ${this.officePrintedPosterKeycard ? 'printed' : 'not printed'}`;
+    return `Photo Camera: ${cameraState} / photos ${this.officePosterPhotos.length} / moving animatronics ${this.officePosterPhotoIds.size}/${this.getOfficeKeycardPhotoTargetCount()} / animatronic keycard ${this.officePrintedPosterKeycard ? 'printed' : 'not printed'}`;
   }
 
   private getOfficeHeldPrizeActionText(): string | null {
     switch (this.officeHeldPrizeItem) {
       case 'photo-camera':
-        return `Photo Camera equipped. Left click to take a picture. Captured posters: ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}. Mouse wheel switches items; type a photo number to review photos.`;
+        return `Photo Camera equipped. Left click to take a picture. Moving animatronics photographed at night: ${this.officePosterPhotoIds.size}/${this.getOfficeKeycardPhotoTargetCount()}. Mouse wheel switches items; type a photo number to review photos.`;
       case 'glass':
         return 'Glass Cup equipped. Left click to throw it and make it shatter.';
       case 'tiny-bear':
@@ -16469,7 +16487,7 @@ export class Game {
       case 'stuffie':
         return 'Stuffie equipped. Left click to play the saved custom sound.';
       case 'poster-keycard':
-        return 'Poster Keycard equipped. Use it on locked basement keycard doors.';
+        return 'Animatronic Keycard equipped. Use it on locked basement keycard doors.';
       default:
         return null;
     }
@@ -17267,12 +17285,12 @@ export class Game {
       }
 
       if (posterPrinter) {
-        const missing = this.officeChapter.posterTargets.length - this.officePosterPhotoIds.size;
+        const missing = this.getOfficeKeycardPhotoTargetCount() - this.officePosterPhotoIds.size;
         return this.officePrintedPosterKeycard
-          ? 'The poster keycard has already printed.'
+          ? 'The animatronic keycard has already printed.'
           : missing <= 0
-            ? 'Press E to print the basement poster keycard.'
-            : `The printer needs every poster photographed. ${missing} poster${missing === 1 ? '' : 's'} left.`;
+            ? 'Press E to print the basement animatronic keycard.'
+            : `The printer needs night photos of every moving animatronic. ${missing} animatronic${missing === 1 ? '' : 's'} left.`;
       }
 
       if (utility) {
@@ -17348,8 +17366,8 @@ export class Game {
       if (basementRoomDoor) {
         if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
           return this.officePrintedPosterKeycard
-            ? `Press E to unlock ${basementRoomDoor.label.toLowerCase()} with the printed poster keycard.`
-            : `${basementRoomDoor.label} needs the printed poster keycard from the backstage printer.`;
+            ? `Press E to unlock ${basementRoomDoor.label.toLowerCase()} with the printed animatronic keycard.`
+            : `${basementRoomDoor.label} needs the printed animatronic keycard from the backstage printer.`;
         }
         return basementRoomDoor.open
           ? `Press E to close ${basementRoomDoor.label.toLowerCase()}.`
@@ -18066,12 +18084,12 @@ export class Game {
       }
 
       if (posterPrinter) {
-        const missing = this.officeChapter.posterTargets.length - this.officePosterPhotoIds.size;
+        const missing = this.getOfficeKeycardPhotoTargetCount() - this.officePosterPhotoIds.size;
         return this.officePrintedPosterKeycard
-          ? 'The printer has already made the poster keycard for the basement doors.'
+          ? 'The printer has already made the animatronic keycard for the basement doors.'
           : missing <= 0
-            ? 'The backstage printer is ready. Press E to print the basement poster keycard.'
-            : `The backstage printer needs photos of every poster first. ${missing} poster${missing === 1 ? '' : 's'} left.`;
+            ? 'The backstage printer is ready. Press E to print the basement animatronic keycard.'
+            : `The backstage printer needs night photos of every moving animatronic first. ${missing} animatronic${missing === 1 ? '' : 's'} left.`;
       }
 
       if (utility) {
@@ -18147,8 +18165,8 @@ export class Game {
       if (basementRoomDoor) {
         if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
           return this.officePrintedPosterKeycard
-            ? `${basementRoomDoor.label} is locked. Press E to swipe the printed poster keycard.`
-            : `${basementRoomDoor.label} is locked. Photograph every poster, then print the backstage poster keycard.`;
+            ? `${basementRoomDoor.label} is locked. Press E to swipe the printed animatronic keycard.`
+            : `${basementRoomDoor.label} is locked. Photograph every moving animatronic at night, then print the backstage animatronic keycard.`;
         }
         return basementRoomDoor.open
           ? `${basementRoomDoor.label} is open. Press E to close it.`
@@ -19421,50 +19439,79 @@ export class Game {
     return lateral <= 0.92 ? printer : null;
   }
 
-  private getAimedOfficePosterTarget(): OfficeChapterData['posterTargets'][number] | null {
+  private getOfficeKeycardPhotoTargetCount(): number {
+    return Object.keys(OFFICE_KEYCARD_PHOTO_TARGET_LABELS).length;
+  }
+
+  private getOfficeAnimatronicPhotoTargets(): OfficeAnimatronicPhotoTarget[] {
+    this.ensureOfficeGameModeAnimatronics();
+    const targets: OfficeAnimatronicPhotoTarget[] = this.officeGameModeAnimatronics.map((animatronic) => ({
+      id: animatronic.animatronic,
+      label: animatronic.label,
+      root: animatronic.model.root,
+      moving: this.isOfficeGameModeAnimatronicMovingForPhoto(animatronic),
+    }));
+    const goldenBori = this.officeChapter.getGoldenBoriPhotoTarget();
+    targets.push({
+      id: 'golden-bori',
+      label: goldenBori.label,
+      root: goldenBori.root,
+      moving: goldenBori.moving,
+    });
+    return targets;
+  }
+
+  private isOfficeGameModeAnimatronicMovingForPhoto(animatronic: OfficeGameModeAnimatronicState): boolean {
+    if (!animatronic.model.root.visible) {
+      return false;
+    }
+
+    return [
+      'wander',
+      'chase',
+      'rush',
+      'creep',
+      'door',
+      'retreat',
+      'distracted',
+      'foxy-leap',
+      'vent-chase',
+    ].includes(animatronic.state);
+  }
+
+  private getAimedOfficeAnimatronicPhotoTarget(): OfficeAnimatronicPhotoTarget | null {
     const cameraPosition = this.camera.getWorldPosition(new Vector3());
     const forward = this.camera.getWorldDirection(new Vector3()).normalize();
-    let closestPoster: OfficeChapterData['posterTargets'][number] | null = null;
+    let closestTarget: OfficeAnimatronicPhotoTarget | null = null;
     let bestScore = -Infinity;
 
-    for (const poster of this.officeChapter.posterTargets) {
-      if (!poster.root.visible) {
+    for (const target of this.getOfficeAnimatronicPhotoTargets()) {
+      if (!target.root.visible) {
         continue;
       }
 
-      poster.root.updateMatrixWorld(true);
-      const toPoster = poster.position.clone().sub(cameraPosition);
-      const distance = toPoster.length();
-      if (distance <= 0.1 || distance > 58) {
+      target.root.updateMatrixWorld(true);
+      const targetPosition = target.root.getWorldPosition(new Vector3());
+      const toTarget = targetPosition.clone().sub(cameraPosition);
+      const distance = toTarget.length();
+      if (distance <= 0.1 || distance > 82) {
         continue;
       }
 
-      const frontFacing = poster.normal.dot(cameraPosition.clone().sub(poster.position).normalize());
-      if (frontFacing < 0.06) {
-        continue;
-      }
-
-      const posterRight = new Vector3(poster.normal.z, 0, -poster.normal.x).normalize();
-      const posterUp = new Vector3(0, 1, 0);
       const samples = [
-        new Vector3(0, 0, 0),
-        new Vector3(-0.71, -0.99, 0),
-        new Vector3(0.71, -0.99, 0),
-        new Vector3(-0.71, 0.99, 0),
-        new Vector3(0.71, 0.99, 0),
-        new Vector3(0, -0.99, 0),
-        new Vector3(0, 0.99, 0),
-        new Vector3(-0.71, 0, 0),
-        new Vector3(0.71, 0, 0),
+        new Vector3(0, 1.6, 0),
+        new Vector3(0, 1.05, 0),
+        new Vector3(0, 0.42, 0),
+        new Vector3(-0.38, 1.12, 0),
+        new Vector3(0.38, 1.12, 0),
+        new Vector3(-0.5, 0.62, 0),
+        new Vector3(0.5, 0.62, 0),
       ];
       let bestVisibility = -Infinity;
       for (const sample of samples) {
-        const sampleWorld = poster.position
-          .clone()
-          .addScaledVector(posterRight, sample.x)
-          .addScaledVector(posterUp, sample.y);
+        const sampleWorld = target.root.localToWorld(sample.clone());
         const direction = sampleWorld.clone().sub(cameraPosition).normalize();
-        if (forward.dot(direction) < 0.36) {
+        if (forward.dot(direction) < 0.32) {
           continue;
         }
 
@@ -19486,15 +19533,15 @@ export class Game {
         continue;
       }
 
-      const aim = forward.dot(toPoster.clone().normalize());
+      const aim = forward.dot(toTarget.clone().normalize());
       const score = bestVisibility * 3 + aim - distance * 0.01;
       if (score > bestScore) {
-        closestPoster = poster;
+        closestTarget = target;
         bestScore = score;
       }
     }
 
-    return closestPoster;
+    return closestTarget;
   }
 
   private formatOfficePosterCoordinates(position: Vector3): string {
@@ -19557,15 +19604,19 @@ export class Game {
 
   private takeOfficePosterPhoto(): void {
     const photoId = this.officePosterPhotos.length + 1;
-    const poster = this.getAimedOfficePosterTarget();
+    const target = this.getAimedOfficeAnimatronicPhotoTarget();
     const capturedImageUrl = this.captureOfficePhotoCameraImage();
+    const totalTargets = this.getOfficeKeycardPhotoTargetCount();
+    const photoCountsForKeycard = this.officeGameModeActive
+      && this.officeGameModeNightPhase
+      && Boolean(target?.moving);
 
-    if (!poster) {
+    if (!target) {
       const photo: OfficePosterPhoto = {
         id: photoId,
         posterId: null,
-        label: 'No poster clearly visible',
-        imageUrl: capturedImageUrl || this.createOfficePhotoFallbackImage('No poster visible'),
+        label: 'No moving animatronic visible',
+        imageUrl: capturedImageUrl || this.createOfficePhotoFallbackImage('No animatronic visible'),
       };
       this.officePosterPhotos.push({
         ...photo,
@@ -19573,31 +19624,40 @@ export class Game {
       this.officePosterPhotoIndex = this.officePosterPhotos.length - 1;
       this.gameplaySfxAudio.playSmallPanel(false);
       this.showOfficePosterPhoto(photo, true);
-      this.pushStatus(`Photo ${photoId}: no poster is clearly visible. Center a poster in the camera view.`, 2.6);
+      this.pushStatus(`Photo ${photoId}: no animatronic is visible. Catch a moving animatronic at night.`, 2.6);
       this.syncHud();
       return;
     }
 
-    const firstCapture = !this.officePosterPhotoIds.has(poster.id);
-    this.officePosterPhotoIds.add(poster.id);
-    const posterCoordinates = this.formatOfficePosterCoordinates(poster.position);
+    const targetPosition = target.root.getWorldPosition(new Vector3());
+    const targetCoordinates = this.formatOfficePosterCoordinates(targetPosition);
+    const firstCapture = !this.officePosterPhotoIds.has(target.id);
+    if (photoCountsForKeycard) {
+      this.officePosterPhotoIds.add(target.id);
+    }
     const photo: OfficePosterPhoto = {
       id: photoId,
-      posterId: poster.id,
-      label: `${poster.label} @ ${posterCoordinates}`,
-      imageUrl: capturedImageUrl || this.createOfficePhotoFallbackImage(poster.label),
+      posterId: target.id,
+      label: `${target.label} @ ${targetCoordinates}`,
+      imageUrl: capturedImageUrl || this.createOfficePhotoFallbackImage(target.label),
     };
     this.officePosterPhotos.push(photo);
     this.officePosterPhotoIndex = this.officePosterPhotos.length - 1;
-    this.gameplaySfxAudio.playSmallPanel(true);
+    this.gameplaySfxAudio.playSmallPanel(photoCountsForKeycard);
     this.showOfficePosterPhoto(photo, true);
     this.updateOfficePosterPrinterHint();
-    this.pushStatus(
-      firstCapture
-        ? `Photo ${photoId}: glimpse of ${poster.label} marked at ${posterCoordinates}. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`
-        : `Photo ${photoId}: ${poster.label} again at ${posterCoordinates}. Poster progress ${this.officePosterPhotoIds.size}/${this.officeChapter.posterTargets.length}.`,
-      2.8,
-    );
+    if (!this.officeGameModeActive || !this.officeGameModeNightPhase) {
+      this.pushStatus(`Photo ${photoId}: ${target.label} was visible, but keycard photos only count during the night.`, 2.8);
+    } else if (!target.moving) {
+      this.pushStatus(`Photo ${photoId}: ${target.label} was too still. The keycard needs moving animatronic photos.`, 2.8);
+    } else {
+      this.pushStatus(
+        firstCapture
+          ? `Photo ${photoId}: moving ${target.label} marked at ${targetCoordinates}. Animatronic progress ${this.officePosterPhotoIds.size}/${totalTargets}.`
+          : `Photo ${photoId}: ${target.label} again at ${targetCoordinates}. Animatronic progress ${this.officePosterPhotoIds.size}/${totalTargets}.`,
+        2.8,
+      );
+    }
     this.syncHud();
   }
 
@@ -19620,17 +19680,17 @@ export class Game {
 
   private handleOfficePosterPrinterInteract(): void {
     const printer = this.officeChapter.posterPrinter;
-    const totalPosters = this.officeChapter.posterTargets.length;
-    const capturedPosters = this.officePosterPhotoIds.size;
+    const totalTargets = this.getOfficeKeycardPhotoTargetCount();
+    const capturedTargets = this.officePosterPhotoIds.size;
 
     if (this.officePrintedPosterKeycard || printer.printed) {
-      this.pushStatus('The poster keycard is already printed. Use it on the basement keycard doors.', 2.5);
+      this.pushStatus('The animatronic keycard is already printed. Use it on the basement keycard doors.', 2.5);
       return;
     }
 
-    if (capturedPosters < totalPosters) {
+    if (capturedTargets < totalTargets) {
       this.gameplaySfxAudio.playSmallPanel(false);
-      this.pushStatus(`The printer needs every poster photographed first: ${capturedPosters}/${totalPosters}.`, 3.0);
+      this.pushStatus(`The printer needs night photos of every moving animatronic first: ${capturedTargets}/${totalTargets}.`, 3.0);
       return;
     }
 
@@ -19640,7 +19700,7 @@ export class Game {
     this.addOfficePrizeItem('poster-keycard', 1);
     this.gameplaySfxAudio.playPrinterPrint();
     this.updateOfficePosterPrinterHint();
-    this.pushStatus('The printer whirs, feeds paper through, and spits out a basement poster keycard into hotbar slot 10.', 3.4);
+    this.pushStatus('The printer whirs, feeds paper through, and spits out a basement animatronic keycard into hotbar slot 10.', 3.4);
     this.syncHud();
   }
 
@@ -20550,7 +20610,7 @@ export class Game {
       this.addOfficePrizeItem('photo-camera', 1);
       this.setOfficeHeldPrizeItem('photo-camera', false);
       this.gameplaySfxAudio.playSmallPanel(true);
-      this.pushStatus('You pick up the photo camera. Left click posters to take pictures, then use the backstage printer.', 3.2);
+      this.pushStatus('You pick up the photo camera. At night, photograph every moving animatronic, then use the backstage printer.', 3.2);
       return;
     }
 
@@ -20678,7 +20738,7 @@ export class Game {
       if (basementRoomDoor.keycardRequired && basementRoomDoor.locked) {
         if (!this.officePrintedPosterKeycard) {
           this.gameplaySfxAudio.playSmallPanel(false);
-          this.pushStatus(`${basementRoomDoor.label} needs the printed poster keycard from the backstage printer.`, 2.8);
+          this.pushStatus(`${basementRoomDoor.label} needs the printed animatronic keycard from the backstage printer.`, 2.8);
           return;
         }
 
@@ -20686,7 +20746,7 @@ export class Game {
         basementRoomDoor.targetOpenAmount = 1;
         basementRoomDoor.open = true;
         this.gameplaySfxAudio.playClosetDoor(true);
-        this.pushStatus(`The printed poster keycard unlocks ${basementRoomDoor.label.toLowerCase()}.`, 2.5);
+        this.pushStatus(`The printed animatronic keycard unlocks ${basementRoomDoor.label.toLowerCase()}.`, 2.5);
         return;
       }
       basementRoomDoor.targetOpenAmount = basementRoomDoor.targetOpenAmount > 0.5 ? 0 : 1;

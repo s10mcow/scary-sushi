@@ -479,6 +479,7 @@ export interface OfficeChapterData {
     provocativeSpeech?: boolean,
     goldenBoriRoamAllowed?: boolean,
   ): void;
+  getGoldenBoriPhotoTarget(): { root: Group; label: string; moving: boolean };
   resetGoldenBori(): void;
   reset(): void;
 }
@@ -9813,7 +9814,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const photoCameraRoot = createShelfPhotoCameraModel();
   photoCameraRoot.position.set(storageShelfX + 0.08, 1.52, storageClosetCenterZ + 1.78);
   photoCameraRoot.rotation.y = -Math.PI / 2;
-  const photoCameraHint = createInstructionHoverLabel('take pictures of posters with camera', 2.35, 0.5);
+  const photoCameraHint = createInstructionHoverLabel('photograph moving animatronics at night', 2.95, 0.5);
   photoCameraHint.position.set(0, 0.62, 0);
   photoCameraHint.rotation.y = Math.PI / 2;
   photoCameraRoot.add(photoCameraHint);
@@ -10465,7 +10466,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const posterPrinterModel = createPosterPrinterModel();
   posterPrinterModel.root.position.set(backstageStorageMaxX - 0.74, 2.28, backstageStorageCenterZ - 0.95);
   posterPrinterModel.root.rotation.y = -Math.PI / 2;
-  const posterPrinterHint = createInstructionHoverLabel('Take pictures of all the posters', 2.55, 0.52);
+  const posterPrinterHint = createInstructionHoverLabel('Photograph moving animatronics at night', 3.05, 0.52);
   posterPrinterHint.position.set(0, 0.72, 0);
   const posterPrinterReadyHint = createInstructionHoverLabel('Press E to print keycard', 2.45, 0.5);
   posterPrinterReadyHint.position.set(0, 0.72, 0);
@@ -10476,7 +10477,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   posterPrinterModel.root.add(posterPrinterHint, posterPrinterReadyHint, posterPrinterPrintedHint);
   root.add(posterPrinterModel.root);
   const posterPrinter: OfficeChapterPosterPrinter = {
-    label: 'Poster Keycard Printer',
+    label: 'Animatronic Keycard Printer',
     root: posterPrinterModel.root,
     interactPosition: new Vector3(backstageStorageMaxX - 1.36, 1.86, backstageStorageCenterZ - 0.95),
     keycardRoot: posterPrinterModel.keycardRoot,
@@ -11030,6 +11031,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let goldenBoriStepSoundIndex = -1;
   let goldenBoriCatchCooldown = 0;
   let goldenBoriStuckTimer = 0;
+  let goldenBoriPhotoMoving = false;
   const goldenBoriChaseTarget = new Vector3();
   const goldenBoriStageFloors = [kitchenHallRoomStageFloor, stageFloor, foxStageFloor];
   const getGoldenBoriRootY = (x: number, z: number): number => {
@@ -11817,6 +11819,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     playerVoiceLevel = 0,
     provocativeSpeech = false,
   ): void => {
+    goldenBoriPhotoMoving = false;
     goldenBoriCatchCooldown = Math.max(0, goldenBoriCatchCooldown - deltaSeconds);
     goldenBoriInsultStareTimer = Math.max(0, goldenBoriInsultStareTimer - deltaSeconds);
     goldenBoriInsultRageTimer = Math.max(0, goldenBoriInsultRageTimer - deltaSeconds);
@@ -12002,6 +12005,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       return;
     }
     goldenBoriStuckTimer = 0;
+    goldenBoriPhotoMoving = true;
 
     goldenBoriWalkTime += deltaSeconds * (goldenBoriChaseActive ? 10.8 : 6.25);
     triggerGoldenBoriStep();
@@ -12532,6 +12536,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     if (goldenBoriRoamAllowed) {
       updateGoldenBoriWander(deltaSeconds, playerPosition, playerVoiceLevel, provocativeSpeech);
     } else {
+      goldenBoriPhotoMoving = false;
       resetGoldenBori();
     }
     updateBasketballThrow(deltaSeconds);
@@ -12838,6 +12843,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     isPartyShowMusicActive,
     getPartyShowMusicTime,
     update,
+    getGoldenBoriPhotoTarget() {
+      return {
+        root: goldenBori.root,
+        label: 'Golden Bori',
+        moving: goldenBoriPhotoMoving,
+      };
+    },
     resetGoldenBori,
     reset,
   };
