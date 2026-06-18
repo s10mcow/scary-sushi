@@ -655,7 +655,7 @@ export class GameplaySfxAudio {
     const now = this.context.currentTime + 0.012;
     const ambientGain = this.context.createGain();
     ambientGain.gain.setValueAtTime(0.0001, now);
-    ambientGain.gain.exponentialRampToValueAtTime(mode === 'day' ? 0.082 : 0.052, now + 0.6);
+    ambientGain.gain.exponentialRampToValueAtTime(mode === 'day' ? 0.16 : 0.058, now + 0.38);
     ambientGain.connect(this.masterGain);
     this.chapterSevenAmbientGain = ambientGain;
     this.chapterSevenAmbientMode = mode;
@@ -699,21 +699,21 @@ export class GameplaySfxAudio {
     }
 
     const now = this.context.currentTime + 0.008;
-    const chirpCount = 2 + Math.floor(Math.random() * 3);
+    const chirpCount = 6 + Math.floor(Math.random() * 5);
     for (let index = 0; index < chirpCount; index += 1) {
-      const start = now + index * (0.065 + Math.random() * 0.018);
+      const start = now + index * (0.038 + Math.random() * 0.012);
       const gain = this.context.createGain();
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.026 + Math.random() * 0.014, start + 0.009);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.072);
+      gain.gain.exponentialRampToValueAtTime(0.032 + Math.random() * 0.018, start + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.052);
       gain.connect(this.masterGain);
 
       const chirp = this.context.createOscillator();
       chirp.type = 'sine';
-      chirp.frequency.setValueAtTime(4200 + Math.random() * 520, start);
-      chirp.frequency.exponentialRampToValueAtTime(3100 + Math.random() * 420, start + 0.064);
+      chirp.frequency.setValueAtTime(4600 + Math.random() * 650, start);
+      chirp.frequency.exponentialRampToValueAtTime(3400 + Math.random() * 480, start + 0.047);
       chirp.connect(gain);
-      this.startSource(chirp, start, start + 0.08);
+      this.startSource(chirp, start, start + 0.058);
     }
   }
 
@@ -1149,40 +1149,48 @@ export class GameplaySfxAudio {
     }
 
     const melodyBus = this.context.createGain();
-    melodyBus.gain.value = 0.74;
+    melodyBus.gain.value = 1.08;
     melodyBus.connect(destination);
     const echo = this.context.createDelay(0.6);
-    echo.delayTime.value = 0.28;
+    echo.delayTime.value = 0.18;
     const echoGain = this.context.createGain();
-    echoGain.gain.value = 0.22;
+    echoGain.gain.value = 0.18;
     melodyBus.connect(echo);
     echo.connect(echoGain);
     echoGain.connect(destination);
 
     const notes = [
-      { frequency: 261.63, offset: 0, length: 1.8 },
-      { frequency: 329.63, offset: 2, length: 1.4 },
-      { frequency: 392, offset: 3.6, length: 2.1 },
-      { frequency: 329.63, offset: 6, length: 1.6 },
-      { frequency: 293.66, offset: 7.8, length: 1.7 },
-      { frequency: 349.23, offset: 9.7, length: 1.6 },
-      { frequency: 392, offset: 11.4, length: 2.3 },
-      { frequency: 261.63, offset: 14.1, length: 2.4 },
+      { frequency: 329.63, offset: 0, length: 0.46 },
+      { frequency: 392, offset: 0.48, length: 0.44 },
+      { frequency: 440, offset: 0.96, length: 0.48 },
+      { frequency: 523.25, offset: 1.46, length: 0.6 },
+      { frequency: 493.88, offset: 2.18, length: 0.42 },
+      { frequency: 440, offset: 2.64, length: 0.42 },
+      { frequency: 392, offset: 3.1, length: 0.48 },
+      { frequency: 440, offset: 3.62, length: 0.74 },
+      { frequency: 392, offset: 4.58, length: 0.42 },
+      { frequency: 440, offset: 5.04, length: 0.42 },
+      { frequency: 523.25, offset: 5.5, length: 0.5 },
+      { frequency: 587.33, offset: 6.04, length: 0.68 },
+      { frequency: 523.25, offset: 6.9, length: 0.42 },
+      { frequency: 493.88, offset: 7.36, length: 0.42 },
+      { frequency: 440, offset: 7.82, length: 0.5 },
+      { frequency: 523.25, offset: 8.38, length: 0.82 },
     ];
-    const loopLength = 17.4;
-    for (let loop = 0; loop < 6; loop += 1) {
+    const loopLength = 9.5;
+    for (let loop = 0; loop < 10; loop += 1) {
       const loopStart = startTime + loop * loopLength;
       notes.forEach((note) => {
         const noteStart = loopStart + note.offset;
         const noteGain = this.context!.createGain();
         noteGain.gain.setValueAtTime(0.0001, noteStart);
-        noteGain.gain.exponentialRampToValueAtTime(0.052, noteStart + 0.08);
-        noteGain.gain.linearRampToValueAtTime(0.034, noteStart + note.length * 0.7);
+        noteGain.gain.exponentialRampToValueAtTime(0.092, noteStart + 0.025);
+        noteGain.gain.linearRampToValueAtTime(0.052, noteStart + note.length * 0.72);
         noteGain.gain.exponentialRampToValueAtTime(0.0001, noteStart + note.length);
         noteGain.connect(melodyBus);
 
         const tone = this.context!.createOscillator();
-        tone.type = 'triangle';
+        tone.type = loop % 2 === 0 ? 'triangle' : 'sine';
         tone.frequency.setValueAtTime(note.frequency, noteStart);
         tone.connect(noteGain);
         this.trackChapterSevenAmbientSource(tone, noteStart, noteStart + note.length);
@@ -1191,9 +1199,9 @@ export class GameplaySfxAudio {
 
     const padGain = this.context.createGain();
     padGain.gain.setValueAtTime(0.0001, startTime);
-    padGain.gain.exponentialRampToValueAtTime(0.026, startTime + 1.4);
+    padGain.gain.exponentialRampToValueAtTime(0.038, startTime + 0.8);
     padGain.connect(destination);
-    [130.81, 196, 261.63].forEach((frequency) => {
+    [164.81, 246.94, 329.63].forEach((frequency) => {
       const pad = this.context!.createOscillator();
       pad.type = 'sine';
       pad.frequency.setValueAtTime(frequency, startTime);
