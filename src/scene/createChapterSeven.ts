@@ -9,6 +9,7 @@ import {
   InstancedMesh,
   MathUtils,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
@@ -266,6 +267,8 @@ const HOUSE_REAR_ROOM_DEPTH = 14.0;
 const HOUSE_ROOF_RISE = 6.2;
 const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
+const KITCHEN_COUNTER_BASE_HEIGHT = 1.08;
+const KITCHEN_COUNTER_SURFACE_Y = KITCHEN_COUNTER_BASE_HEIGHT + 0.23;
 const TREE_COUNT = 160;
 const GRASS_PATCH_COUNT = 280;
 const ROCK_COUNT = 13;
@@ -348,6 +351,18 @@ export function createChapterSeven(): ChapterSevenData {
     halfDepth: number;
   }> = [];
   let forestTime = 0;
+  const nightSkyMaterials: MeshBasicMaterial[] = [];
+
+  const createNightSkyMaterial = (color: number, opacity: number): MeshBasicMaterial => {
+    const material = new MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+    });
+    nightSkyMaterials.push(material);
+    return material;
+  };
 
   const random = createRandom(707);
   const groundMaterial = new MeshStandardMaterial({
@@ -3451,7 +3466,7 @@ export function createChapterSeven(): ChapterSevenData {
     counter.position.set(localX, 0, localZ);
 
     const depth = 1.18;
-    const baseHeight = 1.27;
+    const baseHeight = KITCHEN_COUNTER_BASE_HEIGHT;
     const back = new Mesh(new BoxGeometry(width, baseHeight, 0.12), cabinetMaterial);
     back.position.set(0, baseHeight / 2, -depth / 2 + 0.06);
     const leftSide = new Mesh(new BoxGeometry(0.12, baseHeight, depth), cabinetMaterial);
@@ -3463,26 +3478,26 @@ export function createChapterSeven(): ChapterSevenData {
     const top = new Mesh(new BoxGeometry(width + 0.18, 0.22, depth + 0.18), counterTopMaterial);
     top.position.y = baseHeight + 0.12;
     const lowerShelf = new Mesh(new BoxGeometry(width - 0.18, 0.07, depth - 0.18), furnitureWoodMaterial);
-    lowerShelf.position.set(0, 0.48, -0.04);
+    lowerShelf.position.set(0, 0.4, -0.04);
     const upperShelf = lowerShelf.clone();
-    upperShelf.position.y = 0.9;
+    upperShelf.position.y = 0.76;
     const toeKick = new Mesh(new BoxGeometry(width - 0.26, 0.18, 0.12), houseTrimMaterial);
     toeKick.position.set(0, 0.14, depth / 2 + 0.035);
 
     const leftDoorPivot = new Group();
     leftDoorPivot.position.set(-width / 2, 0, depth / 2 + 0.06);
-    const leftDoor = new Mesh(new BoxGeometry(width / 2, 1.0, 0.07), furnitureWoodMaterial);
-    leftDoor.position.set(width / 4, 0.68, 0);
+    const leftDoor = new Mesh(new BoxGeometry(width / 2, 0.82, 0.07), furnitureWoodMaterial);
+    leftDoor.position.set(width / 4, 0.56, 0);
     const leftHandle = new Mesh(new BoxGeometry(0.06, 0.32, 0.07), fridgeSealMaterial);
-    leftHandle.position.set(width / 2 - 0.18, 0.68, 0.07);
+    leftHandle.position.set(width / 2 - 0.18, 0.56, 0.07);
     leftDoorPivot.add(leftDoor, leftHandle);
 
     const rightDoorPivot = new Group();
     rightDoorPivot.position.set(width / 2, 0, depth / 2 + 0.06);
-    const rightDoor = new Mesh(new BoxGeometry(width / 2, 1.0, 0.07), furnitureWoodMaterial);
-    rightDoor.position.set(-width / 4, 0.68, 0);
+    const rightDoor = new Mesh(new BoxGeometry(width / 2, 0.82, 0.07), furnitureWoodMaterial);
+    rightDoor.position.set(-width / 4, 0.56, 0);
     const rightHandle = new Mesh(new BoxGeometry(0.06, 0.32, 0.07), fridgeSealMaterial);
-    rightHandle.position.set(-(width / 2 - 0.18), 0.68, 0.07);
+    rightHandle.position.set(-(width / 2 - 0.18), 0.56, 0.07);
     rightDoorPivot.add(rightDoor, rightHandle);
 
     addCabinetCookies(counter, localX, label, [0.48, 0.9], width, depth);
@@ -3497,14 +3512,14 @@ export function createChapterSeven(): ChapterSevenData {
       centerZ: HOUSE_CENTER_Z + localZ,
       halfWidth: (width + 0.18) / 2,
       halfDepth: (depth + 0.18) / 2,
-      floorY: baseHeight + 0.23,
+      floorY: KITCHEN_COUNTER_SURFACE_Y,
       collider: counterCollider,
     });
 
     return {
       label,
       interactPosition: new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + depth / 2 + 0.9),
-      aimPosition: new Vector3(CENTER_X + localX, 0.78, HOUSE_CENTER_Z + localZ + depth / 2 + 0.08),
+      aimPosition: new Vector3(CENTER_X + localX, 0.68, HOUSE_CENTER_Z + localZ + depth / 2 + 0.08),
       doorPivots: [leftDoorPivot, rightDoorPivot],
       open: false,
       openAmount: 0,
@@ -3517,7 +3532,7 @@ export function createChapterSeven(): ChapterSevenData {
     sink.position.set(localX, 0, localZ);
 
     const depth = 1.18;
-    const baseHeight = 1.27;
+    const baseHeight = KITCHEN_COUNTER_BASE_HEIGHT;
     const back = new Mesh(new BoxGeometry(width, baseHeight, 0.12), cabinetMaterial);
     back.position.set(0, baseHeight / 2, -depth / 2 + 0.06);
     const leftSide = new Mesh(new BoxGeometry(0.12, baseHeight, depth), cabinetMaterial);
@@ -3528,14 +3543,14 @@ export function createChapterSeven(): ChapterSevenData {
     bottom.position.set(0, 0.06, 0);
     const top = new Mesh(new BoxGeometry(width + 0.18, 0.16, depth + 0.18), counterTopMaterial);
     top.position.y = baseHeight + 0.1;
-    const frontPanelLeft = new Mesh(new BoxGeometry(width / 2 - 0.08, 1.02, 0.08), furnitureWoodMaterial);
-    frontPanelLeft.position.set(-width / 4 - 0.025, 0.68, depth / 2 + 0.04);
+    const frontPanelLeft = new Mesh(new BoxGeometry(width / 2 - 0.08, 0.84, 0.08), furnitureWoodMaterial);
+    frontPanelLeft.position.set(-width / 4 - 0.025, 0.56, depth / 2 + 0.04);
     const frontPanelRight = frontPanelLeft.clone();
     frontPanelRight.position.x = width / 4 + 0.025;
-    const centerSeam = new Mesh(new BoxGeometry(0.045, 1.02, 0.095), houseTrimMaterial);
-    centerSeam.position.set(0, 0.68, depth / 2 + 0.065);
+    const centerSeam = new Mesh(new BoxGeometry(0.045, 0.84, 0.095), houseTrimMaterial);
+    centerSeam.position.set(0, 0.56, depth / 2 + 0.065);
     const leftHandle = new Mesh(new BoxGeometry(0.06, 0.32, 0.07), fridgeSealMaterial);
-    leftHandle.position.set(-0.18, 0.72, depth / 2 + 0.105);
+    leftHandle.position.set(-0.18, 0.6, depth / 2 + 0.105);
     const rightHandle = leftHandle.clone();
     rightHandle.position.x = 0.18;
     const underSinkKick = new Mesh(new BoxGeometry(width - 0.36, 0.16, 0.08), houseTrimMaterial);
@@ -3607,7 +3622,7 @@ export function createChapterSeven(): ChapterSevenData {
       centerZ: HOUSE_CENTER_Z + localZ,
       halfWidth: (width + 0.18) / 2,
       halfDepth: (depth + 0.18) / 2,
-      floorY: baseHeight + 0.23,
+      floorY: KITCHEN_COUNTER_SURFACE_Y,
       collider: sinkCollider,
     });
 
@@ -4073,7 +4088,7 @@ export function createChapterSeven(): ChapterSevenData {
     lamp.add(backPlate, arm, elbow, neck, shade, shadeRim, bulb);
     house.add(lamp);
 
-    const lampLight = new SpotLight(0xffe3a5, 6.5, 11.5, Math.PI / 4.4, 0.58, 1.45);
+    const lampLight = new SpotLight(0xffe3a5, 12.5, 18, Math.PI / 3.8, 0.68, 1.25);
     lampLight.position.set(localX + 0.76, localY - 0.62, localZ);
     lampLight.target.position.set(localX + 2.25, 0.05, localZ);
     house.add(lampLight, lampLight.target);
@@ -4203,15 +4218,15 @@ export function createChapterSeven(): ChapterSevenData {
 
     const width = 1.62;
     const depth = 1.06;
-    const height = 1.36;
+    const height = KITCHEN_COUNTER_BASE_HEIGHT + 0.09;
     const body = new Mesh(new BoxGeometry(width, height, depth), stoveMaterial);
     body.position.y = height / 2;
     const cooktop = new Mesh(new BoxGeometry(width + 0.08, 0.12, depth + 0.08), stoveGlassMaterial);
     cooktop.position.y = height + 0.08;
     const cavityWidth = width - 0.28;
-    const cavityHeight = 0.78;
+    const cavityHeight = 0.62;
     const cavityDepth = depth - 0.18;
-    const cavityCenterY = 0.75;
+    const cavityCenterY = 0.62;
     const cavityCenterZ = 0.08;
     const ovenBackWall = new Mesh(new BoxGeometry(cavityWidth, cavityHeight, 0.08), ovenInteriorMaterial);
     ovenBackWall.position.set(0, cavityCenterY, cavityCenterZ - cavityDepth / 2 + 0.04);
@@ -4224,28 +4239,28 @@ export function createChapterSeven(): ChapterSevenData {
     const ovenFloor = ovenCeiling.clone();
     ovenFloor.position.y = cavityCenterY - cavityHeight / 2 + 0.04;
     const ovenDoorPivot = new Group();
-    ovenDoorPivot.position.set(0, 0.36, depth / 2 + 0.055);
+    ovenDoorPivot.position.set(0, 0.3, depth / 2 + 0.055);
     const doorWidth = width - 0.2;
-    const doorHeight = 0.78;
+    const doorHeight = 0.62;
     const doorThickness = 0.08;
     const windowWidth = width - 0.52;
-    const windowHeight = 0.44;
+    const windowHeight = 0.34;
     const sidePanelWidth = (doorWidth - windowWidth) / 2;
     const topPanelHeight = (doorHeight - windowHeight) / 2;
     const ovenDoorTop = new Mesh(new BoxGeometry(doorWidth, topPanelHeight, doorThickness), stoveMaterial);
-    ovenDoorTop.position.set(0, 0.39 + windowHeight / 2 + topPanelHeight / 2, 0);
+    ovenDoorTop.position.set(0, 0.32 + windowHeight / 2 + topPanelHeight / 2, 0);
     const ovenDoorBottom = ovenDoorTop.clone();
-    ovenDoorBottom.position.y = 0.39 - windowHeight / 2 - topPanelHeight / 2;
+    ovenDoorBottom.position.y = 0.32 - windowHeight / 2 - topPanelHeight / 2;
     const ovenDoorLeft = new Mesh(new BoxGeometry(sidePanelWidth, windowHeight, doorThickness), stoveMaterial);
-    ovenDoorLeft.position.set(-windowWidth / 2 - sidePanelWidth / 2, 0.39, 0);
+    ovenDoorLeft.position.set(-windowWidth / 2 - sidePanelWidth / 2, 0.32, 0);
     const ovenDoorRight = ovenDoorLeft.clone();
     ovenDoorRight.position.x = windowWidth / 2 + sidePanelWidth / 2;
     const ovenWindow = new Mesh(new BoxGeometry(windowWidth, windowHeight, 0.035), ovenDoorGlassMaterial);
-    ovenWindow.position.set(0, 0.39, 0.05);
+    ovenWindow.position.set(0, 0.32, 0.05);
     const ovenHandle = new Mesh(new BoxGeometry(width - 0.36, 0.06, 0.07), fridgeSealMaterial);
-    ovenHandle.position.set(0, 0.68, 0.09);
+    ovenHandle.position.set(0, 0.58, 0.09);
     const knobRow = new Mesh(new BoxGeometry(width - 0.26, 0.14, 0.07), fridgeSealMaterial);
-    knobRow.position.set(0, 1.22, depth / 2 + 0.085);
+    knobRow.position.set(0, KITCHEN_COUNTER_BASE_HEIGHT - 0.08, depth / 2 + 0.085);
     const burners = [
       [-0.46, -0.26],
       [0.46, -0.26],
@@ -4287,7 +4302,7 @@ export function createChapterSeven(): ChapterSevenData {
       centerZ: HOUSE_CENTER_Z + localZ,
       halfWidth: (width + 0.08) / 2,
       halfDepth: (depth + 0.08) / 2,
-      floorY: height + 0.2,
+      floorY: KITCHEN_COUNTER_SURFACE_Y,
       collider: stoveCollider,
     });
 
@@ -5048,6 +5063,31 @@ export function createChapterSeven(): ChapterSevenData {
   light.position.set(CENTER_X - 36, 34, CENTER_Z - 42);
   root.add(light);
 
+  const nightSky = new Group();
+  nightSky.name = 'Chapter 7 night moon and stars';
+  nightSky.visible = true;
+  const moonMaterial = createNightSkyMaterial(0xf3f0d7, 0);
+  const moon = new Mesh(new SphereGeometry(4.6, 28, 18), moonMaterial);
+  moon.position.set(CENTER_X + 74, 82, CENTER_Z - 132);
+  nightSky.add(moon);
+
+  const starMaterial = createNightSkyMaterial(0xffffff, 0);
+  const starGeometry = new SphereGeometry(0.24, 8, 6);
+  const starRandom = createRandom(717);
+  for (let index = 0; index < 86; index += 1) {
+    const star = new Mesh(starGeometry, starMaterial);
+    const angle = starRandom() * Math.PI * 2;
+    const radius = 92 + starRandom() * 210;
+    star.position.set(
+      CENTER_X + Math.cos(angle) * radius,
+      48 + starRandom() * 54,
+      CENTER_Z + Math.sin(angle) * radius,
+    );
+    star.scale.setScalar(0.65 + starRandom() * 1.45);
+    nightSky.add(star);
+  }
+  root.add(nightSky);
+
   const treeTrunkGeometry = new CylinderGeometry(0.46, 0.62, 8.8, 10);
   const treeCrownBottomGeometry = new SphereGeometry(2.6, 12, 10);
   const treeCrownTopGeometry = new SphereGeometry(2.2, 12, 10);
@@ -5352,9 +5392,15 @@ export function createChapterSeven(): ChapterSevenData {
       forestTime += deltaSeconds;
       light.intensity = MathUtils.lerp(
         2.85 + Math.sin(forestTime * 0.7) * 0.16,
-        0.18 + Math.abs(Math.sin(forestTime * 1.25)) * 0.04,
+        0.36 + Math.abs(Math.sin(forestTime * 1.25)) * 0.06,
         nightBlend,
       );
+      nightSky.visible = nightBlend > 0.02;
+      nightSkyMaterials.forEach((material) => {
+        material.opacity = material === moonMaterial
+          ? nightBlend * 0.92
+          : nightBlend * 0.78;
+      });
       const targetSwingPower = swingSet.occupied ? swingInput : 0;
       const swingPowerRate = targetSwingPower > swingSet.swingPower ? 0.78 : 0.46;
       swingSet.swingPower += (targetSwingPower - swingSet.swingPower) * (1 - Math.exp(-swingPowerRate * deltaSeconds));

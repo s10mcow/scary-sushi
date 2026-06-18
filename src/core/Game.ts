@@ -1081,9 +1081,9 @@ export class Game {
   private readonly zombieDayFogColor = new Color(0x8aa3b5);
   private readonly zombieNightFogColor = new Color(0x0d1520);
   private readonly chapterSevenDaySkyColor = new Color(0x8fd7ff);
-  private readonly chapterSevenNightSkyColor = new Color(0x03050b);
+  private readonly chapterSevenNightSkyColor = new Color(0x080c1c);
   private readonly chapterSevenDayFogColor = new Color(0xaadfff);
-  private readonly chapterSevenNightFogColor = new Color(0x060912);
+  private readonly chapterSevenNightFogColor = new Color(0x141827);
   private readonly jumpscareLookTarget = new Vector3();
   private readonly chapterTwoBearLookTarget = new Vector3();
   private readonly chapterTwoDodoAttackLookTarget = new Vector3();
@@ -2622,8 +2622,17 @@ export class Game {
     }
 
     const flashlightToggle = this.input.consumeFlashlightToggle();
-    if (!chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !chapterFourLockerHiding && flashlightToggle) {
+    if (
+      !this.chapterSevenActive
+      && !chapterTwoClimbing
+      && !chapterTwoSliding
+      && !chapterTwoDodoNightAttacking
+      && !chapterFourLockerHiding
+      && flashlightToggle
+    ) {
       this.flashlight.toggle();
+    } else if (this.chapterSevenActive && flashlightToggle) {
+      this.flashlight.setEnabled(false);
     }
 
     const chapterSevenSpaceCrawlHeld = this.chapterSevenActive
@@ -3117,7 +3126,6 @@ export class Game {
       this.updateChapterSevenHoseWaterAudio(deltaSeconds);
       if (this.chapterSevenSwingSeated) {
         this.player.teleport(this.chapterSeven.swingSet.sitPosition);
-        this.player.lookToward(this.chapterSeven.swingSet.lookTarget, 1);
       }
     } else if (this.chapterEightActive) {
       this.chapterEight.update(deltaSeconds, this.player.getPosition());
@@ -12047,14 +12055,11 @@ export class Game {
 
     if (this.chapterSevenActive) {
       const nightBlend = this.getChapterSevenNightBlend();
-      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.055, nightBlend);
-      this.lighting.hemisphere.intensity = MathUtils.lerp(1.12, 0.12, nightBlend);
-      this.lighting.flashlight.intensity = MathUtils.lerp(
-        GAME_CONFIG.flashlight.intensity * 0.28,
-        GAME_CONFIG.flashlight.intensity * 1.18,
-        nightBlend,
-      );
-      this.lighting.flashlight.distance = MathUtils.lerp(18, 36, nightBlend);
+      this.flashlight.setEnabled(false);
+      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.24, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(1.12, 0.38, nightBlend);
+      this.lighting.flashlight.intensity = 0;
+      this.lighting.flashlight.distance = 0;
 
       if (this.scene.background instanceof Color) {
         this.scene.background.copy(this.chapterSevenDaySkyColor).lerp(this.chapterSevenNightSkyColor, nightBlend);
@@ -12062,8 +12067,8 @@ export class Game {
 
       if (this.scene.fog instanceof Fog) {
         this.scene.fog.color.copy(this.chapterSevenDayFogColor).lerp(this.chapterSevenNightFogColor, nightBlend);
-        this.scene.fog.near = MathUtils.lerp(150, 18, nightBlend);
-        this.scene.fog.far = MathUtils.lerp(620, 145, nightBlend);
+        this.scene.fog.near = MathUtils.lerp(150, 74, nightBlend);
+        this.scene.fog.far = MathUtils.lerp(620, 285, nightBlend);
       }
 
       return;
