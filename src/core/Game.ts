@@ -3056,7 +3056,7 @@ export class Game {
         this.player.getPosition(),
         this.officePlayerVoiceLevel,
         this.officeInsultHeardTimer > 0,
-        this.officeGameModeActive,
+        this.officeGameModeActive && this.officeGameModeNightPhase,
       );
       this.updateOfficeDoorSoundPlayback();
       this.updateOfficeDoorSparks(deltaSeconds);

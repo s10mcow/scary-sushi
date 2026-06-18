@@ -11929,9 +11929,25 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       ) {
         goldenBoriRoamDestinationIndex = pickGoldenBoriRoamDestination(currentRouteIndex);
       }
-      const nextRouteIndex = getGoldenBoriNextRouteIndex(currentRouteIndex, goldenBoriRoamDestinationIndex);
+      let nextRouteIndex = getGoldenBoriNextRouteIndex(currentRouteIndex, goldenBoriRoamDestinationIndex);
+      let nextRoutePoint = goldenBoriWanderPoints[nextRouteIndex];
+      if (
+        !nextRoutePoint
+        || !canGoldenBoriStandAt(nextRoutePoint.x, nextRoutePoint.z, GOLDEN_BORI_COLLISION_RADIUS * 0.72)
+        || !isGoldenBoriPathClear(
+          goldenBori.root.position.x,
+          goldenBori.root.position.z,
+          nextRoutePoint.x,
+          nextRoutePoint.z,
+          GOLDEN_BORI_COLLISION_RADIUS * 0.58,
+        )
+      ) {
+        goldenBoriRoamDestinationIndex = pickGoldenBoriRoamDestination(currentRouteIndex);
+        nextRouteIndex = getGoldenBoriNextRouteIndex(currentRouteIndex, goldenBoriRoamDestinationIndex);
+        nextRoutePoint = goldenBoriWanderPoints[nextRouteIndex] ?? goldenBoriWanderPoints[currentRouteIndex];
+      }
       goldenBoriWanderIndex = Math.max(0, goldenBoriPatrolRoute.indexOf(nextRouteIndex));
-      goldenBoriChaseTarget.copy(goldenBoriWanderPoints[nextRouteIndex] ?? goldenBoriWanderPoints[currentRouteIndex] ?? goldenBoriWanderPoints[0]);
+      goldenBoriChaseTarget.copy(nextRoutePoint ?? goldenBoriWanderPoints[0]);
     }
 
     const target = goldenBoriChaseTarget;
@@ -11998,13 +12014,15 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const moved = moveGoldenBoriToward(target, speed, deltaSeconds);
     if (!moved) {
       goldenBoriStuckTimer += deltaSeconds;
-      if (goldenBoriStuckTimer > 0.7 && recoverGoldenBoriFromStuck(target)) {
+      if (goldenBoriStuckTimer > 0.35 && recoverGoldenBoriFromStuck(target)) {
         return;
       }
       if (!goldenBoriChaseActive) {
+        const currentRouteIndex = getNearestGoldenBoriRouteIndex(goldenBori.root.position);
+        goldenBoriRoamDestinationIndex = pickGoldenBoriRoamDestination(currentRouteIndex);
         goldenBoriWanderIndex = (goldenBoriWanderIndex + 1) % goldenBoriPatrolRoute.length;
       }
-      goldenBoriWanderPause = goldenBoriChaseActive ? 0.12 : 0.38;
+      goldenBoriWanderPause = goldenBoriChaseActive ? 0.08 : 0.06;
       goldenBoriCollider.centerX = goldenBori.root.position.x;
       goldenBoriCollider.centerZ = goldenBori.root.position.z;
       return;
