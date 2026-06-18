@@ -11954,7 +11954,7 @@ export class Game {
     }
 
     this.gameplaySfxAudio.playChapterSevenCricketChirp();
-    this.chapterSevenCricketCooldown = 0.06 + Math.random() * 0.16;
+    this.chapterSevenCricketCooldown = 0.18 + Math.random() * 0.34;
   }
 
   private updateAtmosphere(): void {

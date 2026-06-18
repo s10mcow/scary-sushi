@@ -683,21 +683,21 @@ export class GameplaySfxAudio {
     }
 
     const now = this.context.currentTime + 0.008;
-    const chirpCount = 6 + Math.floor(Math.random() * 5);
+    const chirpCount = 4 + Math.floor(Math.random() * 4);
     for (let index = 0; index < chirpCount; index += 1) {
-      const start = now + index * (0.038 + Math.random() * 0.012);
+      const start = now + index * (0.052 + Math.random() * 0.018);
       const gain = this.context.createGain();
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.032 + Math.random() * 0.018, start + 0.006);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.052);
+      gain.gain.exponentialRampToValueAtTime(0.027 + Math.random() * 0.014, start + 0.007);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.066);
       gain.connect(this.masterGain);
 
       const chirp = this.context.createOscillator();
       chirp.type = 'sine';
-      chirp.frequency.setValueAtTime(4600 + Math.random() * 650, start);
-      chirp.frequency.exponentialRampToValueAtTime(3400 + Math.random() * 480, start + 0.047);
+      chirp.frequency.setValueAtTime(4400 + Math.random() * 560, start);
+      chirp.frequency.exponentialRampToValueAtTime(3250 + Math.random() * 420, start + 0.058);
       chirp.connect(gain);
-      this.startSource(chirp, start, start + 0.058);
+      this.startSource(chirp, start, start + 0.072);
     }
   }
 
@@ -1133,43 +1133,58 @@ export class GameplaySfxAudio {
     }
 
     const melodyBus = this.context.createGain();
-    melodyBus.gain.value = 1.08;
+    melodyBus.gain.value = 1.24;
     melodyBus.connect(destination);
     const echo = this.context.createDelay(0.6);
-    echo.delayTime.value = 0.18;
+    echo.delayTime.value = 0.14;
     const echoGain = this.context.createGain();
-    echoGain.gain.value = 0.18;
+    echoGain.gain.value = 0.16;
     melodyBus.connect(echo);
     echo.connect(echoGain);
     echoGain.connect(destination);
 
     const notes = [
-      { frequency: 329.63, offset: 0, length: 0.46 },
-      { frequency: 392, offset: 0.48, length: 0.44 },
-      { frequency: 440, offset: 0.96, length: 0.48 },
-      { frequency: 523.25, offset: 1.46, length: 0.6 },
-      { frequency: 493.88, offset: 2.18, length: 0.42 },
-      { frequency: 440, offset: 2.64, length: 0.42 },
-      { frequency: 392, offset: 3.1, length: 0.48 },
-      { frequency: 440, offset: 3.62, length: 0.74 },
-      { frequency: 392, offset: 4.58, length: 0.42 },
-      { frequency: 440, offset: 5.04, length: 0.42 },
-      { frequency: 523.25, offset: 5.5, length: 0.5 },
-      { frequency: 587.33, offset: 6.04, length: 0.68 },
-      { frequency: 523.25, offset: 6.9, length: 0.42 },
-      { frequency: 493.88, offset: 7.36, length: 0.42 },
-      { frequency: 440, offset: 7.82, length: 0.5 },
-      { frequency: 523.25, offset: 8.38, length: 0.82 },
+      { frequency: 392, offset: 0, length: 0.22 },
+      { frequency: 523.25, offset: 0.26, length: 0.2 },
+      { frequency: 659.25, offset: 0.52, length: 0.22 },
+      { frequency: 783.99, offset: 0.78, length: 0.28 },
+      { frequency: 698.46, offset: 1.16, length: 0.2 },
+      { frequency: 659.25, offset: 1.42, length: 0.2 },
+      { frequency: 587.33, offset: 1.68, length: 0.22 },
+      { frequency: 659.25, offset: 1.94, length: 0.34 },
+      { frequency: 523.25, offset: 2.42, length: 0.2 },
+      { frequency: 659.25, offset: 2.68, length: 0.2 },
+      { frequency: 783.99, offset: 2.94, length: 0.22 },
+      { frequency: 880, offset: 3.2, length: 0.3 },
+      { frequency: 783.99, offset: 3.62, length: 0.2 },
+      { frequency: 698.46, offset: 3.88, length: 0.2 },
+      { frequency: 659.25, offset: 4.14, length: 0.22 },
+      { frequency: 783.99, offset: 4.4, length: 0.42 },
     ];
-    const loopLength = 9.5;
-    for (let loop = 0; loop < 10; loop += 1) {
+    const loopLength = 5.18;
+    for (let loop = 0; loop < 18; loop += 1) {
       const loopStart = startTime + loop * loopLength;
+      [0, 1.28, 2.56, 3.84].forEach((beatOffset) => {
+        const beatStart = loopStart + beatOffset;
+        const beatGain = this.context!.createGain();
+        beatGain.gain.setValueAtTime(0.0001, beatStart);
+        beatGain.gain.exponentialRampToValueAtTime(0.042, beatStart + 0.01);
+        beatGain.gain.exponentialRampToValueAtTime(0.0001, beatStart + 0.16);
+        beatGain.connect(melodyBus);
+
+        const beat = this.context!.createOscillator();
+        beat.type = 'triangle';
+        beat.frequency.setValueAtTime(130.81, beatStart);
+        beat.frequency.exponentialRampToValueAtTime(82.41, beatStart + 0.14);
+        beat.connect(beatGain);
+        this.trackChapterSevenAmbientSource(beat, beatStart, beatStart + 0.17);
+      });
       notes.forEach((note) => {
         const noteStart = loopStart + note.offset;
         const noteGain = this.context!.createGain();
         noteGain.gain.setValueAtTime(0.0001, noteStart);
-        noteGain.gain.exponentialRampToValueAtTime(0.092, noteStart + 0.025);
-        noteGain.gain.linearRampToValueAtTime(0.052, noteStart + note.length * 0.72);
+        noteGain.gain.exponentialRampToValueAtTime(0.108, noteStart + 0.014);
+        noteGain.gain.linearRampToValueAtTime(0.06, noteStart + note.length * 0.68);
         noteGain.gain.exponentialRampToValueAtTime(0.0001, noteStart + note.length);
         noteGain.connect(melodyBus);
 
