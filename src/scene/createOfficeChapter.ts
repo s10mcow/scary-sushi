@@ -246,6 +246,37 @@ export interface OfficeChapterPhotoCameraPickup {
   collected: boolean;
 }
 
+export interface OfficeChapterPickaxePickup {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  collected: boolean;
+}
+
+export interface OfficeChapterBasementRubble {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  collider: CollisionBox;
+  cleared: boolean;
+  clearedBounds: {
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+  };
+  blockedMaxZ: number;
+  openMaxZ: number;
+}
+
+export interface OfficeChapterBoriAiControl {
+  label: string;
+  root: Group;
+  interactPosition: Vector3;
+  leverPivot: Group;
+  enabled: boolean;
+}
+
 export interface OfficeChapterPosterTarget {
   id: string;
   label: string;
@@ -442,6 +473,9 @@ export interface OfficeChapterData {
   employeeOnlyDoor: OfficeChapterEmployeeOnlyDoor;
   employeeKeyBriefcase: OfficeChapterEmployeeKeyBriefcase;
   photoCameraPickup: OfficeChapterPhotoCameraPickup;
+  storagePickaxePickup: OfficeChapterPickaxePickup;
+  basementRubble: OfficeChapterBasementRubble;
+  boriAiControl: OfficeChapterBoriAiControl;
   posterTargets: OfficeChapterPosterTarget[];
   posterPrinter: OfficeChapterPosterPrinter;
   employeeElevator: OfficeChapterEmployeeElevator;
@@ -8882,6 +8916,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       openingMaxZ: doorMaxZ + basementSideRoomWallOpeningPadding,
     };
   });
+  const southBasementMainHallBounds = {
+    minX: southBasementHallwayMinX + 0.5,
+    maxX: southBasementHallwayMaxX - 0.5,
+    minZ: basementWallMaxZ - 0.62,
+    maxZ: southBasementHallwayEndZ - 4.15,
+  };
   const basementHallwayBounds = [
     ...(basementNorthHallEnabled
       ? [{
@@ -8891,12 +8931,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
           maxZ: basementWallMinZ + 0.62,
         }]
       : []),
-    {
-      minX: southBasementHallwayMinX + 0.5,
-      maxX: southBasementHallwayMaxX - 0.5,
-      minZ: basementWallMaxZ - 0.62,
-      maxZ: southBasementHallwayEndZ - 4.15,
-    },
+    southBasementMainHallBounds,
   ];
   basementSideRooms.forEach((room) => {
     basementHallwayBounds.push({
@@ -9047,6 +9082,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     2.2,
     1.8,
   );
+  basementHallwayBounds.push({
+    minX: blockedBasementRoomMinX + 0.62,
+    maxX: blockedBasementRoomMaxX - 0.62,
+    minZ: blockedBasementRoomMinZ + 0.56,
+    maxZ: blockedBasementRoomMaxZ - 0.56,
+  });
   const addSegmentedHallwayWall = (x: number, startZ: number, endZ: number): void => {
     const segmentLength = employeeElevatorBasementRoomDepth;
     let cursorZ = startZ;
@@ -9523,9 +9564,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     roughness: 1,
     metalness: 0,
   });
+  const basementRubbleRoot = new Group();
   const caveInBack = new Mesh(new BoxGeometry(southBasementHallwayWidth + 1.55, 3.45, 1.48), rubbleDirtMaterial);
   caveInBack.position.set(southBasementHallwayCenterX, employeeElevatorBasementFloorY + 1.7, southBasementHallwayEndZ - 0.5);
-  employeeElevatorRoot.add(caveInBack);
+  basementRubbleRoot.add(caveInBack);
   for (let rock = 0; rock < 76; rock += 1) {
     const rockWidth = 0.38 + (rock % 5) * 0.17;
     const rockHeight = 0.24 + (rock % 5) * 0.15;
@@ -9538,8 +9580,85 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       southBasementHallwayEndZ - 3.15 + ((rock * 0.43) % 2.9),
     );
     rubble.rotation.set((rock % 4) * 0.18, (rock * 0.49) % Math.PI, (rock % 5) * 0.12);
-    employeeElevatorRoot.add(rubble);
+    basementRubbleRoot.add(rubble);
   }
+  employeeElevatorRoot.add(basementRubbleRoot);
+  const basementRubbleCollider: CollisionBox = {
+    centerX: southBasementHallwayCenterX,
+    centerZ: southBasementHallwayEndZ - 1.72,
+    halfWidth: southBasementHallwayWidth / 2 + 0.24,
+    halfDepth: 2.18,
+    enabled: true,
+  };
+  colliders.push(basementRubbleCollider);
+  const basementRubble: OfficeChapterBasementRubble = {
+    label: 'Basement rubble',
+    root: basementRubbleRoot,
+    interactPosition: new Vector3(southBasementHallwayCenterX, employeeElevatorBasementFloorY + 1.25, southBasementHallwayEndZ - 3.78),
+    collider: basementRubbleCollider,
+    cleared: false,
+    clearedBounds: southBasementMainHallBounds,
+    blockedMaxZ: southBasementHallwayEndZ - 4.15,
+    openMaxZ: blockedBasementRoomMaxZ - 0.56,
+  };
+  const controlPanelMaterial = new MeshStandardMaterial({
+    color: 0x1a2328,
+    emissive: 0x03080a,
+    emissiveIntensity: 0.16,
+    roughness: 0.42,
+    metalness: 0.58,
+  });
+  const controlGlowMaterial = new MeshStandardMaterial({
+    color: 0x55e7ff,
+    emissive: 0x24bde8,
+    emissiveIntensity: 0.85,
+    roughness: 0.22,
+    metalness: 0.18,
+  });
+  const controlWarningMaterial = new MeshStandardMaterial({
+    color: 0xd1462f,
+    emissive: 0x8f1308,
+    emissiveIntensity: 0.54,
+    roughness: 0.34,
+    metalness: 0.12,
+  });
+  const boriAiControlRoot = new Group();
+  boriAiControlRoot.position.set(blockedBasementRoomMaxX - 0.16, 0, blockedBasementRoomCenterZ);
+  boriAiControlRoot.rotation.y = -Math.PI / 2;
+  const boriAiPanel = new Mesh(new BoxGeometry(0.14, 1.38, 2.55), controlPanelMaterial);
+  boriAiPanel.position.y = employeeElevatorBasementFloorY + 1.08;
+  const boriAiLabel = createInstructionHoverLabel("Bori's AI", 1.5, 0.46);
+  boriAiLabel.position.set(-0.084, employeeElevatorBasementFloorY + 1.66, 0);
+  boriAiLabel.rotation.y = Math.PI / 2;
+  const boriAiLeverPivot = new Group();
+  boriAiLeverPivot.position.set(-0.11, employeeElevatorBasementFloorY + 1.06, -0.72);
+  const leverBase = new Mesh(new CylinderGeometry(0.12, 0.12, 0.05, 16), controlGlowMaterial);
+  leverBase.rotation.z = Math.PI / 2;
+  const leverHandle = new Mesh(new CylinderGeometry(0.035, 0.045, 0.52, 10), controlWarningMaterial);
+  leverHandle.position.set(-0.25, 0, 0);
+  leverHandle.rotation.z = Math.PI / 2;
+  boriAiLeverPivot.add(leverBase, leverHandle);
+  for (let button = 0; button < 12; button += 1) {
+    const buttonMesh = new Mesh(
+      new BoxGeometry(0.035, 0.1, 0.16),
+      button % 3 === 0 ? controlWarningMaterial : controlGlowMaterial,
+    );
+    buttonMesh.position.set(
+      -0.096,
+      employeeElevatorBasementFloorY + 0.54 + Math.floor(button / 4) * 0.22,
+      -0.12 + (button % 4) * 0.24,
+    );
+    boriAiControlRoot.add(buttonMesh);
+  }
+  boriAiControlRoot.add(boriAiPanel, boriAiLabel, boriAiLeverPivot);
+  employeeElevatorRoot.add(boriAiControlRoot);
+  const boriAiControl: OfficeChapterBoriAiControl = {
+    label: "Bori's AI Switch",
+    root: boriAiControlRoot,
+    interactPosition: new Vector3(blockedBasementRoomMaxX - 0.92, employeeElevatorBasementFloorY + 1.12, blockedBasementRoomCenterZ),
+    leverPivot: boriAiLeverPivot,
+    enabled: false,
+  };
   const getBasementWallPoint = (
     side: 'north' | 'south' | 'west' | 'east',
     along: number,
@@ -9818,6 +9937,39 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     cap.position.set(storageShelfX + 0.06, 2.65, storageClosetCenterZ + offsetZ);
     storageClosetShelfRoot.add(bottle, cap);
   });
+  const pickaxeRoot = new Group();
+  pickaxeRoot.position.set(storageShelfX + 0.08, 0.84, storageClosetCenterZ - 1.62);
+  pickaxeRoot.rotation.set(0.14, -Math.PI / 2, -0.18);
+  const pickaxeHandle = new Mesh(new CylinderGeometry(0.035, 0.045, 0.92, 10), storageClosetShelfMaterial);
+  pickaxeHandle.rotation.z = Math.PI / 2;
+  const pickaxeHead = new Group();
+  pickaxeHead.position.x = -0.44;
+  const pickaxeMetalMaterial = new MeshStandardMaterial({
+    color: 0x8e969b,
+    emissive: 0x080b0c,
+    emissiveIntensity: 0.08,
+    roughness: 0.34,
+    metalness: 0.7,
+  });
+  const pickaxeHeadBar = new Mesh(new BoxGeometry(0.5, 0.08, 0.1), pickaxeMetalMaterial);
+  const pickaxeLeftTip = new Mesh(new ConeGeometry(0.07, 0.28, 8), pickaxeMetalMaterial);
+  pickaxeLeftTip.rotation.z = -Math.PI / 2;
+  pickaxeLeftTip.position.x = -0.32;
+  const pickaxeRightTip = pickaxeLeftTip.clone();
+  pickaxeRightTip.rotation.z = Math.PI / 2;
+  pickaxeRightTip.position.x = 0.32;
+  pickaxeHead.add(pickaxeHeadBar, pickaxeLeftTip, pickaxeRightTip);
+  const pickaxeHint = createInstructionHoverLabel('pickaxe for basement rubble', 2.7, 0.5);
+  pickaxeHint.position.set(0, 0.42, 0);
+  pickaxeHint.rotation.y = Math.PI / 2;
+  pickaxeRoot.add(pickaxeHandle, pickaxeHead, pickaxeHint);
+  storageClosetShelfRoot.add(pickaxeRoot);
+  const storagePickaxePickup: OfficeChapterPickaxePickup = {
+    label: 'Storage Pickaxe',
+    root: pickaxeRoot,
+    interactPosition: new Vector3(storageShelfX + 0.42, 0.94, storageClosetCenterZ - 1.62),
+    collected: false,
+  };
   const photoCameraRoot = createShelfPhotoCameraModel();
   photoCameraRoot.position.set(storageShelfX + 0.08, 1.52, storageClosetCenterZ + 1.78);
   photoCameraRoot.rotation.y = -Math.PI / 2;
@@ -12102,6 +12254,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       door.open = door.targetOpenAmount > 0.5;
       door.collider.enabled = door.openAmount < 0.62;
     });
+    boriAiControl.leverPivot.rotation.z = MathUtils.lerp(
+      boriAiControl.leverPivot.rotation.z,
+      boriAiControl.enabled ? -0.74 : 0,
+      blend,
+    );
 
     bathroomSinks.forEach((sink) => {
       sink.waterAmount = MathUtils.lerp(sink.waterAmount, sink.waterOn ? 1 : 0, blend);
@@ -12770,6 +12927,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeKeyBriefcase.keyRoot.visible = false;
     photoCameraPickup.collected = false;
     photoCameraPickup.root.visible = true;
+    storagePickaxePickup.collected = false;
+    storagePickaxePickup.root.visible = true;
+    basementRubble.cleared = false;
+    basementRubble.root.visible = true;
+    basementRubble.collider.enabled = true;
+    basementRubble.clearedBounds.maxZ = basementRubble.blockedMaxZ;
+    boriAiControl.enabled = false;
+    boriAiControl.leverPivot.rotation.z = 0;
     posterPrinter.printed = false;
     posterPrinter.keycardRoot.visible = false;
     posterPrinter.instructionHint.visible = true;
@@ -12843,6 +13008,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     employeeOnlyDoor,
     employeeKeyBriefcase,
     photoCameraPickup,
+    storagePickaxePickup,
+    basementRubble,
+    boriAiControl,
     posterTargets,
     posterPrinter,
     employeeElevator,

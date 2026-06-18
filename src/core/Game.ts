@@ -441,7 +441,7 @@ interface OfficeCutsceneMaterialState {
   eye: boolean;
 }
 
-type OfficePrizeItemId = 'photo-camera' | 'glass' | 'tiny-bear' | 'lollipop' | 'duck-toy' | 'stuffie' | 'poster-keycard';
+type OfficePrizeItemId = 'photo-camera' | 'glass' | 'tiny-bear' | 'lollipop' | 'duck-toy' | 'stuffie' | 'poster-keycard' | 'pickaxe';
 type OfficeThrowableKind = 'glass' | 'tiny-bear';
 
 interface ActiveOfficeGlassThrow {
@@ -812,6 +812,7 @@ const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
   'duck-toy': 'Duck Toy',
   stuffie: 'Stuffie',
   'poster-keycard': 'Animatronic Keycard',
+  pickaxe: 'Pickaxe',
 };
 const OFFICE_PRIZE_HOTBAR_SLOTS: Array<{ slot: number; item: OfficePrizeItemId }> = [
   { slot: 5, item: 'photo-camera' },
@@ -819,7 +820,7 @@ const OFFICE_PRIZE_HOTBAR_SLOTS: Array<{ slot: number; item: OfficePrizeItemId }
   { slot: 7, item: 'tiny-bear' },
   { slot: 8, item: 'lollipop' },
   { slot: 9, item: 'stuffie' },
-  { slot: 10, item: 'poster-keycard' },
+  { slot: 10, item: 'pickaxe' },
 ];
 const OFFICE_GAME_MODE_OFFICE_CENTER = new Vector3(-240, GAME_CONFIG.player.height, 184);
 const OFFICE_GAME_MODE_OFFICE_SPAWN = new Vector3(-240, GAME_CONFIG.player.height, 186.2);
@@ -1171,6 +1172,9 @@ export class Game {
   private officeLollipopBoostRemaining = 0;
   private officeLollipopUseTimer = 0;
   private officePrintedPosterKeycard = false;
+  private officeBasementRubbleHits = 0;
+  private officeBoriAiRehearsalTimer = 0;
+  private officeBoriAiLineIndex = 0;
   private readonly officePosterPhotoIds = new Set<string>();
   private readonly officePosterPhotos: OfficePosterPhoto[] = [];
   private officePosterPhotoIndex = 0;
@@ -3058,6 +3062,7 @@ export class Game {
         this.officeInsultHeardTimer > 0,
         this.officeGameModeActive && this.officeGameModeNightPhase,
       );
+      this.updateOfficeBoriAiRehearsal(deltaSeconds);
       this.updateOfficeDoorSoundPlayback();
       this.updateOfficeDoorSparks(deltaSeconds);
       this.updateOfficePrizeWheelAudio();
@@ -3818,6 +3823,48 @@ export class Game {
     return root;
   }
 
+  private createOfficePickaxeModel(includeHand = false): Group {
+    const root = new Group();
+    if (includeHand) {
+      root.add(this.createOfficePrizeHandModel());
+    }
+
+    const handleMaterial = new MeshStandardMaterial({
+      color: 0x6f4325,
+      emissive: 0x100704,
+      emissiveIntensity: 0.08,
+      roughness: 0.72,
+      metalness: 0.02,
+    });
+    const metalMaterial = new MeshStandardMaterial({
+      color: 0x9aa3a7,
+      emissive: 0x0b0f10,
+      emissiveIntensity: 0.08,
+      roughness: 0.34,
+      metalness: 0.68,
+    });
+    const pickaxe = new Group();
+    pickaxe.position.set(0.02, 0.06, -0.18);
+    pickaxe.rotation.set(0.22, -0.24, -0.34);
+    const handle = new Mesh(new CylinderGeometry(0.022, 0.03, 0.58, 10), handleMaterial);
+    handle.rotation.z = -0.18;
+    handle.position.y = -0.03;
+    const headRoot = new Group();
+    headRoot.position.y = 0.28;
+    headRoot.rotation.z = Math.PI / 2;
+    const headBar = new Mesh(new BoxGeometry(0.38, 0.06, 0.075), metalMaterial);
+    const leftTip = new Mesh(new ConeGeometry(0.055, 0.22, 8), metalMaterial);
+    leftTip.rotation.z = -Math.PI / 2;
+    leftTip.position.x = -0.28;
+    const rightTip = leftTip.clone();
+    rightTip.rotation.z = Math.PI / 2;
+    rightTip.position.x = 0.28;
+    headRoot.add(headBar, leftTip, rightTip);
+    pickaxe.add(handle, headRoot);
+    root.add(pickaxe);
+    return root;
+  }
+
   private createOfficePrizeItemModels(): void {
     const models: Array<[OfficePrizeItemId, Group]> = [
       ['photo-camera', this.createOfficePhotoCameraModel(true)],
@@ -3826,6 +3873,7 @@ export class Game {
       ['duck-toy', this.createOfficeDuckToyModel(true)],
       ['stuffie', this.createOfficeStuffieModel(true)],
       ['poster-keycard', this.createOfficePosterKeycardModel(true)],
+      ['pickaxe', this.createOfficePickaxeModel(true)],
     ];
 
     models.forEach(([item, model]) => {
@@ -5966,6 +6014,9 @@ export class Game {
     this.officePrizeBonusMultiplier = 1;
     this.officeLollipopBoostRemaining = 0;
     this.officeLollipopUseTimer = 0;
+    this.officeBasementRubbleHits = 0;
+    this.officeBoriAiRehearsalTimer = 0;
+    this.officeBoriAiLineIndex = 0;
     this.clearOfficeHeldPrizeItem();
   }
 
@@ -6030,6 +6081,8 @@ export class Game {
         ? 'Left click to throw it and shatter it.'
         : item === 'photo-camera'
           ? 'Left click at night to photograph moving animatronics. Mouse wheel switches items; type a photo number to review photos.'
+        : item === 'pickaxe'
+          ? 'Left click near the basement rubble to clear a path.'
         : item === 'tiny-bear'
           ? 'Left click to throw it and squeak it as a distraction.'
           : item === 'lollipop'
@@ -13321,6 +13374,9 @@ export class Game {
       case 'photo-camera':
         this.takeOfficePosterPhoto();
         return true;
+      case 'pickaxe':
+        this.swingOfficePickaxe();
+        return true;
       case 'tiny-bear':
         this.throwOfficeTinyBear();
         return true;
@@ -13340,6 +13396,31 @@ export class Game {
       default:
         return false;
     }
+  }
+
+  private swingOfficePickaxe(): void {
+    const rubble = this.getNearestOfficeBasementRubble();
+    if (!rubble) {
+      this.gameplaySfxAudio.playSmallPanel(false);
+      this.pushStatus('You swing the pickaxe through the air. Use it on the basement rubble.', 1.8);
+      return;
+    }
+
+    this.officeBasementRubbleHits += 1;
+    this.gameplaySfxAudio.playGoldenBoriBoom();
+    if (this.officeBasementRubbleHits < 4) {
+      const remaining = 4 - this.officeBasementRubbleHits;
+      this.pushStatus(`The pickaxe cracks the rubble. ${remaining} more solid hit${remaining === 1 ? '' : 's'} should clear it.`, 2.0);
+      return;
+    }
+
+    rubble.cleared = true;
+    rubble.root.visible = false;
+    rubble.collider.enabled = false;
+    rubble.clearedBounds.maxZ = rubble.openMaxZ;
+    this.officeBasementRubbleHits = 0;
+    this.gameplaySfxAudio.playSmallPanel(true);
+    this.pushStatus("The cave-in breaks apart. The hallway opens into the underground control room.", 3.2);
   }
 
   private playOfficePrizeToySound(): void {
@@ -16529,6 +16610,8 @@ export class Game {
     switch (this.officeHeldPrizeItem) {
       case 'photo-camera':
         return `Photo Camera equipped. Left click to take a picture. Moving animatronics photographed at night: ${this.officePosterPhotoIds.size}/${this.getOfficeKeycardPhotoTargetCount()}. Mouse wheel switches items; type a photo number to review photos.`;
+      case 'pickaxe':
+        return 'Pickaxe equipped. Left click while aiming at basement rubble to clear the cave-in.';
       case 'glass':
         return 'Glass Cup equipped. Left click to throw it and make it shatter.';
       case 'tiny-bear':
@@ -17275,6 +17358,7 @@ export class Game {
       const kitchenEntranceDoor = this.getNearestOfficeKitchenEntranceDoor();
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const photoCameraPickup = this.getNearestOfficePhotoCameraPickup();
+      const pickaxePickup = this.getNearestOfficePickaxePickup();
       const posterPrinter = this.getNearestOfficePosterPrinter();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
@@ -17284,6 +17368,8 @@ export class Game {
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
       const bathroomRoomDoor = this.getNearestOfficeBathroomRoomDoor();
       const basementRoomDoor = this.getNearestOfficeBasementRoomDoor();
+      const basementRubble = this.getNearestOfficeBasementRubble();
+      const boriAiControl = this.getNearestOfficeBoriAiControl();
       const bathroomSink = this.getNearestOfficeBathroomSink();
       const bathroomStall = this.getNearestOfficeBathroomStall();
       const ticket = this.getNearestOfficeTicketPickup();
@@ -17335,6 +17421,10 @@ export class Game {
 
       if (photoCameraPickup) {
         return 'Press E to pick up the shelf photo camera.';
+      }
+
+      if (pickaxePickup) {
+        return 'Press E to pick up the storage closet pickaxe.';
       }
 
       if (posterPrinter) {
@@ -17425,6 +17515,20 @@ export class Game {
         return basementRoomDoor.open
           ? `Press E to close ${basementRoomDoor.label.toLowerCase()}.`
           : `Press E to open ${basementRoomDoor.label.toLowerCase()}.`;
+      }
+
+      if (basementRubble) {
+        return this.officeHeldPrizeItem === 'pickaxe'
+          ? 'Left click with the pickaxe to break apart the basement rubble.'
+          : 'Basement rubble blocks the hallway. Find the storage closet pickaxe.';
+      }
+
+      if (boriAiControl) {
+        return boriAiControl.enabled
+          ? "Bori's AI is on. He can rehearse lines whenever he feels like it."
+          : this.officePrintedPosterKeycard
+            ? "Press E to swipe the animatronic keycard and turn on Bori's AI."
+            : "Bori's AI panel needs the printed animatronic keycard.";
       }
 
       if (bathroomSink) {
@@ -18050,6 +18154,7 @@ export class Game {
       const kitchenEntranceDoor = this.getNearestOfficeKitchenEntranceDoor();
       const kitchenGlassShelf = this.getNearestOfficeKitchenGlassShelf();
       const photoCameraPickup = this.getNearestOfficePhotoCameraPickup();
+      const pickaxePickup = this.getNearestOfficePickaxePickup();
       const posterPrinter = this.getNearestOfficePosterPrinter();
       const backstageStorageDoor = this.getNearestOfficeBackstageStorageDoor();
       const employeeOnlyDoor = this.getNearestOfficeEmployeeOnlyDoor();
@@ -18060,6 +18165,8 @@ export class Game {
       const bathroomEntranceDoor = this.getNearestOfficeBathroomEntranceDoor();
       const bathroomRoomDoor = this.getNearestOfficeBathroomRoomDoor();
       const basementRoomDoor = this.getNearestOfficeBasementRoomDoor();
+      const basementRubble = this.getNearestOfficeBasementRubble();
+      const boriAiControl = this.getNearestOfficeBoriAiControl();
       const bathroomSink = this.getNearestOfficeBathroomSink();
       const bathroomStall = this.getNearestOfficeBathroomStall();
       const ticket = this.getNearestOfficeTicketPickup();
@@ -18134,6 +18241,10 @@ export class Game {
 
       if (photoCameraPickup) {
         return 'A small photo camera is sitting on the cleaning closet shelf. Press E to put it in your inventory.';
+      }
+
+      if (pickaxePickup) {
+        return 'A pickaxe rests on the cleaning closet shelf. Press E to put it in your hotbar.';
       }
 
       if (posterPrinter) {
@@ -18224,6 +18335,20 @@ export class Game {
         return basementRoomDoor.open
           ? `${basementRoomDoor.label} is open. Press E to close it.`
           : `${basementRoomDoor.label} is closed. Press E to open it.`;
+      }
+
+      if (basementRubble) {
+        return this.officeHeldPrizeItem === 'pickaxe'
+          ? 'The rubble is cracked and loose. Left click with the pickaxe to clear the hallway.'
+          : 'A heavy cave-in blocks the basement hallway. The storage closet pickaxe could break it apart.';
+      }
+
+      if (boriAiControl) {
+        return boriAiControl.enabled
+          ? "Bori's AI switch is on. Bori can rehearse talking by himself now."
+          : this.officePrintedPosterKeycard
+            ? "The control panel reads Bori's AI. Press E to swipe the keycard and switch it on."
+            : "The control panel reads Bori's AI, but it needs the printed animatronic keycard.";
       }
 
       if (bathroomSink) {
@@ -19477,6 +19602,63 @@ export class Game {
     return lateral <= 0.72 ? pickup : null;
   }
 
+  private getNearestOfficePickaxePickup(): OfficeChapterData['storagePickaxePickup'] | null {
+    const pickup = this.officeChapter.storagePickaxePickup;
+    if (pickup.collected || !pickup.root.visible) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toPickup = pickup.interactPosition.clone().sub(playerPosition);
+    const along = toPickup.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.05) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toPickup.sub(projected).length();
+    return lateral <= 0.78 ? pickup : null;
+  }
+
+  private getNearestOfficeBasementRubble(): OfficeChapterData['basementRubble'] | null {
+    const rubble = this.officeChapter.basementRubble;
+    if (rubble.cleared || !rubble.root.visible || !this.officeEmployeeElevatorBasementActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toRubble = rubble.interactPosition.clone().sub(playerPosition);
+    const along = toRubble.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.45) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toRubble.sub(projected).length();
+    return lateral <= 1.35 ? rubble : null;
+  }
+
+  private getNearestOfficeBoriAiControl(): OfficeChapterData['boriAiControl'] | null {
+    const control = this.officeChapter.boriAiControl;
+    if (!this.officeEmployeeElevatorBasementActive || !this.officeChapter.basementRubble.cleared) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const forward = this.camera.getWorldDirection(new Vector3()).normalize();
+    const toControl = control.interactPosition.clone().sub(playerPosition);
+    const along = toControl.dot(forward);
+    if (along <= 0 || along > GAME_CONFIG.player.interactionRange + 1.3) {
+      return null;
+    }
+
+    const projected = forward.clone().multiplyScalar(along);
+    const lateral = toControl.sub(projected).length();
+    return lateral <= 1.12 ? control : null;
+  }
+
   private getNearestOfficePosterPrinter(): OfficeChapterData['posterPrinter'] | null {
     const printer = this.officeChapter.posterPrinter;
     const playerPosition = this.player.getPosition();
@@ -19755,6 +19937,39 @@ export class Game {
     this.updateOfficePosterPrinterHint();
     this.pushStatus('The printer whirs, feeds paper through, and spits out a basement animatronic keycard into hotbar slot 10.', 3.4);
     this.syncHud();
+  }
+
+  private updateOfficeBoriAiRehearsal(deltaSeconds: number): void {
+    if (!this.officeChapterActive || !this.officeChapter.boriAiControl.enabled) {
+      this.officeBoriAiRehearsalTimer = 0;
+      return;
+    }
+
+    this.officeBoriAiRehearsalTimer -= deltaSeconds;
+    if (this.officeBoriAiRehearsalTimer > 0) {
+      return;
+    }
+
+    const lines = [
+      "Welcome to Bori's Pizzeria. Let's make tonight sound perfect.",
+      'Mic check. Smile wide. Wave slowly. Say hello to the party room.',
+      'Rehearsal mode active. Bori is ready for the next performance.',
+      'Testing voice box. Birthday greeting line one, line two, line three.',
+      'Remember, kids, the show starts when the lights go down.',
+    ];
+    const line = lines[this.officeBoriAiLineIndex % lines.length] ?? lines[0];
+    this.officeBoriAiLineIndex += 1;
+    this.officeBoriAiRehearsalTimer = 18 + Math.random() * 24;
+
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(line);
+      utterance.rate = 0.86;
+      utterance.pitch = 0.72;
+      utterance.volume = 0.82;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    this.pushStatus(`Bori rehearses: "${line}"`, 3.2);
   }
 
   private getNearestOfficeVentLadder(): OfficeChapterData['ventSystem'] | null {
@@ -20667,6 +20882,18 @@ export class Game {
       return;
     }
 
+    const pickaxePickup = this.getNearestOfficePickaxePickup();
+    if (pickaxePickup) {
+      pickaxePickup.collected = true;
+      pickaxePickup.root.visible = false;
+      this.addOfficePrizeItem('pickaxe', 1);
+      this.setOfficeHeldPrizeItem('pickaxe', false);
+      this.gameplaySfxAudio.playSmallPanel(true);
+      this.pushStatus('You pick up the storage closet pickaxe. Use it to clear the basement rubble.', 3.0);
+      this.syncHud();
+      return;
+    }
+
     const posterPrinter = this.getNearestOfficePosterPrinter();
     if (posterPrinter) {
       this.handleOfficePosterPrinterInteract();
@@ -20816,6 +21043,26 @@ export class Game {
             : `${basementRoomDoor.label} swings closed.`,
         2.1,
       );
+      return;
+    }
+
+    const boriAiControl = this.getNearestOfficeBoriAiControl();
+    if (boriAiControl) {
+      if (!this.officePrintedPosterKeycard) {
+        this.gameplaySfxAudio.playSmallPanel(false);
+        this.pushStatus("Bori's AI switch needs the printed animatronic keycard from the backstage printer.", 2.8);
+        return;
+      }
+
+      if (boriAiControl.enabled) {
+        this.pushStatus("Bori's AI is already on. He can rehearse lines whenever he feels like it.", 2.6);
+        return;
+      }
+
+      boriAiControl.enabled = true;
+      this.officeBoriAiRehearsalTimer = 3.5;
+      this.gameplaySfxAudio.playSmallPanel(true);
+      this.pushStatus("The keycard swipes green. Bori's AI turns on in rehearsal mode.", 3.2);
       return;
     }
 
