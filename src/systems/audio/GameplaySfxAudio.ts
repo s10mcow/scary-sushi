@@ -170,6 +170,43 @@ export class GameplaySfxAudio {
     this.startSource(grit, now, now + 0.3);
   }
 
+  playGrandfatherClockChime(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.012;
+    const notes = [196, 164.81, 130.81];
+    notes.forEach((frequency, index) => {
+      const start = now + index * 0.42;
+      const duration = 1.25;
+
+      const gain = this.context!.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.22 - index * 0.025, start + 0.035);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      gain.connect(this.masterGain!);
+
+      const fundamental = this.context!.createOscillator();
+      fundamental.type = 'sine';
+      fundamental.frequency.setValueAtTime(frequency, start);
+      fundamental.connect(gain);
+      this.startSource(fundamental, start, start + duration);
+
+      const overtoneGain = this.context!.createGain();
+      overtoneGain.gain.setValueAtTime(0.0001, start);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.07 - index * 0.006, start + 0.026);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.72);
+      overtoneGain.connect(this.masterGain!);
+
+      const overtone = this.context!.createOscillator();
+      overtone.type = 'triangle';
+      overtone.frequency.setValueAtTime(frequency * 2.01, start);
+      overtone.connect(overtoneGain);
+      this.startSource(overtone, start, start + duration * 0.76);
+    });
+  }
+
   playGreenSqueak(): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;

@@ -7,6 +7,7 @@ import {
   DoubleSide,
   Group,
   InstancedMesh,
+  MathUtils,
   Mesh,
   MeshStandardMaterial,
   Object3D,
@@ -50,7 +51,7 @@ export interface ChapterSevenData {
   isPlayerInForcedCrawlSpace(position: Vector3): boolean;
   setSwingOccupied(occupied: boolean): void;
   setSwingInput(input: number): void;
-  update(deltaSeconds: number, playerPosition?: Vector3): void;
+  update(deltaSeconds: number, playerPosition?: Vector3, nightBlend?: number): void;
   reset(): void;
 }
 
@@ -5347,9 +5348,13 @@ export function createChapterSeven(): ChapterSevenData {
     setSwingInput(input: number): void {
       swingInput = Math.max(0, Math.min(1, input));
     },
-    update(deltaSeconds: number, playerPosition?: Vector3): void {
+    update(deltaSeconds: number, playerPosition?: Vector3, nightBlend = 0): void {
       forestTime += deltaSeconds;
-      light.intensity = 2.85 + Math.sin(forestTime * 0.7) * 0.16;
+      light.intensity = MathUtils.lerp(
+        2.85 + Math.sin(forestTime * 0.7) * 0.16,
+        0.18 + Math.abs(Math.sin(forestTime * 1.25)) * 0.04,
+        nightBlend,
+      );
       const targetSwingPower = swingSet.occupied ? swingInput : 0;
       const swingPowerRate = targetSwingPower > swingSet.swingPower ? 0.78 : 0.46;
       swingSet.swingPower += (targetSwingPower - swingSet.swingPower) * (1 - Math.exp(-swingPowerRate * deltaSeconds));

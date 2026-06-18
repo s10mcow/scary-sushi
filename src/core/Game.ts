@@ -928,6 +928,7 @@ const CHAPTER_FOUR_CROUCH_DROP = 0.52;
 const CHAPTER_SEVEN_CRAWL_DROP = 1.18;
 const CHAPTER_SEVEN_CRAWL_SPEED_MULTIPLIER = 0.42;
 const CHAPTER_SEVEN_CRAWL_HOLD_MS = 2000;
+const CHAPTER_SEVEN_DAY_NIGHT_SECONDS = 60;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_DURATION = 2.35;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_COOLDOWN = 1.8;
 const CHAPTER_FOUR_BLUE_JUMPSCARE_DURATION = 2.6;
@@ -1079,6 +1080,10 @@ export class Game {
   private readonly officeNightFogColor = new Color(0x000000);
   private readonly zombieDayFogColor = new Color(0x8aa3b5);
   private readonly zombieNightFogColor = new Color(0x0d1520);
+  private readonly chapterSevenDaySkyColor = new Color(0x8fd7ff);
+  private readonly chapterSevenNightSkyColor = new Color(0x03050b);
+  private readonly chapterSevenDayFogColor = new Color(0xaadfff);
+  private readonly chapterSevenNightFogColor = new Color(0x060912);
   private readonly jumpscareLookTarget = new Vector3();
   private readonly chapterTwoBearLookTarget = new Vector3();
   private readonly chapterTwoDodoAttackLookTarget = new Vector3();
@@ -1215,6 +1220,8 @@ export class Game {
   private chapterSevenOvenHidden = false;
   private chapterSevenSwingSeated = false;
   private chapterSevenHoseWaterSoundCooldown = 0;
+  private chapterSevenNightMode = true;
+  private chapterSevenPhaseTime = 0;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -3001,6 +3008,7 @@ export class Game {
     }
     this.updateOfficeVentToxicity(deltaSeconds);
     this.updateHealth(deltaSeconds);
+    this.updateChapterSevenDayNightCycle(deltaSeconds);
     this.updateAtmosphere();
     if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
@@ -3105,7 +3113,7 @@ export class Game {
         this.triggerChapterFourPurpleJumpscare();
       }
     } else if (this.chapterSevenActive) {
-      this.chapterSeven.update(deltaSeconds, this.player.getPosition());
+      this.chapterSeven.update(deltaSeconds, this.player.getPosition(), this.getChapterSevenNightBlend());
       this.updateChapterSevenHoseWaterAudio(deltaSeconds);
       if (this.chapterSevenSwingSeated) {
         this.player.teleport(this.chapterSeven.swingSet.sitPosition);
@@ -11823,6 +11831,39 @@ export class Game {
     }
   }
 
+  private getChapterSevenNightBlend(): number {
+    return this.chapterSevenNightMode ? 1 : 0;
+  }
+
+  private getChapterSevenDayNightHudLine(): string {
+    const secondsLeft = Math.max(0, Math.ceil(CHAPTER_SEVEN_DAY_NIGHT_SECONDS - this.chapterSevenPhaseTime));
+    return `${this.chapterSevenNightMode ? 'Night Mode' : 'Day Mode'}: ${secondsLeft}s until ${this.chapterSevenNightMode ? 'day' : 'night'}`;
+  }
+
+  private updateChapterSevenDayNightCycle(deltaSeconds: number): void {
+    if (!this.chapterSevenActive) {
+      return;
+    }
+
+    this.chapterSevenPhaseTime += deltaSeconds;
+    if (this.chapterSevenPhaseTime < CHAPTER_SEVEN_DAY_NIGHT_SECONDS) {
+      return;
+    }
+
+    do {
+      this.chapterSevenPhaseTime -= CHAPTER_SEVEN_DAY_NIGHT_SECONDS;
+      this.chapterSevenNightMode = !this.chapterSevenNightMode;
+    } while (this.chapterSevenPhaseTime >= CHAPTER_SEVEN_DAY_NIGHT_SECONDS);
+
+    this.gameplaySfxAudio.playGrandfatherClockChime();
+    this.pushStatus(
+      this.chapterSevenNightMode
+        ? 'The grandfather clock chimes. Night mode starts in the house.'
+        : 'The grandfather clock chimes. Day mode returns to the house.',
+      3,
+    );
+  }
+
   private updateAtmosphere(): void {
     this.lighting.flashlight.angle = GAME_CONFIG.flashlight.angle;
     this.lighting.flashlight.penumbra = GAME_CONFIG.flashlight.penumbra;
@@ -12005,19 +12046,24 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
-      this.lighting.ambient.intensity = 0.78;
-      this.lighting.hemisphere.intensity = 1.12;
-      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.28;
-      this.lighting.flashlight.distance = 18;
+      const nightBlend = this.getChapterSevenNightBlend();
+      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.055, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(1.12, 0.12, nightBlend);
+      this.lighting.flashlight.intensity = MathUtils.lerp(
+        GAME_CONFIG.flashlight.intensity * 0.28,
+        GAME_CONFIG.flashlight.intensity * 1.18,
+        nightBlend,
+      );
+      this.lighting.flashlight.distance = MathUtils.lerp(18, 36, nightBlend);
 
       if (this.scene.background instanceof Color) {
-        this.scene.background.setHex(0x8fd7ff);
+        this.scene.background.copy(this.chapterSevenDaySkyColor).lerp(this.chapterSevenNightSkyColor, nightBlend);
       }
 
       if (this.scene.fog instanceof Fog) {
-        this.scene.fog.color.setHex(0xaadfff);
-        this.scene.fog.near = 150;
-        this.scene.fog.far = 620;
+        this.scene.fog.color.copy(this.chapterSevenDayFogColor).lerp(this.chapterSevenNightFogColor, nightBlend);
+        this.scene.fog.near = MathUtils.lerp(150, 18, nightBlend);
+        this.scene.fog.far = MathUtils.lerp(620, 145, nightBlend);
       }
 
       return;
@@ -16112,6 +16158,7 @@ export class Game {
       return [
         'Chapter 7: The House',
         '',
+        this.getChapterSevenDayNightHudLine(),
         'You spawn inside the big house in the forest clearing.',
         'The trees use the same round-canopy style as the Zombie First Person Shooter forest.',
         'The open area between the left rooms has a table with much smaller chairs.',
@@ -16346,6 +16393,7 @@ export class Game {
         'Inventory: Coordinate Tool',
         this.getCoordinateToolInventoryLine(),
         'Chapter 7: The House',
+        this.getChapterSevenDayNightHudLine(),
         'Inside spawn: smaller fridge, counter cabinet, oven, extended upper cupboards, bookshelf, and table drawers.',
         'Use the chapter menu button to change chapters.',
       ].join('\n');
@@ -23983,7 +24031,7 @@ export class Game {
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter 7: The House';
     this.chapterCardBody =
-      'Start on the front bedroom bed inside the forest clearing house, with raised beds, kitchen fixtures, cupboards, a bookcase, and table drawers.';
+      'Start in Night Mode on the front bedroom bed. The grandfather clock switches the house between night and day every minute.';
     this.activeJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
@@ -24025,6 +24073,8 @@ export class Game {
     this.chapterFourBoxViewMode = 'normal';
     this.chapterFourLockerId = null;
     this.chapterFourCrouching = false;
+    this.chapterSevenNightMode = true;
+    this.chapterSevenPhaseTime = 0;
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
     this.chapterFourBoxWideAnchor.visible = false;
@@ -24084,7 +24134,7 @@ export class Game {
     this.player.teleport(this.chapterSeven.spawn);
     this.player.lookToward(this.chapterSeven.lookTarget, 1);
     this.pushStatus(
-      'Chapter 7: The House loaded. You spawn on the front bedroom bed. Press Space to jump, hold Space for 2 seconds to crawl, and press E to use furniture or the sink faucet.',
+      'Chapter 7: The House loaded in Night Mode. Every minute the grandfather clock chimes and switches between night and day.',
       3.2,
     );
     this.resize();
