@@ -101,6 +101,7 @@ export interface HudController {
   setStoryNotice(text: string, active: boolean, label?: string): void;
   setChapterCard(active: boolean, title: string, body: string): void;
   setChapterLabel(text: string): void;
+  setChapterSevenDayCounter(active: boolean, day: number): void;
   setChapterMenu(active: boolean, currentChapter: HudChapterId): void;
   setCompass(active: boolean, headingDegrees: number): void;
   setChapterFiveMonitor(active: boolean, state: HudChapterFiveMonitorState): void;
@@ -1010,6 +1011,20 @@ export function createHud(host: HTMLElement): HudController {
     chapterFiveMonitorHint,
   );
 
+  const chapterSevenDayCounter = document.createElement('section');
+  chapterSevenDayCounter.className = 'hud__chapter-seven-day';
+  chapterSevenDayCounter.dataset.active = 'false';
+
+  const chapterSevenDayLabel = document.createElement('p');
+  chapterSevenDayLabel.className = 'hud__label';
+  chapterSevenDayLabel.textContent = 'Days';
+
+  const chapterSevenDayValue = document.createElement('p');
+  chapterSevenDayValue.className = 'hud__chapter-seven-day-value';
+  chapterSevenDayValue.textContent = 'Day 1';
+
+  chapterSevenDayCounter.append(chapterSevenDayLabel, chapterSevenDayValue);
+
   const statusPanel = document.createElement('section');
   statusPanel.className = 'hud__panel hud__panel--right';
 
@@ -1821,6 +1836,7 @@ export function createHud(host: HTMLElement): HudController {
     microphonePanel,
     compass,
     chapterFiveMonitor,
+    chapterSevenDayCounter,
     crosshair,
     meterPanel,
     statusPanel,
@@ -2489,6 +2505,10 @@ export function createHud(host: HTMLElement): HudController {
     },
     setChapterLabel(text): void {
       chapterText.textContent = text;
+    },
+    setChapterSevenDayCounter(active, day): void {
+      chapterSevenDayCounter.dataset.active = String(active);
+      chapterSevenDayValue.textContent = `Day ${Math.max(1, Math.floor(day))}`;
     },
     setChapterMenu(active, currentChapter): void {
       chapterMenu.dataset.active = String(active);

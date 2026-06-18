@@ -2129,6 +2129,7 @@ select {
 .hud__microphone-tool,
 .hud__camera-tool,
 .hud__crouch-instructions,
+.hud__chapter-seven-day,
 .hud__tablet-cameras,
 .hud__tablet-camera-title,
 .hud__chapter-card,
@@ -2548,6 +2549,37 @@ select {
   white-space: pre-line;
   line-height: 1.62;
   color: #8d431f;
+}
+
+.hud__chapter-seven-day {
+  left: 1rem;
+  bottom: 10.4rem;
+  min-width: 7.2rem;
+  padding: 0.72rem 0.82rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-0.35rem);
+}
+
+.hud__chapter-seven-day[data-active="true"] {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.hud__chapter-seven-day .hud__label {
+  margin: 0;
+  color: #8d431f;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hud__chapter-seven-day-value {
+  margin: 0.24rem 0 0;
+  color: #3e2a18;
+  font-size: 1.24rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .hud__action-prompt {
@@ -4783,6 +4815,7 @@ select {
   .hud__placement-tool,
   .hud__microphone-tool,
   .hud__camera-tool,
+  .hud__chapter-seven-day,
   .hud__tablet-cameras {
     left: 1rem;
     right: 1rem;
@@ -4808,6 +4841,10 @@ select {
 
   .hud__panel--right {
     bottom: 5.8rem;
+  }
+
+  .hud__chapter-seven-day {
+    bottom: 12.4rem;
   }
 
   .hud__story {
