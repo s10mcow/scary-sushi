@@ -4173,7 +4173,10 @@ export function createChapterSeven(): ChapterSevenData {
 
     const width = 1.82;
     const depth = 1.34;
-    const height = 1.9;
+    const height = KITCHEN_COUNTER_SURFACE_Y - 0.1;
+    const tubCenterY = height * 0.48;
+    const doorRadius = 0.39;
+    const doorWindowRadius = 0.25;
     const body = new Mesh(new BoxGeometry(width, height, depth), applianceWhiteMaterial);
     body.position.y = height / 2;
     const top = new Mesh(new BoxGeometry(width + 0.08, 0.1, depth + 0.08), porcelainMaterial);
@@ -4185,14 +4188,14 @@ export function createChapterSeven(): ChapterSevenData {
     knob.position.set(0.52, height - 0.18, depth / 2 + 0.1);
     const display = new Mesh(new BoxGeometry(0.48, 0.11, 0.045), kind === 'dryer' ? applianceGlassMaterial : faucetWaterMaterial);
     display.position.set(-0.38, height - 0.18, depth / 2 + 0.1);
-    const tub = new Mesh(new CylinderGeometry(0.48, 0.48, 0.08, 28), fridgeSealMaterial);
+    const tub = new Mesh(new CylinderGeometry(doorRadius, doorRadius, 0.08, 28), fridgeSealMaterial);
     tub.rotation.x = Math.PI / 2;
-    tub.position.set(0, 0.82, depth / 2 + 0.02);
-    const tubShadow = new Mesh(new CylinderGeometry(0.38, 0.38, 0.09, 24), stoveGlassMaterial);
+    tub.position.set(0, tubCenterY, depth / 2 + 0.02);
+    const tubShadow = new Mesh(new CylinderGeometry(doorWindowRadius, doorWindowRadius, 0.09, 24), stoveGlassMaterial);
     tubShadow.rotation.x = Math.PI / 2;
-    tubShadow.position.set(0, 0.82, depth / 2 + 0.035);
-    const washWater = new Mesh(new BoxGeometry(0.66, 0.16, 0.08), faucetWaterMaterial);
-    washWater.position.set(0, 0.61, depth / 2 + 0.09);
+    tubShadow.position.set(0, tubCenterY, depth / 2 + 0.035);
+    const washWater = new Mesh(new BoxGeometry(0.5, 0.12, 0.08), faucetWaterMaterial);
+    washWater.position.set(0, tubCenterY - 0.15, depth / 2 + 0.09);
     washWater.rotation.z = -0.07;
     washWater.visible = kind === 'washing-machine';
     const clothMaterials = [
@@ -4203,23 +4206,23 @@ export function createChapterSeven(): ChapterSevenData {
     ];
     const clothes = clothMaterials.map((material, index) => {
       const dryerPilePositions: Array<[number, number, number]> = [
-        [-0.2, 0.68, -0.16],
-        [0.04, 0.63, 0.02],
-        [0.22, 0.72, -0.08],
-        [-0.02, 0.82, 0.14],
+        [-0.16, tubCenterY - 0.1, -0.16],
+        [0.03, tubCenterY - 0.14, 0.02],
+        [0.17, tubCenterY - 0.06, -0.08],
+        [-0.02, tubCenterY + 0.03, 0.14],
       ];
       const washerPilePositions: Array<[number, number, number]> = [
-        [-0.18, 0.69, -0.06],
-        [0.12, 0.67, 0.08],
-        [0.22, 0.8, -0.08],
-        [-0.04, 0.84, 0.11],
+        [-0.14, tubCenterY - 0.08, -0.06],
+        [0.09, tubCenterY - 0.11, 0.08],
+        [0.17, tubCenterY + 0.02, -0.08],
+        [-0.03, tubCenterY + 0.05, 0.11],
       ];
       const [clothX, clothY, clothZ] = kind === 'dryer'
         ? dryerPilePositions[index]
         : washerPilePositions[index];
       const cloth = new Mesh(new BoxGeometry(
-        kind === 'dryer' ? 0.34 : 0.25,
-        kind === 'dryer' ? 0.16 : 0.12,
+        kind === 'dryer' ? 0.26 : 0.2,
+        kind === 'dryer' ? 0.12 : 0.1,
         0.06,
       ), material);
       cloth.position.set(clothX, clothY, depth / 2 + 0.1 + clothZ * 0.18);
@@ -4228,23 +4231,23 @@ export function createChapterSeven(): ChapterSevenData {
     });
 
     const doorPivot = new Group();
-    doorPivot.position.set(-0.52, 0.82, depth / 2 + 0.07);
-    const doorPanel = new Mesh(new CylinderGeometry(0.52, 0.52, 0.1, 28), applianceWhiteMaterial);
+    doorPivot.position.set(-doorRadius, tubCenterY, depth / 2 + 0.07);
+    const doorPanel = new Mesh(new CylinderGeometry(doorRadius + 0.05, doorRadius + 0.05, 0.1, 28), applianceWhiteMaterial);
     doorPanel.rotation.x = Math.PI / 2;
-    doorPanel.position.x = 0.52;
-    const doorWindow = new Mesh(new CylinderGeometry(0.34, 0.34, 0.11, 24), applianceGlassMaterial);
+    doorPanel.position.x = doorRadius;
+    const doorWindow = new Mesh(new CylinderGeometry(doorWindowRadius, doorWindowRadius, 0.11, 24), applianceGlassMaterial);
     doorWindow.rotation.x = Math.PI / 2;
-    doorWindow.position.set(0.52, 0, 0.012);
-    const handle = new Mesh(new BoxGeometry(0.08, 0.34, 0.07), fridgeSealMaterial);
-    handle.position.set(0.94, 0, 0.08);
+    doorWindow.position.set(doorRadius, 0, 0.012);
+    const handle = new Mesh(new BoxGeometry(0.07, 0.26, 0.07), fridgeSealMaterial);
+    handle.position.set(doorRadius * 1.76, 0, 0.08);
     doorPivot.add(doorPanel, doorWindow, handle);
 
     const lowerPanel = new Mesh(new BoxGeometry(width - 0.18, 0.18, 0.05), fridgeSealMaterial);
-    lowerPanel.position.set(0, 0.22, depth / 2 + 0.045);
+    lowerPanel.position.set(0, 0.15, depth / 2 + 0.045);
     if (kind === 'dryer') {
-      const ventRows = [-0.18, 0, 0.18].map((rowY) => {
-        const vent = new Mesh(new BoxGeometry(0.72, 0.035, 0.05), fridgeSealMaterial);
-        vent.position.set(0, 0.44 + rowY, depth / 2 + 0.08);
+      const ventRows = [-0.12, 0, 0.12].map((rowY) => {
+        const vent = new Mesh(new BoxGeometry(0.62, 0.03, 0.05), fridgeSealMaterial);
+        vent.position.set(0, 0.32 + rowY, depth / 2 + 0.08);
         return vent;
       });
       appliance.add(...ventRows);
@@ -4269,7 +4272,7 @@ export function createChapterSeven(): ChapterSevenData {
       label: kind === 'washing-machine' ? 'Washing machine' : 'Dryer',
       kind,
       interactPosition: new Vector3(CENTER_X + interactPoint.x, GAME_CONFIG.player.height, HOUSE_CENTER_Z + interactPoint.z),
-      aimPosition: new Vector3(CENTER_X + aimPoint.x, 0.92, HOUSE_CENTER_Z + aimPoint.z),
+      aimPosition: new Vector3(CENTER_X + aimPoint.x, tubCenterY + 0.08, HOUSE_CENTER_Z + aimPoint.z),
       doorPivots: [doorPivot],
       collider,
       animation: 'front-door',

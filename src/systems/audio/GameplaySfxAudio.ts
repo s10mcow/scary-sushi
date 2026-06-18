@@ -184,7 +184,6 @@ export class GameplaySfxAudio {
       { frequency: 146.83, delay: 0, gain: 0.32 },
       { frequency: 110.0, delay: 0.82, gain: 0.34 },
       { frequency: 146.83, delay: 1.72, gain: 0.31 },
-      { frequency: 110.0, delay: 2.54, gain: 0.36 },
     ];
     bellHits.forEach(({ frequency, delay, gain: peakGain }) => {
       const start = now + delay;
