@@ -11925,6 +11925,7 @@ export class Game {
     } while (this.chapterSevenPhaseTime >= CHAPTER_SEVEN_DAY_NIGHT_SECONDS);
 
     this.gameplaySfxAudio.playGrandfatherClockChime();
+    this.chapterSeven.startGrandfatherClockChime();
     this.pushStatus(
       this.chapterSevenNightMode
         ? 'The grandfather clock chimes. Night mode starts in the house.'

@@ -181,64 +181,48 @@ export class GameplaySfxAudio {
 
     const now = this.context.currentTime + 0.012;
     const bellHits = [
-      { frequency: 174.61, delay: 0, gain: 0.28 },
-      { frequency: 172.4, delay: 0.58, gain: 0.3 },
-      { frequency: 175.8, delay: 1.16, gain: 0.29 },
-      { frequency: 171.7, delay: 1.74, gain: 0.32 },
+      { frequency: 155.56, delay: 0, gain: 0.28 },
+      { frequency: 154.2, delay: 0.72, gain: 0.3 },
+      { frequency: 156.4, delay: 1.44, gain: 0.29 },
+      { frequency: 153.6, delay: 2.16, gain: 0.32 },
     ];
     bellHits.forEach(({ frequency, delay, gain: peakGain }) => {
       const start = now + delay;
-      const duration = 1.28;
+      const duration = 1.95;
 
       const strikeGain = this.context!.createGain();
       strikeGain.gain.setValueAtTime(0.0001, start);
-      strikeGain.gain.exponentialRampToValueAtTime(peakGain * 0.42, start + 0.004);
-      strikeGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.06);
+      strikeGain.gain.exponentialRampToValueAtTime(peakGain * 0.16, start + 0.003);
+      strikeGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.045);
       strikeGain.connect(this.masterGain!);
 
       const strike = this.context!.createOscillator();
-      strike.type = 'square';
-      strike.frequency.setValueAtTime(frequency * 6.1, start);
-      strike.frequency.exponentialRampToValueAtTime(frequency * 3.2, start + 0.05);
+      strike.type = 'triangle';
+      strike.frequency.setValueAtTime(frequency * 7.4, start);
+      strike.frequency.exponentialRampToValueAtTime(frequency * 3.8, start + 0.04);
       strike.connect(strikeGain);
-      this.startSource(strike, start, start + 0.065);
+      this.startSource(strike, start, start + 0.05);
 
-      const gain = this.context!.createGain();
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(peakGain, start + 0.018);
-      gain.gain.exponentialRampToValueAtTime(peakGain * 0.18, start + 0.28);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-      gain.connect(this.masterGain!);
+      [
+        { ratio: 1, level: 1, decay: 1 },
+        { ratio: 2.01, level: 0.42, decay: 0.74 },
+        { ratio: 2.87, level: 0.28, decay: 0.56 },
+        { ratio: 4.18, level: 0.15, decay: 0.36 },
+      ].forEach((partial) => {
+        const partialGain = this.context!.createGain();
+        partialGain.gain.setValueAtTime(0.0001, start);
+        partialGain.gain.exponentialRampToValueAtTime(peakGain * partial.level, start + 0.018);
+        partialGain.gain.exponentialRampToValueAtTime(peakGain * partial.level * 0.16, start + 0.34);
+        partialGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * partial.decay);
+        partialGain.connect(this.masterGain!);
 
-      const fundamental = this.context!.createOscillator();
-      fundamental.type = 'sine';
-      fundamental.frequency.setValueAtTime(frequency, start);
-      fundamental.connect(gain);
-      this.startSource(fundamental, start, start + duration);
-
-      const overtoneGain = this.context!.createGain();
-      overtoneGain.gain.setValueAtTime(0.0001, start);
-      overtoneGain.gain.exponentialRampToValueAtTime(peakGain * 0.34, start + 0.012);
-      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.58);
-      overtoneGain.connect(this.masterGain!);
-
-      const overtone = this.context!.createOscillator();
-      overtone.type = 'sine';
-      overtone.frequency.setValueAtTime(frequency * 2.72, start);
-      overtone.connect(overtoneGain);
-      this.startSource(overtone, start, start + duration * 0.62);
-
-      const shimmerGain = this.context!.createGain();
-      shimmerGain.gain.setValueAtTime(0.0001, start);
-      shimmerGain.gain.exponentialRampToValueAtTime(peakGain * 0.12, start + 0.02);
-      shimmerGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.34);
-      shimmerGain.connect(this.masterGain!);
-
-      const shimmer = this.context!.createOscillator();
-      shimmer.type = 'triangle';
-      shimmer.frequency.setValueAtTime(frequency * 4.12, start);
-      shimmer.connect(shimmerGain);
-      this.startSource(shimmer, start, start + duration * 0.38);
+        const partialTone = this.context!.createOscillator();
+        partialTone.type = 'sine';
+        partialTone.frequency.setValueAtTime(frequency * partial.ratio, start);
+        partialTone.frequency.exponentialRampToValueAtTime(frequency * partial.ratio * 0.996, start + duration * partial.decay);
+        partialTone.connect(partialGain);
+        this.startSource(partialTone, start, start + duration * partial.decay);
+      });
     });
   }
 

@@ -52,6 +52,7 @@ export interface ChapterSevenData {
   isPlayerInForcedCrawlSpace(position: Vector3): boolean;
   setSwingOccupied(occupied: boolean): void;
   setSwingInput(input: number): void;
+  startGrandfatherClockChime(): void;
   update(deltaSeconds: number, playerPosition?: Vector3, nightBlend?: number): void;
   reset(): void;
 }
@@ -351,7 +352,16 @@ export function createChapterSeven(): ChapterSevenData {
     halfDepth: number;
   }> = [];
   let forestTime = 0;
+  let grandfatherClockChimeTimer = 0;
   const nightSkyMaterials: MeshBasicMaterial[] = [];
+  const grandfatherClockMotionParts: Array<{
+    rod: Mesh;
+    rodBaseRotationZ: number;
+    bob: Mesh;
+    bobBaseX: number;
+    weights: Mesh[];
+    weightBaseYs: number[];
+  }> = [];
 
   const createNightSkyMaterial = (color: number, opacity: number): MeshBasicMaterial => {
     const material = new MeshBasicMaterial({
@@ -2138,6 +2148,14 @@ export function createChapterSeven(): ChapterSevenData {
       const chain = new Mesh(new CylinderGeometry(0.008, 0.008, 1.35, 6), brassMaterial);
       chain.position.set(chainX, 2.05, frontZ - 0.05);
       return chain;
+    });
+    grandfatherClockMotionParts.push({
+      rod: pendulumRod,
+      rodBaseRotationZ: pendulumRod.rotation.z,
+      bob: pendulumBob,
+      bobBaseX: pendulumBob.position.x,
+      weights,
+      weightBaseYs: weights.map((weight) => weight.position.y),
     });
 
     const clockFace = new Mesh(new CylinderGeometry(0.45, 0.45, 0.035, 48), clockFaceMaterial);
@@ -4973,7 +4991,6 @@ export function createChapterSeven(): ChapterSevenData {
   const welcomeMat = new Mesh(new PlaneGeometry(3.25, 1.55), welcomeMatMaterial);
   welcomeMat.rotation.x = -Math.PI / 2;
   welcomeMat.position.set(1210.19 - CENTER_X, 0.236, 100.79 - HOUSE_CENTER_Z);
-  welcomeMat.rotation.z = Math.PI / 2;
   const porchSideRailDepth = porchDepth - 0.35;
   const porchFrontZ = HOUSE_DEPTH / 2 + porchDepth + 0.18;
   const frontRailSegmentWidth = (porchWidth - porchGapWidth) / 2;
@@ -5442,8 +5459,24 @@ export function createChapterSeven(): ChapterSevenData {
     setSwingInput(input: number): void {
       swingInput = Math.max(0, Math.min(1, input));
     },
+    startGrandfatherClockChime(): void {
+      grandfatherClockChimeTimer = 3.0;
+    },
     update(deltaSeconds: number, playerPosition?: Vector3, nightBlend = 0): void {
       forestTime += deltaSeconds;
+      grandfatherClockChimeTimer = Math.max(0, grandfatherClockChimeTimer - deltaSeconds);
+      grandfatherClockMotionParts.forEach((part, partIndex) => {
+        const chimeStrength = MathUtils.clamp(grandfatherClockChimeTimer / 2.7, 0, 1);
+        const swing = Math.sin(forestTime * (chimeStrength > 0 ? 9.4 : 2.15) + partIndex * 0.5);
+        const swingAmount = 0.04 + chimeStrength * 0.24;
+        part.rod.rotation.z = part.rodBaseRotationZ + swing * swingAmount;
+        part.bob.position.x = part.bobBaseX + swing * (0.055 + chimeStrength * 0.22);
+        part.bob.rotation.z = swing * swingAmount;
+        part.weights.forEach((weight, weightIndex) => {
+          const hitPulse = chimeStrength * Math.max(0, Math.sin(forestTime * 18 + weightIndex * 1.3));
+          weight.position.y = part.weightBaseYs[weightIndex] + hitPulse * 0.075;
+        });
+      });
       light.intensity = MathUtils.lerp(
         2.85 + Math.sin(forestTime * 0.7) * 0.16,
         0.36 + Math.abs(Math.sin(forestTime * 1.25)) * 0.06,
@@ -5738,6 +5771,15 @@ export function createChapterSeven(): ChapterSevenData {
       swingSet.swingPhase = 0;
       swingSet.swingPower = 0;
       swingSet.pivot.rotation.x = 0;
+      grandfatherClockChimeTimer = 0;
+      grandfatherClockMotionParts.forEach((part) => {
+        part.rod.rotation.z = part.rodBaseRotationZ;
+        part.bob.position.x = part.bobBaseX;
+        part.bob.rotation.z = 0;
+        part.weights.forEach((weight, weightIndex) => {
+          weight.position.y = part.weightBaseYs[weightIndex];
+        });
+      });
       rearFixtures.forEach((fixture) => {
         fixture.open = false;
         fixture.openAmount = 0;
