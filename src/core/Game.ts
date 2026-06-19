@@ -1086,7 +1086,7 @@ export class Game {
   private readonly chapterSevenDaySkyColor = new Color(0x8fd7ff);
   private readonly chapterSevenNightSkyColor = new Color(0x000000);
   private readonly chapterSevenDayFogColor = new Color(0xaadfff);
-  private readonly chapterSevenNightFogColor = new Color(0x6f8aa0);
+  private readonly chapterSevenNightFogColor = new Color(0x141827);
   private readonly jumpscareLookTarget = new Vector3();
   private readonly chapterTwoBearLookTarget = new Vector3();
   private readonly chapterTwoDodoAttackLookTarget = new Vector3();
@@ -12171,8 +12171,8 @@ export class Game {
     if (this.chapterSevenActive) {
       const nightBlend = this.getChapterSevenNightBlend();
       this.flashlight.setEnabled(false);
-      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.72, nightBlend);
-      this.lighting.hemisphere.intensity = MathUtils.lerp(1.12, 1.02, nightBlend);
+      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.22, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(1.12, 0.34, nightBlend);
       this.lighting.flashlight.intensity = 0;
       this.lighting.flashlight.distance = 0;
 
@@ -12182,8 +12182,8 @@ export class Game {
 
       if (this.scene.fog instanceof Fog) {
         this.scene.fog.color.copy(this.chapterSevenDayFogColor).lerp(this.chapterSevenNightFogColor, nightBlend);
-        this.scene.fog.near = MathUtils.lerp(150, 130, nightBlend);
-        this.scene.fog.far = MathUtils.lerp(620, 540, nightBlend);
+        this.scene.fog.near = MathUtils.lerp(150, 62, nightBlend);
+        this.scene.fog.far = MathUtils.lerp(620, 240, nightBlend);
       }
 
       return;

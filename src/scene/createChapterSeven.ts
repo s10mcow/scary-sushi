@@ -5252,8 +5252,8 @@ export function createChapterSeven(): ChapterSevenData {
   addCookie(house, 1216.55 - CENTER_X, 1.18, 97.2 - HOUSE_CENTER_Z, 0.86, 'Rose table easy cookie');
   addCookie(house, 1225.35 - CENTER_X, 1.16, 97.84 - HOUSE_CENTER_Z, 0.86, 'Plant table easy cookie');
   addCookie(house, 1232.2 - CENTER_X, 1.34, 97.1 - HOUSE_CENTER_Z, 0.9, 'Couch easy cookie');
-  addCookie(house, 1198.1 - CENTER_X, 0.26, 90.9 - HOUSE_CENTER_Z, 0.92, 'Floor easy cookie');
-  addCookie(house, 1202.2 - CENTER_X, 0.26, 94.9 - HOUSE_CENTER_Z, 0.92, 'Living room floor easy cookie');
+  addCookie(house, HOUSE_LEFT_ROOM_WALL_X - 1.18, 1.02, HOUSE_DEPTH / 2 - 1.5, 0.9, 'Bean bag easy cookie');
+  addCookie(house, leftRoomCenterX - 0.62, 1.36, 0.26, 0.9, 'Dining table easy cookie');
   const kitchenUpperCupboards = [
     addUpperCupboard(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z, 1.62, 'Upper cupboards over the fridge'),
     addUpperCupboard(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.1, 'Upper cupboards over the counter'),
@@ -5887,13 +5887,13 @@ export function createChapterSeven(): ChapterSevenData {
       });
       light.intensity = MathUtils.lerp(
         2.85 + Math.sin(forestTime * 0.7) * 0.16,
-        2.28 + Math.abs(Math.sin(forestTime * 1.25)) * 0.08,
+        0.34 + Math.abs(Math.sin(forestTime * 1.25)) * 0.05,
         nightBlend,
       );
       houseInteriorLights.forEach((interiorLight, index) => {
-        const warmPulse = Math.sin(forestTime * 0.82 + index * 1.7) * 0.035;
-        interiorLight.intensity = MathUtils.lerp(0.28, 1.45 + warmPulse, nightBlend);
-        interiorLight.distance = MathUtils.lerp(20, 25, nightBlend);
+        const warmPulse = Math.sin(forestTime * 0.82 + index * 1.7) * 0.02;
+        interiorLight.intensity = MathUtils.lerp(0.28, 0.48 + warmPulse, nightBlend);
+        interiorLight.distance = MathUtils.lerp(20, 18, nightBlend);
       });
       nightSky.visible = nightBlend > 0.02;
       nightSkyMaterials.forEach((material) => {
@@ -5921,6 +5921,14 @@ export function createChapterSeven(): ChapterSevenData {
             playerPosition.x - door.collider.centerX,
             playerPosition.z - door.collider.centerZ,
           );
+          if (distanceToDoor <= door.pushRadius && door.openAmount < 0.08) {
+            const pivotWorldX = CENTER_X + door.doorPivot.position.x;
+            const pivotWorldZ = HOUSE_CENTER_Z + door.doorPivot.position.z;
+            const frontFacingDoor = door.collider.halfWidth > door.collider.halfDepth;
+            door.openDirection = frontFacingDoor
+              ? playerPosition.z > pivotWorldZ ? 1 : -1
+              : playerPosition.x > pivotWorldX ? -1 : 1;
+          }
           door.targetOpenAmount = distanceToDoor <= door.pushRadius ? 1 : 0;
         }
 
