@@ -21652,6 +21652,17 @@ export class Game {
     return lateral + along * 0.025;
   }
 
+  private isChapterSevenCookieVisible(cookie: ChapterSevenData['cookies'][number]): boolean {
+    let object: Object3D | null = cookie.root;
+    while (object) {
+      if (!object.visible) {
+        return false;
+      }
+      object = object.parent;
+    }
+    return true;
+  }
+
   private getLookedAtChapterSevenInteractable(): ChapterSevenInteractable | null {
     if (!this.chapterSevenActive) {
       return null;
@@ -21663,6 +21674,34 @@ export class Game {
         best = candidate;
       }
     };
+
+    let bestCookie: ChapterSevenInteractable | null = null;
+    const keepBestCookie = (candidate: ChapterSevenInteractable): void => {
+      if (!bestCookie || candidate.score < bestCookie.score) {
+        bestCookie = candidate;
+      }
+    };
+
+    this.chapterSeven.cookies.forEach((cookie) => {
+      if (cookie.collected || !this.isChapterSevenCookieVisible(cookie)) {
+        return;
+      }
+
+      if (cookie.drawer && (!cookie.drawer.open || cookie.drawer.openAmount < 0.58)) {
+        return;
+      }
+
+      cookie.root.getWorldPosition(cookie.aimPosition);
+      cookie.interactPosition.copy(cookie.aimPosition);
+      const cookieScore = this.getChapterSevenLookScore(cookie, 0.62, 1.65);
+      if (cookieScore !== null) {
+        keepBestCookie({ kind: 'cookie', item: cookie, score: cookieScore });
+      }
+    });
+
+    if (bestCookie) {
+      return bestCookie;
+    }
 
     const fridgeScore = this.getChapterSevenLookScore(this.chapterSeven.houseFridge, 0.62, 0.95);
     if (fridgeScore !== null) {
@@ -21685,23 +21724,6 @@ export class Game {
         : this.getChapterSevenLookScore(fixture, 0.62, 1.15);
       if (fixtureScore !== null) {
         keepBest({ kind: 'rear-fixture', item: fixture, score: fixtureScore });
-      }
-    });
-
-    this.chapterSeven.cookies.forEach((cookie) => {
-      if (cookie.collected || !cookie.root.visible) {
-        return;
-      }
-
-      if (cookie.drawer && (!cookie.drawer.open || cookie.drawer.openAmount < 0.58)) {
-        return;
-      }
-
-      cookie.root.getWorldPosition(cookie.aimPosition);
-      cookie.interactPosition.copy(cookie.aimPosition);
-      const cookieScore = this.getChapterSevenLookScore(cookie, 0.46, 1.35);
-      if (cookieScore !== null) {
-        keepBest({ kind: 'cookie', item: cookie, score: cookieScore });
       }
     });
 
