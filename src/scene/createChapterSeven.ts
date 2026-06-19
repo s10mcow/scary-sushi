@@ -5128,8 +5128,10 @@ export function createChapterSeven(): ChapterSevenData {
     const switchPivot = new Group();
     switchPivot.position.set(0.48, 0.84, 0.15);
 
-    const lampLight = new PointLight(0xffd996, 2.8, 9.5, 1.65);
+    const lampLight = new PointLight(0xffd996, 0, 3.2, 1.65);
     lampLight.position.set(0, 1.45, 0);
+    glow.visible = false;
+    glow.scale.setScalar(0.72);
 
     table.add(
       top,
@@ -5170,9 +5172,9 @@ export function createChapterSeven(): ChapterSevenData {
       animation: 'table-lamp',
       lampLight,
       lampGlow: glow,
-      open: true,
-      openAmount: 1,
-      targetOpenAmount: 1,
+      open: false,
+      openAmount: 0,
+      targetOpenAmount: 0,
     };
   };
 
@@ -7080,7 +7082,7 @@ export function createChapterSeven(): ChapterSevenData {
         });
       });
       rearFixtures.forEach((fixture) => {
-        const startsOn = fixture.kind === 'table-lamp';
+        const startsOn = false;
         fixture.open = startsOn;
         fixture.openAmount = startsOn ? 1 : 0;
         fixture.targetOpenAmount = startsOn ? 1 : 0;
