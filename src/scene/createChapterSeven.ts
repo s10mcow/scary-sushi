@@ -1725,6 +1725,152 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
   const horsePasturePortraitMaterial = createHorsePasturePictureMaterial();
+  const createChickenCoopPictureMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const skyGradient = context.createLinearGradient(0, 0, 0, 82);
+      skyGradient.addColorStop(0, '#86c4ef');
+      skyGradient.addColorStop(1, '#e5f7ff');
+      context.fillStyle = skyGradient;
+      context.fillRect(0, 0, canvas.width, 82);
+
+      context.fillStyle = '#f5d878';
+      context.beginPath();
+      context.arc(216, 32, 16, 0, Math.PI * 2);
+      context.fill();
+
+      context.fillStyle = '#6da24a';
+      context.fillRect(0, 80, canvas.width, canvas.height - 80);
+      context.fillStyle = '#517b35';
+      for (let blade = 0; blade < 85; blade += 1) {
+        const x = (blade * 29) % canvas.width;
+        const y = 98 + ((blade * 17) % 60);
+        context.fillRect(x, y, 2, 7);
+      }
+
+      context.fillStyle = '#8b5832';
+      context.fillRect(42, 58, 144, 82);
+      context.fillStyle = '#6a3e25';
+      context.beginPath();
+      context.moveTo(34, 62);
+      context.lineTo(114, 22);
+      context.lineTo(196, 62);
+      context.closePath();
+      context.fill();
+      context.strokeStyle = '#3d2418';
+      context.lineWidth = 4;
+      context.stroke();
+
+      context.fillStyle = '#b87946';
+      for (let board = 0; board < 6; board += 1) {
+        context.fillRect(48 + board * 23, 64, 6, 74);
+      }
+      context.fillStyle = '#3b2418';
+      context.fillRect(90, 91, 46, 49);
+      context.fillStyle = '#5a3723';
+      context.fillRect(95, 96, 36, 44);
+      context.strokeStyle = '#d9b06a';
+      context.lineWidth = 3;
+      context.strokeRect(64, 76, 38, 28);
+      context.beginPath();
+      context.moveTo(83, 76);
+      context.lineTo(83, 104);
+      context.moveTo(64, 90);
+      context.lineTo(102, 90);
+      context.stroke();
+
+      context.strokeStyle = '#714629';
+      context.lineWidth = 5;
+      context.beginPath();
+      context.moveTo(24, 126);
+      context.lineTo(224, 126);
+      context.moveTo(24, 146);
+      context.lineTo(224, 146);
+      for (let post = 0; post < 8; post += 1) {
+        const x = 26 + post * 28;
+        context.moveTo(x, 112);
+        context.lineTo(x, 158);
+      }
+      context.stroke();
+
+      const drawChicken = (x: number, y: number, scale: number, body: string, wing: string, flip = 1): void => {
+        context.save();
+        context.translate(x, y);
+        context.scale(scale * flip, scale);
+        context.fillStyle = body;
+        context.strokeStyle = '#4a2d1c';
+        context.lineWidth = 2.1;
+
+        context.beginPath();
+        context.ellipse(0, 5, 18, 15, -0.08, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+        context.beginPath();
+        context.ellipse(17, -7, 10, 9, 0, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+
+        context.fillStyle = wing;
+        context.beginPath();
+        context.ellipse(-5, 6, 9, 7, -0.4, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = '#d33124';
+        context.beginPath();
+        context.arc(13, -17, 4, 0, Math.PI * 2);
+        context.arc(18, -18, 4, 0, Math.PI * 2);
+        context.arc(23, -16, 4, 0, Math.PI * 2);
+        context.fill();
+        context.beginPath();
+        context.ellipse(18, -1, 4, 6, 0, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = '#e99b26';
+        context.beginPath();
+        context.moveTo(27, -7);
+        context.lineTo(38, -3);
+        context.lineTo(27, 1);
+        context.closePath();
+        context.fill();
+
+        context.fillStyle = '#16120d';
+        context.beginPath();
+        context.arc(20, -9, 1.7, 0, Math.PI * 2);
+        context.fill();
+
+        context.strokeStyle = '#6d3a1e';
+        context.lineWidth = 2.2;
+        context.beginPath();
+        context.moveTo(-5, 18);
+        context.lineTo(-8, 30);
+        context.moveTo(7, 18);
+        context.lineTo(10, 30);
+        context.stroke();
+        context.restore();
+      };
+
+      drawChicken(76, 135, 0.82, '#f4efe1', '#d8c8a8', 1);
+      drawChicken(132, 130, 0.72, '#b96f38', '#7e4326', -1);
+      drawChicken(174, 142, 0.62, '#f2c85c', '#c89736', 1);
+
+      context.strokeStyle = 'rgba(255,255,255,0.55)';
+      context.lineWidth = 7;
+      context.strokeRect(15, 12, canvas.width - 30, canvas.height - 24);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  };
+  const chickenCoopPortraitMaterial = createChickenCoopPictureMaterial();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -5966,6 +6112,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1235.69 - CENTER_X, 2.18, 77.96 - HOUSE_CENTER_Z, -1, pigPenPortraitMaterial);
   addSidePictureFrame(1201.49 - CENTER_X, 2.19, 55.46 - HOUSE_CENTER_Z, 1, dogOceanPortraitMaterial);
   addSidePictureFrame(1217.07 - CENTER_X, 2.05, 57.28 - HOUSE_CENTER_Z, -1, horsePasturePortraitMaterial);
+  addSidePictureFrame(1215.49 - CENTER_X, 2.3, 66.62 - HOUSE_CENTER_Z, -1, chickenCoopPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
