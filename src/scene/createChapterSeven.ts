@@ -4650,11 +4650,6 @@ export function createChapterSeven(): ChapterSevenData {
 
     const switchPivot = new Group();
     switchPivot.position.set(0.48, 0.84, 0.15);
-    const switchBase = new Mesh(new BoxGeometry(0.28, 0.08, 0.22), closetHandleMaterial);
-    const switchLever = new Mesh(new BoxGeometry(0.05, 0.22, 0.055), faucetMaterial);
-    switchLever.position.y = 0.12;
-    switchLever.rotation.z = -0.35;
-    switchPivot.add(switchBase, switchLever);
 
     const lampLight = new PointLight(0xffd996, 2.8, 9.5, 1.65);
     lampLight.position.set(0, 1.45, 0);
@@ -4674,7 +4669,6 @@ export function createChapterSeven(): ChapterSevenData {
       shadeTop,
       shadeBottom,
       glow,
-      switchPivot,
       lampLight,
     );
     house.add(table);
