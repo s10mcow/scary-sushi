@@ -284,6 +284,7 @@ const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
 const KITCHEN_COUNTER_BASE_HEIGHT = 1.08;
 const KITCHEN_COUNTER_SURFACE_Y = KITCHEN_COUNTER_BASE_HEIGHT + 0.23;
+const COOKIE_SURFACE_OFFSET = 0.03;
 const TREE_COUNT = 160;
 const GRASS_PATCH_COUNT = 280;
 const ROCK_COUNT = 13;
@@ -3174,7 +3175,7 @@ export function createChapterSeven(): ChapterSevenData {
       for (let cookieIndex = 0; cookieIndex < cookieCount; cookieIndex += 1) {
         const side = cookieCount === 1 ? 0 : cookieIndex === 0 ? -1 : 1;
         const cookieRoot = new Group();
-        cookieRoot.position.set(side * 0.34, -0.09, 0.05 + cookieIndex * 0.12);
+        cookieRoot.position.set(side * 0.34, -0.115, 0.05 + cookieIndex * 0.12);
         const cookie = new Mesh(new CylinderGeometry(0.15, 0.15, 0.045, 18), cookieMaterial);
         const chipOffsets = [
           [-0.045, 0.018],
@@ -3539,7 +3540,7 @@ export function createChapterSeven(): ChapterSevenData {
     leafRight.position.x = -0.56;
     leafRight.rotation.z = 0.45;
 
-    addCookie(shelf, 0.62, 0.18, 0.02, 1.0);
+    addCookie(shelf, 0.62, 0.1, 0.02, 1.0);
     shelf.add(board, backLip, leftBracket, rightBracket, pot, plantStem, leafLeft, leafRight);
     house.add(shelf);
   };
@@ -3711,7 +3712,7 @@ export function createChapterSeven(): ChapterSevenData {
       addCookie(
         root,
         side * Math.min(width * 0.22, 0.42),
-        shelfYValues[index % shelfYValues.length] + 0.06,
+        shelfYValues[index % shelfYValues.length] + COOKIE_SURFACE_OFFSET,
         depth * 0.08 + index * 0.08,
         0.92,
         `${label} cookie`,
@@ -3720,7 +3721,7 @@ export function createChapterSeven(): ChapterSevenData {
   };
 
   const addCountertopCookie = (root: Group, width: number, topY: number): void => {
-    addCookie(root, Math.min(width * 0.18, 0.32), topY + 0.14, 0.22, 0.86);
+    addCookie(root, Math.min(width * 0.18, 0.32), topY + COOKIE_SURFACE_OFFSET, 0.22, 0.86);
   };
 
   const addFridge = (localX: number, localZ: number): ChapterSevenFridge => {
@@ -3778,7 +3779,7 @@ export function createChapterSeven(): ChapterSevenData {
       addCookie(
         fridge,
         -0.28 + index * 0.24,
-        index === 2 ? 3.08 : 1.56,
+        index === 2 ? 3.09 : 1.535,
         0.24 - index * 0.05,
         0.74,
       );
@@ -3857,9 +3858,9 @@ export function createChapterSeven(): ChapterSevenData {
     rightHandle.position.set(-(width / 2 - 0.18), 0.56, 0.07);
     rightDoorPivot.add(rightDoor, rightHandle);
 
-    addCabinetCookies(counter, localX, label, [0.48, 0.9], width, depth);
+    addCabinetCookies(counter, localX, label, [0.435, 0.795], width, depth);
     if (label === 'Counter base cabinet') {
-      addCountertopCookie(counter, width, baseHeight + 0.16);
+      addCountertopCookie(counter, width, KITCHEN_COUNTER_SURFACE_Y);
     }
     counter.add(back, leftSide, rightSide, bottom, top, lowerShelf, upperShelf, leftDoorPivot, rightDoorPivot, toeKick);
     house.add(counter);
@@ -4709,7 +4710,14 @@ export function createChapterSeven(): ChapterSevenData {
     const upperShelf = lowerShelf.clone();
     upperShelf.position.y = height * 0.68;
     const isBathroomUpperCupboard = label === 'Bathroom upper cupboard';
-    addCabinetCookies(cupboard, localX, label, isBathroomUpperCupboard ? [0.18, 0.24] : [height * 0.38, height * 0.68], width, depth);
+    addCabinetCookies(
+      cupboard,
+      localX,
+      label,
+      isBathroomUpperCupboard ? [0.12, 0.12] : [height * 0.38 + 0.04, height * 0.68 + 0.04],
+      width,
+      depth,
+    );
     cupboard.add(back, leftSide, rightSide, top, bottom);
     if (!isBathroomUpperCupboard) {
       cupboard.add(lowerShelf, upperShelf);
@@ -5266,16 +5274,16 @@ export function createChapterSeven(): ChapterSevenData {
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 0.3, 'washing-machine', rearRoomLaundryRotation),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
-  addCookie(house, HOUSE_FRIDGE_X + 9.1, KITCHEN_COUNTER_SURFACE_Y + 0.18, HOUSE_FRIDGE_Z + 0.42, 0.88, 'Kitchen counter hidden cookie');
-  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + 4.2, 1.84, rearRoomBackFixtureZ - 0.56, 0.78, 'Toilet tank hidden cookie');
-  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 0.24, 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
-  addCookie(house, 1208.45 - CENTER_X, 0.34, 101.1 - HOUSE_CENTER_Z, 0.9, 'Balcony hidden cookie');
+  addCookie(house, HOUSE_FRIDGE_X + 9.1, KITCHEN_COUNTER_SURFACE_Y + COOKIE_SURFACE_OFFSET, HOUSE_FRIDGE_Z + 0.42, 0.88, 'Kitchen counter hidden cookie');
+  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + 4.2, 1.81, rearRoomBackFixtureZ - 0.56, 0.78, 'Toilet tank hidden cookie');
+  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 0.36, 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
+  addCookie(house, 1208.45 - CENTER_X, 0.25, 101.1 - HOUSE_CENTER_Z, 0.9, 'Balcony hidden cookie');
   addCookie(house, 1238.7 - CENTER_X, 0.2, 72.2 - HOUSE_CENTER_Z, 0.9, 'Backyard hidden cookie');
-  addCookie(house, 1216.55 - CENTER_X, 1.18, 97.2 - HOUSE_CENTER_Z, 0.86, 'Rose table easy cookie');
-  addCookie(house, 1225.35 - CENTER_X, 1.16, 97.84 - HOUSE_CENTER_Z, 0.86, 'Plant table easy cookie');
-  addCookie(house, 1232.2 - CENTER_X, 1.34, 97.1 - HOUSE_CENTER_Z, 0.9, 'Couch easy cookie');
-  addCookie(house, HOUSE_LEFT_ROOM_WALL_X - 1.18, 1.02, HOUSE_DEPTH / 2 - 1.5, 0.9, 'Bean bag easy cookie');
-  addCookie(house, leftRoomCenterX - 0.62, 1.36, 0.26, 0.9, 'Dining table easy cookie');
+  addCookie(house, 1216.55 - CENTER_X, 0.93, 97.2 - HOUSE_CENTER_Z, 0.86, 'Rose table easy cookie');
+  addCookie(house, 1225.35 - CENTER_X, 1.11, 97.84 - HOUSE_CENTER_Z, 0.86, 'Plant table easy cookie');
+  addCookie(house, 1232.2 - CENTER_X, 1.25, 97.1 - HOUSE_CENTER_Z, 0.9, 'Couch easy cookie');
+  addCookie(house, HOUSE_LEFT_ROOM_WALL_X - 1.18, 0.89, HOUSE_DEPTH / 2 - 1.5, 0.9, 'Bean bag easy cookie');
+  addCookie(house, leftRoomCenterX - 0.62, 1.13, 0.26, 0.9, 'Dining table easy cookie');
   const kitchenUpperCupboards = [
     addUpperCupboard(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z, 1.62, 'Upper cupboards over the fridge'),
     addUpperCupboard(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.1, 'Upper cupboards over the counter'),
@@ -5517,8 +5525,8 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
-  addCookie(house, leftPorchChairX + 0.05, 0.9, leftPorchChairZ + 0.02, 0.82, 'Porch rocking chair easy cookie');
-  addCookie(house, rightPorchChairX - 0.02, 0.9, rightPorchChairZ + 0.02, 0.82, 'Porch rocking chair second easy cookie');
+  addCookie(house, leftPorchChairX + 0.05, 0.93, leftPorchChairZ + 0.02, 0.82, 'Porch rocking chair easy cookie');
+  addCookie(house, rightPorchChairX - 0.02, 0.93, rightPorchChairZ + 0.02, 0.82, 'Porch rocking chair second easy cookie');
   addCookie(cardboardBox.root, 0.18, 0.42, 0.18, 0.86, 'Cardboard box easy cookie');
   addOutdoorRoundTableSet(1240.54, 91.39);
   const swingSet = addOutdoorSwingSet(1246.8, 62.24, 0, 1.05);
