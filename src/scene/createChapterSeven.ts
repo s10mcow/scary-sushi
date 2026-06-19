@@ -4708,11 +4708,15 @@ export function createChapterSeven(): ChapterSevenData {
     lowerShelf.position.set(0, height * 0.38, 0);
     const upperShelf = lowerShelf.clone();
     upperShelf.position.y = height * 0.68;
-    addCabinetCookies(cupboard, localX, label, [height * 0.38, height * 0.68], width, depth);
-    cupboard.add(back, leftSide, rightSide, top, bottom, lowerShelf, upperShelf);
-    if (label === 'Bathroom upper cupboard') {
+    const isBathroomUpperCupboard = label === 'Bathroom upper cupboard';
+    addCabinetCookies(cupboard, localX, label, isBathroomUpperCupboard ? [0.18, 0.24] : [height * 0.38, height * 0.68], width, depth);
+    cupboard.add(back, leftSide, rightSide, top, bottom);
+    if (!isBathroomUpperCupboard) {
+      cupboard.add(lowerShelf, upperShelf);
+    }
+    if (isBathroomUpperCupboard) {
       const toothbrush = new Group();
-      toothbrush.position.set(-width * 0.32, height * 0.42, 0.18);
+      toothbrush.position.set(-width * 0.32, 0.2, 0.18);
       const brushHandle = new Mesh(new BoxGeometry(0.08, 0.06, 0.56), faucetMaterial);
       brushHandle.rotation.y = -0.18;
       const brushHead = new Mesh(new BoxGeometry(0.16, 0.08, 0.16), applianceWhiteMaterial);
@@ -4723,23 +4727,41 @@ export function createChapterSeven(): ChapterSevenData {
 
       const toothpaste = new Mesh(new CylinderGeometry(0.1, 0.13, 0.68, 14), applianceWhiteMaterial);
       toothpaste.rotation.z = Math.PI / 2;
-      toothpaste.position.set(-width * 0.16, height * 0.43, 0.18);
+      toothpaste.position.set(-width * 0.16, 0.2, 0.18);
       const toothpasteCap = new Mesh(new CylinderGeometry(0.09, 0.09, 0.08, 12), faucetMaterial);
       toothpasteCap.rotation.z = Math.PI / 2;
-      toothpasteCap.position.set(-width * 0.16 + 0.38, height * 0.43, 0.18);
+      toothpasteCap.position.set(-width * 0.16 + 0.38, 0.2, 0.18);
 
       const soap = new Mesh(new BoxGeometry(0.5, 0.16, 0.32), pinkFloorCushionMaterial);
-      soap.position.set(width * 0.04, height * 0.42, 0.18);
+      soap.position.set(width * 0.04, 0.18, 0.18);
       soap.rotation.y = 0.12;
 
       const shampooBottle = new Mesh(new CylinderGeometry(0.16, 0.18, 0.74, 18), applianceGlassMaterial);
-      shampooBottle.position.set(width * 0.27, height * 0.75, 0.14);
+      shampooBottle.position.set(width * 0.2, 0.46, 0.14);
       const shampooCap = new Mesh(new CylinderGeometry(0.12, 0.12, 0.08, 16), faucetMaterial);
-      shampooCap.position.set(width * 0.27, height * 1.02, 0.14);
+      shampooCap.position.set(width * 0.2, 0.87, 0.14);
       const shampooLabel = new Mesh(new BoxGeometry(0.23, 0.28, 0.035), applianceWhiteMaterial);
-      shampooLabel.position.set(width * 0.27, height * 0.74, 0.31);
+      shampooLabel.position.set(width * 0.2, 0.45, 0.31);
 
-      cupboard.add(toothbrush, toothpaste, toothpasteCap, soap, shampooBottle, shampooCap, shampooLabel);
+      const conditionerBottle = new Mesh(new CylinderGeometry(0.14, 0.16, 0.58, 18), porcelainMaterial);
+      conditionerBottle.position.set(width * 0.32, 0.38, 0.14);
+      const conditionerCap = new Mesh(new CylinderGeometry(0.1, 0.1, 0.07, 16), faucetMaterial);
+      conditionerCap.position.set(width * 0.32, 0.7, 0.14);
+      const conditionerLabel = new Mesh(new BoxGeometry(0.2, 0.22, 0.035), sinkBasinMaterial);
+      conditionerLabel.position.set(width * 0.32, 0.37, 0.3);
+
+      cupboard.add(
+        toothbrush,
+        toothpaste,
+        toothpasteCap,
+        soap,
+        shampooBottle,
+        shampooCap,
+        shampooLabel,
+        conditionerBottle,
+        conditionerCap,
+        conditionerLabel,
+      );
     }
 
     const leftDoorPivot = new Group();
@@ -5246,7 +5268,7 @@ export function createChapterSeven(): ChapterSevenData {
   ];
   addCookie(house, HOUSE_FRIDGE_X + 9.1, KITCHEN_COUNTER_SURFACE_Y + 0.18, HOUSE_FRIDGE_Z + 0.42, 0.88, 'Kitchen counter hidden cookie');
   addCookie(house, HOUSE_REAR_ROOM_DOOR_X + 4.2, 1.84, rearRoomBackFixtureZ - 0.56, 0.78, 'Toilet tank hidden cookie');
-  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 1.0, 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
+  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 0.24, 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
   addCookie(house, 1208.45 - CENTER_X, 0.34, 101.1 - HOUSE_CENTER_Z, 0.9, 'Balcony hidden cookie');
   addCookie(house, 1238.7 - CENTER_X, 0.2, 72.2 - HOUSE_CENTER_Z, 0.9, 'Backyard hidden cookie');
   addCookie(house, 1216.55 - CENTER_X, 1.18, 97.2 - HOUSE_CENTER_Z, 0.86, 'Rose table easy cookie');
