@@ -5353,6 +5353,18 @@ export function createChapterSeven(): ChapterSevenData {
   addCollider(colliders, CENTER_X - (porchGapWidth / 2 + frontRailSegmentWidth / 2), HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
   addCollider(colliders, CENTER_X + porchGapWidth / 2 + frontRailSegmentWidth / 2, HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
   const houseDoors = [houseDoor, sideGlassDoor, ...roomDoors];
+  const houseInteriorLights = [
+    [-14, 9],
+    [7, 9],
+    [-13, -8],
+    [9, -7],
+    [HOUSE_REAR_ROOM_DOOR_X, HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH / 2],
+  ].map(([localX, localZ]) => {
+    const interiorLight = new PointLight(0xffddb0, 0.72, 24, 1.45);
+    interiorLight.position.set(localX, 4.25, localZ);
+    house.add(interiorLight);
+    return interiorLight;
+  });
 
   root.add(house);
 
@@ -5716,6 +5728,11 @@ export function createChapterSeven(): ChapterSevenData {
         0.36 + Math.abs(Math.sin(forestTime * 1.25)) * 0.06,
         nightBlend,
       );
+      houseInteriorLights.forEach((interiorLight, index) => {
+        const warmPulse = Math.sin(forestTime * 0.82 + index * 1.7) * 0.08;
+        interiorLight.intensity = MathUtils.lerp(0.72, 3.35 + warmPulse, nightBlend);
+        interiorLight.distance = MathUtils.lerp(22, 31, nightBlend);
+      });
       nightSky.visible = nightBlend > 0.02;
       nightSkyMaterials.forEach((material) => {
         material.opacity = material === moonMaterial

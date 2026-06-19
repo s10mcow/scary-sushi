@@ -12165,8 +12165,8 @@ export class Game {
     if (this.chapterSevenActive) {
       const nightBlend = this.getChapterSevenNightBlend();
       this.flashlight.setEnabled(false);
-      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.42, nightBlend);
-      this.lighting.hemisphere.intensity = MathUtils.lerp(1.12, 0.58, nightBlend);
+      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.56, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(1.12, 0.76, nightBlend);
       this.lighting.flashlight.intensity = 0;
       this.lighting.flashlight.distance = 0;
 
