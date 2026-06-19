@@ -4708,6 +4708,37 @@ export function createChapterSeven(): ChapterSevenData {
     upperShelf.position.y = height * 0.68;
     addCabinetCookies(cupboard, localX, label, [height * 0.38, height * 0.68], width, depth);
     cupboard.add(back, leftSide, rightSide, top, bottom, lowerShelf, upperShelf);
+    if (label === 'Bathroom upper cupboard') {
+      const toothbrush = new Group();
+      toothbrush.position.set(-width * 0.32, height * 0.42, 0.18);
+      const brushHandle = new Mesh(new BoxGeometry(0.08, 0.06, 0.56), faucetMaterial);
+      brushHandle.rotation.y = -0.18;
+      const brushHead = new Mesh(new BoxGeometry(0.16, 0.08, 0.16), applianceWhiteMaterial);
+      brushHead.position.set(0.02, 0.04, 0.31);
+      const bristles = new Mesh(new BoxGeometry(0.14, 0.08, 0.05), sinkBasinMaterial);
+      bristles.position.set(0.02, 0.1, 0.36);
+      toothbrush.add(brushHandle, brushHead, bristles);
+
+      const toothpaste = new Mesh(new CylinderGeometry(0.1, 0.13, 0.68, 14), applianceWhiteMaterial);
+      toothpaste.rotation.z = Math.PI / 2;
+      toothpaste.position.set(-width * 0.16, height * 0.43, 0.18);
+      const toothpasteCap = new Mesh(new CylinderGeometry(0.09, 0.09, 0.08, 12), faucetMaterial);
+      toothpasteCap.rotation.z = Math.PI / 2;
+      toothpasteCap.position.set(-width * 0.16 + 0.38, height * 0.43, 0.18);
+
+      const soap = new Mesh(new BoxGeometry(0.5, 0.16, 0.32), pinkFloorCushionMaterial);
+      soap.position.set(width * 0.04, height * 0.42, 0.18);
+      soap.rotation.y = 0.12;
+
+      const shampooBottle = new Mesh(new CylinderGeometry(0.16, 0.18, 0.74, 18), applianceGlassMaterial);
+      shampooBottle.position.set(width * 0.27, height * 0.75, 0.14);
+      const shampooCap = new Mesh(new CylinderGeometry(0.12, 0.12, 0.08, 16), faucetMaterial);
+      shampooCap.position.set(width * 0.27, height * 1.02, 0.14);
+      const shampooLabel = new Mesh(new BoxGeometry(0.23, 0.28, 0.035), applianceWhiteMaterial);
+      shampooLabel.position.set(width * 0.27, height * 0.74, 0.31);
+
+      cupboard.add(toothbrush, toothpaste, toothpasteCap, soap, shampooBottle, shampooCap, shampooLabel);
+    }
 
     const leftDoorPivot = new Group();
     leftDoorPivot.position.set(-width / 2, 0, depth / 2 + 0.04);
@@ -5211,6 +5242,11 @@ export function createChapterSeven(): ChapterSevenData {
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 0.3, 'washing-machine', rearRoomLaundryRotation),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
+  addCookie(house, HOUSE_FRIDGE_X + 9.1, KITCHEN_COUNTER_SURFACE_Y + 0.18, HOUSE_FRIDGE_Z + 0.42, 0.88, 'Kitchen counter hidden cookie');
+  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + 4.2, 1.84, rearRoomBackFixtureZ - 0.56, 0.78, 'Toilet tank hidden cookie');
+  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 1.0, 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
+  addCookie(house, 1208.45 - CENTER_X, 0.34, 101.1 - HOUSE_CENTER_Z, 0.9, 'Balcony hidden cookie');
+  addCookie(house, 1238.7 - CENTER_X, 0.2, 72.2 - HOUSE_CENTER_Z, 0.9, 'Backyard hidden cookie');
   const kitchenUpperCupboards = [
     addUpperCupboard(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z, 1.62, 'Upper cupboards over the fridge'),
     addUpperCupboard(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.1, 'Upper cupboards over the counter'),
@@ -5220,8 +5256,8 @@ export function createChapterSeven(): ChapterSevenData {
   ];
   const bathroomUpperCupboard = addUpperCupboard(
     1205.71 - CENTER_X,
-    47.62 - HOUSE_CENTER_Z + 1.34,
-    5,
+    47.62 - HOUSE_CENTER_Z + 0.46,
+    7,
     'Bathroom upper cupboard',
     2.85,
   );
