@@ -1985,46 +1985,42 @@ export function createChapterSeven(): ChapterSevenData {
     const cushion = new Group();
     cushion.position.set(localX, 0, localZ);
 
-    const body = new Mesh(new CylinderGeometry(1.48, 1.58, 0.42, 48), pinkFloorCushionMaterial);
-    body.position.y = 0.34;
-    body.scale.y = 0.78;
-    const topPuff = new Mesh(new SphereGeometry(1.46, 36, 14), pinkFloorCushionMaterial);
-    topPuff.position.y = 0.46;
-    topPuff.scale.set(1, 0.18, 1);
-    const lowerPuff = new Mesh(new SphereGeometry(1.5, 36, 12), pinkFloorCushionMaterial);
-    lowerPuff.position.y = 0.27;
-    lowerPuff.scale.set(1, 0.1, 1);
-    const outerSeam = new Mesh(new TorusGeometry(1.28, 0.025, 8, 64), pinkFloorCushionDetailMaterial);
+    const base = new Mesh(new CylinderGeometry(1.62, 1.72, 0.28, 56), pinkFloorCushionMaterial);
+    base.position.y = 0.22;
+    const body = new Mesh(new SphereGeometry(1.78, 48, 20), pinkFloorCushionMaterial);
+    body.position.y = 0.46;
+    body.scale.set(1.04, 0.28, 1.04);
+    const topPuff = new Mesh(new SphereGeometry(1.26, 42, 14), pinkFloorCushionMaterial);
+    topPuff.position.y = 0.62;
+    topPuff.scale.set(1, 0.12, 1);
+    const flatMiddle = new Mesh(new CylinderGeometry(0.86, 0.98, 0.035, 40), pinkFloorCushionMaterial);
+    flatMiddle.position.y = 0.68;
+    const outerSeam = new Mesh(new TorusGeometry(1.42, 0.022, 8, 72), pinkFloorCushionDetailMaterial);
     outerSeam.rotation.x = Math.PI / 2;
-    outerSeam.position.y = 0.55;
-    const centerButton = new Mesh(new CylinderGeometry(0.15, 0.12, 0.035, 24), pinkFloorCushionDetailMaterial);
-    centerButton.position.y = 0.59;
+    outerSeam.position.y = 0.54;
+    const middleSeam = new Mesh(new TorusGeometry(0.9, 0.018, 8, 56), pinkFloorCushionDetailMaterial);
+    middleSeam.rotation.x = Math.PI / 2;
+    middleSeam.position.y = 0.705;
 
     const seamStrips = Array.from({ length: 8 }, (_, index) => {
-      const seam = new Mesh(new BoxGeometry(0.028, 0.018, 1.08), pinkFloorCushionDetailMaterial);
+      const seam = new Mesh(new BoxGeometry(0.022, 0.014, 0.68), pinkFloorCushionDetailMaterial);
       const angle = (index / 8) * Math.PI * 2;
-      seam.position.set(Math.sin(angle) * 0.54, 0.585, Math.cos(angle) * 0.54);
+      seam.position.set(Math.sin(angle) * 0.64, 0.715, Math.cos(angle) * 0.64);
       seam.rotation.y = angle;
       return seam;
     });
-    const smallButtons = Array.from({ length: 6 }, (_, index) => {
-      const button = new Mesh(new CylinderGeometry(0.06, 0.055, 0.024, 18), pinkFloorCushionDetailMaterial);
-      const angle = (index / 6) * Math.PI * 2 + 0.18;
-      button.position.set(Math.sin(angle) * 0.78, 0.6, Math.cos(angle) * 0.78);
-      return button;
-    });
 
-    cushion.add(body, topPuff, lowerPuff, outerSeam, centerButton, ...seamStrips, ...smallButtons);
+    cushion.add(base, body, topPuff, flatMiddle, outerSeam, middleSeam, ...seamStrips);
     house.add(cushion);
 
-    const cushionCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 2.8, 2.8);
+    const cushionCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 3.24, 3.24);
     bedSurfaces.push({
-      label: 'Pink floor cushion',
+      label: 'Pink bean bag',
       centerX: CENTER_X + localX,
       centerZ: HOUSE_CENTER_Z + localZ,
-      halfWidth: 1.4,
-      halfDepth: 1.4,
-      floorY: 0.62,
+      halfWidth: 1.62,
+      halfDepth: 1.62,
+      floorY: 0.72,
       collider: cushionCollider,
     });
   };
@@ -4955,6 +4951,12 @@ export function createChapterSeven(): ChapterSevenData {
       width: 2.9,
       height: 1.9,
     },
+    {
+      centerX: 1215.77 - CENTER_X,
+      centerY: 2.17,
+      width: 3.1,
+      height: 1.9,
+    },
   ]);
   addCollider(
     colliders,
@@ -4990,6 +4992,13 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_DEPTH / 2 - HOUSE_WALL_THICKNESS / 2 - 0.04,
     2.1,
     2.9,
+    1.9,
+  );
+  addWallWindow(
+    1215.77 - CENTER_X,
+    HOUSE_DEPTH / 2 - HOUSE_WALL_THICKNESS / 2 - 0.04,
+    2.17,
+    3.1,
     1.9,
   );
   addWallWindow(
@@ -5135,7 +5144,7 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
   addColorfulRug(1210.82 - CENTER_X, 89.44 - HOUSE_CENTER_Z, Math.PI / 2, 8.2, 5.4);
-  addPinkFloorCushion(1198.74 - CENTER_X, 95.82 - HOUSE_CENTER_Z);
+  addPinkFloorCushion(1198.74 - CENTER_X, 97.08 - HOUSE_CENTER_Z);
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
@@ -5831,13 +5840,13 @@ export function createChapterSeven(): ChapterSevenData {
       });
       light.intensity = MathUtils.lerp(
         2.85 + Math.sin(forestTime * 0.7) * 0.16,
-        0.36 + Math.abs(Math.sin(forestTime * 1.25)) * 0.06,
+        2.28 + Math.abs(Math.sin(forestTime * 1.25)) * 0.08,
         nightBlend,
       );
       houseInteriorLights.forEach((interiorLight, index) => {
         const warmPulse = Math.sin(forestTime * 0.82 + index * 1.7) * 0.035;
-        interiorLight.intensity = MathUtils.lerp(0.28, 1.85 + warmPulse, nightBlend);
-        interiorLight.distance = MathUtils.lerp(20, 27, nightBlend);
+        interiorLight.intensity = MathUtils.lerp(0.28, 1.45 + warmPulse, nightBlend);
+        interiorLight.distance = MathUtils.lerp(20, 25, nightBlend);
       });
       nightSky.visible = nightBlend > 0.02;
       nightSkyMaterials.forEach((material) => {
