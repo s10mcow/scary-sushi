@@ -1695,7 +1695,7 @@ export function createChapterSeven(): ChapterSevenData {
         context.lineWidth = 4;
         context.beginPath();
         context.moveTo(-31, -1);
-        context.quadraticCurveTo(-52, -10, -50, -24);
+        context.quadraticCurveTo(-43, 13, -41, 34);
         context.stroke();
 
         context.strokeStyle = '#292018';
