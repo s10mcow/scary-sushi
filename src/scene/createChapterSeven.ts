@@ -1436,6 +1436,126 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
   const pigPenPortraitMaterial = createPigPenPictureMaterial();
+  const createDogOceanPictureMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const skyGradient = context.createLinearGradient(0, 0, 0, 86);
+      skyGradient.addColorStop(0, '#78b9ed');
+      skyGradient.addColorStop(1, '#dff4ff');
+      context.fillStyle = skyGradient;
+      context.fillRect(0, 0, canvas.width, 86);
+
+      context.fillStyle = '#fff4b8';
+      context.beginPath();
+      context.arc(218, 34, 19, 0, Math.PI * 2);
+      context.fill();
+
+      context.fillStyle = 'rgba(255,255,255,0.82)';
+      [[58, 38, 28, 10], [94, 44, 34, 9], [158, 32, 30, 8]].forEach(([x, y, rx, ry]) => {
+        context.beginPath();
+        context.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        context.fill();
+      });
+
+      const waterGradient = context.createLinearGradient(0, 74, 0, canvas.height);
+      waterGradient.addColorStop(0, '#2fa7da');
+      waterGradient.addColorStop(0.55, '#147db6');
+      waterGradient.addColorStop(1, '#075d8f');
+      context.fillStyle = waterGradient;
+      context.fillRect(0, 78, canvas.width, canvas.height - 78);
+
+      context.strokeStyle = 'rgba(255,255,255,0.62)';
+      context.lineWidth = 2.5;
+      for (let y = 94; y < 164; y += 15) {
+        context.beginPath();
+        for (let x = -18; x < canvas.width + 20; x += 28) {
+          context.quadraticCurveTo(x + 10, y - 5, x + 20, y);
+          context.quadraticCurveTo(x + 30, y + 5, x + 42, y);
+        }
+        context.stroke();
+      }
+
+      const drawDog = (x: number, y: number, scale: number): void => {
+        context.save();
+        context.translate(x, y);
+        context.scale(scale, scale);
+        context.fillStyle = '#b6783f';
+        context.strokeStyle = '#5f351e';
+        context.lineWidth = 2.6;
+
+        context.beginPath();
+        context.ellipse(0, 12, 35, 17, -0.08, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+
+        context.beginPath();
+        context.ellipse(33, 0, 18, 16, 0.05, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+
+        context.fillStyle = '#8b562e';
+        context.beginPath();
+        context.ellipse(21, -2, 8, 18, -0.42, 0, Math.PI * 2);
+        context.ellipse(43, -4, 8, 18, 0.35, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+
+        context.fillStyle = '#d29a62';
+        context.beginPath();
+        context.ellipse(43, 4, 10, 7, 0, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = '#17110d';
+        context.beginPath();
+        context.arc(38, -5, 2.4, 0, Math.PI * 2);
+        context.arc(51, 2, 2.6, 0, Math.PI * 2);
+        context.fill();
+
+        context.strokeStyle = '#5f351e';
+        context.lineWidth = 3;
+        context.beginPath();
+        context.moveTo(-30, 9);
+        context.quadraticCurveTo(-54, -2, -48, -20);
+        context.stroke();
+
+        context.strokeStyle = '#7a4525';
+        context.lineWidth = 7;
+        [[-12, 23], [12, 23], [-28, 19]].forEach(([legX, legY], index) => {
+          context.beginPath();
+          context.moveTo(legX, legY);
+          context.quadraticCurveTo(legX + (index === 1 ? 10 : -10), legY + 10, legX + (index === 1 ? 22 : -18), legY + 5);
+          context.stroke();
+        });
+        context.restore();
+      };
+
+      drawDog(126, 96, 1.02);
+
+      context.fillStyle = 'rgba(255,255,255,0.72)';
+      [[86, 130, 24, 7], [126, 128, 30, 8], [166, 133, 24, 6], [116, 112, 18, 5]].forEach(([x, y, rx, ry]) => {
+        context.beginPath();
+        context.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        context.fill();
+      });
+
+      context.strokeStyle = 'rgba(255,255,255,0.56)';
+      context.lineWidth = 7;
+      context.strokeRect(15, 12, canvas.width - 30, canvas.height - 24);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.66,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  };
+  const dogOceanPortraitMaterial = createDogOceanPictureMaterial();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -5673,6 +5793,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1218.56 - CENTER_X, 2.15, 86.42 - HOUSE_CENTER_Z, 1, squirrelPortraitMaterial);
   addSidePictureFrame(1217.94 - CENTER_X, 2.53, 83.16 - HOUSE_CENTER_Z, -1, oceanDolphinPortraitMaterial);
   addSidePictureFrame(1235.69 - CENTER_X, 2.18, 77.96 - HOUSE_CENTER_Z, -1, pigPenPortraitMaterial);
+  addSidePictureFrame(1201.49 - CENTER_X, 2.19, 55.46 - HOUSE_CENTER_Z, 1, dogOceanPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
