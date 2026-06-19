@@ -1957,11 +1957,11 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
 
-  const addColorfulRug = (localX: number, localZ: number, rotationY = 0): void => {
-    const rug = new Mesh(new PlaneGeometry(5.2, 3.4), colorfulRugMaterial);
+  const addColorfulRug = (localX: number, localZ: number, rotationY = 0, width = 5.2, depth = 3.4): void => {
+    const rug = new Mesh(new PlaneGeometry(width, depth), colorfulRugMaterial);
     rug.rotation.x = -Math.PI / 2;
     rug.rotation.z = rotationY;
-    rug.position.set(localX, 0.19, localZ);
+    rug.position.set(localX, 0.245, localZ);
     house.add(rug);
   };
 
@@ -5053,6 +5053,7 @@ export function createChapterSeven(): ChapterSevenData {
     0,
   );
   addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
+  addColorfulRug(1210.82 - CENTER_X, 89.44 - HOUSE_CENTER_Z, Math.PI / 2, 8.2, 5.4);
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
