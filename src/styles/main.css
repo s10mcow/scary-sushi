@@ -2557,8 +2557,9 @@ select {
   left: 50%;
   top: 0.72rem;
   z-index: 3;
-  min-width: 7.9rem;
-  padding: 0.58rem 0.86rem 0.68rem;
+  width: min(18rem, calc(100% - 2rem));
+  min-width: 14rem;
+  padding: 1rem 1.12rem 1.08rem;
   text-align: center;
   opacity: 0;
   pointer-events: none;
@@ -2589,18 +2590,18 @@ select {
   z-index: 1;
   margin: 0;
   color: #8d431f;
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  font-size: 0.86rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .hud__chapter-seven-day-value {
   position: relative;
   z-index: 1;
-  margin: 0.24rem 0 0;
+  margin: 0.4rem 0 0;
   color: #3e2a18;
-  font-size: 1.24rem;
-  font-weight: 800;
+  font-size: 2.85rem;
+  font-weight: 850;
   line-height: 1;
 }
 
@@ -2608,10 +2609,12 @@ select {
   left: 1rem;
   top: 50%;
   z-index: 3;
-  min-width: 7.4rem;
-  padding: 0.7rem 0.82rem;
+  width: min(18rem, calc(100% - 2rem));
+  min-width: 14rem;
+  padding: 1rem 1.12rem;
   opacity: 0;
   pointer-events: none;
+  text-align: center;
   transform: translate(-0.35rem, -50%);
 }
 
@@ -2623,15 +2626,15 @@ select {
 .hud__chapter-seven-cookies .hud__label {
   margin: 0;
   color: #8d431f;
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  font-size: 0.86rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .hud__chapter-seven-cookie-value {
-  margin: 0.22rem 0 0;
+  margin: 0.4rem 0 0;
   color: #3e2a18;
-  font-size: 1.42rem;
+  font-size: 2.85rem;
   font-weight: 850;
   line-height: 1;
 }
@@ -4949,13 +4952,15 @@ select {
     top: 0.55rem;
     left: 50%;
     right: auto;
-    width: auto;
-    min-width: 7.4rem;
+    width: min(14rem, calc(100% - 2rem));
+    min-width: 0;
     max-width: calc(100% - 2rem);
   }
 
   .hud__chapter-seven-cookies {
     top: 48%;
+    width: min(14rem, calc(50% - 1.5rem));
+    min-width: 0;
   }
 
   .hud__chapter-seven-timer {

@@ -929,7 +929,8 @@ const CHAPTER_FOUR_CROUCH_DROP = 0.52;
 const CHAPTER_SEVEN_CRAWL_DROP = 1.18;
 const CHAPTER_SEVEN_CRAWL_SPEED_MULTIPLIER = 0.42;
 const CHAPTER_SEVEN_CRAWL_HOLD_MS = 2000;
-const CHAPTER_SEVEN_DAY_NIGHT_SECONDS = 90;
+const CHAPTER_SEVEN_DAY_SECONDS = 60;
+const CHAPTER_SEVEN_NIGHT_SECONDS = 90;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_DURATION = 2.35;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_COOLDOWN = 1.8;
 const CHAPTER_FOUR_BLUE_JUMPSCARE_DURATION = 2.6;
@@ -11912,12 +11913,16 @@ export class Game {
   }
 
   private getChapterSevenDayNightHudLine(): string {
-    const secondsLeft = Math.max(0, Math.ceil(CHAPTER_SEVEN_DAY_NIGHT_SECONDS - this.chapterSevenPhaseTime));
+    const secondsLeft = this.getChapterSevenPhaseSecondsLeft();
     return `${this.chapterSevenNightMode ? 'Night Mode' : 'Day Mode'}: ${secondsLeft}s until ${this.chapterSevenNightMode ? 'day' : 'night'}`;
   }
 
+  private getChapterSevenPhaseDuration(): number {
+    return this.chapterSevenNightMode ? CHAPTER_SEVEN_NIGHT_SECONDS : CHAPTER_SEVEN_DAY_SECONDS;
+  }
+
   private getChapterSevenPhaseSecondsLeft(): number {
-    return Math.max(0, Math.ceil(CHAPTER_SEVEN_DAY_NIGHT_SECONDS - this.chapterSevenPhaseTime));
+    return Math.max(0, Math.ceil(this.getChapterSevenPhaseDuration() - this.chapterSevenPhaseTime));
   }
 
   private updateChapterSevenDayNightCycle(deltaSeconds: number): void {
@@ -11926,19 +11931,19 @@ export class Game {
     }
 
     this.chapterSevenPhaseTime += deltaSeconds;
-    if (this.chapterSevenPhaseTime < CHAPTER_SEVEN_DAY_NIGHT_SECONDS) {
+    if (this.chapterSevenPhaseTime < this.getChapterSevenPhaseDuration()) {
       return;
     }
 
     let passedIntoDay = 0;
     do {
       const wasNightMode = this.chapterSevenNightMode;
-      this.chapterSevenPhaseTime -= CHAPTER_SEVEN_DAY_NIGHT_SECONDS;
+      this.chapterSevenPhaseTime -= this.getChapterSevenPhaseDuration();
       this.chapterSevenNightMode = !this.chapterSevenNightMode;
       if (wasNightMode && !this.chapterSevenNightMode) {
         passedIntoDay += 1;
       }
-    } while (this.chapterSevenPhaseTime >= CHAPTER_SEVEN_DAY_NIGHT_SECONDS);
+    } while (this.chapterSevenPhaseTime >= this.getChapterSevenPhaseDuration());
     if (passedIntoDay > 0) {
       this.chapterSevenDayCount += passedIntoDay;
     }
@@ -24429,7 +24434,7 @@ export class Game {
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter 7: The House';
     this.chapterCardBody =
-      'Start in Night Mode on the front bedroom bed. The grandfather clock switches the house between night and day every 1 minute and 30 seconds.';
+      'Start in Night Mode on the front bedroom bed. Day lasts 1 minute, and Night lasts 1 minute and 30 seconds.';
     this.activeJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
@@ -24535,7 +24540,7 @@ export class Game {
     this.player.teleport(this.chapterSeven.spawn);
     this.player.lookToward(this.chapterSeven.lookTarget, 1);
     this.pushStatus(
-      'Chapter 7: The House loaded in Night Mode. Every 1 minute and 30 seconds the grandfather clock chimes and switches between night and day.',
+      'Chapter 7: The House loaded in Night Mode. Day lasts 1 minute, and Night lasts 1 minute and 30 seconds.',
       3.2,
     );
     this.resize();
