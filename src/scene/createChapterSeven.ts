@@ -433,14 +433,20 @@ export function createChapterSeven(): ChapterSevenData {
     metalness: 0.02,
   });
   const houseFloorMaterial = new MeshStandardMaterial({
-    color: 0x7d5f40,
-    emissive: 0x170d06,
+    color: 0x9a744d,
+    emissive: 0x1a0f07,
     emissiveIntensity: 0.045,
-    roughness: 0.92,
+    roughness: 0.88,
     metalness: 0.02,
   });
+  const houseFloorBoardMaterials = [
+    new MeshStandardMaterial({ color: 0xa98156, emissive: 0x1b1008, emissiveIntensity: 0.04, roughness: 0.86, metalness: 0.02 }),
+    new MeshStandardMaterial({ color: 0xb08a5f, emissive: 0x1d1209, emissiveIntensity: 0.04, roughness: 0.86, metalness: 0.02 }),
+    new MeshStandardMaterial({ color: 0x96704b, emissive: 0x180d06, emissiveIntensity: 0.04, roughness: 0.89, metalness: 0.02 }),
+    new MeshStandardMaterial({ color: 0xb89568, emissive: 0x1e130a, emissiveIntensity: 0.04, roughness: 0.85, metalness: 0.02 }),
+  ];
   const houseFloorGrooveMaterial = new MeshStandardMaterial({
-    color: 0x4b3525,
+    color: 0x5d422c,
     emissive: 0x0b0503,
     emissiveIntensity: 0.04,
     roughness: 0.94,
@@ -1386,13 +1392,52 @@ export function createChapterSeven(): ChapterSevenData {
     base.position.set(centerX, 0.08, centerZ);
     floorGroup.add(base);
 
-    const plankSpacing = 0.72;
-    const plankCount = Math.max(2, Math.floor(width / plankSpacing));
-    for (let index = 1; index < plankCount; index += 1) {
-      const localX = centerX - width / 2 + index * (width / plankCount);
-      const groove = new Mesh(new BoxGeometry(0.035, 0.022, depth - 0.16), houseFloorGrooveMaterial);
-      groove.position.set(localX, 0.175, centerZ);
+    const boardLengthPattern = [5, 3, 2.2, 7.5, 4, 10, 2.8, 6, 3.5, 4.8];
+    const boardWidth = 0.86;
+    const rowCount = Math.max(2, Math.floor(width / boardWidth));
+    const rowWidth = width / rowCount;
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowX = centerX - width / 2 + rowWidth / 2 + row * rowWidth;
+      let cursorZ = centerZ - depth / 2;
+      let boardIndex = row % boardLengthPattern.length;
+      while (cursorZ < centerZ + depth / 2 - 0.05) {
+        const patternLength = boardLengthPattern[boardIndex % boardLengthPattern.length];
+        const boardLength = Math.min(patternLength, centerZ + depth / 2 - cursorZ);
+        if (boardLength > 0.16) {
+          const board = new Mesh(
+            new BoxGeometry(Math.max(0.12, rowWidth - 0.045), 0.022, Math.max(0.12, boardLength - 0.045)),
+            houseFloorBoardMaterials[(row + boardIndex) % houseFloorBoardMaterials.length],
+          );
+          board.position.set(rowX, 0.18, cursorZ + boardLength / 2);
+          floorGroup.add(board);
+        }
+        cursorZ += boardLength;
+        boardIndex += 1;
+      }
+    }
+
+    for (let index = 1; index < rowCount; index += 1) {
+      const localX = centerX - width / 2 + index * rowWidth;
+      const groove = new Mesh(new BoxGeometry(0.026, 0.028, depth - 0.12), houseFloorGrooveMaterial);
+      groove.position.set(localX, 0.198, centerZ);
       floorGroup.add(groove);
+    }
+
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowX = centerX - width / 2 + rowWidth / 2 + row * rowWidth;
+      let cursorZ = centerZ - depth / 2;
+      let boardIndex = row % boardLengthPattern.length;
+      while (cursorZ < centerZ + depth / 2 - 0.08) {
+        const patternLength = boardLengthPattern[boardIndex % boardLengthPattern.length];
+        const boardLength = Math.min(patternLength, centerZ + depth / 2 - cursorZ);
+        cursorZ += boardLength;
+        if (cursorZ < centerZ + depth / 2 - 0.08) {
+          const endGroove = new Mesh(new BoxGeometry(Math.max(0.12, rowWidth - 0.08), 0.03, 0.026), houseFloorGrooveMaterial);
+          endGroove.position.set(rowX, 0.205, cursorZ);
+          floorGroup.add(endGroove);
+        }
+        boardIndex += 1;
+      }
     }
 
     return floorGroup;
