@@ -90,6 +90,7 @@ export interface HudController {
   onMicrophoneToggle(handler: () => void): void;
   onMinecraftInventoryAction(handler: (action: MinecraftInventoryAction) => void): void;
   onChapterFiveMonitorAction(handler: (action: HudChapterFiveMonitorAction) => void): void;
+  onChapterSevenCookieTargetSelect(handler: (target: number) => void): void;
   onCuratorSave(handler: (slotLabel: string, summary: string) => void): void;
   setTheme(theme: 'default' | 'doom'): void;
   setCrosshairMode(mode: 'default' | 'firearm' | 'minecraft'): void;
@@ -102,7 +103,8 @@ export interface HudController {
   setChapterCard(active: boolean, title: string, body: string): void;
   setChapterLabel(text: string): void;
   setChapterSevenDayCounter(active: boolean, day: number): void;
-  setChapterSevenCookieCounter(active: boolean, cookies: number): void;
+  setChapterSevenCookieCounter(active: boolean, cookies: number, target: number): void;
+  setChapterSevenCookiePicker(active: boolean, currentTarget: number): void;
   setChapterSevenPhaseTimer(active: boolean, phase: 'day' | 'night', secondsLeft: number, urgent: boolean): void;
   setChapterMenu(active: boolean, currentChapter: HudChapterId): void;
   setCompass(active: boolean, headingDegrees: number): void;
@@ -495,6 +497,7 @@ export function createHud(host: HTMLElement): HudController {
   root.dataset.crosshair = 'default';
   root.style.setProperty('--scare-intensity', '0');
   root.style.setProperty('--threat-eye-intensity', '0');
+  let chapterSevenCookieTargetSelectHandler: ((target: number) => void) | null = null;
 
   const backdrop = document.createElement('div');
   backdrop.className = 'hud__backdrop';
@@ -1056,6 +1059,34 @@ export function createHud(host: HTMLElement): HudController {
   chapterSevenPhaseValue.textContent = '1:30';
 
   chapterSevenPhaseTimer.append(chapterSevenPhaseLabel, chapterSevenPhaseValue);
+
+  const chapterSevenCookiePicker = document.createElement('section');
+  chapterSevenCookiePicker.className = 'hud__chapter-seven-cookie-picker';
+  chapterSevenCookiePicker.dataset.active = 'false';
+
+  const chapterSevenCookiePickerTitle = document.createElement('h2');
+  chapterSevenCookiePickerTitle.className = 'hud__chapter-seven-cookie-picker-title';
+  chapterSevenCookiePickerTitle.textContent = 'How many cookies you want to pick?';
+
+  const chapterSevenCookiePickerOptions = document.createElement('div');
+  chapterSevenCookiePickerOptions.className = 'hud__chapter-seven-cookie-picker-options';
+
+  const chapterSevenCookieTargetButtons = [25, 50, 80].map((target) => {
+    const button = document.createElement('button');
+    button.className = 'hud__chapter-seven-cookie-target';
+    button.type = 'button';
+    button.dataset.target = `${target}`;
+    button.textContent = `${target}`;
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      chapterSevenCookieTargetSelectHandler?.(target);
+    });
+    return button;
+  });
+
+  chapterSevenCookiePickerOptions.append(...chapterSevenCookieTargetButtons);
+  chapterSevenCookiePicker.append(chapterSevenCookiePickerTitle, chapterSevenCookiePickerOptions);
 
   const statusPanel = document.createElement('section');
   statusPanel.className = 'hud__panel hud__panel--right';
@@ -1871,6 +1902,7 @@ export function createHud(host: HTMLElement): HudController {
     chapterSevenDayCounter,
     chapterSevenCookieCounter,
     chapterSevenPhaseTimer,
+    chapterSevenCookiePicker,
     crosshair,
     meterPanel,
     statusPanel,
@@ -2496,6 +2528,9 @@ export function createHud(host: HTMLElement): HudController {
         });
       });
     },
+    onChapterSevenCookieTargetSelect(handler): void {
+      chapterSevenCookieTargetSelectHandler = handler;
+    },
     onCuratorSave(handler): void {
       curatorSaveHandler = handler;
     },
@@ -2544,9 +2579,15 @@ export function createHud(host: HTMLElement): HudController {
       chapterSevenDayCounter.dataset.active = String(active);
       chapterSevenDayValue.textContent = `Day ${Math.max(1, Math.floor(day))}`;
     },
-    setChapterSevenCookieCounter(active, cookies): void {
+    setChapterSevenCookieCounter(active, cookies, target): void {
       chapterSevenCookieCounter.dataset.active = String(active);
-      chapterSevenCookieValue.textContent = `${Math.max(0, Math.floor(cookies))}`;
+      chapterSevenCookieValue.textContent = `${Math.max(0, Math.floor(cookies))} / ${Math.max(1, Math.floor(target))}`;
+    },
+    setChapterSevenCookiePicker(active, currentTarget): void {
+      chapterSevenCookiePicker.dataset.active = String(active);
+      chapterSevenCookieTargetButtons.forEach((button) => {
+        button.dataset.selected = String(Number(button.dataset.target) === Math.floor(currentTarget));
+      });
     },
     setChapterSevenPhaseTimer(active, phase, secondsLeft, urgent): void {
       const safeSeconds = Math.max(0, Math.ceil(secondsLeft));

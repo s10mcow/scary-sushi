@@ -2132,6 +2132,7 @@ select {
 .hud__chapter-seven-day,
 .hud__chapter-seven-cookies,
 .hud__chapter-seven-timer,
+.hud__chapter-seven-cookie-picker,
 .hud__tablet-cameras,
 .hud__tablet-camera-title,
 .hud__chapter-card,
@@ -2637,6 +2638,56 @@ select {
   font-size: 2.85rem;
   font-weight: 850;
   line-height: 1;
+}
+
+.hud__chapter-seven-cookie-picker {
+  left: 50%;
+  top: 50%;
+  z-index: 12;
+  width: min(31rem, calc(100% - 2rem));
+  padding: 1.35rem;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transform: translate(-50%, -47%) scale(0.98);
+}
+
+.hud__chapter-seven-cookie-picker[data-active="true"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.hud__chapter-seven-cookie-picker-title {
+  margin: 0 0 1rem;
+  color: #3e2a18;
+  font-size: 1.55rem;
+  line-height: 1.15;
+}
+
+.hud__chapter-seven-cookie-picker-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.hud__chapter-seven-cookie-target {
+  min-height: 4rem;
+  border: 1px solid rgba(86, 51, 25, 0.32);
+  border-radius: 0.45rem;
+  background: linear-gradient(180deg, #fff5d6, #e6b76f);
+  color: #3a2413;
+  font: inherit;
+  font-size: 1.75rem;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 0.45rem 1rem rgba(64, 36, 18, 0.18);
+}
+
+.hud__chapter-seven-cookie-target:hover,
+.hud__chapter-seven-cookie-target[data-selected="true"] {
+  background: linear-gradient(180deg, #fff9e7, #f0c35c);
+  border-color: rgba(126, 66, 20, 0.58);
 }
 
 .hud__chapter-seven-timer {
@@ -4920,6 +4971,7 @@ select {
   .hud__microphone-tool,
   .hud__camera-tool,
   .hud__chapter-seven-cookies,
+  .hud__chapter-seven-cookie-picker,
   .hud__chapter-seven-timer,
   .hud__tablet-cameras {
     left: 1rem;
@@ -4969,6 +5021,16 @@ select {
     top: 48%;
     width: min(14rem, calc(50% - 1.5rem));
     min-width: 0;
+  }
+
+  .hud__chapter-seven-cookie-picker {
+    left: 50%;
+    right: auto;
+    width: min(22rem, calc(100% - 2rem));
+  }
+
+  .hud__chapter-seven-cookie-picker-options {
+    grid-template-columns: 1fr;
   }
 
   .hud__story {

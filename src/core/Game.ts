@@ -1233,6 +1233,8 @@ export class Game {
   private chapterSevenPhaseTime = 0;
   private chapterSevenDayCount = 1;
   private chapterSevenCookieCount = 0;
+  private chapterSevenCookieTarget = 25;
+  private chapterSevenCookiePickerOpen = false;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -1591,6 +1593,7 @@ export class Game {
     this.hud.onMicrophoneToggle(this.handleMicrophoneToggle);
     this.hud.onMinecraftInventoryAction(this.handleMinecraftInventoryAction);
     this.hud.onChapterFiveMonitorAction(this.handleChapterFiveMonitorAction);
+    this.hud.onChapterSevenCookieTargetSelect(this.handleChapterSevenCookieTargetSelect);
     this.hud.onCuratorSave(this.handleCuratorSave);
     this.player.controls.addEventListener('lock', this.handleLockChange);
     this.player.controls.addEventListener('unlock', this.handleLockChange);
@@ -1742,7 +1745,7 @@ export class Game {
       return;
     }
 
-    if ((event.code !== 'KeyB' && event.code !== 'KeyJ' && event.code !== 'KeyK' && event.code !== 'KeyZ' && event.code !== 'KeyX' && event.code !== 'KeyT' && event.code !== 'KeyE') || event.repeat) {
+    if ((event.code !== 'KeyB' && event.code !== 'KeyJ' && event.code !== 'KeyK' && event.code !== 'KeyZ' && event.code !== 'KeyX' && event.code !== 'KeyT' && event.code !== 'KeyE' && event.code !== 'KeyY') || event.repeat) {
       return;
     }
 
@@ -1765,6 +1768,17 @@ export class Game {
         this.player.lock();
         this.syncHud();
       }
+      return;
+    }
+
+    if (event.code === 'KeyY') {
+      if (!this.chapterSevenActive) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.setChapterSevenCookiePickerOpen(!this.chapterSevenCookiePickerOpen);
       return;
     }
 
@@ -1845,8 +1859,8 @@ export class Game {
     }
 
     const clickedMenu = event.target instanceof Element
-      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory');
-    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen) {
+      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker');
+    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen) {
       if (clickedMenu) {
         return;
       }
@@ -1855,10 +1869,11 @@ export class Game {
       this.curatorToolOpen = false;
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
+      this.chapterSevenCookiePickerOpen = false;
       this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory')) {
+    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker')) {
       return;
     }
 
@@ -2364,6 +2379,44 @@ export class Game {
 
     this.syncHud();
   }
+
+  private setChapterSevenCookiePickerOpen(open: boolean): void {
+    if (!this.chapterSevenActive) {
+      open = false;
+    }
+
+    if (this.chapterSevenCookiePickerOpen === open) {
+      this.syncHud();
+      return;
+    }
+
+    this.chapterSevenCookiePickerOpen = open;
+    if (open) {
+      this.chapterMenuOpen = false;
+      this.curatorToolOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+    }
+
+    if (open && this.player.isLocked()) {
+      this.syncHud();
+      this.player.controls.unlock();
+      return;
+    }
+
+    this.syncHud();
+  }
+
+  private readonly handleChapterSevenCookieTargetSelect = (target: number): void => {
+    if (![25, 50, 80].includes(target)) {
+      return;
+    }
+
+    this.chapterSevenCookieTarget = target;
+    this.chapterSevenCookiePickerOpen = false;
+    this.pushStatus(`Cookie goal set to ${target}. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 2.4);
+    this.syncHud();
+  };
 
   private setCuratorToolOpen(open: boolean): void {
     if (this.curatorToolOpen === open) {
@@ -12516,7 +12569,8 @@ export class Game {
                     : 'Chapter: scary-sushi',
     );
     this.hud.setChapterSevenDayCounter(this.chapterSevenActive, this.chapterSevenDayCount);
-    this.hud.setChapterSevenCookieCounter(this.chapterSevenActive, this.chapterSevenCookieCount);
+    this.hud.setChapterSevenCookieCounter(this.chapterSevenActive, this.chapterSevenCookieCount, this.chapterSevenCookieTarget);
+    this.hud.setChapterSevenCookiePicker(this.chapterSevenActive && this.chapterSevenCookiePickerOpen, this.chapterSevenCookieTarget);
     const chapterSevenPhaseSecondsLeft = this.getChapterSevenPhaseSecondsLeft();
     this.hud.setChapterSevenPhaseTimer(
       this.chapterSevenActive,
@@ -12916,7 +12970,7 @@ export class Game {
           cookie.drawer.cookieCount = Math.max(0, cookie.drawer.cookieCount - 1);
         }
         this.chapterSevenCookieCount += 1;
-        this.pushStatus(`You picked up a cookie. Cookies: ${this.chapterSevenCookieCount}.`, 2.2);
+        this.pushStatus(`You picked up a cookie. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 2.2);
         this.syncHud();
         return;
       }
@@ -24527,6 +24581,7 @@ export class Game {
     this.chapterSevenPhaseTime = 0;
     this.chapterSevenDayCount = 1;
     this.chapterSevenCookieCount = 0;
+    this.chapterSevenCookiePickerOpen = false;
     this.chapterSevenCricketCooldown = 0;
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
