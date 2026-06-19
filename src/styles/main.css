@@ -2131,6 +2131,7 @@ select {
 .hud__crouch-instructions,
 .hud__chapter-seven-day,
 .hud__chapter-seven-cookies,
+.hud__chapter-seven-timer,
 .hud__tablet-cameras,
 .hud__tablet-camera-title,
 .hud__chapter-card,
@@ -2633,6 +2634,52 @@ select {
   font-size: 1.42rem;
   font-weight: 850;
   line-height: 1;
+}
+
+.hud__chapter-seven-timer {
+  right: 1rem;
+  top: 50%;
+  z-index: 3;
+  min-width: 8.4rem;
+  padding: 0.72rem 0.86rem;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transform: translate(0.35rem, -50%);
+}
+
+.hud__chapter-seven-timer[data-active="true"] {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.hud__chapter-seven-timer .hud__label {
+  margin: 0;
+  color: #8d431f;
+  font-size: 0.64rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.hud__chapter-seven-timer[data-phase="night"] .hud__label {
+  color: #6e2a33;
+}
+
+.hud__chapter-seven-timer-value {
+  margin: 0.25rem 0 0;
+  color: #3e2a18;
+  font-size: 1.48rem;
+  font-weight: 850;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__chapter-seven-timer[data-phase="night"] .hud__chapter-seven-timer-value {
+  color: #47202a;
+}
+
+.hud__chapter-seven-timer[data-urgent="true"] .hud__chapter-seven-timer-value {
+  color: #d72222;
 }
 
 .hud__action-prompt {
@@ -4869,6 +4916,7 @@ select {
   .hud__microphone-tool,
   .hud__camera-tool,
   .hud__chapter-seven-cookies,
+  .hud__chapter-seven-timer,
   .hud__tablet-cameras {
     left: 1rem;
     right: 1rem;
@@ -4907,6 +4955,13 @@ select {
 
   .hud__chapter-seven-cookies {
     top: 48%;
+  }
+
+  .hud__chapter-seven-timer {
+    left: auto;
+    right: 1rem;
+    top: 48%;
+    width: min(8.4rem, calc(50% - 1.5rem));
   }
 
   .hud__story {

@@ -103,6 +103,7 @@ export interface HudController {
   setChapterLabel(text: string): void;
   setChapterSevenDayCounter(active: boolean, day: number): void;
   setChapterSevenCookieCounter(active: boolean, cookies: number): void;
+  setChapterSevenPhaseTimer(active: boolean, phase: 'day' | 'night', secondsLeft: number, urgent: boolean): void;
   setChapterMenu(active: boolean, currentChapter: HudChapterId): void;
   setCompass(active: boolean, headingDegrees: number): void;
   setChapterFiveMonitor(active: boolean, state: HudChapterFiveMonitorState): void;
@@ -1040,6 +1041,22 @@ export function createHud(host: HTMLElement): HudController {
 
   chapterSevenCookieCounter.append(chapterSevenCookieLabel, chapterSevenCookieValue);
 
+  const chapterSevenPhaseTimer = document.createElement('section');
+  chapterSevenPhaseTimer.className = 'hud__chapter-seven-timer';
+  chapterSevenPhaseTimer.dataset.active = 'false';
+  chapterSevenPhaseTimer.dataset.phase = 'night';
+  chapterSevenPhaseTimer.dataset.urgent = 'false';
+
+  const chapterSevenPhaseLabel = document.createElement('p');
+  chapterSevenPhaseLabel.className = 'hud__label';
+  chapterSevenPhaseLabel.textContent = 'Night';
+
+  const chapterSevenPhaseValue = document.createElement('p');
+  chapterSevenPhaseValue.className = 'hud__chapter-seven-timer-value';
+  chapterSevenPhaseValue.textContent = '1:30';
+
+  chapterSevenPhaseTimer.append(chapterSevenPhaseLabel, chapterSevenPhaseValue);
+
   const statusPanel = document.createElement('section');
   statusPanel.className = 'hud__panel hud__panel--right';
 
@@ -1853,6 +1870,7 @@ export function createHud(host: HTMLElement): HudController {
     chapterFiveMonitor,
     chapterSevenDayCounter,
     chapterSevenCookieCounter,
+    chapterSevenPhaseTimer,
     crosshair,
     meterPanel,
     statusPanel,
@@ -2529,6 +2547,16 @@ export function createHud(host: HTMLElement): HudController {
     setChapterSevenCookieCounter(active, cookies): void {
       chapterSevenCookieCounter.dataset.active = String(active);
       chapterSevenCookieValue.textContent = `${Math.max(0, Math.floor(cookies))}`;
+    },
+    setChapterSevenPhaseTimer(active, phase, secondsLeft, urgent): void {
+      const safeSeconds = Math.max(0, Math.ceil(secondsLeft));
+      const minutes = Math.floor(safeSeconds / 60);
+      const seconds = safeSeconds % 60;
+      chapterSevenPhaseTimer.dataset.active = String(active);
+      chapterSevenPhaseTimer.dataset.phase = phase;
+      chapterSevenPhaseTimer.dataset.urgent = String(urgent);
+      chapterSevenPhaseLabel.textContent = phase === 'day' ? 'Day' : 'Night';
+      chapterSevenPhaseValue.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     },
     setChapterMenu(active, currentChapter): void {
       chapterMenu.dataset.active = String(active);

@@ -929,7 +929,7 @@ const CHAPTER_FOUR_CROUCH_DROP = 0.52;
 const CHAPTER_SEVEN_CRAWL_DROP = 1.18;
 const CHAPTER_SEVEN_CRAWL_SPEED_MULTIPLIER = 0.42;
 const CHAPTER_SEVEN_CRAWL_HOLD_MS = 2000;
-const CHAPTER_SEVEN_DAY_NIGHT_SECONDS = 60;
+const CHAPTER_SEVEN_DAY_NIGHT_SECONDS = 90;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_DURATION = 2.35;
 const CHAPTER_FOUR_PURPLE_JUMPSCARE_COOLDOWN = 1.8;
 const CHAPTER_FOUR_BLUE_JUMPSCARE_DURATION = 2.6;
@@ -11915,6 +11915,10 @@ export class Game {
     return `${this.chapterSevenNightMode ? 'Night Mode' : 'Day Mode'}: ${secondsLeft}s until ${this.chapterSevenNightMode ? 'day' : 'night'}`;
   }
 
+  private getChapterSevenPhaseSecondsLeft(): number {
+    return Math.max(0, Math.ceil(CHAPTER_SEVEN_DAY_NIGHT_SECONDS - this.chapterSevenPhaseTime));
+  }
+
   private updateChapterSevenDayNightCycle(deltaSeconds: number): void {
     if (!this.chapterSevenActive) {
       return;
@@ -12501,6 +12505,13 @@ export class Game {
     );
     this.hud.setChapterSevenDayCounter(this.chapterSevenActive, this.chapterSevenDayCount);
     this.hud.setChapterSevenCookieCounter(this.chapterSevenActive, this.chapterSevenCookieCount);
+    const chapterSevenPhaseSecondsLeft = this.getChapterSevenPhaseSecondsLeft();
+    this.hud.setChapterSevenPhaseTimer(
+      this.chapterSevenActive,
+      this.chapterSevenNightMode ? 'night' : 'day',
+      chapterSevenPhaseSecondsLeft,
+      this.chapterSevenNightMode && chapterSevenPhaseSecondsLeft <= 10,
+    );
     this.hud.setChapterMenu(this.chapterMenuOpen, currentChapter);
     this.hud.setCuratorTool(this.curatorToolOpen);
     this.hud.setCompass(
@@ -24385,7 +24396,7 @@ export class Game {
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter 7: The House';
     this.chapterCardBody =
-      'Start in Night Mode on the front bedroom bed. The grandfather clock switches the house between night and day every minute.';
+      'Start in Night Mode on the front bedroom bed. The grandfather clock switches the house between night and day every 1 minute and 30 seconds.';
     this.activeJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
@@ -24491,7 +24502,7 @@ export class Game {
     this.player.teleport(this.chapterSeven.spawn);
     this.player.lookToward(this.chapterSeven.lookTarget, 1);
     this.pushStatus(
-      'Chapter 7: The House loaded in Night Mode. Every minute the grandfather clock chimes and switches between night and day.',
+      'Chapter 7: The House loaded in Night Mode. Every 1 minute and 30 seconds the grandfather clock chimes and switches between night and day.',
       3.2,
     );
     this.resize();
