@@ -6151,7 +6151,7 @@ export function createChapterSeven(): ChapterSevenData {
     const dx = endX - startX;
     const dz = endZ - startZ;
     const length = Math.hypot(dx, dz);
-    const width = 2.25;
+    const width = porchGapWidth;
     const trailGroup = new Group();
     trailGroup.name = 'Tan brick-dotted backyard trail';
     trailGroup.position.set((startX + endX) / 2, 0, (startZ + endZ) / 2);
@@ -6161,18 +6161,40 @@ export function createChapterSeven(): ChapterSevenData {
     base.position.set(0, 0.055, 0);
     trailGroup.add(base);
 
-    const edgeInset = width / 2 - 0.08;
+    const edgeInset = width / 2 - 0.1;
     [-edgeInset, edgeInset].forEach((edgeX) => {
-      const edge = new Mesh(new BoxGeometry(0.12, 0.065, length), yardTrailEdgeMaterial);
+      const edge = new Mesh(new BoxGeometry(0.18, 0.065, length), yardTrailEdgeMaterial);
       edge.position.set(edgeX, 0.072, 0);
       trailGroup.add(edge);
     });
 
-    const brickOffsets = [-0.68, 0.58, 0.04, -0.34, 0.72, -0.08, 0.42];
+    const patchOffsets = [-1.28, -0.42, 1.04, 0.32, -1.62, 1.48, -0.08, 0.84];
+    const patchSpacing = 2.65;
+    const patchCount = Math.max(12, Math.floor(length / patchSpacing));
+    for (let index = 0; index < patchCount; index += 1) {
+      const patch = new Mesh(new BoxGeometry(0.72 + (index % 3) * 0.18, 0.026, 0.42), yardTrailEdgeMaterial);
+      const localZ = -length / 2 + 1.15 + index * patchSpacing;
+      patch.position.set(patchOffsets[index % patchOffsets.length], 0.091, localZ);
+      patch.rotation.y = ((index % 7) - 3) * 0.08;
+      patch.scale.z = 0.8 + (index % 4) * 0.12;
+      trailGroup.add(patch);
+    }
+
+    const edgeBumpSpacing = 2.35;
+    const edgeBumpCount = Math.max(12, Math.floor(length / edgeBumpSpacing));
+    for (let index = 0; index < edgeBumpCount; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const bump = new Mesh(new BoxGeometry(0.32 + (index % 3) * 0.08, 0.045, 0.64), yardTrailEdgeMaterial);
+      bump.position.set(side * (width / 2 - 0.18), 0.094, -length / 2 + 0.9 + index * edgeBumpSpacing);
+      bump.rotation.y = side * (0.08 + (index % 4) * 0.025);
+      trailGroup.add(bump);
+    }
+
+    const brickOffsets = [-1.45, 1.34, -0.18, -0.84, 1.62, 0.42, -1.12, 0.92];
     const brickSpacing = 3.8;
     const brickCount = Math.max(8, Math.floor(length / brickSpacing));
     for (let index = 0; index < brickCount; index += 1) {
-      const brick = new Mesh(new BoxGeometry(0.62, 0.07, 0.38), yardTrailBrickMaterial);
+      const brick = new Mesh(new BoxGeometry(0.72, 0.07, 0.42), yardTrailBrickMaterial);
       const localZ = -length / 2 + 1.8 + index * brickSpacing;
       brick.position.set(brickOffsets[index % brickOffsets.length], 0.105, localZ);
       brick.rotation.y = ((index % 5) - 2) * 0.045;
