@@ -1920,10 +1920,10 @@ export function createChapterSeven(): ChapterSevenData {
 
       context.fillStyle = '#6a4228';
       context.beginPath();
-      context.moveTo(43, 83);
-      context.bezierCurveTo(94, 65, 139, 67, 189, 84);
-      context.lineTo(185, 102);
-      context.bezierCurveTo(129, 89, 84, 91, 38, 110);
+      context.moveTo(38, 122);
+      context.bezierCurveTo(92, 102, 142, 104, 197, 123);
+      context.lineTo(190, 142);
+      context.bezierCurveTo(134, 128, 82, 129, 32, 148);
       context.closePath();
       context.fill();
       context.strokeStyle = '#3b2417';
@@ -1934,27 +1934,27 @@ export function createChapterSeven(): ChapterSevenData {
       context.lineWidth = 3;
       for (let twig = 0; twig < 18; twig += 1) {
         const x = 76 + (twig * 17) % 98;
-        const y = 91 + (twig * 11) % 28;
+        const y = 128 + (twig * 11) % 18;
         context.beginPath();
         context.moveTo(x - 30, y + 6);
         context.quadraticCurveTo(x, y - 12, x + 36, y + 4);
         context.stroke();
       }
 
-      const nestGradient = context.createRadialGradient(127, 111, 12, 127, 111, 62);
+      const nestGradient = context.createRadialGradient(127, 96, 12, 127, 96, 62);
       nestGradient.addColorStop(0, '#7a4f2f');
       nestGradient.addColorStop(0.64, '#4f301e');
       nestGradient.addColorStop(1, '#2f1c12');
       context.fillStyle = nestGradient;
       context.beginPath();
-      context.ellipse(127, 113, 62, 25, -0.04, 0, Math.PI * 2);
+      context.ellipse(127, 98, 62, 25, -0.04, 0, Math.PI * 2);
       context.fill();
 
       context.strokeStyle = '#8b6038';
       context.lineWidth = 3;
       for (let twig = 0; twig < 16; twig += 1) {
         const x = 80 + (twig * 19) % 92;
-        const y = 105 + (twig * 13) % 18;
+        const y = 90 + (twig * 13) % 18;
         context.beginPath();
         context.moveTo(x - 20, y + 4);
         context.quadraticCurveTo(x + 10, y - 11, x + 34, y + 2);
@@ -1964,7 +1964,7 @@ export function createChapterSeven(): ChapterSevenData {
       context.fillStyle = '#efe5c3';
       context.strokeStyle = '#a99c7c';
       context.lineWidth = 2;
-      [[112, 103, -0.18], [130, 101, 0.12], [146, 105, 0.22]].forEach(([eggX, eggY, rotation]) => {
+      [[112, 88, -0.18], [130, 86, 0.12], [146, 90, 0.22]].forEach(([eggX, eggY, rotation]) => {
         context.beginPath();
         context.ellipse(eggX, eggY, 9, 13, rotation, 0, Math.PI * 2);
         context.fill();
@@ -2024,7 +2024,7 @@ export function createChapterSeven(): ChapterSevenData {
         context.restore();
       };
 
-      drawBird(176, 89);
+      drawBird(176, 74);
 
       context.strokeStyle = 'rgba(255,255,255,0.55)';
       context.lineWidth = 7;
