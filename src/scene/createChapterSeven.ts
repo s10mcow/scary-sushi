@@ -1305,6 +1305,137 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
   const oceanDolphinPortraitMaterial = createOceanDolphinPictureMaterial();
+  const createPigPenPictureMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const skyGradient = context.createLinearGradient(0, 0, 0, 82);
+      skyGradient.addColorStop(0, '#9fd1f5');
+      skyGradient.addColorStop(1, '#e6f4ff');
+      context.fillStyle = skyGradient;
+      context.fillRect(0, 0, canvas.width, 80);
+
+      context.fillStyle = '#e7d27d';
+      context.beginPath();
+      context.arc(218, 34, 18, 0, Math.PI * 2);
+      context.fill();
+
+      context.fillStyle = '#78a95b';
+      context.fillRect(0, 76, canvas.width, 100);
+      context.fillStyle = '#5e8f45';
+      for (let blade = 0; blade < 90; blade += 1) {
+        const x = (blade * 37) % canvas.width;
+        const y = 78 + ((blade * 19) % 34);
+        context.fillRect(x, y, 2, 7);
+      }
+
+      context.fillStyle = '#8a5a31';
+      for (let post = 0; post < 7; post += 1) {
+        const x = 18 + post * 36;
+        context.fillRect(x, 70, 7, 72);
+      }
+      context.fillRect(10, 84, canvas.width - 20, 8);
+      context.fillRect(10, 118, canvas.width - 20, 8);
+
+      const mudGradient = context.createRadialGradient(130, 132, 12, 130, 132, 96);
+      mudGradient.addColorStop(0, '#7b4b2d');
+      mudGradient.addColorStop(0.62, '#5f351f');
+      mudGradient.addColorStop(1, '#3f2216');
+      context.fillStyle = mudGradient;
+      context.beginPath();
+      context.ellipse(128, 134, 92, 34, -0.03, 0, Math.PI * 2);
+      context.fill();
+
+      context.strokeStyle = 'rgba(195, 126, 72, 0.45)';
+      context.lineWidth = 3;
+      [92, 128, 166, 202].forEach((x, index) => {
+        context.beginPath();
+        context.ellipse(x, 132 + (index % 2) * 8, 24, 7, 0.14, 0, Math.PI * 2);
+        context.stroke();
+      });
+
+      const drawPig = (x: number, y: number, scale: number, flip = 1, muddy = false): void => {
+        context.save();
+        context.translate(x, y);
+        context.scale(scale * flip, scale);
+        context.fillStyle = '#e99aa4';
+        context.strokeStyle = '#9b5660';
+        context.lineWidth = 2.4;
+        context.beginPath();
+        context.ellipse(0, 0, 28, 16, 0, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+        context.beginPath();
+        context.ellipse(24, -3, 14, 12, 0, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+        context.fillStyle = '#d97986';
+        context.beginPath();
+        context.ellipse(34, -2, 7, 5, 0, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#563428';
+        context.beginPath();
+        context.arc(32, -3, 1.5, 0, Math.PI * 2);
+        context.arc(37, -2, 1.5, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#f3b2bb';
+        [[16, -13], [29, -13]].forEach(([earX, earY]) => {
+          context.beginPath();
+          context.moveTo(earX, earY);
+          context.lineTo(earX + 8, earY - 12);
+          context.lineTo(earX + 11, earY + 1);
+          context.closePath();
+          context.fill();
+          context.stroke();
+        });
+        context.fillStyle = '#241815';
+        context.beginPath();
+        context.arc(27, -8, 2, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = '#9b5660';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(-28, -1, 7, -Math.PI * 0.2, Math.PI * 1.35);
+        context.stroke();
+        context.fillStyle = '#b57550';
+        if (muddy) {
+          [[-8, 2, 7], [10, -5, 5], [23, 5, 4]].forEach(([spotX, spotY, radius]) => {
+            context.beginPath();
+            context.arc(spotX, spotY, radius, 0, Math.PI * 2);
+            context.fill();
+          });
+        }
+        context.restore();
+      };
+
+      drawPig(86, 123, 0.78, 1, true);
+      drawPig(148, 116, 0.62, -1, true);
+      drawPig(188, 137, 0.55, 1, true);
+
+      context.fillStyle = 'rgba(77, 45, 24, 0.32)';
+      context.beginPath();
+      context.ellipse(84, 147, 24, 6, 0, 0, Math.PI * 2);
+      context.ellipse(148, 140, 20, 5, 0, 0, Math.PI * 2);
+      context.ellipse(188, 155, 18, 5, 0, 0, Math.PI * 2);
+      context.fill();
+
+      context.strokeStyle = 'rgba(255,255,255,0.55)';
+      context.lineWidth = 7;
+      context.strokeRect(15, 12, canvas.width - 30, canvas.height - 24);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  };
+  const pigPenPortraitMaterial = createPigPenPictureMaterial();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -5541,6 +5672,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1217.94 - CENTER_X, 2.03, 92.24 - HOUSE_CENTER_Z, -1, babyPortraitMaterial);
   addSidePictureFrame(1218.56 - CENTER_X, 2.15, 86.42 - HOUSE_CENTER_Z, 1, squirrelPortraitMaterial);
   addSidePictureFrame(1217.94 - CENTER_X, 2.53, 83.16 - HOUSE_CENTER_Z, -1, oceanDolphinPortraitMaterial);
+  addSidePictureFrame(1235.69 - CENTER_X, 2.18, 77.96 - HOUSE_CENTER_Z, -1, pigPenPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
