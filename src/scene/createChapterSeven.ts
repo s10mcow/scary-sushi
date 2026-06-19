@@ -5907,7 +5907,7 @@ export function createChapterSeven(): ChapterSevenData {
             drop.scale.setScalar(0.58 + Math.abs(pulse) * 0.32);
           });
           fixture.waterFillAmount = Math.min(
-            1,
+            0.78,
             Math.max(
               fixture.waterFillAmount ?? 0,
               (fixture.waterFillAmount ?? 0) + (fixture.targetOpenAmount > 0.5 ? deltaSeconds * 0.045 : 0),
