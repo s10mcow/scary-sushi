@@ -1871,6 +1871,176 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
   const chickenCoopPortraitMaterial = createChickenCoopPictureMaterial();
+  const createBirdNestPictureMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const skyGradient = context.createLinearGradient(0, 0, 0, canvas.height);
+      skyGradient.addColorStop(0, '#8bc8ef');
+      skyGradient.addColorStop(0.52, '#dff4ff');
+      skyGradient.addColorStop(1, '#7aa95a');
+      context.fillStyle = skyGradient;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.fillStyle = 'rgba(255,255,255,0.78)';
+      [[52, 35, 24, 8], [84, 39, 32, 10], [174, 30, 30, 8]].forEach(([x, y, rx, ry]) => {
+        context.beginPath();
+        context.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        context.fill();
+      });
+
+      const barkGradient = context.createLinearGradient(22, 20, 96, 176);
+      barkGradient.addColorStop(0, '#8a5a34');
+      barkGradient.addColorStop(0.48, '#5e3924');
+      barkGradient.addColorStop(1, '#3f2618');
+      context.fillStyle = barkGradient;
+      context.beginPath();
+      context.moveTo(42, 0);
+      context.bezierCurveTo(72, 36, 46, 78, 70, 176);
+      context.lineTo(0, 176);
+      context.lineTo(0, 0);
+      context.closePath();
+      context.fill();
+
+      context.strokeStyle = '#2b190f';
+      context.lineWidth = 3;
+      [18, 36, 54].forEach((x, index) => {
+        context.beginPath();
+        context.moveTo(x, 8);
+        context.bezierCurveTo(x + 14, 44, x - 8, 82, x + 8, 168);
+        context.stroke();
+        if (index === 1) {
+          context.beginPath();
+          context.ellipse(x + 5, 86, 9, 20, 0.28, 0, Math.PI * 2);
+          context.stroke();
+        }
+      });
+
+      context.fillStyle = '#6a4228';
+      context.beginPath();
+      context.moveTo(43, 83);
+      context.bezierCurveTo(94, 65, 139, 67, 189, 84);
+      context.lineTo(185, 102);
+      context.bezierCurveTo(129, 89, 84, 91, 38, 110);
+      context.closePath();
+      context.fill();
+      context.strokeStyle = '#3b2417';
+      context.lineWidth = 4;
+      context.stroke();
+
+      context.strokeStyle = '#57351f';
+      context.lineWidth = 3;
+      for (let twig = 0; twig < 18; twig += 1) {
+        const x = 76 + (twig * 17) % 98;
+        const y = 91 + (twig * 11) % 28;
+        context.beginPath();
+        context.moveTo(x - 30, y + 6);
+        context.quadraticCurveTo(x, y - 12, x + 36, y + 4);
+        context.stroke();
+      }
+
+      const nestGradient = context.createRadialGradient(127, 111, 12, 127, 111, 62);
+      nestGradient.addColorStop(0, '#7a4f2f');
+      nestGradient.addColorStop(0.64, '#4f301e');
+      nestGradient.addColorStop(1, '#2f1c12');
+      context.fillStyle = nestGradient;
+      context.beginPath();
+      context.ellipse(127, 113, 62, 25, -0.04, 0, Math.PI * 2);
+      context.fill();
+
+      context.strokeStyle = '#8b6038';
+      context.lineWidth = 3;
+      for (let twig = 0; twig < 16; twig += 1) {
+        const x = 80 + (twig * 19) % 92;
+        const y = 105 + (twig * 13) % 18;
+        context.beginPath();
+        context.moveTo(x - 20, y + 4);
+        context.quadraticCurveTo(x + 10, y - 11, x + 34, y + 2);
+        context.stroke();
+      }
+
+      context.fillStyle = '#efe5c3';
+      context.strokeStyle = '#a99c7c';
+      context.lineWidth = 2;
+      [[112, 103, -0.18], [130, 101, 0.12], [146, 105, 0.22]].forEach(([eggX, eggY, rotation]) => {
+        context.beginPath();
+        context.ellipse(eggX, eggY, 9, 13, rotation, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+      });
+
+      const drawBird = (x: number, y: number): void => {
+        context.save();
+        context.translate(x, y);
+        context.fillStyle = '#4d7fa8';
+        context.strokeStyle = '#1e3548';
+        context.lineWidth = 2.5;
+        context.beginPath();
+        context.ellipse(0, 10, 24, 18, -0.15, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+        context.fillStyle = '#5f9bc8';
+        context.beginPath();
+        context.ellipse(-7, 12, 13, 9, -0.42, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = '#4d7fa8';
+        context.beginPath();
+        context.ellipse(19, -4, 13, 12, 0, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+
+        context.fillStyle = '#e49c2a';
+        context.beginPath();
+        context.moveTo(31, -5);
+        context.lineTo(45, 0);
+        context.lineTo(31, 5);
+        context.closePath();
+        context.fill();
+
+        context.fillStyle = '#111820';
+        context.beginPath();
+        context.arc(23, -8, 2.5, 0, Math.PI * 2);
+        context.fill();
+
+        context.fillStyle = '#274b68';
+        context.beginPath();
+        context.moveTo(-21, 8);
+        context.lineTo(-43, -2);
+        context.lineTo(-34, 18);
+        context.closePath();
+        context.fill();
+
+        context.strokeStyle = '#6b3d1e';
+        context.lineWidth = 2.2;
+        context.beginPath();
+        context.moveTo(-4, 27);
+        context.lineTo(-8, 39);
+        context.moveTo(7, 27);
+        context.lineTo(10, 39);
+        context.stroke();
+        context.restore();
+      };
+
+      drawBird(176, 89);
+
+      context.strokeStyle = 'rgba(255,255,255,0.55)';
+      context.lineWidth = 7;
+      context.strokeRect(15, 12, canvas.width - 30, canvas.height - 24);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  };
+  const birdNestPortraitMaterial = createBirdNestPictureMaterial();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -6113,6 +6283,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1201.49 - CENTER_X, 2.19, 55.46 - HOUSE_CENTER_Z, 1, dogOceanPortraitMaterial);
   addSidePictureFrame(1217.07 - CENTER_X, 2.05, 57.28 - HOUSE_CENTER_Z, -1, horsePasturePortraitMaterial);
   addSidePictureFrame(1215.49 - CENTER_X, 2.3, 66.62 - HOUSE_CENTER_Z, -1, chickenCoopPortraitMaterial);
+  addSidePictureFrame(1235.69 - CENTER_X, 1.95, 94.79 - HOUSE_CENTER_Z, -1, birdNestPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
