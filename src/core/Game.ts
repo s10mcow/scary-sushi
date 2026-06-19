@@ -947,6 +947,7 @@ const CHAPTER_THREE_HUD_SYNC_INTERVAL = 1 / 8;
 type ChapterSevenInteractable =
   | { kind: 'cupboard'; item: ChapterSevenData['houseUpperCupboards'][number]; score: number }
   | { kind: 'drawer'; item: ChapterSevenData['houseDrawers'][number]; score: number }
+  | { kind: 'cookie'; item: ChapterSevenData['cookies'][number]; score: number }
   | { kind: 'fridge'; item: ChapterSevenData['houseFridge']; score: number }
   | { kind: 'old-wooden-closet'; item: ChapterSevenData['oldWoodenClosets'][number]; score: number }
   | { kind: 'cardboard-box'; item: ChapterSevenData['cardboardBox']; score: number }
@@ -12896,6 +12897,17 @@ export class Game {
         return;
       }
 
+      if (interactable?.kind === 'cookie') {
+        const cookie = interactable.item;
+        cookie.collected = true;
+        cookie.root.visible = false;
+        cookie.drawer.cookieCount = Math.max(0, cookie.drawer.cookieCount - 1);
+        this.chapterSevenCookieCount += 1;
+        this.pushStatus(`You picked up a cookie. Cookies: ${this.chapterSevenCookieCount}.`, 2.2);
+        this.syncHud();
+        return;
+      }
+
       if (interactable?.kind === 'drawer') {
         const drawer = interactable.item;
         drawer.targetOpenAmount = drawer.targetOpenAmount > 0.5 ? 0 : 1;
@@ -17250,6 +17262,10 @@ export class Game {
             : `Press E to open ${interactable.item.label}.`;
         }
 
+        if (interactable.kind === 'cookie') {
+          return 'Press E to grab the cookie.';
+        }
+
         if (interactable.kind === 'cardboard-box') {
           return interactable.item.open
             ? 'Hold Space for 2 seconds to crawl, then press Space to jump inside the open box. Press E inside it to close the flaps.'
@@ -18119,6 +18135,10 @@ export class Game {
                 ? ' There is one cookie inside.'
                 : ` There are ${interactable.item.cookieCount} cookies inside.`}`
             : `${interactable.item.label} is closed. Press E to open it.`;
+        }
+
+        if (interactable.kind === 'cookie') {
+          return 'Cookie in reach. Press E to grab it.';
         }
 
         if (interactable.kind === 'cardboard-box') {
@@ -21658,6 +21678,19 @@ export class Game {
         : this.getChapterSevenLookScore(fixture, 0.62, 1.15);
       if (fixtureScore !== null) {
         keepBest({ kind: 'rear-fixture', item: fixture, score: fixtureScore });
+      }
+    });
+
+    this.chapterSeven.cookies.forEach((cookie) => {
+      if (cookie.collected || !cookie.drawer.open || cookie.drawer.openAmount < 0.58) {
+        return;
+      }
+
+      cookie.root.getWorldPosition(cookie.aimPosition);
+      cookie.interactPosition.copy(cookie.aimPosition);
+      const cookieScore = this.getChapterSevenLookScore(cookie, 0.19, 0.82);
+      if (cookieScore !== null) {
+        keepBest({ kind: 'cookie', item: cookie, score: cookieScore });
       }
     });
 

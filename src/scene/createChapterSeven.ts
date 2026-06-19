@@ -35,6 +35,7 @@ export interface ChapterSevenData {
   houseDoors: ChapterSevenHouseDoor[];
   houseDrawer: ChapterSevenDrawer;
   houseDrawers: ChapterSevenDrawerSlide[];
+  cookies: ChapterSevenCookiePickup[];
   houseFridge: ChapterSevenFridge;
   houseUpperCupboard: ChapterSevenCupboard;
   houseUpperCupboards: ChapterSevenCupboard[];
@@ -88,12 +89,22 @@ export interface ChapterSevenDrawerSlide {
   interactPosition: Vector3;
   aimPosition: Vector3;
   cookieCount: number;
+  cookies: ChapterSevenCookiePickup[];
   root: Group;
   closedZ: number;
   openZ: number;
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
+}
+
+export interface ChapterSevenCookiePickup {
+  label: string;
+  root: Group;
+  drawer: ChapterSevenDrawerSlide;
+  interactPosition: Vector3;
+  aimPosition: Vector3;
+  collected: boolean;
 }
 
 interface ChapterSevenCounterSurface {
@@ -2850,6 +2861,8 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
+  const cookiePickups: ChapterSevenCookiePickup[] = [];
+
   const addDrawer = (localX: number, localZ: number, rotationY = 0, label = 'Small Drawer'): ChapterSevenDrawer => {
     const drawer = new Group();
     drawer.position.set(localX, 0, localZ);
@@ -2916,10 +2929,12 @@ export function createChapterSeven(): ChapterSevenData {
       const cookieRoll = Math.sin((localX + 31.17) * 8.731 + (localZ - 11.42) * 5.913 + label.length * 1.37 + index * 2.81) * 43758.5453;
       const cookieNormalized = cookieRoll - Math.floor(cookieRoll);
       const cookieCount = cookieNormalized < 0.36 ? 0 : cookieNormalized < 0.74 ? 1 : 2;
+      const slideCookies: ChapterSevenCookiePickup[] = [];
       for (let cookieIndex = 0; cookieIndex < cookieCount; cookieIndex += 1) {
         const side = cookieCount === 1 ? 0 : cookieIndex === 0 ? -1 : 1;
+        const cookieRoot = new Group();
+        cookieRoot.position.set(side * 0.34, -0.09, 0.05 + cookieIndex * 0.12);
         const cookie = new Mesh(new CylinderGeometry(0.15, 0.15, 0.045, 18), cookieMaterial);
-        cookie.position.set(side * 0.34, -0.09, 0.05 + cookieIndex * 0.12);
         const chipOffsets = [
           [-0.045, 0.018],
           [0.04, -0.025],
@@ -2927,15 +2942,26 @@ export function createChapterSeven(): ChapterSevenData {
         ];
         chipOffsets.forEach(([chipX, chipZ]) => {
           const chip = new Mesh(new SphereGeometry(0.018, 8, 6), chocolateChipMaterial);
-          chip.position.set(cookie.position.x + chipX, -0.055, cookie.position.z + chipZ);
+          chip.position.set(chipX, 0.035, chipZ);
           chip.scale.y = 0.42;
-          slide.add(chip);
+          cookieRoot.add(chip);
         });
-        slide.add(cookie);
+        cookieRoot.add(cookie);
+        slide.add(cookieRoot);
+        const cookiePickup = {
+          label: `${label} ${index === 0 ? 'bottom' : index === 1 ? 'middle' : 'top'} drawer cookie`,
+          root: cookieRoot,
+          drawer: undefined as unknown as ChapterSevenDrawerSlide,
+          interactPosition: new Vector3(),
+          aimPosition: new Vector3(),
+          collected: false,
+        };
+        slideCookies.push(cookiePickup);
+        cookiePickups.push(cookiePickup);
       }
       drawer.add(slide);
       const worldY = drawerY * drawer.scale.y;
-      return {
+      const drawerSlide: ChapterSevenDrawerSlide = {
         label: `${label} ${index === 0 ? 'bottom' : index === 1 ? 'middle' : 'top'} drawer`,
         interactPosition: new Vector3(frontWorldX, GAME_CONFIG.player.height, frontWorldZ),
         aimPosition: new Vector3(
@@ -2944,6 +2970,7 @@ export function createChapterSeven(): ChapterSevenData {
           worldZ + frontDirection.z * 0.68,
         ),
         cookieCount,
+        cookies: slideCookies,
         root: slide,
         closedZ: 0,
         openZ: 0.72 + index * 0.06,
@@ -2951,6 +2978,10 @@ export function createChapterSeven(): ChapterSevenData {
         openAmount: 0,
         targetOpenAmount: 0,
       };
+      slideCookies.forEach((cookie) => {
+        cookie.drawer = drawerSlide;
+      });
+      return drawerSlide;
     });
 
     house.add(drawer);
@@ -5296,6 +5327,7 @@ export function createChapterSeven(): ChapterSevenData {
     houseDoors,
     houseDrawer,
     houseDrawers,
+    cookies: cookiePickups,
     houseFridge,
     houseUpperCupboard,
     houseUpperCupboards,
@@ -5722,7 +5754,12 @@ export function createChapterSeven(): ChapterSevenData {
         drawer.open = false;
         drawer.openAmount = 0;
         drawer.targetOpenAmount = 0;
+        drawer.cookieCount = drawer.cookies.length;
         drawer.root.position.z = drawer.closedZ;
+      });
+      cookiePickups.forEach((cookie) => {
+        cookie.collected = false;
+        cookie.root.visible = true;
       });
       bedSurfaces.forEach((surface) => {
         surface.collider.enabled = true;
