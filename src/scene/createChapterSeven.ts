@@ -1958,10 +1958,9 @@ export function createChapterSeven(): ChapterSevenData {
   };
 
   const addColorfulRug = (localX: number, localZ: number, rotationY = 0, width = 5.2, depth = 3.4): void => {
-    const rug = new Mesh(new PlaneGeometry(width, depth), colorfulRugMaterial);
-    rug.rotation.x = -Math.PI / 2;
-    rug.rotation.z = rotationY;
-    rug.position.set(localX, 0.245, localZ);
+    const rug = new Mesh(new BoxGeometry(width, 0.055, depth), colorfulRugMaterial);
+    rug.rotation.y = rotationY;
+    rug.position.set(localX, 0.255, localZ);
     house.add(rug);
   };
 
