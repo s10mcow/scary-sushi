@@ -1519,8 +1519,11 @@ export function createChapterSeven(): ChapterSevenData {
 
         context.fillStyle = '#8b562e';
         context.beginPath();
-        context.ellipse(21, -2, 8, 18, -0.42, 0, Math.PI * 2);
-        context.ellipse(43, -4, 8, 18, 0.35, 0, Math.PI * 2);
+        context.moveTo(34, -12);
+        context.quadraticCurveTo(23, -10, 22, 2);
+        context.quadraticCurveTo(21, 15, 32, 16);
+        context.quadraticCurveTo(42, 9, 39, -4);
+        context.quadraticCurveTo(38, -9, 34, -12);
         context.fill();
         context.stroke();
 
