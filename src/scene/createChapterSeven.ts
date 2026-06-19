@@ -6086,6 +6086,13 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_WALL_THICKNESS,
     20,
   );
+  const bigTableDividerLength = 16;
+  addHouseWall(
+    1235.69 - CENTER_X - bigTableDividerLength / 2,
+    79.96 - HOUSE_CENTER_Z,
+    bigTableDividerLength,
+    HOUSE_INTERIOR_WALL_THICKNESS,
+  );
   addWallWindow(
     frontRightWindowX,
     HOUSE_DEPTH / 2 - HOUSE_WALL_THICKNESS / 2 - 0.04,
@@ -6322,7 +6329,6 @@ export function createChapterSeven(): ChapterSevenData {
     addHoseFaucetFixture(1236.31 - CENTER_X, 1.16, 68.92 - HOUSE_CENTER_Z),
     addMiniLampTableFixture(1203.97 - CENTER_X, 63.15 - HOUSE_CENTER_Z),
     addMiniLampTableFixture(1199.83 - CENTER_X, 73.86 - HOUSE_CENTER_Z),
-    addMiniLampTableFixture(1219.78 - CENTER_X, 81.95 - HOUSE_CENTER_Z),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 0.3, 'washing-machine', rearRoomLaundryRotation),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
