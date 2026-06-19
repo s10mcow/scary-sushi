@@ -432,6 +432,20 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.9,
     metalness: 0.02,
   });
+  const houseFloorMaterial = new MeshStandardMaterial({
+    color: 0x7d5f40,
+    emissive: 0x170d06,
+    emissiveIntensity: 0.045,
+    roughness: 0.92,
+    metalness: 0.02,
+  });
+  const houseFloorGrooveMaterial = new MeshStandardMaterial({
+    color: 0x4b3525,
+    emissive: 0x0b0503,
+    emissiveIntensity: 0.04,
+    roughness: 0.94,
+    metalness: 0.01,
+  });
   const whiteFenceMaterial = new MeshStandardMaterial({
     color: 0xf3f3ee,
     emissive: 0x181814,
@@ -1366,8 +1380,25 @@ export function createChapterSeven(): ChapterSevenData {
   house.name = 'Chapter 7 Big Clearing House';
   house.position.set(CENTER_X, 0, HOUSE_CENTER_Z);
 
-  const floor = new Mesh(new BoxGeometry(HOUSE_WIDTH + 1.2, 0.16, HOUSE_DEPTH + 1.2), houseTrimMaterial);
-  floor.position.y = 0.08;
+  const createHousePlankFloor = (width: number, depth: number, centerX: number, centerZ: number): Group => {
+    const floorGroup = new Group();
+    const base = new Mesh(new BoxGeometry(width, 0.16, depth), houseFloorMaterial);
+    base.position.set(centerX, 0.08, centerZ);
+    floorGroup.add(base);
+
+    const plankSpacing = 0.72;
+    const plankCount = Math.max(2, Math.floor(width / plankSpacing));
+    for (let index = 1; index < plankCount; index += 1) {
+      const localX = centerX - width / 2 + index * (width / plankCount);
+      const groove = new Mesh(new BoxGeometry(0.035, 0.022, depth - 0.16), houseFloorGrooveMaterial);
+      groove.position.set(localX, 0.175, centerZ);
+      floorGroup.add(groove);
+    }
+
+    return floorGroup;
+  };
+
+  const floor = createHousePlankFloor(HOUSE_WIDTH + 1.2, HOUSE_DEPTH + 1.2, 0, 0);
   house.add(floor);
 
   const addHouseWall = (localX: number, localZ: number, width: number, depth: number, height = HOUSE_HEIGHT): void => {
@@ -4650,11 +4681,12 @@ export function createChapterSeven(): ChapterSevenData {
   );
   const rearRoomCenterZ = HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH / 2;
   const rearRoomBackZ = HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH;
-  const rearRoomFloor = new Mesh(
-    new BoxGeometry(HOUSE_REAR_ROOM_WIDTH + 0.8, 0.16, HOUSE_REAR_ROOM_DEPTH + 0.8),
-    houseTrimMaterial,
+  const rearRoomFloor = createHousePlankFloor(
+    HOUSE_REAR_ROOM_WIDTH + 0.8,
+    HOUSE_REAR_ROOM_DEPTH + 0.8,
+    HOUSE_REAR_ROOM_DOOR_X,
+    rearRoomCenterZ,
   );
-  rearRoomFloor.position.set(HOUSE_REAR_ROOM_DOOR_X, 0.08, rearRoomCenterZ);
   house.add(rearRoomFloor);
   const rearRoomCeiling = new Mesh(
     new BoxGeometry(HOUSE_REAR_ROOM_WIDTH + HOUSE_WALL_THICKNESS, 0.22, HOUSE_REAR_ROOM_DEPTH + HOUSE_WALL_THICKNESS),
