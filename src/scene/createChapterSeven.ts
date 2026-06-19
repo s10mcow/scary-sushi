@@ -1580,6 +1580,151 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
   const dogOceanPortraitMaterial = createDogOceanPictureMaterial();
+  const createHorsePasturePictureMaterial = (): MeshStandardMaterial => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 176;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const skyGradient = context.createLinearGradient(0, 0, 0, 84);
+      skyGradient.addColorStop(0, '#75b7eb');
+      skyGradient.addColorStop(1, '#e3f5ff');
+      context.fillStyle = skyGradient;
+      context.fillRect(0, 0, canvas.width, 86);
+
+      context.fillStyle = '#fff0a8';
+      context.beginPath();
+      context.arc(214, 32, 17, 0, Math.PI * 2);
+      context.fill();
+
+      context.fillStyle = 'rgba(255,255,255,0.82)';
+      [[48, 38, 25, 9], [76, 36, 30, 8], [148, 45, 34, 10], [182, 43, 24, 8]].forEach(([x, y, rx, ry]) => {
+        context.beginPath();
+        context.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        context.fill();
+      });
+
+      const grassGradient = context.createLinearGradient(0, 76, 0, canvas.height);
+      grassGradient.addColorStop(0, '#83b957');
+      grassGradient.addColorStop(0.56, '#5d963f');
+      grassGradient.addColorStop(1, '#3f6d2d');
+      context.fillStyle = grassGradient;
+      context.fillRect(0, 76, canvas.width, canvas.height - 76);
+
+      context.fillStyle = '#6e4828';
+      for (let post = 0; post < 7; post += 1) {
+        const x = 15 + post * 38;
+        context.fillRect(x, 72, 6, 66);
+      }
+      context.fillRect(8, 88, canvas.width - 16, 7);
+      context.fillRect(8, 119, canvas.width - 16, 7);
+
+      context.strokeStyle = 'rgba(237, 251, 213, 0.55)';
+      context.lineWidth = 1.6;
+      for (let blade = 0; blade < 110; blade += 1) {
+        const x = (blade * 31) % canvas.width;
+        const y = 96 + ((blade * 17) % 72);
+        context.beginPath();
+        context.moveTo(x, y);
+        context.quadraticCurveTo(x + 2, y - 6, x + 5, y - 10);
+        context.stroke();
+      }
+
+      const drawHorse = (x: number, y: number, scale: number, coat: string, mane: string, flip = 1): void => {
+        context.save();
+        context.translate(x, y);
+        context.scale(scale * flip, scale);
+        context.fillStyle = coat;
+        context.strokeStyle = '#3b2417';
+        context.lineWidth = 2.5;
+
+        context.beginPath();
+        context.ellipse(0, 0, 34, 17, -0.04, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+
+        context.strokeStyle = '#4c2f1d';
+        context.lineWidth = 7;
+        [[-21, 12, -27, 36], [-7, 13, -8, 38], [13, 13, 11, 38], [26, 10, 29, 34]].forEach(([legX, legY, hoofX, hoofY]) => {
+          context.beginPath();
+          context.moveTo(legX, legY);
+          context.lineTo(hoofX, hoofY);
+          context.stroke();
+        });
+
+        context.strokeStyle = coat;
+        context.lineWidth = 11;
+        context.beginPath();
+        context.moveTo(27, -4);
+        context.quadraticCurveTo(44, 4, 49, 24);
+        context.stroke();
+
+        context.fillStyle = coat;
+        context.strokeStyle = '#3b2417';
+        context.lineWidth = 2.3;
+        context.beginPath();
+        context.ellipse(51, 27, 15, 10, 0.3, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+
+        context.fillStyle = mane;
+        context.beginPath();
+        context.moveTo(23, -13);
+        context.quadraticCurveTo(39, -9, 43, 11);
+        context.quadraticCurveTo(36, 4, 27, -2);
+        context.closePath();
+        context.fill();
+
+        context.fillStyle = coat;
+        [[42, 18], [54, 18]].forEach(([earX, earY]) => {
+          context.beginPath();
+          context.moveTo(earX, earY);
+          context.lineTo(earX + 5, earY - 12);
+          context.lineTo(earX + 9, earY);
+          context.closePath();
+          context.fill();
+          context.stroke();
+        });
+
+        context.fillStyle = '#17110d';
+        context.beginPath();
+        context.arc(57, 24, 2.2, 0, Math.PI * 2);
+        context.fill();
+
+        context.strokeStyle = mane;
+        context.lineWidth = 4;
+        context.beginPath();
+        context.moveTo(-31, -1);
+        context.quadraticCurveTo(-52, -10, -50, -24);
+        context.stroke();
+
+        context.strokeStyle = '#292018';
+        context.lineWidth = 3;
+        context.beginPath();
+        context.moveTo(46, 36);
+        context.quadraticCurveTo(56, 42, 68, 38);
+        context.stroke();
+        context.restore();
+      };
+
+      drawHorse(74, 121, 0.82, '#8d5630', '#2c1b13', 1);
+      drawHorse(167, 113, 0.72, '#d7b07b', '#5c3a24', -1);
+
+      context.strokeStyle = 'rgba(255,255,255,0.55)';
+      context.lineWidth = 7;
+      context.strokeRect(15, 12, canvas.width - 30, canvas.height - 24);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.68,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  };
+  const horsePasturePortraitMaterial = createHorsePasturePictureMaterial();
   const bookMaterials = [
     new MeshStandardMaterial({ color: 0x2e5f9e, roughness: 0.74, metalness: 0.02 }),
     new MeshStandardMaterial({ color: 0x8d2f2f, roughness: 0.78, metalness: 0.02 }),
@@ -5818,6 +5963,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1217.94 - CENTER_X, 2.53, 83.16 - HOUSE_CENTER_Z, -1, oceanDolphinPortraitMaterial);
   addSidePictureFrame(1235.69 - CENTER_X, 2.18, 77.96 - HOUSE_CENTER_Z, -1, pigPenPortraitMaterial);
   addSidePictureFrame(1201.49 - CENTER_X, 2.19, 55.46 - HOUSE_CENTER_Z, 1, dogOceanPortraitMaterial);
+  addSidePictureFrame(1217.07 - CENTER_X, 2.05, 57.28 - HOUSE_CENTER_Z, -1, horsePasturePortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
