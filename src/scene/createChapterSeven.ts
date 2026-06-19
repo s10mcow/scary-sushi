@@ -657,6 +657,73 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
   const welcomeMatMaterial = createWelcomeMatMaterial();
+  const createHomeSweetHomeSignMaterial = (): MeshStandardMaterial => {
+    if (typeof document === 'undefined') {
+      return new MeshStandardMaterial({
+        color: 0x8a5832,
+        roughness: 0.86,
+        metalness: 0.01,
+      });
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#a66f3f');
+      gradient.addColorStop(0.52, '#8b5831');
+      gradient.addColorStop(1, '#6f4328');
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.fillStyle = 'rgba(74, 42, 22, 0.28)';
+      for (let stripe = 0; stripe < 12; stripe += 1) {
+        context.fillRect(0, stripe * 24 + 8, canvas.width, 5);
+      }
+
+      context.strokeStyle = '#3f2415';
+      context.lineWidth = 14;
+      context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+      context.strokeStyle = '#d8b277';
+      context.lineWidth = 5;
+      context.strokeRect(36, 36, canvas.width - 72, canvas.height - 72);
+
+      context.fillStyle = '#f9e5b9';
+      context.font = 'bold 54px Georgia';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('Home', canvas.width / 2, 82);
+      context.font = 'bold 44px Georgia';
+      context.fillText('Sweet Home', canvas.width / 2, 142);
+
+      context.strokeStyle = '#f1d799';
+      context.lineWidth = 6;
+      [[94, 82, 154, 58], [418, 82, 358, 58], [94, 168, 154, 192], [418, 168, 358, 192]].forEach(([x1, y1, x2, y2]) => {
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.bezierCurveTo((x1 + x2) / 2, y1 - 24, (x1 + x2) / 2, y2 + 24, x2, y2);
+        context.stroke();
+      });
+
+      context.fillStyle = '#f7d87b';
+      [[78, 56], [434, 56], [78, 198], [434, 198]].forEach(([x, y]) => {
+        context.beginPath();
+        context.arc(x, y, 9, 0, Math.PI * 2);
+        context.fill();
+      });
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      roughness: 0.84,
+      metalness: 0.01,
+    });
+  };
+  const homeSweetHomeSignMaterial = createHomeSweetHomeSignMaterial();
   const plantPotMaterial = new MeshStandardMaterial({
     color: 0x8b4a31,
     emissive: 0x160705,
@@ -1669,6 +1736,59 @@ export function createChapterSeven(): ChapterSevenData {
 
     frame.add(backing, portrait, top, bottom, left, right, innerTop, innerBottom, innerLeft, innerRight);
     house.add(frame);
+  };
+
+  const addHangingHomeSign = (
+    localX: number,
+    localY: number,
+    localZ: number,
+    normalZ: 1 | -1,
+  ): void => {
+    const sign = new Group();
+    sign.position.set(localX, localY, localZ + normalZ * 0.12);
+    if (normalZ < 0) {
+      sign.rotation.y = Math.PI;
+    }
+
+    const board = new Mesh(new BoxGeometry(2.85, 1.16, 0.08), furnitureWoodMaterial);
+    const face = new Mesh(new PlaneGeometry(2.62, 0.94), homeSweetHomeSignMaterial);
+    face.position.z = 0.052;
+    const topTrim = new Mesh(new BoxGeometry(2.92, 0.08, 0.1), houseTrimMaterial);
+    topTrim.position.y = 0.62;
+    const bottomTrim = topTrim.clone();
+    bottomTrim.position.y = -0.62;
+    const leftTrim = new Mesh(new BoxGeometry(0.08, 1.2, 0.1), houseTrimMaterial);
+    leftTrim.position.x = -1.46;
+    const rightTrim = leftTrim.clone();
+    rightTrim.position.x = 1.46;
+
+    const ropeMaterial = new MeshStandardMaterial({
+      color: 0x6f4a2d,
+      emissive: 0x090503,
+      emissiveIntensity: 0.04,
+      roughness: 0.9,
+      metalness: 0.01,
+    });
+    const leftRope = new Mesh(new CylinderGeometry(0.035, 0.035, 0.96, 10), ropeMaterial);
+    leftRope.position.set(-0.92, 0.96, 0.02);
+    leftRope.rotation.z = -0.5;
+    const rightRope = leftRope.clone();
+    rightRope.position.x = 0.92;
+    rightRope.rotation.z = 0.5;
+    const topLoop = new Mesh(new TorusGeometry(0.18, 0.025, 8, 22), ropeMaterial);
+    topLoop.position.set(0, 1.3, 0.03);
+    topLoop.rotation.x = Math.PI / 2;
+    const leftPeg = new Mesh(new CylinderGeometry(0.07, 0.07, 0.12, 12), houseTrimMaterial);
+    leftPeg.rotation.x = Math.PI / 2;
+    leftPeg.position.set(-0.72, 0.58, 0.09);
+    const rightPeg = leftPeg.clone();
+    rightPeg.position.x = 0.72;
+    const wallHook = new Mesh(new CylinderGeometry(0.065, 0.065, 0.16, 12), closetHandleMaterial);
+    wallHook.rotation.x = Math.PI / 2;
+    wallHook.position.set(0, 1.32, 0.1);
+
+    sign.add(board, face, topTrim, bottomTrim, leftTrim, rightTrim, leftRope, rightRope, topLoop, leftPeg, rightPeg, wallHook);
+    house.add(sign);
   };
 
   const createHouseDoor = (
@@ -3104,6 +3224,7 @@ export function createChapterSeven(): ChapterSevenData {
   };
 
   const cookiePickups: ChapterSevenCookiePickup[] = [];
+  let cookieReloadSeed = Math.random() * 100000;
 
   const addDrawer = (localX: number, localZ: number, rotationY = 0, label = 'Small Drawer'): ChapterSevenDrawer => {
     const drawer = new Group();
@@ -5232,6 +5353,7 @@ export function createChapterSeven(): ChapterSevenData {
   addPictureFrame(1193.33 - CENTER_X, 2.4, 84.23 - HOUSE_CENTER_Z, 1, dogPortraitMaterial);
   addPictureFrame(1197.89 - CENTER_X, 2.46, 83.77 - HOUSE_CENTER_Z, -1, catPortraitMaterial);
   addPictureFrame(1196.01 - CENTER_X, 2.66, 75.77 - HOUSE_CENTER_Z, -1, treePortraitMaterial);
+  addHangingHomeSign(1198.72 - CENTER_X, 2.09, 76.23 - HOUSE_CENTER_Z, 1);
   addSidePictureFrame(1217.94 - CENTER_X, 2.03, 92.24 - HOUSE_CENTER_Z, -1, babyPortraitMaterial);
   addSidePictureFrame(1218.56 - CENTER_X, 2.15, 86.42 - HOUSE_CENTER_Z, 1, squirrelPortraitMaterial);
   addSidePictureFrame(1217.94 - CENTER_X, 2.53, 83.16 - HOUSE_CENTER_Z, -1, oceanDolphinPortraitMaterial);
@@ -5314,12 +5436,26 @@ export function createChapterSeven(): ChapterSevenData {
   const houseCabinets = [...houseUpperCupboards, ...houseBaseCabinets];
   const refreshCookiesForDay = (day: number): void => {
     const cycle = Math.max(0, Math.floor((Math.max(1, Math.floor(day)) - 1) / 4));
-    cookiePickups.forEach((cookie, index) => {
-      const roll = Math.sin(cookie.shuffleSeed * 3.71 + cycle * 11.37 + index * 1.91) * 43758.5453;
+    const cookieRolls = cookiePickups.map((cookie, index) => {
+      const roll = Math.sin(cookie.shuffleSeed * 3.71 + cookieReloadSeed * 0.97 + cycle * 11.37 + index * 1.91) * 43758.5453;
       const normalized = roll - Math.floor(roll);
-      const isBathroomCupboardCookie = cookie.root.parent === bathroomUpperCupboard.doorPivots[0].parent;
-      const isEasyCookie = cookie.label.includes('easy cookie');
-      cookie.active = isEasyCookie || isBathroomCupboardCookie || normalized > 0.28;
+      return { cookie, normalized };
+    });
+    const minimumVisibleCookies = Math.min(cookieRolls.length, 14);
+    const activeCookies = new Set<ChapterSevenCookiePickup>();
+    cookieRolls.forEach(({ cookie, normalized }) => {
+      if (normalized > 0.48) {
+        activeCookies.add(cookie);
+      }
+    });
+    if (activeCookies.size < minimumVisibleCookies) {
+      [...cookieRolls]
+        .sort((a, b) => b.normalized - a.normalized)
+        .slice(0, minimumVisibleCookies)
+        .forEach(({ cookie }) => activeCookies.add(cookie));
+    }
+    cookiePickups.forEach((cookie) => {
+      cookie.active = activeCookies.has(cookie);
       cookie.collected = false;
       cookie.root.visible = cookie.active;
     });
@@ -6165,6 +6301,7 @@ export function createChapterSeven(): ChapterSevenData {
         drawer.targetOpenAmount = 0;
         drawer.root.position.z = drawer.closedZ;
       });
+      cookieReloadSeed = Math.random() * 100000;
       refreshCookiesForDay(1);
       bedSurfaces.forEach((surface) => {
         surface.collider.enabled = true;
