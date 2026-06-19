@@ -3798,7 +3798,7 @@ export function createChapterSeven(): ChapterSevenData {
     const drawer = new Group();
     drawer.position.set(localX, 0, localZ);
     drawer.rotation.y = rotationY;
-    drawer.scale.set(0.88, 0.92, 0.88);
+    drawer.scale.set(0.88, 0.74, 0.88);
 
     const back = new Mesh(new BoxGeometry(2.45, 2.22, 0.16), furnitureWoodMaterial);
     back.position.set(0, 1.18, -0.48);
