@@ -5360,7 +5360,7 @@ export function createChapterSeven(): ChapterSevenData {
     [9, -7],
     [HOUSE_REAR_ROOM_DOOR_X, HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH / 2],
   ].map(([localX, localZ]) => {
-    const interiorLight = new PointLight(0xffddb0, 0.72, 24, 1.45);
+    const interiorLight = new PointLight(0xffddb0, 0.18, 20, 1.5);
     interiorLight.position.set(localX, 4.25, localZ);
     house.add(interiorLight);
     return interiorLight;
@@ -5729,9 +5729,9 @@ export function createChapterSeven(): ChapterSevenData {
         nightBlend,
       );
       houseInteriorLights.forEach((interiorLight, index) => {
-        const warmPulse = Math.sin(forestTime * 0.82 + index * 1.7) * 0.08;
-        interiorLight.intensity = MathUtils.lerp(0.72, 3.35 + warmPulse, nightBlend);
-        interiorLight.distance = MathUtils.lerp(22, 31, nightBlend);
+        const warmPulse = Math.sin(forestTime * 0.82 + index * 1.7) * 0.025;
+        interiorLight.intensity = MathUtils.lerp(0.18, 1.15 + warmPulse, nightBlend);
+        interiorLight.distance = MathUtils.lerp(18, 24, nightBlend);
       });
       nightSky.visible = nightBlend > 0.02;
       nightSkyMaterials.forEach((material) => {
