@@ -2640,8 +2640,9 @@ select {
   right: 1rem;
   top: 50%;
   z-index: 3;
-  min-width: 8.4rem;
-  padding: 0.72rem 0.86rem;
+  width: min(18rem, calc(100% - 2rem));
+  min-width: 14rem;
+  padding: 1rem 1.12rem;
   opacity: 0;
   pointer-events: none;
   text-align: center;
@@ -2656,8 +2657,8 @@ select {
 .hud__chapter-seven-timer .hud__label {
   margin: 0;
   color: #8d431f;
-  font-size: 0.64rem;
-  letter-spacing: 0.15em;
+  font-size: 0.86rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
@@ -2666,9 +2667,9 @@ select {
 }
 
 .hud__chapter-seven-timer-value {
-  margin: 0.25rem 0 0;
+  margin: 0.4rem 0 0;
   color: #3e2a18;
-  font-size: 1.48rem;
+  font-size: 2.85rem;
   font-weight: 850;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -4961,7 +4962,8 @@ select {
     left: auto;
     right: 1rem;
     top: 48%;
-    width: min(8.4rem, calc(50% - 1.5rem));
+    width: min(14rem, calc(50% - 1.5rem));
+    min-width: 0;
   }
 
   .hud__story {
