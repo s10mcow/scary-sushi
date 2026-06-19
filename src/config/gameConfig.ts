@@ -14,7 +14,7 @@ export const GAME_CONFIG = {
     radius: 0.35,
     walkSpeed: 3.2,
     sprintSpeed: 5.1,
-    jumpVelocity: 9.6,
+    jumpVelocity: 5.25,
     gravity: 15.4,
     interactionRange: 1.85,
     staminaMax: 100,
