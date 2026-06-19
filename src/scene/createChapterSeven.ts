@@ -3495,6 +3495,63 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
 
+  const addSmallBathroomTrashCan = (localX: number, localZ: number, rotationY = 0): void => {
+    const trashCan = new Group();
+    trashCan.position.set(localX, 0, localZ);
+    trashCan.rotation.y = rotationY;
+
+    const canMaterial = new MeshStandardMaterial({
+      color: 0x8d9295,
+      emissive: 0x08090a,
+      emissiveIntensity: 0.035,
+      roughness: 0.62,
+      metalness: 0.18,
+      side: DoubleSide,
+    });
+    const darkCanMaterial = new MeshStandardMaterial({
+      color: 0x4a4f52,
+      emissive: 0x030404,
+      emissiveIntensity: 0.04,
+      roughness: 0.78,
+      metalness: 0.08,
+    });
+
+    const height = 0.78;
+    const topRadius = 0.44;
+    const bottomRadius = 0.28;
+    const body = new Mesh(new CylinderGeometry(topRadius, bottomRadius, height, 32, 1, true), canMaterial);
+    body.position.y = height / 2 + 0.04;
+    const bottom = new Mesh(new CylinderGeometry(bottomRadius + 0.02, bottomRadius + 0.02, 0.08, 32), canMaterial);
+    bottom.position.y = 0.04;
+    const innerFloor = new Mesh(new CylinderGeometry(bottomRadius * 0.82, bottomRadius * 0.82, 0.025, 28), darkCanMaterial);
+    innerFloor.position.y = 0.13;
+    const rim = new Mesh(new TorusGeometry(topRadius, 0.035, 8, 36), canMaterial);
+    rim.position.y = height + 0.04;
+    rim.rotation.x = Math.PI / 2;
+    const footRing = new Mesh(new TorusGeometry(bottomRadius + 0.04, 0.022, 8, 28), darkCanMaterial);
+    footRing.position.y = 0.09;
+    footRing.rotation.x = Math.PI / 2;
+    const sideHighlights = [0, Math.PI * 0.62, Math.PI * 1.24].map((angle) => {
+      const highlight = new Mesh(new BoxGeometry(0.035, 0.48, 0.018), darkCanMaterial);
+      highlight.position.set(Math.sin(angle) * 0.35, 0.43, Math.cos(angle) * 0.35);
+      highlight.rotation.y = angle;
+      return highlight;
+    });
+
+    trashCan.add(body, bottom, innerFloor, rim, footRing, ...sideHighlights);
+    house.add(trashCan);
+
+    const collider = addRotatedCollider(colliders, localX, localZ, rotationY, 0, 0, topRadius * 2.2, topRadius * 2.2);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: topRadius * 1.1,
+      halfDepth: topRadius * 1.1,
+      floorY: height + 0.1,
+      collider,
+    });
+  };
+
   const addTrashCanFixture = (localX: number, localZ: number, rotationY = 0): ChapterSevenRearFixture => {
     const trashCan = new Group();
     trashCan.position.set(localX, 0, localZ);
@@ -5145,6 +5202,7 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_WALL_THICKNESS,
   );
   addLaundryBasket(1202.82 - CENTER_X, 59.07 - HOUSE_CENTER_Z, -0.12);
+  addSmallBathroomTrashCan(1207.46 - CENTER_X, 48.50 - HOUSE_CENTER_Z, 0.08);
   addWallShelf(1215.95 - CENTER_X, 2.06, 65.92 - HOUSE_CENTER_Z, 1);
   addTowelDuckShelf(1217.07 - CENTER_X, 2.1, 52.16 - HOUSE_CENTER_Z, -1);
   addToiletPaperHolder(1211.82 - CENTER_X, 0.92, 47.62 - HOUSE_CENTER_Z, 1);
