@@ -416,6 +416,27 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.92,
     metalness: 0.01,
   });
+  const yardTrailMaterial = new MeshStandardMaterial({
+    color: 0xcaa56b,
+    emissive: 0x231707,
+    emissiveIntensity: 0.025,
+    roughness: 0.96,
+    metalness: 0.01,
+  });
+  const yardTrailEdgeMaterial = new MeshStandardMaterial({
+    color: 0xa88355,
+    emissive: 0x1b1107,
+    emissiveIntensity: 0.025,
+    roughness: 0.96,
+    metalness: 0.01,
+  });
+  const yardTrailBrickMaterial = new MeshStandardMaterial({
+    color: 0x9c7351,
+    emissive: 0x1a0f08,
+    emissiveIntensity: 0.02,
+    roughness: 0.9,
+    metalness: 0.02,
+  });
   const rockMaterial = new MeshStandardMaterial({
     color: 0x667064,
     emissive: 0x070909,
@@ -6118,6 +6139,56 @@ export function createChapterSeven(): ChapterSevenData {
   addCollider(colliders, CENTER_X + porchWidth / 2, HOUSE_CENTER_Z + porchCenterZ + 0.08, 0.34, porchSideRailDepth);
   addCollider(colliders, CENTER_X - (porchGapWidth / 2 + frontRailSegmentWidth / 2), HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
   addCollider(colliders, CENTER_X + porchGapWidth / 2 + frontRailSegmentWidth / 2, HOUSE_CENTER_Z + porchFrontZ, frontRailSegmentWidth, 0.34);
+  const createYardTrail = (
+    startX: number,
+    startZ: number,
+    endX: number,
+    endZ: number,
+  ): { start: Vector3; end: Vector3; width: number } => {
+    const dx = endX - startX;
+    const dz = endZ - startZ;
+    const length = Math.hypot(dx, dz);
+    const width = 2.25;
+    const trailGroup = new Group();
+    trailGroup.name = 'Tan brick-dotted backyard trail';
+    trailGroup.position.set((startX + endX) / 2, 0, (startZ + endZ) / 2);
+    trailGroup.rotation.y = Math.atan2(dx, dz);
+
+    const base = new Mesh(new BoxGeometry(width, 0.055, length), yardTrailMaterial);
+    base.position.set(0, 0.055, 0);
+    trailGroup.add(base);
+
+    const edgeInset = width / 2 - 0.08;
+    [-edgeInset, edgeInset].forEach((edgeX) => {
+      const edge = new Mesh(new BoxGeometry(0.12, 0.065, length), yardTrailEdgeMaterial);
+      edge.position.set(edgeX, 0.072, 0);
+      trailGroup.add(edge);
+    });
+
+    const brickOffsets = [-0.68, 0.58, 0.04, -0.34, 0.72, -0.08, 0.42];
+    const brickSpacing = 3.8;
+    const brickCount = Math.max(8, Math.floor(length / brickSpacing));
+    for (let index = 0; index < brickCount; index += 1) {
+      const brick = new Mesh(new BoxGeometry(0.62, 0.07, 0.38), yardTrailBrickMaterial);
+      const localZ = -length / 2 + 1.8 + index * brickSpacing;
+      brick.position.set(brickOffsets[index % brickOffsets.length], 0.105, localZ);
+      brick.rotation.y = ((index % 5) - 2) * 0.045;
+      trailGroup.add(brick);
+    }
+
+    house.add(trailGroup);
+    return {
+      start: new Vector3(startX, 0, startZ),
+      end: new Vector3(endX, 0, endZ),
+      width,
+    };
+  };
+  const backyardTrail = createYardTrail(
+    1201.64 - CENTER_X,
+    164.29 - HOUSE_CENTER_Z,
+    1210.05 - CENTER_X,
+    111.53 - HOUSE_CENTER_Z,
+  );
   const houseDoors = [houseDoor, sideGlassDoor, ...roomDoors];
   const houseInteriorLights = [
     [-14, 9],
@@ -6171,6 +6242,20 @@ export function createChapterSeven(): ChapterSevenData {
   const crownTopInstances = new InstancedMesh(treeCrownTopGeometry, leafMaterial, TREE_COUNT);
   const dummy = new Object3D();
   let treeInstanceCount = 0;
+  const getDistanceToBackyardTrail = (worldX: number, worldZ: number): number => {
+    const localX = worldX - CENTER_X;
+    const localZ = worldZ - HOUSE_CENTER_Z;
+    const segmentX = backyardTrail.end.x - backyardTrail.start.x;
+    const segmentZ = backyardTrail.end.z - backyardTrail.start.z;
+    const segmentLengthSquared = segmentX * segmentX + segmentZ * segmentZ;
+    const rawT = segmentLengthSquared > 0
+      ? ((localX - backyardTrail.start.x) * segmentX + (localZ - backyardTrail.start.z) * segmentZ) / segmentLengthSquared
+      : 0;
+    const t = MathUtils.clamp(rawT, 0, 1);
+    const closestX = backyardTrail.start.x + segmentX * t;
+    const closestZ = backyardTrail.start.z + segmentZ * t;
+    return Math.hypot(localX - closestX, localZ - closestZ);
+  };
 
   const addZombieStyleTree = (x: number, z: number, scale: number, yaw: number): void => {
     if (treeInstanceCount >= TREE_COUNT) {
@@ -6208,6 +6293,9 @@ export function createChapterSeven(): ChapterSevenData {
     if (distanceFromSpawn < CLEARING_RADIUS + 8 + random() * 14) {
       continue;
     }
+    if (getDistanceToBackyardTrail(x, z) < backyardTrail.width * 1.65) {
+      continue;
+    }
 
     const scale = 0.82 + random() * 0.56;
     addZombieStyleTree(x, z, scale, random() * Math.PI * 2);
@@ -6233,8 +6321,9 @@ export function createChapterSeven(): ChapterSevenData {
       && Math.abs(localZ - rearRoomCenterZ) <= HOUSE_REAR_ROOM_DEPTH / 2 + 1.0;
     const insidePorch = Math.abs(localX) <= porchWidth / 2 + 1.0
       && Math.abs(localZ - porchCenterZ) <= porchDepth / 2 + 1.0;
+    const insideBackyardTrail = getDistanceToBackyardTrail(worldX, worldZ) <= backyardTrail.width * 0.72;
 
-    return insideMainHouse || insideRearRoom || insidePorch;
+    return insideMainHouse || insideRearRoom || insidePorch || insideBackyardTrail;
   };
 
   const grassGeometry = new ConeGeometry(0.08, 0.72, 5);
