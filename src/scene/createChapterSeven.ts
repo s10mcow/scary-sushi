@@ -701,6 +701,20 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.86,
     metalness: 0.01,
   });
+  const pinkFloorCushionMaterial = new MeshStandardMaterial({
+    color: 0xf1a5c8,
+    emissive: 0x26101a,
+    emissiveIntensity: 0.045,
+    roughness: 0.9,
+    metalness: 0.01,
+  });
+  const pinkFloorCushionDetailMaterial = new MeshStandardMaterial({
+    color: 0xc96f9e,
+    emissive: 0x1c0912,
+    emissiveIntensity: 0.045,
+    roughness: 0.92,
+    metalness: 0.01,
+  });
   const colorfulRugMaterial = (() => {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
@@ -1962,6 +1976,54 @@ export function createChapterSeven(): ChapterSevenData {
     rug.rotation.y = rotationY;
     rug.position.set(localX, 0.255, localZ);
     house.add(rug);
+  };
+
+  const addPinkFloorCushion = (localX: number, localZ: number): void => {
+    const cushion = new Group();
+    cushion.position.set(localX, 0, localZ);
+
+    const body = new Mesh(new CylinderGeometry(1.48, 1.58, 0.42, 48), pinkFloorCushionMaterial);
+    body.position.y = 0.34;
+    body.scale.y = 0.78;
+    const topPuff = new Mesh(new SphereGeometry(1.46, 36, 14), pinkFloorCushionMaterial);
+    topPuff.position.y = 0.46;
+    topPuff.scale.set(1, 0.18, 1);
+    const lowerPuff = new Mesh(new SphereGeometry(1.5, 36, 12), pinkFloorCushionMaterial);
+    lowerPuff.position.y = 0.27;
+    lowerPuff.scale.set(1, 0.1, 1);
+    const outerSeam = new Mesh(new TorusGeometry(1.28, 0.025, 8, 64), pinkFloorCushionDetailMaterial);
+    outerSeam.rotation.x = Math.PI / 2;
+    outerSeam.position.y = 0.55;
+    const centerButton = new Mesh(new CylinderGeometry(0.15, 0.12, 0.035, 24), pinkFloorCushionDetailMaterial);
+    centerButton.position.y = 0.59;
+
+    const seamStrips = Array.from({ length: 8 }, (_, index) => {
+      const seam = new Mesh(new BoxGeometry(0.028, 0.018, 1.08), pinkFloorCushionDetailMaterial);
+      const angle = (index / 8) * Math.PI * 2;
+      seam.position.set(Math.sin(angle) * 0.54, 0.585, Math.cos(angle) * 0.54);
+      seam.rotation.y = angle;
+      return seam;
+    });
+    const smallButtons = Array.from({ length: 6 }, (_, index) => {
+      const button = new Mesh(new CylinderGeometry(0.06, 0.055, 0.024, 18), pinkFloorCushionDetailMaterial);
+      const angle = (index / 6) * Math.PI * 2 + 0.18;
+      button.position.set(Math.sin(angle) * 0.78, 0.6, Math.cos(angle) * 0.78);
+      return button;
+    });
+
+    cushion.add(body, topPuff, lowerPuff, outerSeam, centerButton, ...seamStrips, ...smallButtons);
+    house.add(cushion);
+
+    const cushionCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 2.8, 2.8);
+    bedSurfaces.push({
+      label: 'Pink floor cushion',
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: 1.4,
+      halfDepth: 1.4,
+      floorY: 0.62,
+      collider: cushionCollider,
+    });
   };
 
   const addSmallPlantTable = (localX: number, localZ: number): void => {
@@ -5057,6 +5119,7 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
   addColorfulRug(1210.82 - CENTER_X, 89.44 - HOUSE_CENTER_Z, Math.PI / 2, 8.2, 5.4);
+  addPinkFloorCushion(1198.74 - CENTER_X, 95.82 - HOUSE_CENTER_Z);
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
@@ -5364,7 +5427,7 @@ export function createChapterSeven(): ChapterSevenData {
     [9, -7],
     [HOUSE_REAR_ROOM_DOOR_X, HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH / 2],
   ].map(([localX, localZ]) => {
-    const interiorLight = new PointLight(0xffddb0, 0.18, 20, 1.5);
+    const interiorLight = new PointLight(0xffddb0, 0.28, 22, 1.5);
     interiorLight.position.set(localX, 4.25, localZ);
     house.add(interiorLight);
     return interiorLight;
@@ -5733,9 +5796,9 @@ export function createChapterSeven(): ChapterSevenData {
         nightBlend,
       );
       houseInteriorLights.forEach((interiorLight, index) => {
-        const warmPulse = Math.sin(forestTime * 0.82 + index * 1.7) * 0.025;
-        interiorLight.intensity = MathUtils.lerp(0.18, 1.15 + warmPulse, nightBlend);
-        interiorLight.distance = MathUtils.lerp(18, 24, nightBlend);
+        const warmPulse = Math.sin(forestTime * 0.82 + index * 1.7) * 0.035;
+        interiorLight.intensity = MathUtils.lerp(0.28, 1.85 + warmPulse, nightBlend);
+        interiorLight.distance = MathUtils.lerp(20, 27, nightBlend);
       });
       nightSky.visible = nightBlend > 0.02;
       nightSkyMaterials.forEach((material) => {
