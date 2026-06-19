@@ -47,6 +47,7 @@ export interface ChapterSevenData {
   kitchenSink: ChapterSevenKitchenSink;
   rearFixtures: ChapterSevenRearFixture[];
   swingSet: ChapterSevenSwingSet;
+  refreshCookiesForDay(day: number): void;
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
   isPlayerUnderBed(position: Vector3): boolean;
   isPlayerInsideOven(position: Vector3): boolean;
@@ -105,6 +106,8 @@ export interface ChapterSevenCookiePickup {
   interactPosition: Vector3;
   aimPosition: Vector3;
   collected: boolean;
+  active: boolean;
+  shuffleSeed: number;
 }
 
 interface ChapterSevenCounterSurface {
@@ -3195,6 +3198,8 @@ export function createChapterSeven(): ChapterSevenData {
           interactPosition: new Vector3(),
           aimPosition: new Vector3(),
           collected: false,
+          active: true,
+          shuffleSeed: (localX + 41.3) * 12.19 + (localZ - 18.8) * 7.73 + index * 11.9 + cookieIndex * 5.1,
         };
         slideCookies.push(cookiePickup);
         cookiePickups.push(cookiePickup);
@@ -3271,6 +3276,8 @@ export function createChapterSeven(): ChapterSevenData {
       interactPosition: new Vector3(),
       aimPosition: new Vector3(),
       collected: false,
+      active: true,
+      shuffleSeed: (x + 17.2) * 9.11 + (y + 3.4) * 5.73 + (z - 1.7) * 13.41 + label.length * 2.9,
     };
     cookiePickups.push(pickup);
     return pickup;
@@ -3698,7 +3705,9 @@ export function createChapterSeven(): ChapterSevenData {
     width: number,
     depth: number,
   ): void => {
-    const cookieCount = getCabinetCookieCount(localX, label);
+    const cookieCount = label === 'Bathroom upper cupboard'
+      ? Math.max(1, getCabinetCookieCount(localX, label))
+      : getCabinetCookieCount(localX, label);
     for (let index = 0; index < cookieCount; index += 1) {
       const side = index === 0 ? -1 : 1;
       addCookie(
@@ -3707,6 +3716,7 @@ export function createChapterSeven(): ChapterSevenData {
         shelfYValues[index % shelfYValues.length] + 0.06,
         depth * 0.08 + index * 0.08,
         0.92,
+        `${label} cookie`,
       );
     }
   };
@@ -4674,9 +4684,15 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
-  const addUpperCupboard = (localX: number, localZ: number, width = 2.12, label = 'Upper Cupboards'): ChapterSevenCupboard => {
+  const addUpperCupboard = (
+    localX: number,
+    localZ: number,
+    width = 2.12,
+    label = 'Upper Cupboards',
+    baseY = 4.02,
+  ): ChapterSevenCupboard => {
     const cupboard = new Group();
-    cupboard.position.set(localX, 4.02, localZ);
+    cupboard.position.set(localX, baseY, localZ);
 
     const height = 1.35;
     const depth = 0.92;
@@ -4720,13 +4736,13 @@ export function createChapterSeven(): ChapterSevenData {
       centerZ: HOUSE_CENTER_Z + localZ,
       halfWidth: width / 2,
       halfDepth: depth / 2,
-      floorY: 4.02 + height,
+      floorY: baseY + height,
     });
     const interactPosition = new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ + depth / 2 + 0.9);
     return {
       label,
       interactPosition,
-      aimPosition: new Vector3(CENTER_X + localX, 4.7, HOUSE_CENTER_Z + localZ + depth / 2 + 0.08),
+      aimPosition: new Vector3(CENTER_X + localX, baseY + 0.68, HOUSE_CENTER_Z + localZ + depth / 2 + 0.08),
       doorPivots: [leftDoorPivot, rightDoorPivot],
       open: false,
       openAmount: 0,
@@ -5193,7 +5209,14 @@ export function createChapterSeven(): ChapterSevenData {
     addUpperCupboard(HOUSE_FRIDGE_X + 7.42, HOUSE_FRIDGE_Z, 2.75, 'Right upper cupboards'),
     addUpperCupboard(HOUSE_FRIDGE_X + 9.0, HOUSE_FRIDGE_Z, 1.95, 'End upper cupboards'),
   ];
-  const houseUpperCupboards = [...kitchenUpperCupboards];
+  const bathroomUpperCupboard = addUpperCupboard(
+    1205.71 - CENTER_X,
+    47.62 - HOUSE_CENTER_Z + 1.34,
+    5,
+    'Bathroom upper cupboard',
+    2.85,
+  );
+  const houseUpperCupboards = [...kitchenUpperCupboards, bathroomUpperCupboard];
   const houseUpperCupboard = houseUpperCupboards[0];
   [
     { x: HOUSE_FRIDGE_X + 6.9, label: 'Right base cabinet' },
@@ -5207,6 +5230,21 @@ export function createChapterSeven(): ChapterSevenData {
     ...frontBedroomMarkerDrawer.drawerSlides,
   ];
   const houseCabinets = [...houseUpperCupboards, ...houseBaseCabinets];
+  const refreshCookiesForDay = (day: number): void => {
+    const cycle = Math.max(0, Math.floor((Math.max(1, Math.floor(day)) - 1) / 4));
+    cookiePickups.forEach((cookie, index) => {
+      const roll = Math.sin(cookie.shuffleSeed * 3.71 + cycle * 11.37 + index * 1.91) * 43758.5453;
+      const normalized = roll - Math.floor(roll);
+      const isBathroomCupboardCookie = cookie.root.parent === bathroomUpperCupboard.doorPivots[0].parent;
+      cookie.active = isBathroomCupboardCookie || normalized > 0.28;
+      cookie.collected = false;
+      cookie.root.visible = cookie.active;
+    });
+    houseDrawers.forEach((drawer) => {
+      drawer.cookieCount = drawer.cookies.filter((cookie) => cookie.active && !cookie.collected).length;
+    });
+  };
+  refreshCookiesForDay(1);
 
   const roofHalfWidth = HOUSE_WIDTH / 2 + HOUSE_ROOF_OVERHANG;
   const roofDepth = HOUSE_DEPTH + HOUSE_ROOF_OVERHANG * 2;
@@ -5610,6 +5648,7 @@ export function createChapterSeven(): ChapterSevenData {
     kitchenSink,
     rearFixtures,
     swingSet,
+    refreshCookiesForDay,
     getSupportedFloorY(position: Vector3, crawling = false): number | null {
       const insideForest = position.x >= CENTER_X - HALF_SIZE
         && position.x <= CENTER_X + HALF_SIZE
@@ -6030,13 +6069,9 @@ export function createChapterSeven(): ChapterSevenData {
         drawer.open = false;
         drawer.openAmount = 0;
         drawer.targetOpenAmount = 0;
-        drawer.cookieCount = drawer.cookies.length;
         drawer.root.position.z = drawer.closedZ;
       });
-      cookiePickups.forEach((cookie) => {
-        cookie.collected = false;
-        cookie.root.visible = true;
-      });
+      refreshCookiesForDay(1);
       bedSurfaces.forEach((surface) => {
         surface.collider.enabled = true;
       });

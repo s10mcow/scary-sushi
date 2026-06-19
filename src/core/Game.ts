@@ -11945,7 +11945,13 @@ export class Game {
       }
     } while (this.chapterSevenPhaseTime >= this.getChapterSevenPhaseDuration());
     if (passedIntoDay > 0) {
+      const previousCookieCycle = Math.floor((this.chapterSevenDayCount - 1) / 4);
       this.chapterSevenDayCount += passedIntoDay;
+      const currentCookieCycle = Math.floor((this.chapterSevenDayCount - 1) / 4);
+      if (currentCookieCycle > previousCookieCycle) {
+        this.chapterSeven.refreshCookiesForDay(this.chapterSevenDayCount);
+        this.pushStatus('Cookies have been hidden around the house again.', 2.8);
+      }
     }
 
     this.gameplaySfxAudio.playGrandfatherClockChime();
