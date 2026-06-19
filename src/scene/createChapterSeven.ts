@@ -191,16 +191,18 @@ export interface ChapterSevenSwingSet {
 
 export interface ChapterSevenRearFixture {
   label: string;
-  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer' | 'bathtub' | 'trash-can' | 'hose-faucet';
+  kind: 'toilet' | 'bathroom-sink' | 'washing-machine' | 'dryer' | 'bathtub' | 'trash-can' | 'hose-faucet' | 'table-lamp';
   interactPosition: Vector3;
   aimPosition: Vector3;
   doorPivots: Group[];
   collider: CollisionBox;
-  animation: 'toilet-lid' | 'faucet' | 'front-door' | 'bathtub-faucet' | 'trash-lid' | 'hose-faucet';
+  animation: 'toilet-lid' | 'faucet' | 'front-door' | 'bathtub-faucet' | 'trash-lid' | 'hose-faucet' | 'table-lamp';
   waterStream?: Mesh;
   waterSurface?: Mesh;
   waterSplash?: Mesh[];
   trashContents?: Group;
+  lampLight?: PointLight;
+  lampGlow?: Mesh;
   waterFillAmount?: number;
   wallColliders?: CollisionBox[];
   tubBounds?: {
@@ -4573,6 +4575,136 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(lampLight, lampLight.target);
   };
 
+  const addMiniLampTableFixture = (localX: number, localZ: number): ChapterSevenRearFixture => {
+    const table = new Group();
+    table.position.set(localX, 0, localZ);
+
+    const top = new Mesh(new CylinderGeometry(0.78, 0.78, 0.14, 32), furnitureWoodMaterial);
+    top.position.y = 0.72;
+    const topLip = new Mesh(new TorusGeometry(0.79, 0.035, 8, 36), houseTrimMaterial);
+    topLip.position.y = 0.8;
+    topLip.rotation.x = Math.PI / 2;
+    const pedestal = new Mesh(new CylinderGeometry(0.16, 0.22, 0.66, 16), furnitureWoodMaterial);
+    pedestal.position.y = 0.38;
+    const foot = new Mesh(new CylinderGeometry(0.48, 0.54, 0.08, 24), houseTrimMaterial);
+    foot.position.y = 0.08;
+
+    const lampBaseMaterial = new MeshStandardMaterial({
+      color: 0x5c3f2a,
+      emissive: 0x0e0704,
+      emissiveIntensity: 0.05,
+      roughness: 0.64,
+      metalness: 0.08,
+    });
+    const lampShadeMaterial = new MeshStandardMaterial({
+      color: 0xe2c58d,
+      emissive: 0x2d1c08,
+      emissiveIntensity: 0.12,
+      roughness: 0.76,
+      metalness: 0.01,
+      transparent: true,
+      opacity: 0.88,
+      side: DoubleSide,
+    });
+    const bulbMaterial = new MeshStandardMaterial({
+      color: 0xfff2c5,
+      emissive: 0xffcc67,
+      emissiveIntensity: 0.9,
+      roughness: 0.2,
+      metalness: 0.02,
+    });
+    const glowMaterial = new MeshBasicMaterial({
+      color: 0xffdc8f,
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+    });
+
+    const lampBase = new Mesh(new CylinderGeometry(0.24, 0.3, 0.38, 22), lampBaseMaterial);
+    lampBase.position.y = 1.02;
+    const baseTopRing = new Mesh(new TorusGeometry(0.24, 0.025, 8, 28), closetHandleMaterial);
+    baseTopRing.position.y = 1.23;
+    baseTopRing.rotation.x = Math.PI / 2;
+    const baseBottomRing = baseTopRing.clone();
+    baseBottomRing.position.y = 0.82;
+    const decorativeBands = [-0.08, 0.08].map((xOffset) => {
+      const band = new Mesh(new BoxGeometry(0.035, 0.34, 0.035), closetHandleMaterial);
+      band.position.set(xOffset, 1.02, 0.27);
+      return band;
+    });
+    const stem = new Mesh(new CylinderGeometry(0.045, 0.055, 0.48, 14), closetHandleMaterial);
+    stem.position.y = 1.42;
+    const bulb = new Mesh(new SphereGeometry(0.14, 18, 12), bulbMaterial);
+    bulb.position.y = 1.44;
+    const shade = new Mesh(new CylinderGeometry(0.24, 0.52, 0.5, 32, 1, true), lampShadeMaterial);
+    shade.position.y = 1.62;
+    const shadeTop = new Mesh(new TorusGeometry(0.24, 0.018, 8, 32), closetHandleMaterial);
+    shadeTop.position.y = 1.87;
+    shadeTop.rotation.x = Math.PI / 2;
+    const shadeBottom = new Mesh(new TorusGeometry(0.52, 0.022, 8, 36), closetHandleMaterial);
+    shadeBottom.position.y = 1.37;
+    shadeBottom.rotation.x = Math.PI / 2;
+    const glow = new Mesh(new SphereGeometry(0.44, 18, 12), glowMaterial);
+    glow.position.y = 1.48;
+    glow.scale.set(1, 0.72, 1);
+
+    const switchPivot = new Group();
+    switchPivot.position.set(0.48, 0.84, 0.15);
+    const switchBase = new Mesh(new BoxGeometry(0.28, 0.08, 0.22), closetHandleMaterial);
+    const switchLever = new Mesh(new BoxGeometry(0.05, 0.22, 0.055), faucetMaterial);
+    switchLever.position.y = 0.12;
+    switchLever.rotation.z = -0.35;
+    switchPivot.add(switchBase, switchLever);
+
+    const lampLight = new PointLight(0xffd996, 2.8, 9.5, 1.65);
+    lampLight.position.set(0, 1.45, 0);
+
+    table.add(
+      top,
+      topLip,
+      pedestal,
+      foot,
+      lampBase,
+      baseTopRing,
+      baseBottomRing,
+      ...decorativeBands,
+      stem,
+      bulb,
+      shade,
+      shadeTop,
+      shadeBottom,
+      glow,
+      switchPivot,
+      lampLight,
+    );
+    house.add(table);
+
+    const collider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.72, 1.72);
+    counterSurfaces.push({
+      centerX: CENTER_X + localX,
+      centerZ: HOUSE_CENTER_Z + localZ,
+      halfWidth: 0.86,
+      halfDepth: 0.86,
+      floorY: 0.82,
+      collider,
+    });
+
+    return {
+      label: 'Mini table lamp',
+      kind: 'table-lamp',
+      interactPosition: new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ),
+      aimPosition: new Vector3(CENTER_X + localX, 1.36, HOUSE_CENTER_Z + localZ),
+      doorPivots: [switchPivot],
+      collider,
+      animation: 'table-lamp',
+      lampLight,
+      lampGlow: glow,
+      open: true,
+      openAmount: 1,
+      targetOpenAmount: 1,
+    };
+  };
+
   const addLaundryAppliance = (
     localX: number,
     localZ: number,
@@ -5393,6 +5525,7 @@ export function createChapterSeven(): ChapterSevenData {
     addBathtubFixture(HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 57.30 - HOUSE_CENTER_Z),
     addTrashCanFixture(1231.64 - CENTER_X, 62.83 - HOUSE_CENTER_Z, -Math.PI / 2),
     addHoseFaucetFixture(1236.31 - CENTER_X, 1.16, 68.92 - HOUSE_CENTER_Z),
+    addMiniLampTableFixture(1203.97 - CENTER_X, 63.15 - HOUSE_CENTER_Z),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 0.3, 'washing-machine', rearRoomLaundryRotation),
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
@@ -6276,6 +6409,16 @@ export function createChapterSeven(): ChapterSevenData {
           if (fixture.trashContents) {
             fixture.trashContents.visible = fixture.openAmount > 0.55;
           }
+        } else if (fixture.animation === 'table-lamp') {
+          fixture.doorPivots[0].rotation.z = MathUtils.lerp(0.35, -0.35, fixture.openAmount);
+          if (fixture.lampLight) {
+            fixture.lampLight.intensity = fixture.openAmount * 2.8;
+            fixture.lampLight.distance = MathUtils.lerp(3.2, 9.5, fixture.openAmount);
+          }
+          if (fixture.lampGlow) {
+            fixture.lampGlow.visible = fixture.openAmount > 0.04;
+            fixture.lampGlow.scale.setScalar(0.72 + fixture.openAmount * 0.28);
+          }
         } else {
           fixture.doorPivots[0].rotation.y = -fixture.openAmount * Math.PI * 0.58;
         }
@@ -6370,12 +6513,16 @@ export function createChapterSeven(): ChapterSevenData {
         });
       });
       rearFixtures.forEach((fixture) => {
-        fixture.open = false;
-        fixture.openAmount = 0;
-        fixture.targetOpenAmount = 0;
+        const startsOn = fixture.kind === 'table-lamp';
+        fixture.open = startsOn;
+        fixture.openAmount = startsOn ? 1 : 0;
+        fixture.targetOpenAmount = startsOn ? 1 : 0;
         fixture.doorPivots.forEach((doorPivot) => {
           doorPivot.rotation.set(0, 0, 0);
         });
+        if (fixture.animation === 'table-lamp') {
+          fixture.doorPivots[0].rotation.z = -0.35;
+        }
         if (fixture.waterStream) {
           fixture.waterStream.visible = false;
           fixture.waterStream.scale.y = 0.01;
@@ -6408,6 +6555,14 @@ export function createChapterSeven(): ChapterSevenData {
         fixture.wallColliders?.forEach((collider) => {
           collider.enabled = true;
         });
+        if (fixture.lampLight) {
+          fixture.lampLight.intensity = startsOn ? 2.8 : 0;
+          fixture.lampLight.distance = startsOn ? 9.5 : 3.2;
+        }
+        if (fixture.lampGlow) {
+          fixture.lampGlow.visible = startsOn;
+          fixture.lampGlow.scale.setScalar(startsOn ? 1 : 0.72);
+        }
         fixture.collider.enabled = true;
       });
     },

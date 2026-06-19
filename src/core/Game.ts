@@ -13002,6 +13002,14 @@ export class Game {
               : 'You close the trash can lid.',
             2.2,
           );
+        } else if (fixture.kind === 'table-lamp') {
+          this.gameplaySfxAudio.playSmallPanel(fixture.open);
+          this.pushStatus(
+            fixture.open
+              ? 'You turn on the mini table lamp.'
+              : 'You turn off the mini table lamp.',
+            2.2,
+          );
         } else {
           this.gameplaySfxAudio.playClosetDoor(fixture.open);
           this.pushStatus(
@@ -18192,6 +18200,11 @@ export class Game {
             return interactable.item.open
               ? 'The trash can is open. Press E to close it.'
               : 'The trash can is closed. Press E to open it.';
+          }
+          if (interactable.item.kind === 'table-lamp') {
+            return interactable.item.open
+              ? 'The mini table lamp is on. Press E to turn it off.'
+              : 'The mini table lamp is off. Press E to turn it on.';
           }
 
           return interactable.item.open
