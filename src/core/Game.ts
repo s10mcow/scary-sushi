@@ -12906,7 +12906,9 @@ export class Game {
         const cookie = interactable.item;
         cookie.collected = true;
         cookie.root.visible = false;
-        cookie.drawer.cookieCount = Math.max(0, cookie.drawer.cookieCount - 1);
+        if (cookie.drawer) {
+          cookie.drawer.cookieCount = Math.max(0, cookie.drawer.cookieCount - 1);
+        }
         this.chapterSevenCookieCount += 1;
         this.pushStatus(`You picked up a cookie. Cookies: ${this.chapterSevenCookieCount}.`, 2.2);
         this.syncHud();
@@ -21687,13 +21689,17 @@ export class Game {
     });
 
     this.chapterSeven.cookies.forEach((cookie) => {
-      if (cookie.collected || !cookie.drawer.open || cookie.drawer.openAmount < 0.58) {
+      if (cookie.collected || !cookie.root.visible) {
+        return;
+      }
+
+      if (cookie.drawer && (!cookie.drawer.open || cookie.drawer.openAmount < 0.58)) {
         return;
       }
 
       cookie.root.getWorldPosition(cookie.aimPosition);
       cookie.interactPosition.copy(cookie.aimPosition);
-      const cookieScore = this.getChapterSevenLookScore(cookie, 0.19, 0.82);
+      const cookieScore = this.getChapterSevenLookScore(cookie, 0.46, 1.35);
       if (cookieScore !== null) {
         keepBest({ kind: 'cookie', item: cookie, score: cookieScore });
       }

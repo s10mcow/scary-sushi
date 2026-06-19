@@ -101,7 +101,7 @@ export interface ChapterSevenDrawerSlide {
 export interface ChapterSevenCookiePickup {
   label: string;
   root: Group;
-  drawer: ChapterSevenDrawerSlide;
+  drawer?: ChapterSevenDrawerSlide;
   interactPosition: Vector3;
   aimPosition: Vector3;
   collected: boolean;
@@ -3008,9 +3008,10 @@ export function createChapterSeven(): ChapterSevenData {
     return 1 + Math.floor((value - Math.floor(value)) * 3);
   };
 
-  const addCookie = (root: Group, x: number, y: number, z: number, scale = 1): void => {
+  const addCookie = (root: Group, x: number, y: number, z: number, scale = 1, label = 'Cookie'): ChapterSevenCookiePickup => {
+    const cookieRoot = new Group();
+    cookieRoot.position.set(x, y, z);
     const cookie = new Mesh(new CylinderGeometry(0.13 * scale, 0.13 * scale, 0.045 * scale, 18), cookieMaterial);
-    cookie.position.set(x, y, z);
     const chipOffsets = [
       [-0.045, 0.015],
       [0.04, -0.02],
@@ -3022,7 +3023,17 @@ export function createChapterSeven(): ChapterSevenData {
       chip.scale.y = 0.42;
       cookie.add(chip);
     });
-    root.add(cookie);
+    cookieRoot.add(cookie);
+    root.add(cookieRoot);
+    const pickup = {
+      label,
+      root: cookieRoot,
+      interactPosition: new Vector3(),
+      aimPosition: new Vector3(),
+      collected: false,
+    };
+    cookiePickups.push(pickup);
+    return pickup;
   };
 
   const addLaundryBasket = (localX: number, localZ: number, rotationY = 0): void => {
