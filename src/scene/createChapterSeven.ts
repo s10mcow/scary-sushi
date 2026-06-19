@@ -433,22 +433,22 @@ export function createChapterSeven(): ChapterSevenData {
     metalness: 0.02,
   });
   const houseFloorMaterial = new MeshStandardMaterial({
-    color: 0x9a744d,
-    emissive: 0x1a0f07,
+    color: 0xc49b68,
+    emissive: 0x1f1509,
     emissiveIntensity: 0.045,
     roughness: 0.88,
     metalness: 0.02,
   });
   const houseFloorBoardMaterials = [
-    new MeshStandardMaterial({ color: 0xa98156, emissive: 0x1b1008, emissiveIntensity: 0.04, roughness: 0.86, metalness: 0.02 }),
-    new MeshStandardMaterial({ color: 0xb08a5f, emissive: 0x1d1209, emissiveIntensity: 0.04, roughness: 0.86, metalness: 0.02 }),
-    new MeshStandardMaterial({ color: 0x96704b, emissive: 0x180d06, emissiveIntensity: 0.04, roughness: 0.89, metalness: 0.02 }),
-    new MeshStandardMaterial({ color: 0xb89568, emissive: 0x1e130a, emissiveIntensity: 0.04, roughness: 0.85, metalness: 0.02 }),
+    new MeshStandardMaterial({ color: 0xc79c61, emissive: 0x1f1408, emissiveIntensity: 0.035, roughness: 0.86, metalness: 0.02 }),
+    new MeshStandardMaterial({ color: 0xd0ad78, emissive: 0x21170a, emissiveIntensity: 0.035, roughness: 0.86, metalness: 0.02 }),
+    new MeshStandardMaterial({ color: 0xb98b54, emissive: 0x1b1007, emissiveIntensity: 0.035, roughness: 0.89, metalness: 0.02 }),
+    new MeshStandardMaterial({ color: 0xd8be8a, emissive: 0x241a0c, emissiveIntensity: 0.035, roughness: 0.85, metalness: 0.02 }),
   ];
   const houseFloorGrooveMaterial = new MeshStandardMaterial({
-    color: 0x5d422c,
-    emissive: 0x0b0503,
-    emissiveIntensity: 0.04,
+    color: 0x8b6843,
+    emissive: 0x120b05,
+    emissiveIntensity: 0.035,
     roughness: 0.94,
     metalness: 0.01,
   });
