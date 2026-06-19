@@ -4725,11 +4725,15 @@ export function createChapterSeven(): ChapterSevenData {
   );
   const rearRoomCenterZ = HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH / 2;
   const rearRoomBackZ = HOUSE_REAR_ROOM_DOOR_Z - HOUSE_REAR_ROOM_DEPTH;
+  const rearRoomFloorFrontZ = -(HOUSE_DEPTH + 1.2) / 2;
+  const rearRoomFloorBackZ = rearRoomBackZ - 0.4;
+  const rearRoomFloorDepth = rearRoomFloorFrontZ - rearRoomFloorBackZ;
+  const rearRoomFloorCenterZ = (rearRoomFloorFrontZ + rearRoomFloorBackZ) / 2;
   const rearRoomFloor = createHousePlankFloor(
     HOUSE_REAR_ROOM_WIDTH + 0.8,
-    HOUSE_REAR_ROOM_DEPTH + 0.8,
+    rearRoomFloorDepth,
     HOUSE_REAR_ROOM_DOOR_X,
-    rearRoomCenterZ,
+    rearRoomFloorCenterZ,
   );
   house.add(rearRoomFloor);
   const rearRoomCeiling = new Mesh(
