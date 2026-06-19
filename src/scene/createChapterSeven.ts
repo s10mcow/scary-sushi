@@ -6358,7 +6358,7 @@ export function createChapterSeven(): ChapterSevenData {
     1201.64 - CENTER_X,
     164.29 - HOUSE_CENTER_Z,
     1210.05 - CENTER_X,
-    111.53 - HOUSE_CENTER_Z,
+    porchFrontZ,
   );
   const houseDoors = [houseDoor, sideGlassDoor, ...roomDoors];
   const houseInteriorLights = [
