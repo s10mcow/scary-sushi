@@ -1985,32 +1985,34 @@ export function createChapterSeven(): ChapterSevenData {
     const cushion = new Group();
     cushion.position.set(localX, 0, localZ);
 
-    const base = new Mesh(new CylinderGeometry(1.62, 1.72, 0.28, 56), pinkFloorCushionMaterial);
-    base.position.y = 0.22;
-    const body = new Mesh(new SphereGeometry(1.78, 48, 20), pinkFloorCushionMaterial);
-    body.position.y = 0.46;
-    body.scale.set(1.04, 0.28, 1.04);
-    const topPuff = new Mesh(new SphereGeometry(1.26, 42, 14), pinkFloorCushionMaterial);
-    topPuff.position.y = 0.62;
-    topPuff.scale.set(1, 0.12, 1);
-    const flatMiddle = new Mesh(new CylinderGeometry(0.86, 0.98, 0.035, 40), pinkFloorCushionMaterial);
-    flatMiddle.position.y = 0.68;
-    const outerSeam = new Mesh(new TorusGeometry(1.42, 0.022, 8, 72), pinkFloorCushionDetailMaterial);
+    const base = new Mesh(new CylinderGeometry(1.54, 1.72, 0.34, 60), pinkFloorCushionMaterial);
+    base.position.y = 0.26;
+    const body = new Mesh(new SphereGeometry(1.82, 52, 22), pinkFloorCushionMaterial);
+    body.position.y = 0.58;
+    body.scale.set(1.05, 0.36, 1.05);
+    const raisedRim = new Mesh(new TorusGeometry(1.08, 0.22, 16, 72), pinkFloorCushionMaterial);
+    raisedRim.rotation.x = Math.PI / 2;
+    raisedRim.position.y = 0.83;
+    const centerDip = new Mesh(new CylinderGeometry(0.72, 0.84, 0.045, 42), pinkFloorCushionDetailMaterial);
+    centerDip.position.y = 0.72;
+    const centerSeat = new Mesh(new CylinderGeometry(0.64, 0.7, 0.035, 42), pinkFloorCushionMaterial);
+    centerSeat.position.y = 0.745;
+    const outerSeam = new Mesh(new TorusGeometry(1.46, 0.022, 8, 72), pinkFloorCushionDetailMaterial);
     outerSeam.rotation.x = Math.PI / 2;
-    outerSeam.position.y = 0.54;
-    const middleSeam = new Mesh(new TorusGeometry(0.9, 0.018, 8, 56), pinkFloorCushionDetailMaterial);
+    outerSeam.position.y = 0.6;
+    const middleSeam = new Mesh(new TorusGeometry(0.78, 0.018, 8, 56), pinkFloorCushionDetailMaterial);
     middleSeam.rotation.x = Math.PI / 2;
-    middleSeam.position.y = 0.705;
+    middleSeam.position.y = 0.785;
 
     const seamStrips = Array.from({ length: 8 }, (_, index) => {
-      const seam = new Mesh(new BoxGeometry(0.022, 0.014, 0.68), pinkFloorCushionDetailMaterial);
+      const seam = new Mesh(new BoxGeometry(0.022, 0.014, 0.54), pinkFloorCushionDetailMaterial);
       const angle = (index / 8) * Math.PI * 2;
-      seam.position.set(Math.sin(angle) * 0.64, 0.715, Math.cos(angle) * 0.64);
+      seam.position.set(Math.sin(angle) * 0.82, 0.82, Math.cos(angle) * 0.82);
       seam.rotation.y = angle;
       return seam;
     });
 
-    cushion.add(base, body, topPuff, flatMiddle, outerSeam, middleSeam, ...seamStrips);
+    cushion.add(base, body, raisedRim, centerDip, centerSeat, outerSeam, middleSeam, ...seamStrips);
     house.add(cushion);
 
     const cushionCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 3.24, 3.24);
@@ -2020,7 +2022,7 @@ export function createChapterSeven(): ChapterSevenData {
       centerZ: HOUSE_CENTER_Z + localZ,
       halfWidth: 1.62,
       halfDepth: 1.62,
-      floorY: 0.72,
+      floorY: 0.86,
       collider: cushionCollider,
     });
   };
@@ -5175,7 +5177,7 @@ export function createChapterSeven(): ChapterSevenData {
   );
   addColorfulRug(1228.04 - CENTER_X, 89.57 - HOUSE_CENTER_Z, 0);
   addColorfulRug(1210.82 - CENTER_X, 89.44 - HOUSE_CENTER_Z, Math.PI / 2, 8.2, 5.4);
-  addPinkFloorCushion(1198.74 - CENTER_X, 97.08 - HOUSE_CENTER_Z);
+  addPinkFloorCushion(HOUSE_LEFT_ROOM_WALL_X - 1.72, HOUSE_DEPTH / 2 - 1.62);
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
@@ -5247,6 +5249,11 @@ export function createChapterSeven(): ChapterSevenData {
   addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 1.0, 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
   addCookie(house, 1208.45 - CENTER_X, 0.34, 101.1 - HOUSE_CENTER_Z, 0.9, 'Balcony hidden cookie');
   addCookie(house, 1238.7 - CENTER_X, 0.2, 72.2 - HOUSE_CENTER_Z, 0.9, 'Backyard hidden cookie');
+  addCookie(house, 1216.55 - CENTER_X, 1.18, 97.2 - HOUSE_CENTER_Z, 0.86, 'Rose table easy cookie');
+  addCookie(house, 1225.35 - CENTER_X, 1.16, 97.84 - HOUSE_CENTER_Z, 0.86, 'Plant table easy cookie');
+  addCookie(house, 1232.2 - CENTER_X, 1.34, 97.1 - HOUSE_CENTER_Z, 0.9, 'Couch easy cookie');
+  addCookie(house, 1198.1 - CENTER_X, 0.26, 90.9 - HOUSE_CENTER_Z, 0.92, 'Floor easy cookie');
+  addCookie(house, 1202.2 - CENTER_X, 0.26, 94.9 - HOUSE_CENTER_Z, 0.92, 'Living room floor easy cookie');
   const kitchenUpperCupboards = [
     addUpperCupboard(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z, 1.62, 'Upper cupboards over the fridge'),
     addUpperCupboard(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.1, 'Upper cupboards over the counter'),
@@ -5281,7 +5288,8 @@ export function createChapterSeven(): ChapterSevenData {
       const roll = Math.sin(cookie.shuffleSeed * 3.71 + cycle * 11.37 + index * 1.91) * 43758.5453;
       const normalized = roll - Math.floor(roll);
       const isBathroomCupboardCookie = cookie.root.parent === bathroomUpperCupboard.doorPivots[0].parent;
-      cookie.active = isBathroomCupboardCookie || normalized > 0.28;
+      const isEasyCookie = cookie.label.includes('easy cookie');
+      cookie.active = isEasyCookie || isBathroomCupboardCookie || normalized > 0.28;
       cookie.collected = false;
       cookie.root.visible = cookie.active;
     });
@@ -5289,7 +5297,6 @@ export function createChapterSeven(): ChapterSevenData {
       drawer.cookieCount = drawer.cookies.filter((cookie) => cookie.active && !cookie.collected).length;
     });
   };
-  refreshCookiesForDay(1);
 
   const roofHalfWidth = HOUSE_WIDTH / 2 + HOUSE_ROOF_OVERHANG;
   const roofDepth = HOUSE_DEPTH + HOUSE_ROOF_OVERHANG * 2;
@@ -5488,6 +5495,9 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
+  addCookie(house, leftPorchChairX + 0.05, 0.9, leftPorchChairZ + 0.02, 0.82, 'Porch rocking chair easy cookie');
+  addCookie(house, rightPorchChairX - 0.02, 0.9, rightPorchChairZ + 0.02, 0.82, 'Porch rocking chair second easy cookie');
+  addCookie(cardboardBox.root, 0.18, 0.42, 0.18, 0.86, 'Cardboard box easy cookie');
   addOutdoorRoundTableSet(1240.54, 91.39);
   const swingSet = addOutdoorSwingSet(1246.8, 62.24, 0, 1.05);
   let swingInput = 0;
@@ -5668,6 +5678,7 @@ export function createChapterSeven(): ChapterSevenData {
   addCollider(colliders, CENTER_X + HALF_SIZE + 1, CENTER_Z, 2, FOREST_SIZE + 10);
   addCollider(colliders, CENTER_X, CENTER_Z - HALF_SIZE - 1, FOREST_SIZE + 10, 2);
   addCollider(colliders, CENTER_X, CENTER_Z + HALF_SIZE + 1, FOREST_SIZE + 10, 2);
+  refreshCookiesForDay(1);
 
   const spawn = new Vector3(CENTER_X - 23.55, GAME_CONFIG.player.height + 1.38, HOUSE_CENTER_Z + 10.1);
   const lookTarget = new Vector3(CENTER_X + HOUSE_LEFT_ROOM_WALL_X, GAME_CONFIG.player.height * 0.86, HOUSE_CENTER_Z + HOUSE_FRONT_ROOM_DOOR_Z);
