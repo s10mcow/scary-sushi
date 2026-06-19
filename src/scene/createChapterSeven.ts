@@ -4173,7 +4173,7 @@ export function createChapterSeven(): ChapterSevenData {
 
     const width = 1.98;
     const depth = 1.44;
-    const height = KITCHEN_COUNTER_SURFACE_Y + 0.04;
+    const height = KITCHEN_COUNTER_SURFACE_Y + 0.28;
     const tubCenterY = height * 0.48;
     const doorRadius = 0.43;
     const doorWindowRadius = 0.28;
