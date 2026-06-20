@@ -25348,7 +25348,7 @@ export class Game {
     this.chapterTwoCardTime = 4.2;
     this.chapterCardTitle = "Chapter 9: Freddy's Pizza Complex";
     this.chapterCardBody =
-      'Spawn outside in the parking lot, record evidence with the shoulder camera, survive the locked night, solve the building puzzles, and escape.';
+      'The complex has been stripped down to an empty floor with only the main stage and animatronics remaining.';
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
@@ -25464,7 +25464,7 @@ export class Game {
     this.player.teleport(this.chapterNine.spawn);
     this.player.lookToward(this.chapterNine.lookTarget, 1);
     this.pushStatus(
-      "Chapter 9 loaded. Left click records footage with the shoulder camera. E operates vents, puzzles, and doors. Day lasts 5 minutes; night lasts 10 minutes and locks the complex.",
+      'Chapter 9 loaded. The Freddy Pizza Complex is empty except for the stage and animatronics. Left click records footage with the shoulder camera.',
       4.2,
     );
     this.resize();

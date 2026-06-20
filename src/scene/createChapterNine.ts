@@ -94,8 +94,8 @@ interface ChapterNineAnimatronic {
 
 const DAY_SECONDS = 5 * 60;
 const NIGHT_SECONDS = 10 * 60;
-const FOOTAGE_TARGET = 12;
-const PUZZLE_TARGET = 4;
+const FOOTAGE_TARGET = 6;
+const PUZZLE_TARGET = 0;
 const BUILDING_WIDTH = 130;
 const BUILDING_DEPTH = 96;
 const BUILDING_CENTER_Z = -18;
@@ -401,6 +401,8 @@ export function createChapterNine(): ChapterNineData {
     addBox(root, width, 0.08, depth, x, -0.035, z, checkeredFloorMaterial);
   };
 
+  const emptyGround = addBox(root, 190, 0.12, 150, 0, -0.06, 20, asphaltMaterial);
+  emptyGround.name = 'Chapter 9 empty ground';
   addFloor(0, 44, 190, 112, asphaltMaterial);
   addFloor(0, 25, 146, 28, dirtyConcreteMaterial);
   addFloor(0, 82, 116, 42, asphaltMaterial);
@@ -585,10 +587,11 @@ export function createChapterNine(): ChapterNineData {
   };
   [-53, -47, -41, -35, -29].forEach((x, index) => addArcade(x, 21, [0x5e2b91, 0x1961a5, 0xa02535, 0x1b7a53, 0x9b7424][index]));
 
-  addBox(root, 30, 1.1, 11, 0, 0.55, -36, new MeshStandardMaterial({ color: 0x2f1720, roughness: 0.82 }));
+  const stage = addBox(root, 30, 1.1, 11, 0, 0.55, -36, new MeshStandardMaterial({ color: 0x2f1720, roughness: 0.82 }));
+  stage.name = 'Chapter 9 preserved stage';
   addCollider(colliders, 0, -36, 31, 12);
   const curtain = addBox(root, 32, 6.4, 0.28, 0, 3.5, -41.6, new MeshStandardMaterial({ color: 0x5d111b, roughness: 0.9 }));
-  curtain.name = 'Dirty stage curtain';
+  curtain.name = 'Chapter 9 preserved stage curtain';
   const addStageDrums = (): void => {
     const drumMaterial = new MeshStandardMaterial({ color: 0x8d1d22, roughness: 0.55, metalness: 0.12 });
     [-1.2, 1.2].forEach((x) => {
@@ -720,22 +723,10 @@ export function createChapterNine(): ChapterNineData {
     addBox(root, width + 2.2, 1.25, depth + 2.2, center.x, 3.55, center.z, ventMaterial);
     addBox(root, width + 1.2, 0.08, depth + 1.2, center.x, 4.21, center.z, blackMetalMaterial);
   }
-  const ventEntries = [
-    { label: 'Security vent', position: new Vector3(-52, GAME_CONFIG.player.height, -52), target: new Vector3(52, GAME_CONFIG.player.height, 20) },
-    { label: 'Arcade vent', position: new Vector3(52, GAME_CONFIG.player.height, 20), target: new Vector3(-52, GAME_CONFIG.player.height, -52) },
-  ];
+  const ventEntries: { label: string; position: Vector3; target: Vector3 }[] = [];
 
   const filmingTargets: ChapterNineFilmingTarget[] = [
-    { id: 'front', label: 'closed cracked front doors', position: new Vector3(0, 1.6, 30), radius: 15, filmed: false },
-    { id: 'checkin', label: 'check-in and booking counter', position: new Vector3(-23, 1.4, 27), radius: 10, filmed: false },
-    { id: 'prizes', label: 'abandoned prize counter', position: new Vector3(23, 1.4, 27), radius: 10, filmed: false },
     { id: 'stage', label: 'main stage', position: new Vector3(0, 1.4, -36), radius: 13, filmed: false },
-    { id: 'kitchen', label: 'abandoned restaurant kitchen', position: new Vector3(42, 1.4, -24), radius: 13, filmed: false },
-    { id: 'backstage', label: 'backstage shelves', position: new Vector3(-42, 1.4, -24), radius: 12, filmed: false },
-    { id: 'security', label: 'security office monitors', position: new Vector3(-42, 1.4, -56), radius: 10, filmed: false },
-    { id: 'vents', label: 'ceiling vent network', position: new Vector3(-52, 3.1, -28), radius: 14, filmed: false },
-    { id: 'arcade', label: 'dead arcade machines', position: new Vector3(-42, 1.4, 20), radius: 12, filmed: false },
-    { id: 'pirate', label: 'Pirate Cove', position: new Vector3(42, 1.4, 10), radius: 12, filmed: false },
     { id: 'freddy', label: 'Freddy moving', position: new Vector3(0, 1.4, -35), radius: 12, filmed: false },
     { id: 'bonnie', label: 'Bonnie moving', position: new Vector3(-9, 1.4, -35), radius: 12, filmed: false },
     { id: 'chica', label: 'Chica moving', position: new Vector3(9, 1.4, -35), radius: 12, filmed: false },
@@ -743,12 +734,7 @@ export function createChapterNine(): ChapterNineData {
     { id: 'golden', label: 'Golden Freddy sighting', position: new Vector3(0, 1.4, -58), radius: 12, filmed: false },
   ];
 
-  const puzzleStations: ChapterNinePuzzleStation[] = [
-    { id: 'breaker', label: 'rusty breaker panel', position: new Vector3(-48, GAME_CONFIG.player.height, -56), solved: false, solvedMessage: 'You flip the rusty breaker. A few emergency lights buzz on.' },
-    { id: 'kitchen-valve', label: 'kitchen gas valve', position: new Vector3(33, GAME_CONFIG.player.height, -30), solved: false, solvedMessage: 'You twist the kitchen valve shut. The hiss behind the stoves stops.' },
-    { id: 'office-terminal', label: 'security terminal', position: new Vector3(-36, GAME_CONFIG.player.height, -56), solved: false, solvedMessage: 'You pull old footage from the security terminal.' },
-    { id: 'exit-chain', label: 'front door chain', position: new Vector3(0, GAME_CONFIG.player.height, 30), solved: false, solvedMessage: 'You loosen the heavy chain on the front doors.' },
-  ];
+  const puzzleStations: ChapterNinePuzzleStation[] = [];
 
   const makeAnimatronic = (
     id: ChapterNineAnimatronicId,
@@ -928,6 +914,19 @@ export function createChapterNine(): ChapterNineData {
     makeAnimatronic('golden-freddy', 'Golden Freddy', 0xc49a35, new Vector3(0, 0, -58), [new Vector3(0, 0, -58), new Vector3(0, 0, -24), new Vector3(-42, 0, -56), new Vector3(42, 0, -24)], 'bear'),
   ];
 
+  const preservedChapterNineObjects = new Set<object>([
+    emptyGround,
+    stage,
+    curtain,
+    ...animatronics.map((bot) => bot.root),
+  ]);
+  root.children.slice().forEach((child) => {
+    if (!preservedChapterNineObjects.has(child)) {
+      root.remove(child);
+    }
+  });
+  colliders.length = 0;
+
   const shoulderCamera = new Group();
   shoulderCamera.name = 'Chapter 9 shoulder recording camera';
   const cameraBody = new Mesh(new BoxGeometry(0.55, 0.34, 0.34), recordingMaterial);
@@ -1102,19 +1101,7 @@ export function createChapterNine(): ChapterNineData {
           message: station.solvedMessage,
         };
       }
-      if (playerPosition.distanceTo(new Vector3(0, GAME_CONFIG.player.height, 30)) <= GAME_CONFIG.player.interactionRange + 2.6) {
-        if (!night || escapeUnlocked) {
-          return {
-            message: escapeUnlocked
-              ? 'The front doors finally open. You can escape with the footage.'
-              : 'The front doors are open during the day, but the best footage will happen after closing.',
-            teleport: new Vector3(0, GAME_CONFIG.player.height, 84),
-            lookTarget,
-          };
-        }
-        return { message: 'The front doors are chained shut for the night. Film evidence and solve the building puzzles to escape.' };
-      }
-      return { message: 'Nothing here needs your hand, but the shoulder camera can still record evidence with left click.' };
+      return { message: 'Only the stage and animatronics remain here. Use the shoulder camera with left click if you want footage.' };
     },
     record(playerPosition: Vector3): string {
       const movingAnimatronics = new Set(
