@@ -48,7 +48,7 @@ export interface ChapterSevenData {
   rearFixtures: ChapterSevenRearFixture[];
   remoteButtons: ChapterSevenRemoteButton[];
   swingSet: ChapterSevenSwingSet;
-  refreshCookiesForDay(day: number): void;
+  refreshCookiesForDay(day: number, forceReroll?: boolean): void;
   setTelevisionPowered(powered: boolean): void;
   isTelevisionPowered(): boolean;
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
@@ -6831,6 +6831,18 @@ export function createChapterSeven(): ChapterSevenData {
   addCookie(house, 1232.2 - CENTER_X, 1.25, 97.1 - HOUSE_CENTER_Z, 0.9, 'Couch easy cookie');
   addCookie(house, HOUSE_LEFT_ROOM_WALL_X - 1.18, 0.89, HOUSE_DEPTH / 2 - 1.5, 0.9, 'Bean bag easy cookie');
   addCookie(house, leftRoomCenterX - 0.62, 1.13, 0.26, 0.9, 'Dining table easy cookie');
+  addCookie(house, 1199.25 - CENTER_X, 1.08, 85.28 - HOUSE_CENTER_Z, 0.86, 'Fish tank table easy cookie');
+  addCookie(house, 1201.12 - CENTER_X, 1.08, 85.55 - HOUSE_CENTER_Z, 0.86, 'Fish tank table second easy cookie');
+  addCookie(house, 1203.55 - CENTER_X, 1.02, 96.1 - HOUSE_CENTER_Z, 0.86, 'Book table easy cookie');
+  addCookie(house, 1226.0 - CENTER_X, 1.11, 97.28 - HOUSE_CENTER_Z, 0.82, 'Remote table easy cookie');
+  addCookie(house, 1220.35 - CENTER_X, 0.9, 89.25 - HOUSE_CENTER_Z, 0.88, 'Rug edge easy cookie');
+  addCookie(house, 1213.0 - CENTER_X, 1.05, 63.85 - HOUSE_CENTER_Z, 0.82, 'Rocking chair easy cookie');
+  addCookie(house, 1204.0 - CENTER_X, 1.12, 52.98 - HOUSE_CENTER_Z, 0.82, 'Dryer top easy cookie');
+  addCookie(house, 1205.15 - CENTER_X, 1.12, 53.35 - HOUSE_CENTER_Z, 0.82, 'Washer top easy cookie');
+  addCookie(house, 1208.9 - CENTER_X, 1.44, 53.62 - HOUSE_CENTER_Z, 0.82, 'Bathroom sink counter easy cookie');
+  addCookie(house, 1214.45 - CENTER_X, 0.82, 57.2 - HOUSE_CENTER_Z, 0.82, 'Bathtub rim easy cookie');
+  addCookie(house, 1239.88 - CENTER_X, 0.82, 91.35 - HOUSE_CENTER_Z, 0.86, 'Backyard round table easy cookie');
+  addCookie(house, 1246.9 - CENTER_X, 0.82, 62.25 - HOUSE_CENTER_Z, 0.82, 'Backyard swing seat easy cookie');
   const kitchenUpperCupboards = [
     addUpperCupboard(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z, 1.62, 'Upper cupboards over the fridge'),
     addUpperCupboard(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.1, 'Upper cupboards over the counter'),
@@ -6859,17 +6871,21 @@ export function createChapterSeven(): ChapterSevenData {
     ...frontBedroomMarkerDrawer.drawerSlides,
   ];
   const houseCabinets = [...houseUpperCupboards, ...houseBaseCabinets];
-  const refreshCookiesForDay = (day: number): void => {
-    const cycle = Math.max(0, Math.floor((Math.max(1, Math.floor(day)) - 1) / 4));
+  const refreshCookiesForDay = (day: number, forceReroll = false): void => {
+    if (forceReroll) {
+      cookieReloadSeed = Math.random() * 100000;
+    }
+
+    const cycle = Math.max(0, Math.floor((Math.max(1, Math.floor(day)) - 1) / 5));
     const cookieRolls = cookiePickups.map((cookie, index) => {
       const roll = Math.sin(cookie.shuffleSeed * 3.71 + cookieReloadSeed * 0.97 + cycle * 11.37 + index * 1.91) * 43758.5453;
       const normalized = roll - Math.floor(roll);
       return { cookie, normalized };
     });
-    const minimumVisibleCookies = Math.min(cookieRolls.length, 14);
+    const minimumVisibleCookies = Math.min(cookieRolls.length, 24);
     const activeCookies = new Set<ChapterSevenCookiePickup>();
     cookieRolls.forEach(({ cookie, normalized }) => {
-      if (normalized > 0.48) {
+      if (normalized > 0.36) {
         activeCookies.add(cookie);
       }
     });

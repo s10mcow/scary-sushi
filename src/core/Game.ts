@@ -12296,12 +12296,12 @@ export class Game {
       }
     } while (this.chapterSevenPhaseTime >= this.getChapterSevenPhaseDuration());
     if (passedIntoDay > 0) {
-      const previousCookieCycle = Math.floor((this.chapterSevenDayCount - 1) / 4);
+      const previousCookieCycle = Math.floor((this.chapterSevenDayCount - 1) / 5);
       this.chapterSevenDayCount += passedIntoDay;
-      const currentCookieCycle = Math.floor((this.chapterSevenDayCount - 1) / 4);
+      const currentCookieCycle = Math.floor((this.chapterSevenDayCount - 1) / 5);
       if (currentCookieCycle > previousCookieCycle) {
         this.chapterSeven.refreshCookiesForDay(this.chapterSevenDayCount);
-        this.pushStatus('Cookies have been hidden around the house again.', 2.8);
+        this.pushStatus('Five days passed, so the remaining cookies scattered into new spots.', 2.8);
       }
     }
 
@@ -13281,7 +13281,15 @@ export class Game {
           cookie.drawer.cookieCount = Math.max(0, cookie.drawer.cookieCount - 1);
         }
         this.chapterSevenCookieCount += 1;
-        this.pushStatus(`You picked up a cookie. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 2.2);
+        const allMapCookiesCollected = this.chapterSeven.cookies.every((candidate) => (
+          !candidate.active || candidate.collected
+        ));
+        if (allMapCookiesCollected) {
+          this.chapterSeven.refreshCookiesForDay(this.chapterSevenDayCount, true);
+          this.pushStatus(`You found every cookie on the map, so a fresh batch was hidden. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 3);
+        } else {
+          this.pushStatus(`You picked up a cookie. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 2.2);
+        }
         this.syncHud();
         return;
       }
