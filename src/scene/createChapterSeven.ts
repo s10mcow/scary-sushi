@@ -378,6 +378,16 @@ export function createChapterSeven(): ChapterSevenData {
     halfWidth: number;
     halfDepth: number;
   }> = [];
+  const fishTankFish: Array<{
+    fish: Group;
+    baseX: number;
+    baseY: number;
+    baseZ: number;
+    rangeX: number;
+    rangeZ: number;
+    speed: number;
+    phase: number;
+  }> = [];
   let forestTime = 0;
   let grandfatherClockChimeTimer = 0;
   const nightSkyMaterials: MeshBasicMaterial[] = [];
@@ -3381,7 +3391,15 @@ export function createChapterSeven(): ChapterSevenData {
       return pebble;
     });
 
-    const makeFish = (x: number, y: number, z: number, material: MeshStandardMaterial, direction: 1 | -1): Group => {
+    const makeFish = (
+      x: number,
+      y: number,
+      z: number,
+      material: MeshStandardMaterial,
+      direction: 1 | -1,
+      speed: number,
+      phase: number,
+    ): Group => {
       const fish = new Group();
       fish.position.set(x, y, z);
       fish.rotation.y = direction > 0 ? 0 : Math.PI;
@@ -3393,6 +3411,16 @@ export function createChapterSeven(): ChapterSevenData {
       const eye = new Mesh(new SphereGeometry(0.018, 8, 6), tvFrameMaterial);
       eye.position.set(0.16, 0.04, 0.065);
       fish.add(body, tail, eye);
+      fishTankFish.push({
+        fish,
+        baseX: x,
+        baseY: y,
+        baseZ: z,
+        rangeX: 0.5,
+        rangeZ: 0.2,
+        speed,
+        phase,
+      });
       return fish;
     };
 
@@ -3429,9 +3457,9 @@ export function createChapterSeven(): ChapterSevenData {
       water,
       sand,
       ...pebbles,
-      makeFish(-0.92, 0.72, 0.18, fishMaterials[0], 1),
-      makeFish(0.08, 0.55, -0.18, fishMaterials[1], -1),
-      makeFish(1.05, 0.82, 0.05, fishMaterials[2], 1),
+      makeFish(-0.92, 0.72, 0.18, fishMaterials[0], 1, 0.82, 0.1),
+      makeFish(0.08, 0.55, -0.18, fishMaterials[1], -1, 1.05, 1.9),
+      makeFish(1.05, 0.82, 0.05, fishMaterials[2], 1, 0.72, 3.4),
       ...seaweed,
       chest,
     );
@@ -7595,6 +7623,16 @@ export function createChapterSeven(): ChapterSevenData {
     update(deltaSeconds: number, playerPosition?: Vector3, nightBlend = 0): void {
       forestTime += deltaSeconds;
       tvNewsScreen.update(forestTime, wallTelevision.isPowered());
+      fishTankFish.forEach((fishMotion, index) => {
+        const swimTime = forestTime * fishMotion.speed + fishMotion.phase;
+        const x = fishMotion.baseX + Math.sin(swimTime) * fishMotion.rangeX;
+        const z = fishMotion.baseZ + Math.cos(swimTime * 0.8 + index) * fishMotion.rangeZ;
+        const y = fishMotion.baseY + Math.sin(swimTime * 1.7) * 0.045;
+        const dx = Math.cos(swimTime) * fishMotion.rangeX;
+        fishMotion.fish.position.set(x, y, z);
+        fishMotion.fish.rotation.y = dx >= 0 ? 0 : Math.PI;
+        fishMotion.fish.rotation.z = Math.sin(swimTime * 2.4) * 0.08;
+      });
       grandfatherClockChimeTimer = Math.max(0, grandfatherClockChimeTimer - deltaSeconds);
       grandfatherClockMotionParts.forEach((part, partIndex) => {
         const chimeStrength = MathUtils.clamp(grandfatherClockChimeTimer / 2.7, 0, 1);
