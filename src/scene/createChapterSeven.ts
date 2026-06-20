@@ -378,6 +378,22 @@ export function createChapterSeven(): ChapterSevenData {
     halfWidth: number;
     halfDepth: number;
   }> = [];
+  const addCrawlUnderCollider = (
+    collider: CollisionBox,
+    centerX: number,
+    centerZ: number,
+    width: number,
+    depth: number,
+    inset = 0,
+  ): void => {
+    crawlUnderTableColliders.push({
+      collider,
+      centerX,
+      centerZ,
+      halfWidth: Math.max(0.2, width / 2 - inset),
+      halfDepth: Math.max(0.2, depth / 2 - inset),
+    });
+  };
   const fishTankFish: Array<{
     fish: Group;
     baseX: number;
@@ -3145,7 +3161,8 @@ export function createChapterSeven(): ChapterSevenData {
 
     chair.add(seat, back, ...legs);
     house.add(chair);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 0.92, 0.92);
+    const chairCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 0.92, 0.92);
+    addCrawlUnderCollider(chairCollider, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 0.92, 0.92, 0.06);
   };
 
   const addYellowCouch = (localX: number, localZ: number, rotationY = 0): void => {
@@ -3490,7 +3507,8 @@ export function createChapterSeven(): ChapterSevenData {
 
     table.add(top, apronFront, apronBack, ...legs, tank);
     house.add(table);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, tableLength + 0.18, tableDepth + 0.18);
+    const tableCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, tableLength + 0.18, tableDepth + 0.18);
+    addCrawlUnderCollider(tableCollider, CENTER_X + localX, HOUSE_CENTER_Z + localZ, tableLength + 0.18, tableDepth + 0.18, 0.18);
   };
 
   const addRoundRoseTable = (localX: number, localZ: number): void => {
@@ -3612,7 +3630,8 @@ export function createChapterSeven(): ChapterSevenData {
 
     table.add(top, pedestal, base, ...feet, pot, potLip, soil);
     house.add(table);
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.72, 1.72);
+    const tableCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.72, 1.72);
+    addCrawlUnderCollider(tableCollider, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.72, 1.72, 0.14);
   };
 
   const addSquareBookTable = (localX: number, localZ: number): void => {
@@ -3945,7 +3964,8 @@ export function createChapterSeven(): ChapterSevenData {
 
     chair.add(seat, back, ...legs);
     root.add(chair);
-    addCollider(colliders, worldX, worldZ, 0.92, 0.92);
+    const chairCollider = addCollider(colliders, worldX, worldZ, 0.92, 0.92);
+    addCrawlUnderCollider(chairCollider, worldX, worldZ, 0.92, 0.92, 0.06);
   };
 
   const addOutdoorRoundTableSet = (worldX: number, worldZ: number): void => {
@@ -4048,7 +4068,8 @@ export function createChapterSeven(): ChapterSevenData {
     swingRoot.add(topBeam, swingPivot);
     root.add(swingRoot);
 
-    addRotatedCollider(colliders, worldX - CENTER_X, worldZ - HOUSE_CENTER_Z, rotationY, 0, 0, 4.45 * scale, 1.12 * scale);
+    const swingCollider = addRotatedCollider(colliders, worldX - CENTER_X, worldZ - HOUSE_CENTER_Z, rotationY, 0, 0, 4.45 * scale, 1.12 * scale);
+    addCrawlUnderCollider(swingCollider, worldX, worldZ, 4.45 * scale, 1.12 * scale, 0.12);
 
     const interactPoint = getRotatedLocalPoint(worldX - CENTER_X, worldZ - HOUSE_CENTER_Z, rotationY, 0, 1.76 * scale);
     const exitPoint = getRotatedLocalPoint(worldX - CENTER_X, worldZ - HOUSE_CENTER_Z, rotationY, 0, 2.25 * scale);
@@ -4080,10 +4101,10 @@ export function createChapterSeven(): ChapterSevenData {
     width: number,
     depth: number,
     rotationY: number,
-  ): void => {
+  ): CollisionBox => {
     const colliderWidth = Math.abs(Math.cos(rotationY)) * width + Math.abs(Math.sin(rotationY)) * depth;
     const colliderDepth = Math.abs(Math.sin(rotationY)) * width + Math.abs(Math.cos(rotationY)) * depth;
-    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, colliderWidth, colliderDepth);
+    return addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, colliderWidth, colliderDepth);
   };
 
   const addBookshelf = (localX: number, localZ: number, rotationY = 0, widthScale = 1, heightScale = 1): void => {
@@ -4337,7 +4358,9 @@ export function createChapterSeven(): ChapterSevenData {
       ...rockerPieces,
     );
     house.add(chair);
-    addRotatedFurnitureCollider(localX, localZ, 1.58, 1.86, rotationY);
+    const chairCollider = addRotatedFurnitureCollider(localX, localZ, 1.58, 1.86, rotationY);
+    const chairBounds = getRotatedBounds(1.58, 1.86, rotationY);
+    addCrawlUnderCollider(chairCollider, CENTER_X + localX, HOUSE_CENTER_Z + localZ, chairBounds.width, chairBounds.depth, 0.12);
   };
 
   const addYardFenceRun = (startLocalX: number, localZ: number, length = 20, axis: 'x' | 'z' = 'x'): void => {
@@ -6027,6 +6050,7 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(table);
 
     const collider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.72, 1.72);
+    addCrawlUnderCollider(collider, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.72, 1.72, 0.16);
     counterSurfaces.push({
       centerX: CENTER_X + localX,
       centerZ: HOUSE_CENTER_Z + localZ,
@@ -7507,6 +7531,15 @@ export function createChapterSeven(): ChapterSevenData {
         return null;
       }
 
+      const isCrawlUnderColliderActive = (collider: CollisionBox): boolean => (
+        crawling
+        && crawlUnderTableColliders.some((table) => (
+          table.collider === collider
+          && Math.abs(position.x - table.centerX) <= table.halfWidth + GAME_CONFIG.player.radius + 0.28
+          && Math.abs(position.z - table.centerZ) <= table.halfDepth + GAME_CONFIG.player.radius + 0.28
+        ))
+      );
+
       const nearCardboardBox = Math.abs(position.x - cardboardBox.centerX) <= cardboardBox.halfWidth + GAME_CONFIG.player.radius + 0.34
         && Math.abs(position.z - cardboardBox.centerZ) <= cardboardBox.halfDepth + GAME_CONFIG.player.radius + 0.34;
       const highEnoughToClearCardboardBox = position.y > GAME_CONFIG.player.height + cardboardBox.wallHeight * 0.42;
@@ -7558,9 +7591,10 @@ export function createChapterSeven(): ChapterSevenData {
           const nearSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth + GAME_CONFIG.player.radius + 0.28
             && Math.abs(position.z - surface.centerZ) <= surface.halfDepth + GAME_CONFIG.player.radius + 0.28;
           const highEnoughToClearSurface = surfaceReachable && position.y > GAME_CONFIG.player.height + 0.24;
+          const crawlUnderActive = isCrawlUnderColliderActive(surface.collider);
           surface.collider.enabled = surface.collider === houseOven.collider
-            ? !canCrawlIntoOven && !(nearSurface && highEnoughToClearSurface)
-            : !(nearSurface && highEnoughToClearSurface);
+            ? !canCrawlIntoOven && !crawlUnderActive && !(nearSurface && highEnoughToClearSurface)
+            : !crawlUnderActive && !(nearSurface && highEnoughToClearSurface);
         }
         const onSurface = Math.abs(position.x - surface.centerX) <= surface.halfWidth
           && Math.abs(position.z - surface.centerZ) <= surface.halfDepth;
