@@ -1906,6 +1906,226 @@ function createKitchenStoveLine(x: number, z: number, rotationY: number): Group 
   return root;
 }
 
+function createRestaurantFridgeLine(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const steelMaterial = new MeshStandardMaterial({
+    color: 0xb8c4c8,
+    emissive: 0x11191c,
+    emissiveIntensity: 0.08,
+    roughness: 0.22,
+    metalness: 0.82,
+  });
+  const darkTrimMaterial = new MeshStandardMaterial({
+    color: 0x1f2529,
+    roughness: 0.34,
+    metalness: 0.38,
+  });
+  const glassMaterial = new MeshStandardMaterial({
+    color: 0xbdefff,
+    emissive: 0x5dbce8,
+    emissiveIntensity: 0.18,
+    roughness: 0.12,
+    metalness: 0.08,
+    transparent: true,
+    opacity: 0.38,
+  });
+
+  [-0.9, 0.9].forEach((unitX) => {
+    const body = new Mesh(new BoxGeometry(1.58, 2.72, 0.72), steelMaterial);
+    body.position.set(unitX, 1.36, 0);
+    const doorGlass = new Mesh(new BoxGeometry(1.1, 1.86, 0.035), glassMaterial);
+    doorGlass.position.set(unitX, 1.48, 0.38);
+    const handle = new Mesh(new BoxGeometry(0.065, 1.32, 0.07), darkTrimMaterial);
+    handle.position.set(unitX + 0.58, 1.5, 0.43);
+    const toeKick = new Mesh(new BoxGeometry(1.42, 0.18, 0.08), darkTrimMaterial);
+    toeKick.position.set(unitX, 0.12, 0.42);
+    root.add(body, doorGlass, handle, toeKick);
+  });
+
+  const topVent = new Mesh(new BoxGeometry(3.42, 0.18, 0.82), darkTrimMaterial);
+  topVent.position.set(0, 2.82, 0);
+  root.add(topVent);
+  return root;
+}
+
+function createRestaurantSinkStation(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const steelMaterial = new MeshStandardMaterial({
+    color: 0xb9c4ca,
+    emissive: 0x151d22,
+    emissiveIntensity: 0.08,
+    roughness: 0.2,
+    metalness: 0.82,
+  });
+  const waterMaterial = new MeshStandardMaterial({
+    color: 0x6ed8ff,
+    emissive: 0x1f8cc2,
+    emissiveIntensity: 0.32,
+    roughness: 0.18,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.62,
+  });
+  const basinDarkMaterial = new MeshStandardMaterial({
+    color: 0x283238,
+    emissive: 0x06090a,
+    emissiveIntensity: 0.1,
+    roughness: 0.28,
+    metalness: 0.58,
+  });
+
+  const counter = new Mesh(new BoxGeometry(3.55, 0.18, 0.9), steelMaterial);
+  counter.position.y = 0.92;
+  const backsplash = new Mesh(new BoxGeometry(3.55, 0.58, 0.1), steelMaterial);
+  backsplash.position.set(0, 1.18, -0.45);
+  const lower = new Mesh(new BoxGeometry(3.42, 0.52, 0.72), steelMaterial);
+  lower.position.y = 0.42;
+  root.add(counter, backsplash, lower);
+
+  [-0.95, 0, 0.95].forEach((basinX) => {
+    const basin = new Mesh(new BoxGeometry(0.72, 0.08, 0.52), basinDarkMaterial);
+    basin.position.set(basinX, 0.99, 0.04);
+    const water = new Mesh(new BoxGeometry(0.58, 0.025, 0.38), waterMaterial);
+    water.position.set(basinX, 1.045, 0.04);
+    const faucet = new Mesh(new TorusGeometry(0.16, 0.018, 8, 22), steelMaterial);
+    faucet.position.set(basinX, 1.32, -0.24);
+    faucet.rotation.x = Math.PI / 2;
+    const spout = new Mesh(new CylinderGeometry(0.018, 0.018, 0.22, 8), steelMaterial);
+    spout.position.set(basinX, 1.24, -0.12);
+    spout.rotation.x = Math.PI / 2;
+    root.add(basin, water, faucet, spout);
+  });
+
+  return root;
+}
+
+function createWallCleaverRack(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const boardMaterial = new MeshStandardMaterial({
+    color: 0x4f3324,
+    roughness: 0.72,
+    metalness: 0.03,
+  });
+  const bladeMaterial = new MeshStandardMaterial({
+    color: 0xd7e1e6,
+    emissive: 0x182228,
+    emissiveIntensity: 0.1,
+    roughness: 0.16,
+    metalness: 0.88,
+  });
+  const handleMaterial = new MeshStandardMaterial({
+    color: 0x17120f,
+    roughness: 0.46,
+    metalness: 0.12,
+  });
+
+  const board = new Mesh(new BoxGeometry(2.78, 0.82, 0.08), boardMaterial);
+  board.position.set(0, 1.78, 0);
+  root.add(board);
+  [-1.0, -0.6, -0.2, 0.2, 0.6, 1.0].forEach((cleaverX, index) => {
+    const blade = new Mesh(new BoxGeometry(0.24, 0.36, 0.035), bladeMaterial);
+    blade.position.set(cleaverX, 1.86 + (index % 2) * 0.05, 0.06);
+    const handle = new Mesh(new BoxGeometry(0.08, 0.26, 0.055), handleMaterial);
+    handle.position.set(cleaverX, 1.55 + (index % 2) * 0.05, 0.07);
+    root.add(blade, handle);
+  });
+
+  return root;
+}
+
+function createIngredientRack(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const rackMaterial = new MeshStandardMaterial({
+    color: 0x4d5b62,
+    emissive: 0x080f12,
+    emissiveIntensity: 0.08,
+    roughness: 0.28,
+    metalness: 0.66,
+  });
+  const crateMaterial = new MeshStandardMaterial({
+    color: 0x8d5a35,
+    roughness: 0.78,
+    metalness: 0.03,
+  });
+  const jarColors = [0xd24f38, 0xe0c456, 0x5ba567, 0xc6d8de, 0x8d6bd6];
+
+  [0.62, 1.22, 1.82, 2.42].forEach((shelfY) => {
+    const shelf = new Mesh(new BoxGeometry(3.38, 0.08, 0.58), rackMaterial);
+    shelf.position.y = shelfY;
+    root.add(shelf);
+  });
+  [-1.5, 1.5].forEach((postX) => {
+    const post = new Mesh(new CylinderGeometry(0.035, 0.04, 2.15, 8), rackMaterial);
+    post.position.set(postX, 1.5, -0.23);
+    root.add(post);
+  });
+
+  [-1.08, 0, 1.08].forEach((crateX) => {
+    const crate = new Mesh(new BoxGeometry(0.78, 0.32, 0.42), crateMaterial);
+    crate.position.set(crateX, 0.82, 0.02);
+    root.add(crate);
+  });
+  jarColors.forEach((color, index) => {
+    const jarMaterial = new MeshStandardMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity: 0.06,
+      roughness: 0.32,
+      metalness: 0.04,
+    });
+    const jar = new Mesh(new CylinderGeometry(0.12, 0.1, 0.28, 14), jarMaterial);
+    jar.position.set(-1.15 + index * 0.58, 1.4, 0.02);
+    root.add(jar);
+  });
+  [-0.78, -0.26, 0.26, 0.78].forEach((potX) => {
+    const pot = new Mesh(new CylinderGeometry(0.2, 0.18, 0.24, 18), rackMaterial);
+    pot.position.set(potX, 2.05, 0.02);
+    root.add(pot);
+  });
+
+  return root;
+}
+
+function createHangingPanRack(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const metalMaterial = new MeshStandardMaterial({
+    color: 0x9da8ad,
+    emissive: 0x10181b,
+    emissiveIntensity: 0.12,
+    roughness: 0.24,
+    metalness: 0.76,
+  });
+  const rail = new Mesh(new BoxGeometry(2.82, 0.06, 0.06), metalMaterial);
+  rail.position.set(0, 2.46, 0);
+  root.add(rail);
+  [-1.08, -0.54, 0, 0.54, 1.08].forEach((panX, index) => {
+    const hook = new Mesh(new CylinderGeometry(0.012, 0.012, 0.24, 6), metalMaterial);
+    hook.position.set(panX, 2.32, 0);
+    const pan = new Mesh(new CylinderGeometry(0.2, 0.22, 0.05, 18), metalMaterial);
+    pan.position.set(panX, 2.12 - (index % 2) * 0.08, 0.04);
+    pan.rotation.x = Math.PI / 2;
+    const handle = new Mesh(new BoxGeometry(0.08, 0.035, 0.42), metalMaterial);
+    handle.position.set(panX, 2.12 - (index % 2) * 0.08, 0.3);
+    root.add(hook, pan, handle);
+  });
+  return root;
+}
+
 function createBallPit(centerX: number, centerZ: number, width: number, depth: number): OfficeChapterBallPit {
   const root = new Group();
   const center = new Vector3(centerX, 0, centerZ);
@@ -8745,36 +8965,62 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     root.add(cloud);
   };
 
-  const kitchenDecorEnabled = false as boolean;
-  if (kitchenDecorEnabled) {
-    [
-      { x: kitchenCenterX + 2.1, z: kitchenCenterZ - 2.35, rotationY: 0.08, colliderWidth: 3.45, colliderDepth: 1.42 },
-      { x: kitchenCenterX - 3.4, z: kitchenCenterZ + 2.25, rotationY: Math.PI / 2, colliderWidth: 1.42, colliderDepth: 3.45 },
-      { x: kitchenCenterX + 3.9, z: kitchenCenterZ + 2.55, rotationY: -0.06, colliderWidth: 3.45, colliderDepth: 1.42 },
-    ].forEach((table) => {
-      root.add(createKitchenPrepTable(table.x, table.z, table.rotationY));
-      addCollider(colliders, table.x, table.z, table.colliderWidth, table.colliderDepth);
-    });
-  }
-
   [
-    { x: -243.25, z: 136.02 },
-    { x: -238.12, z: 135.96 },
+    { x: kitchenWestX + 0.9, z: kitchenCenterZ - 3.45, rotationY: -Math.PI / 2, colliderWidth: 1.12, colliderDepth: 4.1 },
+    { x: kitchenCenterX + 1.4, z: kitchenMaxZ - 0.78, rotationY: Math.PI, colliderWidth: 4.1, colliderDepth: 1.12 },
   ].forEach((stove) => {
-    root.add(createKitchenPlacedStove(stove.x, stove.z, 0));
-    addCollider(colliders, stove.x, stove.z, 1.28, 1.12);
+    root.add(createKitchenStoveLine(stove.x, stove.z, stove.rotationY));
+    addCollider(colliders, stove.x, stove.z, stove.colliderWidth, stove.colliderDepth);
+  });
+  [
+    { x: kitchenCenterX + 5.25, z: kitchenCenterZ + 2.2, rotationY: -Math.PI / 2 },
+    { x: kitchenCenterX + 5.25, z: kitchenCenterZ + 3.75, rotationY: -Math.PI / 2 },
+  ].forEach((stove) => {
+    root.add(createKitchenPlacedStove(stove.x, stove.z, stove.rotationY));
+    addCollider(colliders, stove.x, stove.z, 1.12, 1.28);
   });
 
-  root.add(createKitchenPrepTable(-243.25, 138.45, 0));
-  addCollider(colliders, -243.25, 138.45, 3.45, 1.42);
+  [
+    { x: kitchenCenterX - 3.2, z: kitchenCenterZ - 1.65, rotationY: 0, colliderWidth: 3.45, colliderDepth: 1.42 },
+    { x: kitchenCenterX + 2.45, z: kitchenCenterZ + 1.95, rotationY: 0, colliderWidth: 3.45, colliderDepth: 1.42 },
+    { x: kitchenCenterX - 3.55, z: kitchenCenterZ + 3.2, rotationY: Math.PI / 2, colliderWidth: 1.42, colliderDepth: 3.45 },
+  ].forEach((table) => {
+    root.add(createKitchenPrepTable(table.x, table.z, table.rotationY));
+    addCollider(colliders, table.x, table.z, table.colliderWidth, table.colliderDepth);
+  });
 
-  const kitchenGlassShelfDefinitions = kitchenDecorEnabled
-    ? [
-        { x: kitchenWestX + 0.7, z: kitchenCenterZ + 3.4, rotationY: -Math.PI / 2, colliderWidth: 0.72, colliderDepth: 3.35 },
-        { x: kitchenCenterX - 2.2, z: kitchenMinZ + 0.56, rotationY: 0, colliderWidth: 3.35, colliderDepth: 0.72 },
-        { x: kitchenCenterX + 4.4, z: kitchenMaxZ - 0.56, rotationY: Math.PI, colliderWidth: 3.35, colliderDepth: 0.72 },
-      ]
-    : [];
+  const sinkStation = { x: kitchenCenterX - 2.65, z: kitchenMinZ + 0.66, rotationY: 0, colliderWidth: 3.75, colliderDepth: 1.08 };
+  root.add(createRestaurantSinkStation(sinkStation.x, sinkStation.z, sinkStation.rotationY));
+  addCollider(colliders, sinkStation.x, sinkStation.z, sinkStation.colliderWidth, sinkStation.colliderDepth);
+
+  const fridgeLine = { x: kitchenCenterX + 5.15, z: kitchenCenterZ - 1.35, rotationY: -Math.PI / 2, colliderWidth: 0.98, colliderDepth: 3.75 };
+  root.add(createRestaurantFridgeLine(fridgeLine.x, fridgeLine.z, fridgeLine.rotationY));
+  addCollider(colliders, fridgeLine.x, fridgeLine.z, fridgeLine.colliderWidth, fridgeLine.colliderDepth);
+
+  [
+    { x: kitchenWestX + 0.75, z: kitchenCenterZ + 3.45, rotationY: -Math.PI / 2, colliderWidth: 0.74, colliderDepth: 3.45 },
+    { x: kitchenCenterX + 4.5, z: kitchenMinZ + 0.68, rotationY: 0, colliderWidth: 3.5, colliderDepth: 0.78 },
+  ].forEach((rack) => {
+    root.add(createIngredientRack(rack.x, rack.z, rack.rotationY));
+    addCollider(colliders, rack.x, rack.z, rack.colliderWidth, rack.colliderDepth);
+  });
+
+  root.add(createWallCleaverRack(kitchenWestX + 0.075, kitchenCenterZ + 0.08, -Math.PI / 2));
+  root.add(createHangingPanRack(kitchenCenterX + 1.05, kitchenMinZ + 0.09, 0));
+
+  [
+    { x: kitchenWestX + 2.75, y: 1.75, z: kitchenCenterZ - 3.25, scaleX: 2.1, scaleY: 1.08, scaleZ: 1.45 },
+    { x: kitchenWestX + 2.35, y: 2.38, z: kitchenCenterZ - 2.2, scaleX: 2.45, scaleY: 0.92, scaleZ: 1.72 },
+    { x: kitchenCenterX + 1.4, y: 1.82, z: kitchenMaxZ - 1.18, scaleX: 2.35, scaleY: 1.08, scaleZ: 1.32 },
+    { x: kitchenCenterX + 2.82, y: 2.46, z: kitchenMaxZ - 1.05, scaleX: 3.0, scaleY: 0.98, scaleZ: 1.45 },
+  ].forEach((cloud, index) => {
+    addKitchenSteamCloud(cloud.x, cloud.y, cloud.z, cloud.scaleX, cloud.scaleY, cloud.scaleZ, index * 0.71);
+  });
+
+  const kitchenGlassShelfDefinitions = [
+    { x: kitchenCenterX - 2.2, z: kitchenMinZ + 0.56, rotationY: 0, colliderWidth: 3.35, colliderDepth: 0.72 },
+    { x: kitchenCenterX + 4.4, z: kitchenMaxZ - 0.56, rotationY: Math.PI, colliderWidth: 3.35, colliderDepth: 0.72 },
+  ];
   const kitchenGlassShelves: OfficeChapterKitchenGlassShelf[] = kitchenGlassShelfDefinitions.map((shelf, index) => ({
     label: `Kitchen Glass Shelf ${index + 1}`,
     position: new Vector3(shelf.x, 1.46, shelf.z),
@@ -8783,29 +9029,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     root.add(createKitchenShelf(shelf.x, shelf.z, shelf.rotationY));
     addCollider(colliders, shelf.x, shelf.z, shelf.colliderWidth, shelf.colliderDepth);
   });
-
-  if (kitchenDecorEnabled) {
-    [
-      { x: kitchenWestX + 0.82, z: kitchenCenterZ - 3.35, rotationY: -Math.PI / 2, colliderWidth: 1.12, colliderDepth: 4.1 },
-      { x: kitchenCenterX + 1.35, z: kitchenMaxZ - 0.76, rotationY: Math.PI, colliderWidth: 4.1, colliderDepth: 1.12 },
-    ].forEach((stove) => {
-      root.add(createKitchenStoveLine(stove.x, stove.z, stove.rotationY));
-      addCollider(colliders, stove.x, stove.z, stove.colliderWidth, stove.colliderDepth);
-    });
-
-    [
-      { x: kitchenWestX + 1.4, y: 1.72, z: kitchenCenterZ - 3.3, scaleX: 2.2, scaleY: 1.2, scaleZ: 1.6 },
-      { x: kitchenWestX + 1.1, y: 2.35, z: kitchenCenterZ - 2.1, scaleX: 2.6, scaleY: 1.0, scaleZ: 1.8 },
-      { x: kitchenCenterX + 1.3, y: 1.85, z: kitchenMaxZ - 1.2, scaleX: 2.4, scaleY: 1.15, scaleZ: 1.4 },
-      { x: kitchenCenterX + 2.7, y: 2.5, z: kitchenMaxZ - 1.0, scaleX: 3.1, scaleY: 1.05, scaleZ: 1.5 },
-      { x: kitchenCenterX + 0.2, y: 1.58, z: kitchenCenterZ + 0.4, scaleX: 4.1, scaleY: 0.86, scaleZ: 3.0 },
-      { x: kitchenCenterX - 3.2, y: 1.82, z: kitchenCenterZ - 1.2, scaleX: 3.2, scaleY: 0.9, scaleZ: 2.5 },
-      { x: kitchenCenterX + 4.1, y: 2.0, z: kitchenCenterZ + 1.0, scaleX: 3.2, scaleY: 0.82, scaleZ: 2.0 },
-      { x: kitchenDoorX - 3.0, y: 1.45, z: kitchenDoorCenterZ, scaleX: 2.8, scaleY: 0.7, scaleZ: 2.6 },
-    ].forEach((cloud, index) => {
-      addKitchenSteamCloud(cloud.x, cloud.y, cloud.z, cloud.scaleX, cloud.scaleY, cloud.scaleZ, index * 0.71);
-    });
-  }
 
   [
     { x: kitchenCenterX - 4.4, z: kitchenCenterZ - 4.25 },
