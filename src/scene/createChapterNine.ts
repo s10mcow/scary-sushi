@@ -313,7 +313,7 @@ function createPosterMaterial(name: string, slogan: string, color: string): Mesh
 
 function createCheckeredFloorMaterial(): MeshStandardMaterial {
   return makeCanvasMaterial((context, canvas) => {
-    const tile = 16;
+    const tile = 8;
     for (let y = 0; y < canvas.height; y += tile) {
       for (let x = 0; x < canvas.width; x += tile) {
         const even = (Math.floor(x / tile) + Math.floor(y / tile)) % 2 === 0;
@@ -374,9 +374,9 @@ function createBrickWallMaterial(): MeshStandardMaterial {
   return makeCanvasMaterial((context, canvas) => {
     context.fillStyle = '#6b4038';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const brickWidth = 84;
-    const brickHeight = 34;
-    context.lineWidth = 4;
+    const brickWidth = 46;
+    const brickHeight = 20;
+    context.lineWidth = 3;
     for (let y = 0; y < canvas.height + brickHeight; y += brickHeight) {
       const row = Math.floor(y / brickHeight);
       const stagger = row % 2 === 0 ? 0 : brickWidth / 2;
@@ -578,27 +578,26 @@ export function createChapterNine(): ChapterNineData {
   const makeEntranceDoor = (hingeX: number, side: -1 | 1): Group => {
     const door = new Group();
     door.position.set(hingeX, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.12);
-    const panelOffsetX = side * 0.68;
-    const glassPane = new Mesh(new BoxGeometry(1.12, 2.52, 0.06), doorGlassMaterial);
-    glassPane.position.set(panelOffsetX, 2.24, 0);
-    const topRail = new Mesh(new BoxGeometry(1.36, 0.16, 0.12), doorFrameMaterial);
-    topRail.position.set(panelOffsetX, 3.58, 0);
+    const panelOffsetX = side * 0.9;
+    const glassPane = new Mesh(new BoxGeometry(1.52, 3.08, 0.06), doorGlassMaterial);
+    glassPane.position.set(panelOffsetX, 1.84, 0);
+    const topRail = new Mesh(new BoxGeometry(1.78, 0.16, 0.12), doorFrameMaterial);
+    topRail.position.set(panelOffsetX, 3.45, 0);
     const bottomRail = topRail.clone();
-    bottomRail.position.y = 0.92;
-    const innerRail = new Mesh(new BoxGeometry(0.14, 2.84, 0.12), doorFrameMaterial);
-    innerRail.position.set(panelOffsetX - side * 0.58, 2.24, 0);
+    bottomRail.position.y = 0.17;
+    const innerRail = new Mesh(new BoxGeometry(0.14, 3.38, 0.12), doorFrameMaterial);
+    innerRail.position.set(panelOffsetX - side * 0.82, 1.81, 0);
     const outerRail = innerRail.clone();
-    outerRail.position.x = panelOffsetX + side * 0.58;
+    outerRail.position.x = panelOffsetX + side * 0.82;
     const handle = new Mesh(new BoxGeometry(0.1, 0.36, 0.16), metalMaterial);
-    handle.position.set(panelOffsetX - side * 0.42, 2.15, 0.13);
+    handle.position.set(panelOffsetX - side * 0.55, 1.82, 0.13);
     door.add(glassPane, topRail, bottomRail, innerRail, outerRail, handle);
     root.add(door);
     return door;
   };
-  const leftDoor = makeEntranceDoor(-1.54, 1);
-  const rightDoor = makeEntranceDoor(1.54, -1);
-  const doorGap = addBox(root, 0.08, 3.05, 0.14, 0, 2.24, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.14, blackMetalMaterial);
-  shellObjects.push(leftDoor, rightDoor, doorGap);
+  const leftDoor = makeEntranceDoor(-1.98, 1);
+  const rightDoor = makeEntranceDoor(1.98, -1);
+  shellObjects.push(leftDoor, rightDoor);
 
   const sign = new Mesh(new PlaneGeometry(40, 10), createComplexSignMaterial());
   sign.position.set(0, 9.0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.28);
