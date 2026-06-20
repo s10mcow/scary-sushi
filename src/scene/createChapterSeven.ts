@@ -602,6 +602,25 @@ export function createChapterSeven(): ChapterSevenData {
       context.fillRect(70, 86, 70, 24);
       context.fillStyle = '#314f7d';
       context.fillRect(60, 160, 90, 60);
+      context.fillStyle = '#f5f1df';
+      context.beginPath();
+      context.moveTo(134, 164);
+      context.lineTo(175, 174);
+      context.lineTo(169, 218);
+      context.lineTo(126, 207);
+      context.closePath();
+      context.fill();
+      context.strokeStyle = '#ded4b6';
+      context.lineWidth = 2;
+      context.stroke();
+      context.strokeStyle = '#7f8790';
+      context.lineWidth = 2;
+      [180, 191, 202].forEach((lineY) => {
+        context.beginPath();
+        context.moveTo(136, lineY);
+        context.lineTo(163, lineY + 6);
+        context.stroke();
+      });
       context.fillStyle = '#10151c';
       context.beginPath();
       context.arc(91, 120, 4, 0, Math.PI * 2);
@@ -624,37 +643,68 @@ export function createChapterSeven(): ChapterSevenData {
       context.fillRect(98, 138 + mouthOpen * 11, 14, 3);
 
       context.fillStyle = '#10263d';
-      context.fillRect(210, 78, 270, 120);
-      const waterGradient = context.createLinearGradient(210, 78, 480, 198);
-      waterGradient.addColorStop(0, '#5fd8ff');
-      waterGradient.addColorStop(0.5, '#247dc5');
-      waterGradient.addColorStop(1, '#07375c');
-      context.fillStyle = waterGradient;
-      context.fillRect(220, 90, 250, 96);
-      for (let wave = 0; wave < 5; wave += 1) {
-        const waveY = 108 + wave * 15;
-        const wavePhase = elapsedSeconds * (1.8 + wave * 0.18) + wave * 0.9;
-        context.strokeStyle = wave % 2 === 0 ? 'rgba(220, 248, 255, 0.78)' : 'rgba(137, 220, 255, 0.72)';
-        context.lineWidth = wave % 2 === 0 ? 3 : 2;
-        context.beginPath();
-        for (let point = 0; point <= 250; point += 10) {
-          const x = 220 + point;
-          const y = waveY + Math.sin(point * 0.055 + wavePhase) * (4 + wave);
-          if (point === 0) {
-            context.moveTo(x, y);
-          } else {
-            context.lineTo(x, y);
-          }
-        }
-        context.stroke();
-      }
-      context.fillStyle = 'rgba(255, 255, 255, 0.32)';
+      context.fillRect(210, 64, 270, 146);
+      const mapGradient = context.createLinearGradient(220, 82, 470, 194);
+      mapGradient.addColorStop(0, '#2c7f63');
+      mapGradient.addColorStop(0.55, '#67aa63');
+      mapGradient.addColorStop(1, '#d9b866');
+      context.fillStyle = mapGradient;
       context.beginPath();
-      context.ellipse(348 + Math.sin(elapsedSeconds * 1.4) * 26, 116, 46, 8, -0.12, 0, Math.PI * 2);
+      context.moveTo(235, 118);
+      context.bezierCurveTo(252, 88, 292, 82, 334, 92);
+      context.bezierCurveTo(382, 80, 432, 96, 454, 122);
+      context.bezierCurveTo(444, 148, 404, 152, 376, 160);
+      context.bezierCurveTo(350, 184, 300, 180, 266, 162);
+      context.bezierCurveTo(250, 160, 238, 145, 235, 118);
+      context.closePath();
       context.fill();
+      context.strokeStyle = '#eaf4d5';
+      context.lineWidth = 3;
+      context.stroke();
+      context.strokeStyle = 'rgba(238, 245, 225, 0.42)';
+      context.lineWidth = 1.5;
+      [278, 318, 358, 398].forEach((stateX) => {
+        context.beginPath();
+        context.moveTo(stateX, 96);
+        context.lineTo(stateX - 6, 166);
+        context.stroke();
+      });
+      [116, 137, 156].forEach((stateY) => {
+        context.beginPath();
+        context.moveTo(250, stateY);
+        context.lineTo(440, stateY + 2);
+        context.stroke();
+      });
+      context.fillStyle = '#ffffff';
+      context.font = 'bold 20px Arial';
+      context.fillText('USA WEATHER', 272, 84);
+      const sunX = 420 + Math.sin(elapsedSeconds * 1.6) * 4;
+      context.fillStyle = '#ffd84d';
+      context.beginPath();
+      context.arc(sunX, 118, 12, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#e9f3ff';
+      context.beginPath();
+      context.ellipse(302, 126, 17, 9, 0, 0, Math.PI * 2);
+      context.ellipse(318, 123, 20, 12, 0, 0, Math.PI * 2);
+      context.ellipse(335, 128, 16, 9, 0, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = '#6ec7ff';
+      context.lineWidth = 3;
+      [296, 318, 338].forEach((rainX, index) => {
+        context.beginPath();
+        context.moveTo(rainX, 143);
+        context.lineTo(rainX - 5, 154 + Math.sin(elapsedSeconds * 8 + index) * 2);
+        context.stroke();
+      });
+      context.fillStyle = '#ffffff';
+      context.font = 'bold 16px Arial';
+      context.fillText('72F', 400, 145);
+      context.fillText('Rain', 286, 175);
+      context.fillText('Sunny', 386, 176);
       context.strokeStyle = '#9fe8ff';
-      context.lineWidth = 5;
-      context.strokeRect(220, 90, 250, 96);
+      context.lineWidth = 4;
+      context.strokeRect(210, 64, 270, 146);
 
       context.fillStyle = '#f4f4f4';
       context.fillRect(0, 232, canvas.width, 56);
@@ -665,7 +715,7 @@ export function createChapterSeven(): ChapterSevenData {
       context.fillText('LIVE', 50, 260);
       context.fillStyle = '#172233';
       context.font = 'bold 22px Arial';
-      context.fillText('Breaking news: house TV is now on', 180, 260);
+      context.fillText('Live forecast across the United States', 180, 260);
     };
 
     drawNewsFrame(0);
@@ -4691,6 +4741,7 @@ export function createChapterSeven(): ChapterSevenData {
     const value = Math.sin(localX * 19.919 + label.length * 31.713) * 24634.6345;
     return 1 + Math.floor((value - Math.floor(value)) * 3);
   };
+  const getCookieRestY = (surfaceY: number, scale: number): number => surfaceY + 0.026 * scale;
 
   const addCookie = (root: Group, x: number, y: number, z: number, scale = 1, label = 'Cookie'): ChapterSevenCookiePickup => {
     const cookieRoot = new Group();
@@ -6922,8 +6973,8 @@ export function createChapterSeven(): ChapterSevenData {
   addCookie(house, HOUSE_FRIDGE_X + 9.1, KITCHEN_COUNTER_SURFACE_Y + COOKIE_SURFACE_OFFSET, HOUSE_FRIDGE_Z + 0.42, 0.88, 'Kitchen counter hidden cookie');
   addCookie(house, HOUSE_REAR_ROOM_DOOR_X + 4.2, 1.81, rearRoomBackFixtureZ - 0.56, 0.78, 'Toilet tank hidden cookie');
   addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 0.36, 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
-  addCookie(house, 1208.45 - CENTER_X, 0.25, 101.1 - HOUSE_CENTER_Z, 0.9, 'Balcony hidden cookie');
-  addCookie(house, 1238.7 - CENTER_X, 0.2, 72.2 - HOUSE_CENTER_Z, 0.9, 'Backyard hidden cookie');
+  addCookie(house, 1208.45 - CENTER_X, getCookieRestY(0.22, 0.9), 101.1 - HOUSE_CENTER_Z, 0.9, 'Balcony hidden cookie');
+  addCookie(house, 1238.7 - CENTER_X, getCookieRestY(0, 0.9), 72.2 - HOUSE_CENTER_Z, 0.9, 'Backyard hidden cookie');
   addCookie(house, 1216.55 - CENTER_X, 0.93, 97.2 - HOUSE_CENTER_Z, 0.86, 'Rose table easy cookie');
   addCookie(house, 1225.35 - CENTER_X, 1.11, 97.84 - HOUSE_CENTER_Z, 0.86, 'Plant table easy cookie');
   addCookie(house, 1232.2 - CENTER_X, 1.25, 97.1 - HOUSE_CENTER_Z, 0.9, 'Couch easy cookie');
@@ -6933,7 +6984,7 @@ export function createChapterSeven(): ChapterSevenData {
   addCookie(house, 1201.12 - CENTER_X, 1.08, 85.55 - HOUSE_CENTER_Z, 0.86, 'Fish tank table second easy cookie');
   addCookie(house, 1203.55 - CENTER_X, 1.02, 96.1 - HOUSE_CENTER_Z, 0.86, 'Book table easy cookie');
   addCookie(house, 1226.0 - CENTER_X, 1.11, 97.28 - HOUSE_CENTER_Z, 0.82, 'Remote table easy cookie');
-  addCookie(house, 1220.35 - CENTER_X, 0.9, 89.25 - HOUSE_CENTER_Z, 0.88, 'Rug edge easy cookie');
+  addCookie(house, 1220.35 - CENTER_X, getCookieRestY(0.055, 0.88), 89.25 - HOUSE_CENTER_Z, 0.88, 'Rug edge easy cookie');
   addCookie(house, 1213.0 - CENTER_X, 1.05, 63.85 - HOUSE_CENTER_Z, 0.82, 'Rocking chair easy cookie');
   addCookie(house, 1204.0 - CENTER_X, 1.12, 52.98 - HOUSE_CENTER_Z, 0.82, 'Dryer top easy cookie');
   addCookie(house, 1205.15 - CENTER_X, 1.12, 53.35 - HOUSE_CENTER_Z, 0.82, 'Washer top easy cookie');
