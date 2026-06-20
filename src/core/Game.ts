@@ -90,6 +90,7 @@ import { createLighting } from '../scene/createLighting';
 import { createRenderer } from '../scene/createRenderer';
 import { createScene } from '../scene/createScene';
 import type {
+  CollisionBox,
   IngredientId,
   IngredientPickup,
   ProcessingStationId,
@@ -3232,6 +3233,7 @@ export class Game {
         ? Math.max(0, movementState.forward)
         : 0,
     );
+    this.player.setColliders(this.getActivePlayerColliders());
     this.player.setSupportedFloor(this.getSupportedFloorHeight());
     this.player.setMovementConstraint(
       this.chapterSixActive
@@ -12638,6 +12640,50 @@ export class Game {
       this.scene.fog.near = MathUtils.lerp(GAME_CONFIG.fog.near, 8, mazeBlend);
       this.scene.fog.far = MathUtils.lerp(GAME_CONFIG.fog.far, 56, mazeBlend);
     }
+  }
+
+  private getActivePlayerColliders(): CollisionBox[] {
+    if (this.chapterTwoActive) {
+      return this.chapterTwo.colliders;
+    }
+
+    if (this.officeChapterActive) {
+      return this.officeChapter.colliders;
+    }
+
+    if (this.chapterFourActive) {
+      return this.chapterFour.colliders;
+    }
+
+    if (this.chapterFiveActive) {
+      return this.chapterFive.colliders;
+    }
+
+    if (this.chapterSixActive) {
+      return this.chapterSix.colliders;
+    }
+
+    if (this.chapterSevenActive) {
+      return this.chapterSeven.colliders;
+    }
+
+    if (this.chapterEightActive) {
+      return this.chapterEight.colliders;
+    }
+
+    if (this.chapterNineActive) {
+      return this.chapterNine.colliders;
+    }
+
+    if (this.zombieModeActive) {
+      return this.zombieMode.colliders;
+    }
+
+    if (this.doomModeActive) {
+      return this.doomMode.colliders;
+    }
+
+    return this.level.colliders;
   }
 
   private updateStoveLight(): void {

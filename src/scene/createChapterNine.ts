@@ -330,34 +330,6 @@ export function createChapterNine(): ChapterNineData {
     addBox(root, 4.2, 0.18, 0.26, x, 5.0, 35, neonMaterial);
   });
 
-  const addCar = (x: number, z: number, color: number, rotationY = 0): void => {
-    const car = new Group();
-    car.position.set(x, 0, z);
-    car.rotation.y = rotationY;
-    const carMaterial = new MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.18 });
-    const body = new Mesh(new BoxGeometry(4.6, 0.9, 2.1), carMaterial);
-    body.position.y = 0.62;
-    const cabin = new Mesh(new BoxGeometry(2.2, 0.82, 1.72), glassMaterial);
-    cabin.position.set(-0.25, 1.25, 0);
-    const wheels = [
-      [-1.55, -1.02],
-      [1.55, -1.02],
-      [-1.55, 1.02],
-      [1.55, 1.02],
-    ].map(([wheelX, wheelZ]) => {
-      const wheel = new Mesh(new CylinderGeometry(0.42, 0.42, 0.32, 16), blackMetalMaterial);
-      wheel.rotation.z = Math.PI / 2;
-      wheel.position.set(wheelX, 0.38, wheelZ);
-      return wheel;
-    });
-    car.add(body, cabin, ...wheels);
-    root.add(car);
-    addCollider(colliders, x, z, rotationY ? 2.5 : 4.9, rotationY ? 4.9 : 2.5);
-  };
-  addCar(-28, 78, 0x263a5c, 0);
-  addCar(8, 78, 0x5a2321, 0);
-  addCar(30, 66, 0x1d4d38, Math.PI / 2);
-
   addCheckeredFloor(0, BUILDING_CENTER_Z, BUILDING_WIDTH, BUILDING_DEPTH);
   addWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH, WALL_THICKNESS, brickMaterial);
   addWall(-BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH, brickMaterial);
@@ -383,58 +355,6 @@ export function createChapterNine(): ChapterNineData {
   const closedSign = new Mesh(new PlaneGeometry(8, 3), createSignMaterial('CLOSED', 'KEEP OUT', '#cf2a2a'));
   closedSign.position.set(17, 3.7, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.3);
   root.add(closedSign);
-
-  const addMascotBust = (x: number, color: number, label: string, ears: 'round' | 'long' | 'beak' | 'snout'): void => {
-    const bust = new Group();
-    bust.position.set(x, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 2.6);
-    const bodyMaterial = new MeshStandardMaterial({ color, roughness: 0.48, metalness: 0.22 });
-    const head = new Mesh(new SphereGeometry(0.9, 24, 16), bodyMaterial);
-    head.position.y = 2.05;
-    head.scale.set(1, 0.88, 0.82);
-    const chest = new Mesh(new BoxGeometry(1.25, 1.45, 0.7), bodyMaterial);
-    chest.position.y = 0.96;
-    const jaw = new Mesh(new BoxGeometry(0.88, 0.26, 0.34), bodyMaterial);
-    jaw.position.set(0, 1.7, 0.62);
-    const eyeMat = new MeshBasicMaterial({ color: 0xfff0b8 });
-    const leftEye = new Mesh(new SphereGeometry(0.08, 10, 8), eyeMat);
-    leftEye.position.set(-0.25, 2.1, 0.72);
-    const rightEye = leftEye.clone();
-    rightEye.position.x = 0.25;
-    bust.add(chest, head, jaw, leftEye, rightEye);
-    if (ears === 'long') {
-      [-0.28, 0.28].forEach((earX) => {
-        const ear = new Mesh(new BoxGeometry(0.24, 1.1, 0.16), bodyMaterial);
-        ear.position.set(earX, 2.86, 0);
-        ear.rotation.z = earX * 0.45;
-        bust.add(ear);
-      });
-    } else if (ears === 'beak') {
-      const beak = new Mesh(new ConeGeometry(0.28, 0.62, 4), new MeshStandardMaterial({ color: 0xe88922, roughness: 0.62 }));
-      beak.position.set(0, 1.98, 0.94);
-      beak.rotation.x = Math.PI / 2;
-      bust.add(beak);
-    } else if (ears === 'snout') {
-      const snout = new Mesh(new ConeGeometry(0.3, 0.72, 12), bodyMaterial);
-      snout.position.set(0, 1.96, 0.94);
-      snout.rotation.x = Math.PI / 2;
-      bust.add(snout);
-    } else {
-      [-0.48, 0.48].forEach((earX) => {
-        const ear = new Mesh(new SphereGeometry(0.22, 14, 10), bodyMaterial);
-        ear.position.set(earX, 2.42, 0);
-        bust.add(ear);
-      });
-    }
-    const namePlate = new Mesh(new PlaneGeometry(2.7, 0.7), createSignMaterial(label, '', '#f0c05a'));
-    namePlate.position.set(0, 0.18, 0.42);
-    bust.add(namePlate);
-    root.add(bust);
-  };
-  addMascotBust(-32, 0x6f442a, 'FREDDY', 'round');
-  addMascotBust(-16, 0x5142a7, 'BONNIE', 'long');
-  addMascotBust(0, 0xd8b13c, 'CHICA', 'beak');
-  addMascotBust(16, 0x9a3128, 'FOXY', 'snout');
-  addMascotBust(32, 0xc49a35, 'GOLDEN', 'round');
 
   const glassLeft = new Mesh(new PlaneGeometry(12, 5.2), glassMaterial);
   glassLeft.position.set(-12, 2.9, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.32);
@@ -506,9 +426,29 @@ export function createChapterNine(): ChapterNineData {
     }
     addCollider(colliders, x, z, 9, 3);
   };
-  [-14, 0, 14].forEach((x) => {
-    [11, 22, 33].forEach((z) => addDiningTable(x, z));
-  });
+  [-10, 10].forEach((x) => addDiningTable(x, 4));
+
+  const addLobbyBench = (x: number, z: number, rotationY = 0): void => {
+    const bench = new Group();
+    bench.position.set(x, 0, z);
+    bench.rotation.y = rotationY;
+    const seat = new Mesh(new BoxGeometry(6.2, 0.26, 1.1), woodMaterial);
+    seat.position.y = 0.82;
+    const back = new Mesh(new BoxGeometry(6.2, 1.0, 0.22), woodMaterial);
+    back.position.set(0, 1.28, -0.55);
+    [-2.6, 2.6].forEach((legX) => {
+      const leg = new Mesh(new BoxGeometry(0.28, 0.78, 0.28), blackMetalMaterial);
+      leg.position.set(legX, 0.38, 0.3);
+      bench.add(leg);
+    });
+    bench.add(seat, back);
+    root.add(bench);
+    addCollider(colliders, x, z, rotationY === 0 ? 6.5 : 1.4, rotationY === 0 ? 1.5 : 6.5);
+  };
+  addLobbyBench(-38, 30, 0);
+  addLobbyBench(38, 30, 0);
+  addLobbyBench(-52, 13, Math.PI / 2);
+  addLobbyBench(52, 13, -Math.PI / 2);
 
   const addArcade = (x: number, z: number, color: number): void => {
     const machine = new Group();

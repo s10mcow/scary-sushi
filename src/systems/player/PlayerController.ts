@@ -37,7 +37,7 @@ export class PlayerController {
   constructor(
     private readonly camera: PerspectiveCamera,
     private readonly domElement: HTMLElement,
-    private readonly colliders: CollisionBox[],
+    private colliders: CollisionBox[],
     spawn: Vector3,
   ) {
     this.controls = new PointerLockControls(camera, domElement);
@@ -121,6 +121,10 @@ export class PlayerController {
     constraint: ((nextX: number, nextZ: number, currentPosition: Vector3) => boolean) | null,
   ): void {
     this.movementConstraint = constraint;
+  }
+
+  setColliders(colliders: CollisionBox[]): void {
+    this.colliders = colliders;
   }
 
   update(
