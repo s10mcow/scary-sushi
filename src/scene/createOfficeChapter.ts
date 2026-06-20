@@ -8249,6 +8249,25 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ));
     addCollider(colliders, cabinet.x, cabinet.z, 0.92, 1.12);
   });
+  [
+    { x: kitchenHallRoomMinX + 1.3, z: kitchenHallRoomSouthZ - 1.0, rotationY: Math.PI, color: 0x23636f, screen: 0x64f7ff },
+    { x: kitchenHallRoomMinX + 3.0, z: kitchenHallRoomSouthZ - 1.0, rotationY: Math.PI, color: 0x7c3b8f, screen: 0xff82ec },
+    { x: kitchenHallRoomMaxX - 3.0, z: kitchenHallRoomSouthZ - 1.0, rotationY: Math.PI, color: 0x8a4c22, screen: 0xffb15e },
+    { x: kitchenHallRoomMaxX - 1.3, z: kitchenHallRoomSouthZ - 1.0, rotationY: Math.PI, color: 0x2f6b38, screen: 0x8dff7a },
+    { x: kitchenHallRoomMinX + 1.25, z: kitchenHallRoomNorthZ + 1.0, rotationY: 0, color: 0x8f2f3a, screen: 0xff5f66 },
+    { x: kitchenHallRoomMinX + 3.0, z: kitchenHallRoomNorthZ + 1.0, rotationY: 0, color: 0x2f467d, screen: 0x77a8ff },
+    { x: kitchenHallRoomMaxX - 3.0, z: kitchenHallRoomNorthZ + 1.0, rotationY: 0, color: 0x6a5a24, screen: 0xffe16a },
+    { x: kitchenHallRoomMaxX - 1.25, z: kitchenHallRoomNorthZ + 1.0, rotationY: 0, color: 0x7d2f64, screen: 0xff78c8 },
+  ].forEach((cabinet) => {
+    root.add(createArcadeCabinet(
+      cabinet.x,
+      cabinet.z,
+      cabinet.rotationY,
+      cabinet.color,
+      cabinet.screen,
+    ));
+    addCollider(colliders, cabinet.x, cabinet.z, 1.12, 0.92);
+  });
   const rollerCoasterRearWallX = -221.2;
   const rollerCoasterRearWallZ = 113.94;
   const rollerCoasterRearDepth = 1.23;
