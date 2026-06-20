@@ -7590,6 +7590,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     });
   };
   gameRoomSideRooms.forEach(addGameRoomSideRoomDoorFrame);
+  const gameRoomSideRoomSignZ = (
+    gameRoomSideRoomOpenings[0].openingMaxZ
+    + gameRoomSideRoomOpenings[1].openingMinZ
+  ) / 2;
+  [
+    { label: 'Party Room 1', x: kitchenHallRoomMinX + WALL_THICKNESS + 0.032, rotationY: Math.PI / 2 },
+    { label: 'Party Room 2', x: kitchenHallRoomMaxX - WALL_THICKNESS - 0.032, rotationY: -Math.PI / 2 },
+  ].forEach((signDef) => {
+    const sign = createWallSign(signDef.label);
+    sign.scale.set(1.28, 1.02, 1);
+    sign.position.set(signDef.x, 2.08, gameRoomSideRoomSignZ);
+    sign.rotation.y = signDef.rotationY;
+    root.add(sign);
+  });
   gameRoomSideRooms.forEach((room) => {
     const table = createLargePartyTable(room.centerX, room.centerZ, 0);
     root.add(table);
