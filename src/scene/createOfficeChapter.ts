@@ -4755,6 +4755,122 @@ function createBasketballGame(x: number, z: number, rotationY: number): OfficeCh
   };
 }
 
+function createShooterArcadeGame(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const tableMaterial = new MeshStandardMaterial({
+    color: 0x3e2830,
+    emissive: 0x090205,
+    emissiveIntensity: 0.08,
+    roughness: 0.56,
+    metalness: 0.1,
+  });
+  const trimMaterial = new MeshStandardMaterial({
+    color: 0x171b22,
+    roughness: 0.38,
+    metalness: 0.34,
+  });
+  const metalMaterial = new MeshStandardMaterial({
+    color: 0x9da7ad,
+    emissive: 0x0b1114,
+    emissiveIntensity: 0.12,
+    roughness: 0.28,
+    metalness: 0.7,
+  });
+  const gunMaterial = new MeshStandardMaterial({
+    color: 0x20252c,
+    emissive: 0x030509,
+    emissiveIntensity: 0.1,
+    roughness: 0.34,
+    metalness: 0.42,
+  });
+  const screenMaterial = new MeshStandardMaterial({
+    color: 0x10151b,
+    emissive: 0x2bb7ff,
+    emissiveIntensity: 0.76,
+    roughness: 0.22,
+    metalness: 0.04,
+  });
+  const targetMaterial = new MeshStandardMaterial({
+    color: 0xffe066,
+    emissive: 0xff7038,
+    emissiveIntensity: 0.66,
+    roughness: 0.28,
+    metalness: 0.02,
+  });
+
+  const tvStand = new Mesh(new BoxGeometry(2.85, 1.58, 0.24), trimMaterial);
+  tvStand.position.set(0, 1.66, 0.16);
+  const screen = new Mesh(new BoxGeometry(2.35, 1.08, 0.055), screenMaterial);
+  screen.position.set(0, 1.72, 0.31);
+  const marquee = new Mesh(new BoxGeometry(2.55, 0.22, 0.08), targetMaterial);
+  marquee.position.set(0, 2.4, 0.34);
+  root.add(tvStand, screen, marquee);
+
+  [
+    [-0.62, 1.82],
+    [0.36, 1.63],
+    [0.82, 1.94],
+  ].forEach(([targetX, targetY]) => {
+    const target = new Mesh(new TorusGeometry(0.1, 0.018, 8, 24), targetMaterial);
+    target.position.set(targetX, targetY, 0.35);
+    root.add(target);
+  });
+
+  const tableTop = new Mesh(new BoxGeometry(2.9, 0.18, 1.18), tableMaterial);
+  tableTop.position.set(0, 0.88, 1.12);
+  const frontPanel = new Mesh(new BoxGeometry(2.9, 0.72, 0.18), tableMaterial);
+  frontPanel.position.set(0, 0.46, 1.64);
+  const leftSide = new Mesh(new BoxGeometry(0.16, 0.72, 1.12), tableMaterial);
+  leftSide.position.set(-1.37, 0.46, 1.12);
+  const rightSide = leftSide.clone();
+  rightSide.position.x = 1.37;
+  const footRail = new Mesh(new BoxGeometry(2.7, 0.12, 0.12), metalMaterial);
+  footRail.position.set(0, 0.26, 1.82);
+  root.add(tableTop, frontPanel, leftSide, rightSide, footRail);
+
+  const makeGun = (gunX: number, accentColor: number): void => {
+    const pivot = new Group();
+    pivot.position.set(gunX, 1.05, 1.28);
+    pivot.rotation.x = -0.24;
+    const mount = new Mesh(new CylinderGeometry(0.13, 0.16, 0.1, 16), metalMaterial);
+    mount.rotation.x = Math.PI / 2;
+    const barrel = new Mesh(new CylinderGeometry(0.055, 0.07, 0.78, 14), gunMaterial);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0.08, -0.34);
+    const body = new Mesh(new BoxGeometry(0.28, 0.18, 0.34), gunMaterial);
+    body.position.set(0, 0.08, 0.03);
+    const grip = new Mesh(new BoxGeometry(0.16, 0.34, 0.12), new MeshStandardMaterial({
+      color: accentColor,
+      emissive: accentColor,
+      emissiveIntensity: 0.08,
+      roughness: 0.48,
+      metalness: 0.08,
+    }));
+    grip.position.set(0, -0.16, 0.16);
+    grip.rotation.x = -0.3;
+    const triggerGuard = new Mesh(new TorusGeometry(0.095, 0.012, 8, 18), metalMaterial);
+    triggerGuard.scale.set(0.7, 1, 1);
+    triggerGuard.position.set(0, -0.02, 0.13);
+    triggerGuard.rotation.x = Math.PI / 2;
+    pivot.add(mount, barrel, body, grip, triggerGuard);
+    root.add(pivot);
+  };
+  makeGun(-0.58, 0xc13536);
+  makeGun(0.58, 0x2f78d8);
+
+  [-0.58, 0.58].forEach((cableX) => {
+    const cable = new Mesh(new CylinderGeometry(0.018, 0.018, 0.78, 8), trimMaterial);
+    cable.position.set(cableX, 0.95, 0.82);
+    cable.rotation.x = Math.PI / 2;
+    root.add(cable);
+  });
+
+  return root;
+}
+
 function createFoosballTable(x: number, z: number, rotationY = 0): Group {
   const root = new Group();
   root.position.set(x, 0, z);
@@ -7689,6 +7805,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const rollerCoasterRotation = Math.PI;
   root.add(createRollerCoasterSimulator(rollerCoasterX, rollerCoasterZ, rollerCoasterRotation));
   addCollider(colliders, rollerCoasterX, rollerCoasterZ, 3.45, 2.45);
+  const shooterGameX = -228.15;
+  const shooterGameZ = 114.11;
+  root.add(createShooterArcadeGame(shooterGameX, shooterGameZ, 0));
+  addCollider(colliders, shooterGameX, shooterGameZ + 0.98, 3.05, 2.25);
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
