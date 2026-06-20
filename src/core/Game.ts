@@ -2102,7 +2102,7 @@ export class Game {
       this.startOfficeSpeechRecognition();
       this.pushStatus(
         mode === 'manual'
-          ? 'Microphone on. Animatronics can hear your voice in Night Mode and Game Mode.'
+          ? 'Microphone on. Golden Bori can hear you talk in Chapter 3.'
           : 'Microphone on. Wandering animatronics can hear you talk from farther away.',
         2.8,
       );
@@ -2148,7 +2148,7 @@ export class Game {
       if (this.officeSpeechRecognition === recognition) {
         this.officeSpeechRecognition = null;
       }
-      if (this.officeMicrophoneEnabled && this.officeChapterActive && this.officeGameModeActive) {
+      if (this.officeMicrophoneEnabled && this.officeChapterActive) {
         window.setTimeout(() => this.startOfficeSpeechRecognition(), 220);
       }
     };
@@ -2298,7 +2298,26 @@ export class Game {
     }
 
     if (/\b(hello|hi|hey|yo|sup|what's up|whats up)\b/.test(normalized)) {
-      return 'Hello there. I can hear you just fine.';
+      const greetingReplies = [
+        'Hi. I can hear you.',
+        'Hello there. I can hear you just fine.',
+        'Hey. You are close enough for me to listen.',
+      ];
+      const reply = greetingReplies[this.officeGoldenBoriConversationLineIndex % greetingReplies.length] ?? greetingReplies[0];
+      this.officeGoldenBoriConversationLineIndex += 1;
+      return reply;
+    }
+
+    if (/\b(how are you|how have you been|how you doing|how are ya|how do you feel)\b/.test(normalized)) {
+      const moodReplies = [
+        'I have been waiting in the game room, listening to the building creak.',
+        'I am awake now. That is better than being silent on the stage.',
+        'I feel shiny, heavy, and a little restless.',
+        'I have been practicing lines and watching the doors.',
+      ];
+      const reply = moodReplies[this.officeGoldenBoriConversationLineIndex % moodReplies.length] ?? moodReplies[0];
+      this.officeGoldenBoriConversationLineIndex += 1;
+      return reply;
     }
 
     if (/\b(who are you|your name|what are you)\b/.test(normalized)) {
@@ -2307,6 +2326,42 @@ export class Game {
 
     if (/\b(are you alive|can you hear|you hear me|listen)\b/.test(normalized)) {
       return 'I hear every word in this room.';
+    }
+
+    if (/\b(pizza|pizzeria|restaurant|building)\b/.test(normalized)) {
+      return "This pizzeria is old, loud, and full of places where footsteps echo.";
+    }
+
+    if (/\b(basement|control room|elevator|keycard|rubble)\b/.test(normalized)) {
+      return 'The basement keeps its secrets under the floor. The control room knows more than the stage does.';
+    }
+
+    if (/\b(foxy|pirate)\b/.test(normalized)) {
+      return 'Foxy likes a brave audience. He also likes when people run.';
+    }
+
+    if (/\b(quacky|duck)\b/.test(normalized)) {
+      return 'Quacky sings bright songs, but her smile is not as soft as it looks.';
+    }
+
+    if (/\b(fluffle|bunny|rabbit)\b/.test(normalized)) {
+      return 'Fluffles moves quick when the room gets quiet.';
+    }
+
+    if (/\b(animatronic|animatronics|robots|robot)\b/.test(normalized)) {
+      return 'Animatronics remember sounds, routes, and the people who get too comfortable.';
+    }
+
+    if (/\b(camera|cameras|picture|photo|printer)\b/.test(normalized)) {
+      return 'Cameras catch little moments. Sometimes one picture is enough to unlock the next problem.';
+    }
+
+    if (/\b(night|dark|darkness|lights)\b/.test(normalized)) {
+      return 'Night makes the halls honest. You hear what is moving before you see it.';
+    }
+
+    if (/\b(day|daytime|morning)\b/.test(normalized)) {
+      return 'Daytime is quieter, but I still listen.';
     }
 
     if (/\b(game|games|arcade|play|stage|room)\b/.test(normalized)) {
@@ -2319,6 +2374,18 @@ export class Game {
 
     if (/\b(friend|nice|cool|awesome|good|great)\b/.test(normalized)) {
       return 'That is better. Talk nice and maybe I stay calm.';
+    }
+
+    if (/\b(tell me about|talk about|what about|think about|do you like|do you know about)\b/.test(normalized)) {
+      const topicReplies = [
+        'I can talk about that, but I like watching your face when I answer.',
+        'That topic is interesting. It sounds different when you say it out loud.',
+        'I know enough about that to keep listening.',
+        'Ask me again, and maybe I will give you the longer version.',
+      ];
+      const reply = topicReplies[this.officeGoldenBoriConversationLineIndex % topicReplies.length] ?? topicReplies[0];
+      this.officeGoldenBoriConversationLineIndex += 1;
+      return reply;
     }
 
     if (/\b(why|what|when|where|how)\b/.test(normalized)) {
@@ -2348,8 +2415,7 @@ export class Game {
   private maybeHandleOfficeGoldenBoriConversation(normalized: string, insulted: boolean): void {
     if (
       !this.officeChapterActive
-      || !this.officeGameModeActive
-      || this.officeGameModePowerOut
+      || !this.officeMicrophoneEnabled
       || this.activeOfficeJumpscare
       || this.officeDeathNoticePhase
       || this.officeGoldenBoriConversationCooldown > 0
@@ -2365,10 +2431,13 @@ export class Game {
     );
     const addressedGoldenBori = /\b(golden|gold|bori|bory|boris|boy|boar|roy)\b/.test(normalized);
     const conversationalSpeech = /\b(hello|hi|hey|yo|sup|what|why|when|where|how|can you|are you|do you|tell me|talk|say)\b/.test(normalized);
-    if (!addressedGoldenBori && (!conversationalSpeech || distanceToGoldenBori > 8.75)) {
+    if (!addressedGoldenBori && distanceToGoldenBori > 18) {
       return;
     }
-    if (distanceToGoldenBori > 22) {
+    if (!addressedGoldenBori && !conversationalSpeech && distanceToGoldenBori > 10.5) {
+      return;
+    }
+    if (distanceToGoldenBori > 34) {
       return;
     }
 
