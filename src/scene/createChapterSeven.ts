@@ -6086,7 +6086,7 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_WALL_THICKNESS,
     20,
   );
-  const bigTableDividerLength = 16;
+  const bigTableDividerLength = 15;
   addHouseWall(
     1235.69 - CENTER_X - bigTableDividerLength / 2,
     79.96 - HOUSE_CENTER_Z,
