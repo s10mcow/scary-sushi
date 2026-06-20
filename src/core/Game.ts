@@ -2309,7 +2309,53 @@ export class Game {
 
   private getOfficeGoldenBoriConversationReply(normalized: string, insulted: boolean): string {
     if (insulted) {
-      return 'Careful. I heard that.';
+      if (/\b(boring|bori boring|bory boring|bored)\b/.test(normalized)) {
+        return this.selectOfficeGoldenBoriReply([
+          'Boring? You are the one repeating yourself.',
+          'Call me boring again and I will make the room interesting.',
+          'That is brave for someone hiding behind a microphone.',
+        ]);
+      }
+
+      if (/\b(slow|weak)\b/.test(normalized)) {
+        return this.selectOfficeGoldenBoriReply([
+          'Slow? I only move slow so you have time to regret that.',
+          'I do not need speed when I know where you are.',
+          'Keep calling me slow. It makes the chase funnier.',
+        ]);
+      }
+
+      if (/\b(stupid|dumb|idiot)\b/.test(normalized)) {
+        return this.selectOfficeGoldenBoriReply([
+          'That is a big word from someone talking to a robot for answers.',
+          'Careful. The stupid one is not the one made of gold.',
+          'I would explain why you are wrong, but you might need a manual.',
+        ]);
+      }
+
+      if (/\b(ugly|trash|garbage|loser)\b/.test(normalized)) {
+        return this.selectOfficeGoldenBoriReply([
+          'I am gold. You are temporary.',
+          'Trash talk sounds better when it comes from someone not shaking.',
+          'That insult was almost as weak as your hiding spot.',
+        ]);
+      }
+
+      if (/\b(shut up|go away|get lost|hate you)\b/.test(normalized)) {
+        return this.selectOfficeGoldenBoriReply([
+          'No. I think I will keep talking.',
+          'If you want quiet, stop giving me reasons to answer.',
+          'Make me.',
+        ]);
+      }
+
+      return this.selectOfficeGoldenBoriReply([
+        'Careful. I heard that.',
+        'Say that again and I might stop being polite.',
+        'You talk mean for someone in my building.',
+        'That was rude. I can be rude too.',
+        'Keep it up. I like having a reason to chase.',
+      ]);
     }
 
     if (/\b(hello|hi|hey|yo|sup|what's up|whats up)\b/.test(normalized)) {
