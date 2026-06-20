@@ -7197,9 +7197,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const gameRoomSideRoomSouthCenterZ = 110.36;
   const gameRoomSideRoomCentersZ = [gameRoomSideRoomNorthCenterZ, gameRoomSideRoomSouthCenterZ] as const;
   const gameRoomSideRoomDoorWidth = 2.65;
-  const gameRoomSideRoomLength = 18.8;
+  const gameRoomSideRoomLength = 37.6;
   const gameRoomSideRoomDepth = 4.65;
-  const gameRoomWestSideRoomDepth = 16.8;
   const gameRoomWestSideRoomMinX = kitchenHallRoomMinX - gameRoomSideRoomLength;
   const gameRoomWestSideRoomMaxX = kitchenHallRoomMinX;
   const gameRoomWestSideRoomCenterX = (gameRoomWestSideRoomMinX + gameRoomWestSideRoomMaxX) / 2;
@@ -7212,9 +7211,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   ]).flatMap((sideRoom) => gameRoomSideRoomCentersZ.map((centerZ) => ({
     ...sideRoom,
     centerZ,
-    depth: sideRoom.side === 'west' ? gameRoomWestSideRoomDepth : gameRoomSideRoomDepth,
-    minZ: centerZ - (sideRoom.side === 'west' ? gameRoomWestSideRoomDepth : gameRoomSideRoomDepth) / 2,
-    maxZ: centerZ + (sideRoom.side === 'west' ? gameRoomWestSideRoomDepth : gameRoomSideRoomDepth) / 2,
+    depth: gameRoomSideRoomDepth,
+    minZ: centerZ - gameRoomSideRoomDepth / 2,
+    maxZ: centerZ + gameRoomSideRoomDepth / 2,
     openingMinZ: centerZ - gameRoomSideRoomDoorWidth / 2,
     openingMaxZ: centerZ + gameRoomSideRoomDoorWidth / 2,
   })));
@@ -7526,6 +7525,12 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     root.add(leftPost, rightPost, topPost);
   };
   gameRoomSideRooms.forEach(addGameRoomSideRoomDoorFrame);
+  gameRoomSideRooms.forEach((room) => {
+    const table = createPartyTable(room.centerX, room.centerZ, 0);
+    table.scale.set(1.68, 1, 1.34);
+    root.add(table);
+    addCollider(colliders, room.centerX, room.centerZ, 5.72, 2.08);
+  });
 
   const kitchenHallRoomStageMaterial = new MeshStandardMaterial({
     color: 0x3b2419,
