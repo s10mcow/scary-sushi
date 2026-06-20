@@ -2454,6 +2454,191 @@ function createLargePartyTable(x: number, z: number, rotationY: number): Group {
   return root;
 }
 
+function createGameRoomPartyWallpaperMaterial(): MeshStandardMaterial {
+  if (typeof document === 'undefined') {
+    return new MeshStandardMaterial({
+      color: 0x406a94,
+      emissive: 0x07111c,
+      emissiveIntensity: 0.08,
+      roughness: 0.72,
+      metalness: 0.02,
+      side: DoubleSide,
+    });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 768;
+  canvas.height = 384;
+  const context = canvas.getContext('2d');
+  if (context) {
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#315e88');
+    gradient.addColorStop(1, '#53306d');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    context.globalAlpha = 0.42;
+    ['#ffe066', '#ff6b6b', '#7fd0ff', '#a8ef7b'].forEach((color, index) => {
+      context.fillStyle = color;
+      for (let x = -80 + index * 48; x < canvas.width + 80; x += 172) {
+        context.beginPath();
+        context.moveTo(x, 40);
+        context.lineTo(x + 42, 116);
+        context.lineTo(x - 34, 116);
+        context.closePath();
+        context.fill();
+      }
+    });
+    context.globalAlpha = 1;
+
+    context.strokeStyle = '#f5d579';
+    context.lineWidth = 8;
+    context.beginPath();
+    context.moveTo(0, 132);
+    for (let x = 0; x <= canvas.width; x += 64) {
+      context.quadraticCurveTo(x + 32, 164, x + 64, 132);
+    }
+    context.stroke();
+
+    context.font = 'bold 56px Trebuchet MS, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = '#fff6cf';
+    context.strokeStyle = '#1c2030';
+    context.lineWidth = 8;
+    context.strokeText('PARTY', canvas.width / 2, 250);
+    context.fillText('PARTY', canvas.width / 2, 250);
+
+    const confettiColors = ['#ffe066', '#ff6b6b', '#7fd0ff', '#a8ef7b', '#f5a7ff'];
+    for (let index = 0; index < 90; index += 1) {
+      context.fillStyle = confettiColors[index % confettiColors.length];
+      const x = (index * 83) % canvas.width;
+      const y = 18 + ((index * 47) % (canvas.height - 36));
+      context.save();
+      context.translate(x, y);
+      context.rotate((index % 7) * 0.42);
+      context.fillRect(-6, -2, 12, 4);
+      context.restore();
+    }
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(2.2, 1);
+  texture.needsUpdate = true;
+
+  return new MeshStandardMaterial({
+    map: texture,
+    emissive: 0x0a1726,
+    emissiveIntensity: 0.08,
+    roughness: 0.72,
+    metalness: 0.02,
+    side: DoubleSide,
+  });
+}
+
+function createGameRoomPartyWallpaperPanel(width: number, height: number): Mesh {
+  const panel = new Mesh(new PlaneGeometry(width, height), createGameRoomPartyWallpaperMaterial());
+  panel.receiveShadow = true;
+  return panel;
+}
+
+function createPartyBalloon(color: number, height = 0): Group {
+  const root = new Group();
+  root.position.y = height;
+  const balloonMaterial = new MeshStandardMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 0.08,
+    roughness: 0.32,
+    metalness: 0.02,
+  });
+  const stringMaterial = new MeshStandardMaterial({
+    color: 0xe9e2cf,
+    roughness: 0.72,
+    metalness: 0.02,
+  });
+  const balloon = new Mesh(new SphereGeometry(0.22, 18, 14), balloonMaterial);
+  balloon.scale.set(0.86, 1.16, 0.86);
+  balloon.position.y = 0.82;
+  const knot = new Mesh(new ConeGeometry(0.055, 0.11, 10), balloonMaterial);
+  knot.position.y = 0.56;
+  knot.rotation.x = Math.PI;
+  const string = new Mesh(new CylinderGeometry(0.008, 0.008, 0.58, 6), stringMaterial);
+  string.position.y = 0.26;
+  root.add(balloon, knot, string);
+  return root;
+}
+
+function createFloorBalloon(color: number): Group {
+  const root = new Group();
+  const balloonMaterial = new MeshStandardMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 0.06,
+    roughness: 0.36,
+    metalness: 0.02,
+  });
+  const balloon = new Mesh(new SphereGeometry(0.2, 18, 12), balloonMaterial);
+  balloon.scale.set(1.16, 0.62, 0.92);
+  balloon.position.y = 0.13;
+  const knot = new Mesh(new ConeGeometry(0.045, 0.08, 8), balloonMaterial);
+  knot.position.set(0.19, 0.12, 0);
+  knot.rotation.z = -Math.PI / 2;
+  root.add(balloon, knot);
+  return root;
+}
+
+function createWallBalloonCluster(colors: number[]): Group {
+  const root = new Group();
+  colors.forEach((color, index) => {
+    const balloon = createPartyBalloon(color);
+    balloon.scale.setScalar(0.64);
+    balloon.position.set(-0.38 + index * 0.38, 0.2 + (index % 2) * 0.16, 0.07);
+    root.add(balloon);
+  });
+  return root;
+}
+
+function createPartyCornerBalloonTable(): Group {
+  const root = new Group();
+  const tableMaterial = new MeshStandardMaterial({
+    color: 0x7b5139,
+    roughness: 0.74,
+    metalness: 0.05,
+  });
+  const clothMaterial = new MeshStandardMaterial({
+    color: 0xf3d9a1,
+    roughness: 0.86,
+    metalness: 0.02,
+  });
+  const top = new Mesh(new CylinderGeometry(0.68, 0.72, 0.12, 24), tableMaterial);
+  top.position.y = 0.82;
+  const cloth = new Mesh(new CylinderGeometry(0.74, 0.78, 0.055, 24), clothMaterial);
+  cloth.position.y = 0.91;
+  const stem = new Mesh(new CylinderGeometry(0.08, 0.1, 0.72, 12), tableMaterial);
+  stem.position.y = 0.42;
+  const base = new Mesh(new CylinderGeometry(0.48, 0.34, 0.08, 20), tableMaterial);
+  base.position.y = 0.06;
+  root.add(top, cloth, stem, base);
+
+  [
+    { x: -0.32, z: -0.14, y: 0.54, color: 0xf15d5d },
+    { x: 0.03, z: -0.22, y: 0.86, color: 0x5bc0ff },
+    { x: 0.34, z: -0.1, y: 0.6, color: 0xffde59 },
+    { x: 0.08, z: 0.18, y: 0.72, color: 0x7ed957 },
+  ].forEach((balloonDef) => {
+    const balloon = createPartyBalloon(balloonDef.color, balloonDef.y);
+    balloon.scale.setScalar(0.78);
+    balloon.position.x = balloonDef.x;
+    balloon.position.z = balloonDef.z;
+    root.add(balloon);
+  });
+
+  return root;
+}
+
 function createQuackyCardboardStandee(x: number, z: number, rotationY: number): Group {
   const root = new Group();
   root.position.set(x, 0, z);
@@ -7724,6 +7909,58 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     const table = createLargePartyTable(room.centerX, room.centerZ, 0);
     root.add(table);
     addCollider(colliders, room.centerX, room.centerZ, 16.2, 2.45);
+  });
+  const gameRoomPartyWallpaperHeight = WALL_HEIGHT - 0.82;
+  const gameRoomPartyWallpaperY = 0.48 + gameRoomPartyWallpaperHeight / 2;
+  gameRoomSideRooms.forEach((room) => {
+    const roomFacing = room.side === 'west' ? 1 : -1;
+    const farWallX = room.side === 'west'
+      ? room.minX + WALL_THICKNESS + 0.026
+      : room.maxX - WALL_THICKNESS - 0.026;
+    const farWallRotation = room.side === 'west' ? Math.PI / 2 : -Math.PI / 2;
+    const farWallpaper = createGameRoomPartyWallpaperPanel(room.depth - WALL_THICKNESS * 2, gameRoomPartyWallpaperHeight);
+    farWallpaper.position.set(farWallX, gameRoomPartyWallpaperY, room.centerZ);
+    farWallpaper.rotation.y = farWallRotation;
+    root.add(farWallpaper);
+
+    const northWallpaper = createGameRoomPartyWallpaperPanel(gameRoomSideRoomLength - WALL_THICKNESS * 2, gameRoomPartyWallpaperHeight);
+    northWallpaper.position.set(room.centerX, gameRoomPartyWallpaperY, room.minZ + WALL_THICKNESS + 0.026);
+    const southWallpaper = createGameRoomPartyWallpaperPanel(gameRoomSideRoomLength - WALL_THICKNESS * 2, gameRoomPartyWallpaperHeight);
+    southWallpaper.position.set(room.centerX, gameRoomPartyWallpaperY, room.maxZ - WALL_THICKNESS - 0.026);
+    southWallpaper.rotation.y = Math.PI;
+    root.add(northWallpaper, southWallpaper);
+
+    const cornerTableX = room.side === 'west' ? room.minX + 2.15 : room.maxX - 2.15;
+    const cornerTableZ = room.maxZ - 1.55;
+    const cornerTable = createPartyCornerBalloonTable();
+    cornerTable.position.set(cornerTableX, 0, cornerTableZ);
+    root.add(cornerTable);
+    addCollider(colliders, cornerTableX, cornerTableZ, 1.42, 1.42);
+
+    [
+      { x: room.centerX - roomFacing * 5.5, z: room.minZ + 1.28, color: 0xf15d5d },
+      { x: room.centerX + roomFacing * 2.7, z: room.maxZ - 1.34, color: 0x5bc0ff },
+      { x: room.centerX - roomFacing * 11.2, z: room.centerZ + 0.46, color: 0xffde59 },
+      { x: room.centerX + roomFacing * 9.4, z: room.centerZ - 0.62, color: 0x7ed957 },
+      { x: room.centerX, z: room.minZ + 0.92, color: 0xf5a7ff },
+    ].forEach((balloonDef, index) => {
+      const balloon = createFloorBalloon(balloonDef.color);
+      balloon.position.set(balloonDef.x, 0.018, balloonDef.z);
+      balloon.rotation.y = index * 0.72;
+      root.add(balloon);
+    });
+
+    [
+      { x: farWallX, z: room.centerZ - 2.9, rotationY: farWallRotation, colors: [0xf15d5d, 0xffde59, 0x5bc0ff] },
+      { x: farWallX, z: room.centerZ + 2.8, rotationY: farWallRotation, colors: [0x7ed957, 0xf5a7ff, 0xff914d] },
+      { x: room.centerX - 9.4, z: room.minZ + WALL_THICKNESS + 0.08, rotationY: 0, colors: [0xffde59, 0x5bc0ff, 0xf15d5d] },
+      { x: room.centerX + 9.4, z: room.maxZ - WALL_THICKNESS - 0.08, rotationY: Math.PI, colors: [0x7ed957, 0xff914d, 0xf5a7ff] },
+    ].forEach((clusterDef) => {
+      const cluster = createWallBalloonCluster(clusterDef.colors);
+      cluster.position.set(clusterDef.x, 1.18, clusterDef.z);
+      cluster.rotation.y = clusterDef.rotationY;
+      root.add(cluster);
+    });
   });
 
   const kitchenHallRoomStageMaterial = new MeshStandardMaterial({
