@@ -94,7 +94,7 @@ interface ChapterNineAnimatronic {
 
 const DAY_SECONDS = 5 * 60;
 const NIGHT_SECONDS = 10 * 60;
-const FOOTAGE_TARGET = 6;
+const FOOTAGE_TARGET = 0;
 const PUZZLE_TARGET = 0;
 const BUILDING_WIDTH = 130;
 const BUILDING_DEPTH = 96;
@@ -458,16 +458,19 @@ export function createChapterNine(): ChapterNineData {
   addWall(BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH, brickMaterial);
   addWall(-36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
   addWall(36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
+  const shellColliders = colliders.slice();
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
 
-  addBox(root, BUILDING_WIDTH + 2.2, 0.42, BUILDING_DEPTH + 2.2, 0, WALL_HEIGHT + 0.22, BUILDING_CENTER_Z, roofMaterial);
-  addBox(root, BUILDING_WIDTH - 2.2, 0.12, BUILDING_DEPTH - 2.2, 0, WALL_HEIGHT - 0.08, BUILDING_CENTER_Z, ceilingMaterial);
+  const shellObjects = root.children.slice();
+  const roof = addBox(root, BUILDING_WIDTH + 2.2, 0.42, BUILDING_DEPTH + 2.2, 0, WALL_HEIGHT + 0.22, BUILDING_CENTER_Z, roofMaterial);
+  const ceiling = addBox(root, BUILDING_WIDTH - 2.2, 0.12, BUILDING_DEPTH - 2.2, 0, WALL_HEIGHT - 0.08, BUILDING_CENTER_Z, ceilingMaterial);
+  shellObjects.push(roof, ceiling);
   [-42, -14, 14, 42].forEach((x) => {
-    addBox(root, 0.36, 0.26, BUILDING_DEPTH - 5, x, WALL_HEIGHT - 0.32, BUILDING_CENTER_Z, blackMetalMaterial);
+    shellObjects.push(addBox(root, 0.36, 0.26, BUILDING_DEPTH - 5, x, WALL_HEIGHT - 0.32, BUILDING_CENTER_Z, blackMetalMaterial));
   });
   [-52, -26, 0, 26, 52].forEach((x) => {
     [25, 5, -15, -35, -55].forEach((z) => {
-      addBox(root, 5.8, 0.08, 0.8, x, WALL_HEIGHT - 0.54, z, neonMaterial);
+      shellObjects.push(addBox(root, 5.8, 0.08, 0.8, x, WALL_HEIGHT - 0.54, z, neonMaterial));
     });
   });
 
@@ -483,6 +486,7 @@ export function createChapterNine(): ChapterNineData {
   const glassRight = glassLeft.clone();
   glassRight.position.x = 12;
   root.add(glassLeft, glassRight);
+  shellObjects.push(glassLeft, glassRight);
   const crackMaterial = new MeshBasicMaterial({ color: 0xe6f8ff, transparent: true, opacity: 0.65, side: DoubleSide });
   [-12, 12].forEach((x, paneIndex) => {
     for (let crack = 0; crack < 6; crack += 1) {
@@ -490,6 +494,7 @@ export function createChapterNine(): ChapterNineData {
       shard.position.set(x + (crack - 2.5) * 0.52, 3.1 + Math.sin(crack) * 0.6, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.36);
       shard.rotation.z = (crack - 2.5) * 0.35 + paneIndex * 0.2;
       root.add(shard);
+      shellObjects.push(shard);
     }
   });
 
@@ -725,14 +730,7 @@ export function createChapterNine(): ChapterNineData {
   }
   const ventEntries: { label: string; position: Vector3; target: Vector3 }[] = [];
 
-  const filmingTargets: ChapterNineFilmingTarget[] = [
-    { id: 'stage', label: 'main stage', position: new Vector3(0, 1.4, -36), radius: 13, filmed: false },
-    { id: 'freddy', label: 'Freddy moving', position: new Vector3(0, 1.4, -35), radius: 12, filmed: false },
-    { id: 'bonnie', label: 'Bonnie moving', position: new Vector3(-9, 1.4, -35), radius: 12, filmed: false },
-    { id: 'chica', label: 'Chica moving', position: new Vector3(9, 1.4, -35), radius: 12, filmed: false },
-    { id: 'foxy', label: 'Foxy moving', position: new Vector3(42, 1.4, 10), radius: 12, filmed: false },
-    { id: 'golden', label: 'Golden Freddy sighting', position: new Vector3(0, 1.4, -58), radius: 12, filmed: false },
-  ];
+  const filmingTargets: ChapterNineFilmingTarget[] = [];
 
   const puzzleStations: ChapterNinePuzzleStation[] = [];
 
@@ -915,17 +913,16 @@ export function createChapterNine(): ChapterNineData {
   ];
 
   const preservedChapterNineObjects = new Set<object>([
-    emptyGround,
-    stage,
-    curtain,
-    ...animatronics.map((bot) => bot.root),
+    ...shellObjects,
   ]);
   root.children.slice().forEach((child) => {
     if (!preservedChapterNineObjects.has(child)) {
       root.remove(child);
     }
   });
+  animatronics.length = 0;
   colliders.length = 0;
+  colliders.push(...shellColliders);
 
   const shoulderCamera = new Group();
   shoulderCamera.name = 'Chapter 9 shoulder recording camera';
@@ -1101,9 +1098,12 @@ export function createChapterNine(): ChapterNineData {
           message: station.solvedMessage,
         };
       }
-      return { message: 'Only the stage and animatronics remain here. Use the shoulder camera with left click if you want footage.' };
+      return { message: 'The Freddy Pizza Complex building shell is still standing, but the interior is empty.' };
     },
     record(playerPosition: Vector3): string {
+      if (FOOTAGE_TARGET === 0) {
+        return 'The shoulder camera records the empty building shell.';
+      }
       const movingAnimatronics = new Set(
         animatronics
           .filter((bot) => bot.active && playerPosition.distanceTo(bot.root.position) < 18)

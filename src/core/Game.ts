@@ -25348,7 +25348,7 @@ export class Game {
     this.chapterTwoCardTime = 4.2;
     this.chapterCardTitle = "Chapter 9: Freddy's Pizza Complex";
     this.chapterCardBody =
-      'The complex has been stripped down to an empty floor with only the main stage and animatronics remaining.';
+      'The Freddy Pizza Complex building shell is still standing, but the interior has been cleared out.';
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
@@ -25464,7 +25464,7 @@ export class Game {
     this.player.teleport(this.chapterNine.spawn);
     this.player.lookToward(this.chapterNine.lookTarget, 1);
     this.pushStatus(
-      'Chapter 9 loaded. The Freddy Pizza Complex is empty except for the stage and animatronics. Left click records footage with the shoulder camera.',
+      'Chapter 9 loaded. The Freddy Pizza Complex building is empty inside. Left click records footage with the shoulder camera.',
       4.2,
     );
     this.resize();
