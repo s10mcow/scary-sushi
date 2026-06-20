@@ -60,6 +60,7 @@ import { createChapterFive, type ChapterFiveData } from '../scene/createChapterF
 import { createChapterSix, type ChapterSixData, type ChapterSixItemType } from '../scene/createChapterSix';
 import { createChapterSeven, type ChapterSevenData } from '../scene/createChapterSeven';
 import { createChapterEight, type ChapterEightData } from '../scene/createChapterEight';
+import { createChapterNine, type ChapterNineData, type ChapterNineJumpscareEvent } from '../scene/createChapterNine';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -195,7 +196,8 @@ const START_IN_CHAPTER_THREE = false;
 const START_IN_CHAPTER_FOUR = false;
 const START_IN_CHAPTER_FIVE = false;
 const START_IN_CHAPTER_SIX = false;
-const START_IN_CHAPTER_SEVEN = true;
+const START_IN_CHAPTER_SEVEN = false;
+const START_IN_CHAPTER_NINE = true;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -990,6 +992,7 @@ export class Game {
   private readonly chapterSix: ChapterSixData;
   private readonly chapterSeven: ChapterSevenData;
   private readonly chapterEight: ChapterEightData;
+  private readonly chapterNine: ChapterNineData;
   private readonly zombieMode: ZombieModeData;
   private readonly doomMode: DoomModeData;
   private readonly lighting;
@@ -1127,6 +1130,7 @@ export class Game {
   private chapterEightHeldItemModelType: ChapterEightHeldItem | null = null;
   private chapterEightKnifeAttackMode: 'slash' | 'stab' | null = null;
   private chapterEightKnifeAttackTimer = 0;
+  private chapterNineJumpscare: { event: ChapterNineJumpscareEvent; elapsed: number; duration: number } | null = null;
   private holdingPlate = false;
   private plateRecipeId: string | null = null;
   private platedRecipeId: string | null = null;
@@ -1139,6 +1143,7 @@ export class Game {
   private chapterSixActive = false;
   private chapterSevenActive = false;
   private chapterEightActive = false;
+  private chapterNineActive = false;
   private zombieModeActive = false;
   private doomModeActive = false;
   private chapterMenuOpen = false;
@@ -1409,6 +1414,8 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight = createChapterEight();
     this.chapterEight.root.visible = false;
+    this.chapterNine = createChapterNine();
+    this.chapterNine.root.visible = false;
     this.zombieMode = createZombieMode();
     this.zombieMode.root.visible = false;
     this.doomMode = createDoomMode();
@@ -1428,6 +1435,7 @@ export class Game {
         ...this.chapterSix.colliders,
         ...this.chapterSeven.colliders,
         ...this.chapterEight.colliders,
+        ...this.chapterNine.colliders,
         ...this.zombieMode.colliders,
         ...this.doomMode.colliders,
       ],
@@ -1471,11 +1479,14 @@ export class Game {
     this.scene.add(this.chapterSix.root);
     this.scene.add(this.chapterSeven.root);
     this.scene.add(this.chapterEight.root);
+    this.scene.add(this.chapterNine.root);
     this.scene.add(this.zombieMode.root);
     this.scene.add(this.doomMode.root);
     this.scene.add(this.camera);
     this.camera.add(this.chapterFive.screenShip);
     this.camera.add(this.chapterFive.repairWrench);
+    this.camera.add(this.chapterNine.shoulderCamera);
+    this.chapterNine.shoulderCamera.visible = false;
     this.monsters.forEach((monster) => this.scene.add(monster.root));
     this.zombieControllers.forEach((zombie) => this.scene.add(zombie.root));
     this.doomEnemies.forEach((enemy) => this.scene.add(enemy.root));
@@ -1608,7 +1619,9 @@ export class Game {
     this.resizeObserver.observe(this.shell.viewport);
     this.resize();
 
-    if (START_IN_CHAPTER_SEVEN) {
+    if (START_IN_CHAPTER_NINE) {
+      this.beginChapterNine();
+    } else if (START_IN_CHAPTER_SEVEN) {
       this.beginChapterSeven();
     } else if (START_IN_CHAPTER_SIX) {
       this.beginChapterSix();
@@ -1682,7 +1695,7 @@ export class Game {
               ? 0.9
               : this.chapterSevenActive
                 ? 0.9
-                : this.chapterEightActive
+                : this.chapterEightActive || this.chapterNineActive
                   ? 0.9
                 : 1;
     const renderWidth = Math.max(1, Math.round(width * renderScale));
@@ -1697,7 +1710,7 @@ export class Game {
     this.renderer.toneMapping = this.doomModeActive ? NoToneMapping : ACESFilmicToneMapping;
     this.renderer.setPixelRatio(
       this.doomModeActive || this.officeChapterActive || this.chapterFourActive
-        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive
+        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive
         ? PERFORMANCE_RENDER_PIXEL_RATIO
         : Math.min(window.devicePixelRatio, DEFAULT_RENDER_PIXEL_RATIO),
     );
@@ -1960,6 +1973,8 @@ export class Game {
       this.beginChapterSeven();
     } else if (chapterId === 'chapter-8') {
       this.beginChapterEight();
+    } else if (chapterId === 'chapter-9') {
+      this.beginChapterNine();
     } else if (chapterId === 'doom-fps') {
       this.beginDoomMode();
     } else {
@@ -2857,7 +2872,8 @@ export class Game {
       || this.activeOfficeVentBoyJumpscare !== null
       || this.chapterFourPurpleJumpscareTimer > 0
       || this.chapterFourBlueJumpscareTimer > 0
-      || this.chapterFourGreenJumpscareTimer > 0;
+      || this.chapterFourGreenJumpscareTimer > 0
+      || this.chapterNineJumpscare !== null;
     const chapterTwoSeated = this.chapterTwoActive && this.chapterTwoSeatId !== null;
     const chapterTwoClimbing = this.chapterTwoActive && this.chapterTwoClimb !== null;
     const chapterTwoSliding = this.chapterTwoActive && this.chapterTwoSlide !== null;
@@ -3361,7 +3377,7 @@ export class Game {
       this.updateZombieMode(deltaSeconds);
     } else if (this.doomModeActive) {
       this.updateDoomMode(deltaSeconds);
-    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive) {
+    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive) {
       this.monsterState = this.unlockedMonsterState;
       this.touchingMonster = null;
     } else {
@@ -3372,7 +3388,7 @@ export class Game {
     this.updateChapterSevenDayNightCycle(deltaSeconds);
     this.updateChapterSevenAmbientAudio(deltaSeconds);
     this.updateAtmosphere();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
     }
     this.updateOfficeGlassThrows(deltaSeconds);
@@ -3380,7 +3396,7 @@ export class Game {
     this.updateOfficeVentBoyJumpscare(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateMachineJobs(deltaSeconds);
     }
 
@@ -3487,7 +3503,10 @@ export class Game {
     } else if (this.chapterEightActive) {
       this.chapterEight.update(deltaSeconds, this.player.getPosition());
       this.handleChapterEightMonsterEvents();
-    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive) {
+    } else if (this.chapterNineActive) {
+      this.chapterNine.update(deltaSeconds, this.player.getPosition());
+      this.handleChapterNineJumpscareEvents(deltaSeconds);
+    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
       this.chapterTwo.update(deltaSeconds, this.player.getPosition());
@@ -3566,7 +3585,7 @@ export class Game {
     this.updateChapterFourGreenJumpscareModel();
     this.updateOfficeGlassDisplay();
     this.updateOfficePrizeItemDisplay();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateStoveLight();
     }
     if (this.shouldSyncHudThisFrame(deltaSeconds, jumpscareLocked)) {
@@ -11418,6 +11437,10 @@ export class Game {
       return [this.chapterEight.root];
     }
 
+    if (this.chapterNineActive) {
+      return [this.chapterNine.root];
+    }
+
     if (this.chapterTwoActive) {
       return [this.chapterTwo.root];
     }
@@ -12146,10 +12169,14 @@ export class Game {
         return 'Chapter 7: The House';
       case 'chapter-8':
         return 'Chapter 8: The Woods';
+      case 'chapter-9':
+        return "Chapter 9: Freddy's Pizza Complex";
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
         return 'Doom Run';
+      default:
+        return 'Unknown Chapter';
     }
   }
 
@@ -12341,7 +12368,7 @@ export class Game {
   private updateAtmosphere(): void {
     this.lighting.flashlight.angle = GAME_CONFIG.flashlight.angle;
     this.lighting.flashlight.penumbra = GAME_CONFIG.flashlight.penumbra;
-    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive ? 980 : GAME_CONFIG.camera.far;
+    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive ? 980 : GAME_CONFIG.camera.far;
     if (Math.abs(this.camera.far - targetCameraFar) > 0.01) {
       this.camera.far = targetCameraFar;
       this.camera.updateProjectionMatrix();
@@ -12752,6 +12779,10 @@ export class Game {
       return 'chapter-8';
     }
 
+    if (this.chapterNineActive) {
+      return 'chapter-9';
+    }
+
     return this.chapterTwoActive ? 'chapter-2' : 'chapter-1';
   }
 
@@ -12788,6 +12819,15 @@ export class Game {
   }
 
   private getIntroHudState(): { eyebrow: string; title: string; summary: string; buttonText: string } {
+    if (this.chapterNineActive) {
+      return {
+        eyebrow: 'Chapter Nine',
+        title: "Freddy's Pizza Complex",
+        summary: 'Record evidence inside a huge abandoned brick pizza complex, survive the locked night, solve puzzles, and escape.',
+        buttonText: 'Enter The Complex',
+      };
+    }
+
     if (this.chapterEightActive) {
       return {
         eyebrow: 'Chapter Eight',
@@ -12833,6 +12873,7 @@ export class Game {
         : 0,
     );
     this.hud.setFlashlight(this.flashlight.isEnabled());
+    this.chapterNine.shoulderCamera.visible = this.chapterNineActive && locked && !this.chapterMenuOpen;
     this.hud.setHealthLabel('Health');
     this.hud.setStaminaLabel(this.doomModeActive ? 'Armor' : 'Stamina');
     const intro = this.getIntroHudState();
@@ -12862,6 +12903,8 @@ export class Game {
                     ? 'Chapter: Chapter 7: The House'
                     : this.chapterEightActive
                       ? 'Chapter: Chapter 8: The Woods'
+                      : this.chapterNineActive
+                        ? "Chapter: Freddy's Pizza Complex"
                       : this.chapterTwoActive
                     ? 'Chapter: daycare horror'
                     : 'Chapter: scary-sushi',
@@ -13428,6 +13471,18 @@ export class Game {
       return;
     }
 
+    if (this.chapterNineActive) {
+      const result = this.chapterNine.interact(this.player.getPosition());
+      if (result.teleport) {
+        this.player.teleport(result.teleport);
+      }
+      if (result.lookTarget) {
+        this.player.lookToward(result.lookTarget, 0.35);
+      }
+      this.pushStatus(result.message, 2.8);
+      return;
+    }
+
     if (this.chapterTwoActive) {
       this.handleChapterTwoInteract();
       return;
@@ -13633,6 +13688,11 @@ export class Game {
       return;
     }
 
+    if (this.chapterNineActive) {
+      this.pushStatus(this.chapterNine.record(this.player.getPosition()), 2.4);
+      return;
+    }
+
     if (!this.zombieModeActive) {
       return;
     }
@@ -13828,6 +13888,31 @@ export class Game {
           break;
       }
       event = this.chapterEight.consumeMonsterEvent();
+    }
+  }
+
+  private handleChapterNineJumpscareEvents(deltaSeconds: number): void {
+    if (this.chapterNineJumpscare) {
+      this.chapterNineJumpscare.elapsed = Math.min(
+        this.chapterNineJumpscare.elapsed + deltaSeconds,
+        this.chapterNineJumpscare.duration,
+      );
+      if (this.chapterNineJumpscare.elapsed >= this.chapterNineJumpscare.duration) {
+        this.chapterNineJumpscare = null;
+      }
+    }
+
+    let event = this.chapterNine.consumeJumpscareEvent();
+    while (event) {
+      this.chapterNineJumpscare = {
+        event,
+        elapsed: 0,
+        duration: 2.4,
+      };
+      this.health = Math.max(0, this.health - 35);
+      this.gameplaySfxAudio.playOfficeJumpscareCue(event.animatronic === 'foxy' ? 'hook-scrape' : 'bear-grab');
+      this.pushStatus(event.message, 3.0);
+      event = this.chapterNine.consumeJumpscareEvent();
     }
   }
 
@@ -16721,6 +16806,20 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterNineActive) {
+      return [
+        "Chapter 9: Freddy's Pizza Complex",
+        '',
+        `Phase: ${this.chapterNine.getPhaseLabel()} (${Math.ceil(this.chapterNine.getPhaseRemaining())}s)`,
+        `Evidence: ${this.chapterNine.getFootageCount()}/${this.chapterNine.getFootageTarget()}`,
+        `Puzzles: ${this.chapterNine.getPuzzleCount()}/${this.chapterNine.getPuzzleTarget()}`,
+        this.chapterNine.isEscapeUnlocked()
+          ? 'Escape is unlocked. Reach the front doors and leave with the footage.'
+          : 'Record rooms and moving animatronics, then solve the breaker, kitchen valve, security terminal, and front chain.',
+        'Left click records. E uses vents, puzzles, and front doors.',
+      ].join('\n');
+    }
+
     if (this.chapterEightActive) {
       return [
         'Chapter 8: The Woods',
@@ -16962,6 +17061,17 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterNineActive) {
+      return [
+        'Inventory: Shoulder Camera',
+        `Phase: ${this.chapterNine.getPhaseLabel()} / ${Math.ceil(this.chapterNine.getPhaseRemaining())}s`,
+        `Evidence filmed: ${this.chapterNine.getFootageCount()}/${this.chapterNine.getFootageTarget()}`,
+        `Puzzles solved: ${this.chapterNine.getPuzzleCount()}/${this.chapterNine.getPuzzleTarget()}`,
+        this.chapterNine.isEscapeUnlocked() ? 'Escape: unlocked. Reach the front doors.' : 'Escape: locked until enough footage and puzzle steps are complete.',
+        'Left click records nearby evidence. E uses vents, puzzle stations, and the front doors.',
+      ].join('\n');
+    }
+
     if (this.chapterTwoActive) {
       const cards = CHAPTER_TWO_KEYCARD_ORDER
         .filter((color) => this.chapterTwoKeycards.has(color))
@@ -17157,7 +17267,7 @@ export class Game {
 
     return {
       text: this.getChapterExitNoticeText(),
-      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.zombieModeActive && !this.doomModeActive,
+      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.zombieModeActive && !this.doomModeActive,
       label: 'Chapter Shift',
     };
   }
@@ -17355,6 +17465,42 @@ export class Game {
           count: 0,
           filled: false,
           selected: emptySlotSelected && index === 0,
+        })),
+      ];
+    }
+
+    if (this.chapterNineActive) {
+      return [
+        {
+          label: 'Shoulder Camera [REC]',
+          count: this.chapterNine.getFootageCount(),
+          filled: true,
+          selected: true,
+        },
+        {
+          label: this.chapterNine.getPhaseLabel(),
+          count: Math.max(1, Math.ceil(this.chapterNine.getPhaseRemaining())),
+          filled: true,
+        },
+        {
+          label: 'Evidence',
+          count: this.chapterNine.getFootageCount(),
+          filled: this.chapterNine.getFootageCount() >= this.chapterNine.getFootageTarget(),
+        },
+        {
+          label: 'Puzzles',
+          count: this.chapterNine.getPuzzleCount(),
+          filled: this.chapterNine.getPuzzleCount() >= this.chapterNine.getPuzzleTarget(),
+        },
+        {
+          label: this.chapterNine.isEscapeUnlocked() ? 'Escape Ready' : 'Escape Locked',
+          count: this.chapterNine.isEscapeUnlocked() ? 1 : 0,
+          filled: this.chapterNine.isEscapeUnlocked(),
+        },
+        ...Array.from({ length: 4 }, () => ({
+          label: 'Empty',
+          count: 0,
+          filled: false,
         })),
       ];
     }
@@ -18635,6 +18781,15 @@ export class Game {
       return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. The cabin fireplace is ${fireplaceState}.`;
     }
 
+    if (this.chapterNineActive) {
+      if (!this.player.isLocked()) {
+        return "Click the play space to continue filming Freddy's Pizza Complex.";
+      }
+      return this.chapterNine.isEscapeUnlocked()
+        ? 'Escape is ready. Press E at the front doors to leave.'
+        : 'Left click records evidence with the shoulder camera. Press E near vents, breaker panels, the security terminal, kitchen valve, or front doors.';
+    }
+
     if (this.officeChapterActive) {
       const ventExit = this.getNearestOfficeVentExit();
       const ventLadder = this.getNearestOfficeVentLadder();
@@ -19404,6 +19559,10 @@ export class Game {
 
     if (this.chapterEightActive) {
       return this.chapterEight.getSupportedFloorY(this.player.getPosition());
+    }
+
+    if (this.chapterNineActive) {
+      return this.chapterNine.getSupportedFloorY(this.player.getPosition());
     }
 
     return null;
@@ -23606,6 +23765,9 @@ export class Game {
       this.getChapterFourPurpleJumpscareIntensity(),
       this.getChapterFourBlueJumpscareIntensity(),
       this.getChapterFourGreenJumpscareIntensity(),
+      this.chapterNineJumpscare
+        ? MathUtils.clamp(1 - this.chapterNineJumpscare.elapsed / this.chapterNineJumpscare.duration, 0, 1)
+        : 0,
     );
   }
 
@@ -23653,6 +23815,10 @@ export class Game {
 
     if (this.activeJumpscare) {
       return this.activeJumpscare.variant;
+    }
+
+    if (this.chapterNineJumpscare) {
+      return this.chapterNineJumpscare.event.variant;
     }
 
     if (this.chapterTwoActive && this.chapterTwoBearRefusalTimer > 0) {
@@ -23863,6 +24029,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -23888,6 +24055,7 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.zombieMode.root.visible = false;
     this.chapterTwo.reset();
     this.officeChapter.reset();
@@ -23896,6 +24064,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterSeven.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -23966,7 +24135,7 @@ export class Game {
   private updateChapterExit(deltaSeconds: number): void {
     this.level.chapterExitDoor.visible = this.chapterExitUnlocked || this.chapterTwoActive;
 
-    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.zombieModeActive || this.doomModeActive) {
+    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.zombieModeActive || this.doomModeActive) {
       return;
     }
 
@@ -24060,6 +24229,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24087,6 +24257,7 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -24096,6 +24267,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterSeven.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24165,6 +24337,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = true;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24189,6 +24362,7 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.doomMode.root.visible = false;
     this.zombieMode.root.visible = true;
     this.chapterTwo.reset();
@@ -24198,6 +24372,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterSeven.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24285,6 +24460,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = true;
     this.chapterMenuOpen = false;
@@ -24309,6 +24485,7 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = true;
     this.chapterTwo.reset();
@@ -24318,6 +24495,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterSeven.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24408,6 +24586,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24430,6 +24609,7 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -24438,6 +24618,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterSeven.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24559,6 +24740,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24587,6 +24769,7 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -24595,6 +24778,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterSeven.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24677,6 +24861,7 @@ export class Game {
     this.chapterSixActive = true;
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24707,6 +24892,7 @@ export class Game {
     this.chapterSix.root.visible = true;
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -24715,6 +24901,7 @@ export class Game {
     this.chapterFive.reset();
     this.chapterSeven.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24810,6 +24997,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = true;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24840,6 +25028,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterSeven.root.visible = true;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -24848,6 +25037,7 @@ export class Game {
     this.chapterFive.reset();
     this.chapterSix.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24940,6 +25130,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
     this.chapterEightActive = true;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24968,7 +25159,9 @@ export class Game {
     this.chapterFive.screenShip.visible = false;
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.chapterEight.root.visible = true;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
@@ -25069,6 +25262,146 @@ export class Game {
     this.resize();
   }
 
+  private beginChapterNine(): void {
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
+    this.chapterEightActive = false;
+    this.chapterNineActive = true;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 4.2;
+    this.chapterCardTitle = "Chapter 9: Freddy's Pizza Complex";
+    this.chapterCardBody =
+      'Spawn outside in the parking lot, record evidence with the shoulder camera, survive the locked night, solve the building puzzles, and escape.';
+    this.activeJumpscare = null;
+    this.chapterNineJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.clearPaintbrushState();
+    this.placementToolActive = false;
+    this.placementToolAnchor.visible = false;
+    this.placementPreview.visible = false;
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
+    this.chapterNine.reset();
+    this.chapterNine.root.visible = true;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
+    this.chapterEight.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
+    this.chapterSevenBoxHidden = false;
+    this.chapterSevenOvenHidden = false;
+    this.chapterSevenSwingSeated = false;
+    this.chapterSeven.setSwingOccupied(false);
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
+    this.chapterEightHeldItemAnchor.visible = false;
+    this.chapterNine.shoulderCamera.visible = true;
+    this.chapterTwoKeycards.clear();
+    this.chapterTwoPuzzlePiecesCollected = 0;
+    this.chapterTwoRedPuzzleSolved = false;
+    this.chapterTwoEggsHeld = 0;
+    this.chapterTwoEggsDeposited = 0;
+    this.chapterTwoEggQuestStarted = false;
+    this.chapterTwoEggQuestNoticeTime = 0;
+    this.chapterTwoBlueBearsHeld = 0;
+    this.chapterTwoBlueBearsReturned = 0;
+    this.chapterTwoBearDialogueIndex = null;
+    this.chapterTwoBearDialogueComplete = false;
+    this.chapterTwoBearChoicePending = false;
+    this.chapterTwoBearQuestAccepted = false;
+    this.chapterTwoBearRefusalTimer = 0;
+    this.chapterTwoDodoTrailActive = false;
+    this.chapterTwoDodoTrailNoticeTime = 0;
+    this.chapterTwoPowerOutageTriggered = false;
+    this.chapterTwoPowerOutageNoticeTime = 0;
+    this.chapterTwoDodoPowerRipSoundPlayed = false;
+    this.chapterTwoDodoNightAttack = null;
+    this.officeChapterTickets = 0;
+    this.officeBasketballHeld = false;
+    this.chapterTwoCoffeeJob = null;
+    this.activeCoffeeDrink = null;
+    this.coffeeBoostRemaining = 0;
+    this.carriedDrinkAnchor.visible = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.resetOfficeTabletState();
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.player.teleport(this.chapterNine.spawn);
+    this.player.lookToward(this.chapterNine.lookTarget, 1);
+    this.pushStatus(
+      "Chapter 9 loaded. Left click records footage with the shoulder camera. E operates vents, puzzles, and doors. Day lasts 5 minutes; night lasts 10 minutes and locks the complex.",
+      4.2,
+    );
+    this.resize();
+  }
+
   private beginOfficeChapter(sandboxCopy = false): void {
     this.stopOfficeGameMode();
     this.officeSandboxChapterActive = sandboxCopy;
@@ -25085,6 +25418,7 @@ export class Game {
     this.chapterSixActive = false;
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
+    this.chapterNineActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -25109,6 +25443,7 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -25118,6 +25453,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterSeven.reset();
     this.chapterEight.reset();
+    this.chapterNine.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;

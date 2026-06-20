@@ -10,6 +10,7 @@ export type HudChapterId =
   | 'chapter-6'
   | 'chapter-7'
   | 'chapter-8'
+  | 'chapter-9'
   | 'zombie-fps'
   | 'doom-fps';
 export type HudJumpScareVariant = MonsterVariant | 'bear' | 'quacky' | 'fluffle' | 'bori' | 'foxy' | 'purple' | 'blue' | 'green';
@@ -1403,6 +1404,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-8' as const,
       label: 'Chapter 8: The Woods',
       body: 'A semi-realistic forest camp with a fire pit, stone ring, crafting bench, and grinding bench.',
+    },
+    {
+      id: 'chapter-9' as const,
+      label: "Chapter 9: Freddy's Pizza Complex",
+      body: 'A huge abandoned brick pizza complex with FNAF animatronics, vents, filming evidence, puzzles, and locked night survival.',
     },
     {
       id: 'zombie-fps' as const,
