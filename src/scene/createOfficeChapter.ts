@@ -10745,10 +10745,17 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const pickaxeRoot = new Group();
   pickaxeRoot.position.set(storageShelfX + 0.08, 0.84, storageClosetCenterZ - 1.62);
   pickaxeRoot.rotation.set(0.14, -Math.PI / 2, -0.18);
-  const pickaxeHandle = new Mesh(new CylinderGeometry(0.035, 0.045, 0.92, 10), storageClosetShelfMaterial);
+  const pickaxeHandleMaterial = new MeshStandardMaterial({
+    color: 0x6f4325,
+    emissive: 0x100704,
+    emissiveIntensity: 0.08,
+    roughness: 0.72,
+    metalness: 0.02,
+  });
+  const pickaxeHandle = new Mesh(new CylinderGeometry(0.035, 0.048, 1.1, 12), pickaxeHandleMaterial);
   pickaxeHandle.rotation.z = Math.PI / 2;
   const pickaxeHead = new Group();
-  pickaxeHead.position.x = -0.44;
+  pickaxeHead.position.x = -0.54;
   const pickaxeMetalMaterial = new MeshStandardMaterial({
     color: 0x8e969b,
     emissive: 0x080b0c,
@@ -10756,14 +10763,23 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     roughness: 0.34,
     metalness: 0.7,
   });
-  const pickaxeHeadBar = new Mesh(new BoxGeometry(0.5, 0.08, 0.1), pickaxeMetalMaterial);
-  const pickaxeLeftTip = new Mesh(new ConeGeometry(0.07, 0.28, 8), pickaxeMetalMaterial);
-  pickaxeLeftTip.rotation.z = -Math.PI / 2;
-  pickaxeLeftTip.position.x = -0.32;
-  const pickaxeRightTip = pickaxeLeftTip.clone();
-  pickaxeRightTip.rotation.z = Math.PI / 2;
-  pickaxeRightTip.position.x = 0.32;
-  pickaxeHead.add(pickaxeHeadBar, pickaxeLeftTip, pickaxeRightTip);
+  const pickaxeCollar = new Mesh(new CylinderGeometry(0.085, 0.09, 0.16, 14), pickaxeMetalMaterial);
+  pickaxeCollar.rotation.z = Math.PI / 2;
+  const addPickaxeHeadArm = (side: -1 | 1): void => {
+    const inner = new Mesh(new CylinderGeometry(0.035, 0.042, 0.32, 10), pickaxeMetalMaterial);
+    inner.position.set(0, side * 0.14, 0.035);
+    inner.rotation.x = side * 0.92;
+    const outer = new Mesh(new CylinderGeometry(0.03, 0.036, 0.34, 10), pickaxeMetalMaterial);
+    outer.position.set(0, side * 0.34, 0.09);
+    outer.rotation.x = side * 1.18;
+    const tip = new Mesh(new ConeGeometry(0.058, 0.22, 10), pickaxeMetalMaterial);
+    tip.position.set(0, side * 0.58, 0.15);
+    tip.rotation.x = side > 0 ? 0 : Math.PI;
+    pickaxeHead.add(inner, outer, tip);
+  };
+  addPickaxeHeadArm(-1);
+  addPickaxeHeadArm(1);
+  pickaxeHead.add(pickaxeCollar);
   const pickaxeHint = createInstructionHoverLabel('pickaxe for basement rubble', 2.7, 0.5);
   pickaxeHint.position.set(0, 0.42, 0);
   pickaxeHint.rotation.y = Math.PI / 2;
