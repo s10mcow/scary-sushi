@@ -25464,7 +25464,7 @@ export class Game {
     this.player.teleport(this.chapterNine.spawn);
     this.player.lookToward(this.chapterNine.lookTarget, 1);
     this.pushStatus(
-      'Chapter 9 loaded. The Freddy Pizza Complex building is empty inside. Left click records footage with the shoulder camera.',
+      'Chapter 9 loaded. The Freddy Pizza Complex building is empty inside. Left click toggles shoulder camera recording.',
       4.2,
     );
     this.resize();

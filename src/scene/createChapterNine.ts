@@ -308,7 +308,7 @@ function createPosterMaterial(name: string, slogan: string, color: string): Mesh
 
 function createCheckeredFloorMaterial(): MeshStandardMaterial {
   return makeCanvasMaterial((context, canvas) => {
-    const tile = 32;
+    const tile = 16;
     for (let y = 0; y < canvas.height; y += tile) {
       for (let x = 0; x < canvas.width; x += tile) {
         const even = (Math.floor(x / tile) + Math.floor(y / tile)) % 2 === 0;
@@ -330,6 +330,38 @@ function createCheckeredFloorMaterial(): MeshStandardMaterial {
       context.lineTo(canvas.width, y);
       context.stroke();
     }
+  });
+}
+
+function createCameraScreenMaterial(): MeshStandardMaterial {
+  return makeCanvasMaterial((context, canvas) => {
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#102534');
+    gradient.addColorStop(0.55, '#1d4a56');
+    gradient.addColorStop(1, '#081017');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = 'rgba(161, 229, 255, 0.55)';
+    context.lineWidth = 8;
+    context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+    context.strokeStyle = 'rgba(255,255,255,0.18)';
+    context.lineWidth = 4;
+    for (let x = 92; x < canvas.width; x += 92) {
+      context.beginPath();
+      context.moveTo(x, 24);
+      context.lineTo(x, canvas.height - 24);
+      context.stroke();
+    }
+    for (let y = 72; y < canvas.height; y += 72) {
+      context.beginPath();
+      context.moveTo(24, y);
+      context.lineTo(canvas.width - 24, y);
+      context.stroke();
+    }
+    context.fillStyle = 'rgba(255,255,255,0.78)';
+    context.font = 'bold 26px Arial';
+    context.textAlign = 'right';
+    context.fillText('LIVE VIEW', canvas.width - 30, canvas.height - 28);
   });
 }
 
@@ -373,6 +405,7 @@ export function createChapterNine(): ChapterNineData {
     roughness: 0.36,
     metalness: 0.18,
   });
+  const cameraScreenMaterial = createCameraScreenMaterial();
   const redLightMaterial = new MeshBasicMaterial({ color: 0xff2733 });
 
   const addBox = (
@@ -486,6 +519,7 @@ export function createChapterNine(): ChapterNineData {
   addWall(36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
   addWall(-4.85, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 4.3, WALL_THICKNESS, brickMaterial);
   addWall(4.85, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 4.3, WALL_THICKNESS, brickMaterial);
+  addBox(root, 11, 2.55, WALL_THICKNESS, 0, 5.92, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, brickMaterial);
   const shellColliders = colliders.slice();
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
 
@@ -968,8 +1002,12 @@ export function createChapterNine(): ChapterNineData {
   cameraLens.rotation.x = Math.PI / 2;
   cameraLens.position.z = -0.27;
   const redDot = new Mesh(new SphereGeometry(0.035, 8, 6), redLightMaterial);
-  redDot.position.set(0.22, 0.08, -0.2);
-  shoulderCamera.add(cameraBody, cameraLens, redDot);
+  redDot.position.set(0.22, 0.08, -0.23);
+  const cameraScreen = new Mesh(new PlaneGeometry(0.42, 0.24), cameraScreenMaterial);
+  cameraScreen.position.set(0, 0.02, 0.176);
+  const screenRecLight = new Mesh(new SphereGeometry(0.026, 8, 6), redLightMaterial);
+  screenRecLight.position.set(-0.17, 0.105, 0.184);
+  shoulderCamera.add(cameraBody, cameraLens, cameraScreen, redDot, screenRecLight);
   shoulderCamera.position.set(0.55, -0.34, -0.74);
 
   let phaseTime = 0;
@@ -979,6 +1017,7 @@ export function createChapterNine(): ChapterNineData {
   let lastJumpscareEvent: ChapterNineJumpscareEvent | null = null;
   let inVent = false;
   let ventExitCooldown = 0;
+  let cameraRecording = false;
 
   const getFilmedCount = (): number => filmingTargets.filter((target) => target.filmed).length;
   const getPuzzleCount = (): number => puzzleStations.filter((station) => station.solved).length;
@@ -1059,6 +1098,7 @@ export function createChapterNine(): ChapterNineData {
     escapeUnlocked = false;
     inVent = false;
     ventExitCooldown = 0;
+    cameraRecording = false;
     lastJumpscareEvent = null;
     filmingTargets.forEach((target) => {
       target.filmed = false;
@@ -1078,6 +1118,8 @@ export function createChapterNine(): ChapterNineData {
     });
     frontDoorCollider.enabled = false;
     shoulderCamera.visible = true;
+    redDot.visible = false;
+    screenRecLight.visible = false;
   };
 
   reset();
@@ -1103,7 +1145,9 @@ export function createChapterNine(): ChapterNineData {
       }
       updateEscapeState();
       animatronics.forEach((bot) => moveAnimatronic(bot, deltaSeconds, playerPosition));
-      redDot.visible = Math.sin(phaseTime * 9) > -0.25;
+      const recordingBlink = cameraRecording && Math.sin(phaseTime * 11) > -0.2;
+      redDot.visible = recordingBlink;
+      screenRecLight.visible = recordingBlink;
       root.traverse((object) => {
         if (object.userData.dustPhase !== undefined) {
           object.position.y = object.userData.baseY + Math.sin(phaseTime * 0.7 + object.userData.dustPhase) * 0.025;
@@ -1138,8 +1182,11 @@ export function createChapterNine(): ChapterNineData {
       return { message: 'The Freddy Pizza Complex building shell is still standing, but the interior is empty.' };
     },
     record(playerPosition: Vector3): string {
+      cameraRecording = !cameraRecording;
       if (FOOTAGE_TARGET === 0) {
-        return 'The shoulder camera records the empty building shell.';
+        return cameraRecording
+          ? 'The shoulder camera starts recording. The red light blinks on the camera screen.'
+          : 'The shoulder camera stops recording.';
       }
       const movingAnimatronics = new Set(
         animatronics
