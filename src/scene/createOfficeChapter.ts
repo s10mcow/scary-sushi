@@ -6081,11 +6081,12 @@ function createStageAnimatronic(
   if (kind === 'duck' && sandboxQuackyDesign) {
     return createSandboxQuackyReplacementAnimatronic(x, y, z, includePerformanceProps);
   }
+  const sandboxMascotDesign = sandboxQuackyDesign;
 
   const root = new Group();
   root.position.set(x, y, z);
   root.rotation.y = Math.PI;
-  root.scale.y = 1.05;
+  root.scale.set(sandboxMascotDesign ? 0.94 : 1, sandboxMascotDesign ? 1.08 : 1.05, sandboxMascotDesign ? 0.94 : 1);
   const detailedDuck = kind === 'duck' && sandboxQuackyDesign;
 
   const bodyColor = kind === 'duck'
@@ -6102,9 +6103,9 @@ function createStageAnimatronic(
   const bodyMaterial = new MeshStandardMaterial({
     color: bodyColor,
     emissive: 0x100808,
-    emissiveIntensity: 0.05,
-    roughness: 0.9,
-    metalness: 0.04,
+    emissiveIntensity: sandboxMascotDesign ? 0.11 : 0.05,
+    roughness: sandboxMascotDesign ? 0.56 : 0.9,
+    metalness: sandboxMascotDesign ? 0.2 : 0.04,
   });
   const accentMaterial = new MeshStandardMaterial({
     color: accentColor,
@@ -6140,15 +6141,21 @@ function createStageAnimatronic(
   });
 
   const torso = new Mesh(new SphereGeometry(0.54, 18, 16), bodyMaterial);
-  torso.scale.set(0.86, 1.32, 0.68);
+  torso.scale.set(sandboxMascotDesign ? 0.68 : 0.86, sandboxMascotDesign ? 1.44 : 1.32, sandboxMascotDesign ? 0.54 : 0.68);
   torso.position.set(0, 1.08, 0);
   const belly = new Mesh(new SphereGeometry(0.32, 14, 12), accentMaterial);
-  belly.scale.set(0.78, 1.12, 0.34);
+  belly.scale.set(sandboxMascotDesign ? 0.58 : 0.78, sandboxMascotDesign ? 0.96 : 1.12, sandboxMascotDesign ? 0.26 : 0.34);
   belly.position.set(0, 1.04, -0.42);
   const headGroup = new Group();
   headGroup.position.set(0, 2.1, -0.02);
   const head = new Mesh(new SphereGeometry(0.38, 22, 14), bodyMaterial);
-  head.scale.set(kind === 'duck' ? detailedDuck ? 1.24 : 1.18 : 1.08, detailedDuck ? 0.76 : 0.72, detailedDuck ? 0.86 : 0.8);
+  head.scale.set(
+    kind === 'duck'
+      ? detailedDuck ? 1.24 : 1.18
+      : sandboxMascotDesign ? 0.96 : 1.08,
+    detailedDuck ? 0.76 : sandboxMascotDesign ? 0.84 : 0.72,
+    detailedDuck ? 0.86 : sandboxMascotDesign ? 0.72 : 0.8,
+  );
   head.position.set(0, 0, 0);
   const jawline = new Mesh(new SphereGeometry(kind === 'duck' ? 0.34 : 0.28, 18, 10), muzzleMaterial);
   jawline.scale.set(kind === 'duck' ? detailedDuck ? 1.48 : 1.36 : 1.42, detailedDuck ? 0.32 : 0.28, kind === 'duck' ? detailedDuck ? 0.52 : 0.46 : 0.38);
@@ -6230,6 +6237,27 @@ function createStageAnimatronic(
     eye.position.set(eyeX, 0.06, -0.32);
     headGroup.add(eye);
   });
+  if (sandboxMascotDesign) {
+    const seamMaterial = new MeshStandardMaterial({
+      color: 0x17110e,
+      emissive: 0x070303,
+      emissiveIntensity: 0.14,
+      roughness: 0.42,
+      metalness: 0.34,
+    });
+    const browLeft = new Mesh(new BoxGeometry(0.18, 0.035, 0.025), seamMaterial);
+    browLeft.position.set(-0.14, 0.17, -0.35);
+    browLeft.rotation.z = 0.22;
+    const browRight = browLeft.clone();
+    browRight.position.x = 0.14;
+    browRight.rotation.z = -0.22;
+    const centerFaceSeam = new Mesh(new BoxGeometry(0.024, 0.36, 0.024), seamMaterial);
+    centerFaceSeam.position.set(0, -0.02, -0.405);
+    const chestSeam = new Mesh(new BoxGeometry(0.034, 0.7, 0.03), seamMaterial);
+    chestSeam.position.set(0, 1.1, -0.505);
+    root.add(chestSeam);
+    headGroup.add(browLeft, browRight, centerFaceSeam);
+  }
 
   if (kind === 'bunny') {
     const uprightEar = createBunnyEar(-1, false, bodyMaterial, accentMaterial, jointMaterial);
@@ -6421,6 +6449,26 @@ function createStageAnimatronic(
     leftLeg.root,
     rightLeg.root,
   );
+  if (sandboxMascotDesign) {
+    const trimMaterial = new MeshStandardMaterial({
+      color: 0xa9a29a,
+      emissive: 0x12100e,
+      emissiveIntensity: 0.1,
+      roughness: 0.3,
+      metalness: 0.68,
+    });
+    [
+      [-0.46, 1.44, -0.08],
+      [0.46, 1.44, -0.08],
+      [-0.25, 0.88, 0.02],
+      [0.25, 0.88, 0.02],
+    ].forEach(([ringX, ringY, ringZ], index) => {
+      const ring = new Mesh(new TorusGeometry(index < 2 ? 0.11 : 0.1, 0.01, 8, 18), trimMaterial);
+      ring.position.set(ringX, ringY, ringZ);
+      ring.rotation.set(Math.PI / 2, 0, index % 2 === 0 ? 0.2 : -0.2);
+      root.add(ring);
+    });
+  }
   if (detailedDuck) {
     const jointTrimMaterial = new MeshStandardMaterial({
       color: 0x9e8f78,
@@ -8815,8 +8863,24 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       true,
       options.sandboxQuackyDesign === true,
     ),
-    createStageAnimatronic('bunny', partyRoomCenterX, stageAnimatronicY, partyRoomNorthZ + 2.58),
-    createStageAnimatronic('bear', partyRoomCenterX + 4.6, stageAnimatronicY, partyRoomNorthZ + 2.78),
+    createStageAnimatronic(
+      'bunny',
+      partyRoomCenterX,
+      stageAnimatronicY,
+      partyRoomNorthZ + 2.58,
+      true,
+      true,
+      options.sandboxQuackyDesign === true,
+    ),
+    createStageAnimatronic(
+      'bear',
+      partyRoomCenterX + 4.6,
+      stageAnimatronicY,
+      partyRoomNorthZ + 2.78,
+      true,
+      true,
+      options.sandboxQuackyDesign === true,
+    ),
   ];
   stageAnimatronics.forEach((animatronic) => root.add(animatronic.root));
   const stageCollisionRefs: StageCollisionRefs[] = stageAnimatronics.map((animatronic) => {

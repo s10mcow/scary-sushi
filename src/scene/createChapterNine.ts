@@ -306,6 +306,33 @@ function createPosterMaterial(name: string, slogan: string, color: string): Mesh
   });
 }
 
+function createCheckeredFloorMaterial(): MeshStandardMaterial {
+  return makeCanvasMaterial((context, canvas) => {
+    const tile = 32;
+    for (let y = 0; y < canvas.height; y += tile) {
+      for (let x = 0; x < canvas.width; x += tile) {
+        const even = (Math.floor(x / tile) + Math.floor(y / tile)) % 2 === 0;
+        context.fillStyle = even ? '#bdbab0' : '#151516';
+        context.fillRect(x, y, tile, tile);
+      }
+    }
+    context.strokeStyle = 'rgba(0,0,0,0.22)';
+    context.lineWidth = 2;
+    for (let x = 0; x <= canvas.width; x += tile) {
+      context.beginPath();
+      context.moveTo(x, 0);
+      context.lineTo(x, canvas.height);
+      context.stroke();
+    }
+    for (let y = 0; y <= canvas.height; y += tile) {
+      context.beginPath();
+      context.moveTo(0, y);
+      context.lineTo(canvas.width, y);
+      context.stroke();
+    }
+  });
+}
+
 export function createChapterNine(): ChapterNineData {
   const root = new Group();
   root.name = 'Chapter 9: Freddy Pizza Complex';
@@ -318,8 +345,7 @@ export function createChapterNine(): ChapterNineData {
   const asphaltMaterial = new MeshStandardMaterial({ color: 0x1b1b1d, roughness: 0.96, metalness: 0.02 });
   const dirtyConcreteMaterial = new MeshStandardMaterial({ color: 0x6c6860, roughness: 0.94, metalness: 0.01 });
   const brickMaterial = new MeshStandardMaterial({ color: 0x7b382e, roughness: 0.88, metalness: 0.01 });
-  const checkWhiteMaterial = new MeshStandardMaterial({ color: 0xbdbab0, roughness: 0.84 });
-  const checkBlackMaterial = new MeshStandardMaterial({ color: 0x151516, roughness: 0.86 });
+  const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const wallInteriorMaterial = new MeshStandardMaterial({ color: 0x60584f, roughness: 0.9 });
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
@@ -372,18 +398,7 @@ export function createChapterNine(): ChapterNineData {
   };
 
   const addCheckeredFloor = (x: number, z: number, width: number, depth: number): void => {
-    const tile = 4;
-    const columns = Math.ceil(width / tile);
-    const rows = Math.ceil(depth / tile);
-    for (let col = 0; col < columns; col += 1) {
-      for (let row = 0; row < rows; row += 1) {
-        const tileWidth = Math.min(tile, width - col * tile);
-        const tileDepth = Math.min(tile, depth - row * tile);
-        const tileX = x - width / 2 + col * tile + tileWidth / 2;
-        const tileZ = z - depth / 2 + row * tile + tileDepth / 2;
-        addBox(root, tileWidth, 0.08, tileDepth, tileX, -0.035, tileZ, (col + row) % 2 === 0 ? checkWhiteMaterial : checkBlackMaterial);
-      }
-    }
+    addBox(root, width, 0.08, depth, x, -0.035, z, checkeredFloorMaterial);
   };
 
   addFloor(0, 44, 190, 112, asphaltMaterial);
@@ -749,12 +764,12 @@ export function createChapterNine(): ChapterNineData {
     const bellyMaterial = new MeshStandardMaterial({ color: 0xd4b486, roughness: 0.58, metalness: 0.08 });
     const toothMaterial = new MeshStandardMaterial({ color: 0xf2ead0, roughness: 0.38 });
     const darkMaterial = new MeshStandardMaterial({ color: 0x151515, roughness: 0.58, metalness: 0.28 });
-    const body = new Mesh(new SphereGeometry(0.9, 28, 18), bodyMaterial);
-    body.scale.set(0.86, 1.12, 0.56);
-    body.position.y = 1.5;
+    const body = new Mesh(new SphereGeometry(0.84, 28, 18), bodyMaterial);
+    body.scale.set(0.68, 1.18, 0.5);
+    body.position.y = 1.53;
     const belly = new Mesh(new SphereGeometry(0.52, 22, 14), bellyMaterial);
-    belly.scale.set(1, 1.18, 0.28);
-    belly.position.set(0, 1.36, 0.5);
+    belly.scale.set(0.78, 1.08, 0.22);
+    belly.position.set(0, 1.38, 0.48);
     const chestPlate = new Mesh(new BoxGeometry(0.78, 0.24, 0.1), darkMaterial);
     chestPlate.position.set(0, 2.06, 0.54);
     chestPlate.rotation.z = Math.PI / 4;
@@ -764,8 +779,8 @@ export function createChapterNine(): ChapterNineData {
     neck.position.y = 2.58;
     const head = new Group();
     head.position.y = 2.95;
-    const skull = new Mesh(new SphereGeometry(0.75, 30, 18), bodyMaterial);
-    skull.scale.set(variant === 'fox' ? 0.95 : 1.08, 0.94, 0.86);
+    const skull = new Mesh(new SphereGeometry(0.7, 30, 18), bodyMaterial);
+    skull.scale.set(variant === 'fox' ? 0.88 : 0.98, 0.98, 0.82);
     const muzzle = new Mesh(new SphereGeometry(0.36, 18, 12), variant === 'chicken' ? bodyMaterial : bellyMaterial);
     muzzle.scale.set(variant === 'fox' ? 1.35 : 1.05, 0.58, variant === 'fox' ? 1.12 : 0.82);
     muzzle.position.set(0, -0.12, 0.58);
@@ -841,19 +856,19 @@ export function createChapterNine(): ChapterNineData {
       head.add(hat, brim);
     }
     const leftArm = new Group();
-    leftArm.position.set(-0.92, 2.0, 0);
+    leftArm.position.set(-0.76, 2.0, 0);
     const rightArm = new Group();
-    rightArm.position.set(0.92, 2.0, 0);
+    rightArm.position.set(0.76, 2.0, 0);
     const makeLimb = (length = 1.45): Group => {
       const limb = new Group();
-      const upper = new Mesh(new CylinderGeometry(0.19, 0.22, length * 0.48, 14), bodyMaterial);
+      const upper = new Mesh(new CylinderGeometry(0.15, 0.18, length * 0.48, 14), bodyMaterial);
       upper.position.y = -length * 0.22;
       const joint = new Mesh(new SphereGeometry(0.2, 14, 10), metalMaterial);
       joint.position.y = -length * 0.48;
-      const lower = new Mesh(new CylinderGeometry(0.17, 0.2, length * 0.48, 14), bodyMaterial);
+      const lower = new Mesh(new CylinderGeometry(0.135, 0.165, length * 0.48, 14), bodyMaterial);
       lower.position.y = -length * 0.74;
-      const hand = new Mesh(new SphereGeometry(0.24, 16, 10), bodyMaterial);
-      hand.scale.set(1.25, 0.78, 1.1);
+      const hand = new Mesh(new SphereGeometry(0.2, 16, 10), bodyMaterial);
+      hand.scale.set(1.18, 0.72, 1.02);
       hand.position.y = -length;
       limb.add(upper, joint, lower, hand);
       [-0.14, 0, 0.14].forEach((fingerX) => {
@@ -866,20 +881,20 @@ export function createChapterNine(): ChapterNineData {
     leftArm.add(makeLimb(1.55));
     rightArm.add(makeLimb(1.55));
     const leftLeg = new Group();
-    leftLeg.position.set(-0.38, 0.82, 0);
+    leftLeg.position.set(-0.3, 0.82, 0);
     const rightLeg = new Group();
-    rightLeg.position.set(0.38, 0.82, 0);
+    rightLeg.position.set(0.3, 0.82, 0);
     leftLeg.add(makeLimb(1.3));
     rightLeg.add(makeLimb(1.3));
-    const leftFoot = new Mesh(new SphereGeometry(0.36, 16, 10), bodyMaterial);
-    leftFoot.scale.set(1.08, 0.42, 1.5);
-    leftFoot.position.set(-0.38, 0.13, 0.24);
+    const leftFoot = new Mesh(new SphereGeometry(0.3, 16, 10), bodyMaterial);
+    leftFoot.scale.set(1.0, 0.38, 1.38);
+    leftFoot.position.set(-0.3, 0.13, 0.24);
     const rightFoot = leftFoot.clone();
-    rightFoot.position.x = 0.38;
-    const leftShoulder = new Mesh(new SphereGeometry(0.28, 16, 10), metalMaterial);
-    leftShoulder.position.set(-0.88, 2.06, 0);
+    rightFoot.position.x = 0.3;
+    const leftShoulder = new Mesh(new SphereGeometry(0.22, 16, 10), metalMaterial);
+    leftShoulder.position.set(-0.74, 2.06, 0);
     const rightShoulder = leftShoulder.clone();
-    rightShoulder.position.x = 0.88;
+    rightShoulder.position.x = 0.74;
     model.add(body, belly, chestPlate, chestPlateB, neck, head, leftArm, rightArm, leftLeg, rightLeg, leftFoot, rightFoot, leftShoulder, rightShoulder);
     root.add(model);
     return {
@@ -966,16 +981,19 @@ export function createChapterNine(): ChapterNineData {
       bot.root.position.addScaledVector(direction, Math.min(distance, (bot.chaseTimer > 1.1 ? bot.chaseSpeed : bot.speed) * deltaSeconds));
       bot.root.rotation.y = Math.atan2(direction.x, direction.z);
     }
-    const walk = phaseTime * (bot.chaseTimer > 1.1 ? 10 : 5.8) + bot.phase;
-    const stride = Math.sin(walk) * (bot.chaseTimer > 1.1 ? 0.75 : 0.45);
-    const sideSwing = Math.sin(walk + Math.PI / 2) * (bot.chaseTimer > 1.1 ? 0.18 : 0.1);
-    bot.leftArm.rotation.x = stride;
-    bot.rightArm.rotation.x = -stride;
-    bot.leftArm.rotation.z = -0.18 + sideSwing;
-    bot.rightArm.rotation.z = 0.18 + sideSwing;
-    bot.leftLeg.rotation.x = -stride * 0.5;
-    bot.rightLeg.rotation.x = stride * 0.5;
-    bot.head.rotation.y = Math.sin(walk * 0.5) * 0.08;
+    const chasing = bot.chaseTimer > 1.1;
+    const walk = phaseTime * (chasing ? 13.5 : 4.2) + bot.phase;
+    const stride = Math.sin(walk) * (chasing ? 0.88 : 0.32);
+    const limp = Math.sin(walk * 0.5 + bot.phase) * (chasing ? 0.16 : 0.1);
+    const sideSwing = Math.sin(walk + Math.PI / 2) * (chasing ? 0.24 : 0.09);
+    bot.leftArm.rotation.x = chasing ? stride + limp : stride * 0.55;
+    bot.rightArm.rotation.x = chasing ? -stride * 0.88 : -stride * 0.35;
+    bot.leftArm.rotation.z = -0.16 + sideSwing;
+    bot.rightArm.rotation.z = 0.16 + sideSwing * 0.7;
+    bot.leftLeg.rotation.x = chasing ? -stride * 0.7 : -stride * 0.42;
+    bot.rightLeg.rotation.x = chasing ? stride * 0.52 + limp : stride * 0.3;
+    bot.head.rotation.y = Math.sin(walk * 0.42) * (chasing ? 0.12 : 0.05);
+    bot.head.rotation.z = (bot.id === 'foxy' ? -0.12 : 0.12) + Math.sin(walk * 0.33) * (chasing ? 0.08 : 0.035);
     bot.jaw.rotation.x = bot.chaseTimer > 1.1 ? 0.45 + Math.abs(Math.sin(walk * 0.9)) * 0.28 : Math.abs(Math.sin(walk * 0.18)) * 0.12;
     if (bot.id === 'golden-freddy' && bot.chaseTimer > 1.1) {
       bot.leftEye.visible = Math.sin(phaseTime * 18) > -0.35;
