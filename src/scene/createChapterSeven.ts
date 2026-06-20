@@ -503,6 +503,20 @@ export function createChapterSeven(): ChapterSevenData {
     opacity: 0.36,
     depthWrite: false,
   });
+  const tvFrameMaterial = new MeshStandardMaterial({
+    color: 0x111318,
+    emissive: 0x010204,
+    emissiveIntensity: 0.08,
+    roughness: 0.48,
+    metalness: 0.2,
+  });
+  const tvScreenMaterial = new MeshStandardMaterial({
+    color: 0x182330,
+    emissive: 0x07131f,
+    emissiveIntensity: 0.35,
+    roughness: 0.18,
+    metalness: 0.08,
+  });
   const houseRoofMaterial = new MeshStandardMaterial({
     color: 0x4d2d22,
     emissive: 0x120605,
@@ -2474,6 +2488,36 @@ export function createChapterSeven(): ChapterSevenData {
 
     frame.add(backing, portrait, top, bottom, left, right, innerTop, innerBottom, innerLeft, innerRight);
     house.add(frame);
+  };
+
+  const addWallTelevision = (
+    localX: number,
+    localY: number,
+    localZ: number,
+    normalZ: 1 | -1,
+  ): void => {
+    const television = new Group();
+    television.position.set(localX, localY, localZ + normalZ * 0.14);
+    if (normalZ < 0) {
+      television.rotation.y = Math.PI;
+    }
+
+    const frame = new Mesh(new BoxGeometry(3.25, 1.9, 0.16), tvFrameMaterial);
+    const screen = new Mesh(new BoxGeometry(2.9, 1.52, 0.055), tvScreenMaterial);
+    screen.position.z = 0.1;
+    const lowerStrip = new Mesh(new BoxGeometry(2.55, 0.12, 0.08), tvFrameMaterial);
+    lowerStrip.position.set(0, -0.8, 0.15);
+    const powerDot = new Mesh(new SphereGeometry(0.045, 12, 8), new MeshStandardMaterial({
+      color: 0x69ff8d,
+      emissive: 0x1fff54,
+      emissiveIntensity: 0.8,
+      roughness: 0.35,
+      metalness: 0.05,
+    }));
+    powerDot.position.set(1.18, -0.8, 0.2);
+
+    television.add(frame, screen, lowerStrip, powerDot);
+    house.add(television);
   };
 
   const addHangingHomeSign = (
@@ -6293,6 +6337,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1215.49 - CENTER_X, 2.3, 66.62 - HOUSE_CENTER_Z, -1, chickenCoopPortraitMaterial);
   addSidePictureFrame(1235.69 - CENTER_X, 1.95, 94.79 - HOUSE_CENTER_Z, -1, birdNestPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
+  addWallTelevision(1230.33 - CENTER_X, 2.11, 80.19 - HOUSE_CENTER_Z, 1);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
