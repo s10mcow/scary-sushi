@@ -20387,13 +20387,16 @@ export class Game {
     this.syncHud();
   }
 
-  private getOfficeBoriAiSpeechDuration(line: string): number {
-    return MathUtils.clamp(0.95 + line.length * 0.052, 1.2, 6.4);
-  }
-
   private speakOfficeBoriAiLine(line: string, mode: 'robot' | 'rehearsal' | 'angry' = 'rehearsal'): void {
-    void this.getOfficeBoriAiSpeechDuration(line);
-    void mode;
+    if (mode !== 'robot' || !('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(line);
+    utterance.rate = 0.72;
+    utterance.pitch = 0.34;
+    utterance.volume = 0.95;
+    window.speechSynthesis.speak(utterance);
   }
 
   private updateOfficeBoriAiActivationAlarm(deltaSeconds: number): void {
@@ -21505,8 +21508,8 @@ export class Game {
       this.officeBoriAiActivationAlarmTimer = 5.0;
       this.officeBoriAiActivationAlarmPulseTimer = 0;
       this.gameplaySfxAudio.playSmallPanel(true);
-      this.speakOfficeBoriAiLine("Bori's AI has been activated! Caution! Use at your own risk!", 'robot');
-      this.pushStatus("Alarm active. Bori's AI has been activated. Golden Bori can roam during day mode now.", 5.0);
+      this.speakOfficeBoriAiLine('Warning, Golden Boys AI has been activated. Use at your own risk.', 'robot');
+      this.pushStatus('Alarm active. Golden Boys AI has been activated. Use at your own risk.', 5.0);
       return;
     }
 

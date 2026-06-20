@@ -2842,9 +2842,11 @@ function createPartyRoomCheckeredFloorMaterial(repeatX = 9, repeatZ = 5.25): Mes
 function createPizzeriaCheckeredFloor(width: number, depth: number, centerX: number, centerZ: number, inset = 0): Mesh {
   const floorWidth = Math.max(0.2, width - inset * 2);
   const floorDepth = Math.max(0.2, depth - inset * 2);
+  const checkerCountX = Math.max(1, Math.round(floorWidth));
+  const checkerCountZ = Math.max(1, Math.round(floorDepth));
   const floor = new Mesh(
     new PlaneGeometry(floorWidth, floorDepth),
-    createPartyRoomCheckeredFloorMaterial(floorWidth / 4, floorDepth / 4),
+    createPartyRoomCheckeredFloorMaterial(checkerCountX / 4, checkerCountZ / 4),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(centerX, 0.007, centerZ);
@@ -7587,14 +7589,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     center: [partyRoomCenterX, partyRoomCenterZ],
     ceilingHeight: WALL_HEIGHT,
   }, materials));
-  const partyRoomCheckeredFloor = new Mesh(
-    new PlaneGeometry(PARTY_ROOM_WIDTH - WALL_THICKNESS * 2, PARTY_ROOM_DEPTH - WALL_THICKNESS * 2),
-    createPartyRoomCheckeredFloorMaterial(),
-  );
-  partyRoomCheckeredFloor.rotation.x = -Math.PI / 2;
-  partyRoomCheckeredFloor.position.set(partyRoomCenterX, 0.006, partyRoomCenterZ);
-  partyRoomCheckeredFloor.receiveShadow = true;
-  root.add(partyRoomCheckeredFloor);
+  root.add(createPizzeriaCheckeredFloor(PARTY_ROOM_WIDTH, PARTY_ROOM_DEPTH, partyRoomCenterX, partyRoomCenterZ, WALL_THICKNESS));
 
   const leftHallOpeningMinX = leftTurnCenterX - PARTY_ROOM_HALL_OPENING_WIDTH / 2;
   const leftHallOpeningMaxX = leftTurnCenterX + PARTY_ROOM_HALL_OPENING_WIDTH / 2;
