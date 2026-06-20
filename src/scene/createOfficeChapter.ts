@@ -8021,6 +8021,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { id: 'main-west-fluffle', kind: 'fluffle' as const, slogan: 'Hop in for birthday fun', x: partyRoomMinX + WALL_THICKNESS + 0.026, z: partyRoomCenterZ - 2.6, rotationY: Math.PI / 2 },
     { id: 'main-east-foxy', kind: 'foxy' as const, slogan: 'Adventure starts at Pirate Cove', x: partyRoomMaxX - WALL_THICKNESS - 0.026, z: partyRoomCenterZ + 2.85, rotationY: -Math.PI / 2 },
     { id: 'game-stage-golden', kind: 'golden' as const, slogan: 'Golden fun never stops', x: kitchenHallRoomCenterX - 4.2, z: kitchenHallRoomNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
+    { id: 'game-room-marker-golden', kind: 'golden' as const, slogan: 'Golden games begin here', x: -231.65, z: 100.95, rotationY: 0, y: 2.02 },
     { id: 'game-east-bori', kind: 'bori' as const, slogan: 'Play games win prizes', x: kitchenHallRoomMaxX - WALL_THICKNESS - 0.026, z: kitchenHallRoomCenterZ + 6.2, rotationY: -Math.PI / 2 },
     { id: 'game-west-quacky', kind: 'quacky' as const, slogan: 'Quack laugh party', x: kitchenHallRoomMinX + WALL_THICKNESS + 0.026, z: kitchenHallRoomCenterZ + 4.2, rotationY: Math.PI / 2 },
     { id: 'north-hall-fluffle', kind: 'fluffle' as const, slogan: 'Fast games big smiles', x: northPartyHallOpeningMinX + WALL_THICKNESS + 0.026, z: northPartyHallNorthZ + 4.8, rotationY: Math.PI / 2 },
