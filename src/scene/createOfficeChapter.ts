@@ -7193,6 +7193,20 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const northPartySideRoomCenterZ = northPartySideRoomDoorCenterZ;
   const northPartySideRoomMinZ = northPartySideRoomCenterZ - northPartySideRoomDepth / 2;
   const northPartySideRoomMaxZ = northPartySideRoomCenterZ + northPartySideRoomDepth / 2;
+  const gameRoomSideRoomDoorCenterZ = (104.96 + 110.36) / 2;
+  const gameRoomSideRoomDoorWidth = 3.05;
+  const gameRoomSideRoomDoorMinZ = gameRoomSideRoomDoorCenterZ - gameRoomSideRoomDoorWidth / 2;
+  const gameRoomSideRoomDoorMaxZ = gameRoomSideRoomDoorCenterZ + gameRoomSideRoomDoorWidth / 2;
+  const gameRoomSideRoomWidth = 7.6;
+  const gameRoomSideRoomDepth = 9.4;
+  const gameRoomSideRoomMinZ = gameRoomSideRoomDoorCenterZ - gameRoomSideRoomDepth / 2;
+  const gameRoomSideRoomMaxZ = gameRoomSideRoomDoorCenterZ + gameRoomSideRoomDepth / 2;
+  const gameRoomWestSideRoomMinX = kitchenHallRoomMinX - gameRoomSideRoomWidth;
+  const gameRoomWestSideRoomMaxX = kitchenHallRoomMinX;
+  const gameRoomWestSideRoomCenterX = (gameRoomWestSideRoomMinX + gameRoomWestSideRoomMaxX) / 2;
+  const gameRoomEastSideRoomMinX = kitchenHallRoomMaxX;
+  const gameRoomEastSideRoomMaxX = kitchenHallRoomMaxX + gameRoomSideRoomWidth;
+  const gameRoomEastSideRoomCenterX = (gameRoomEastSideRoomMinX + gameRoomEastSideRoomMaxX) / 2;
   root.add(createFloor({
     width: PARTY_ROOM_WIDTH,
     depth: PARTY_ROOM_DEPTH,
@@ -7293,6 +7307,24 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ceilingHeight: WALL_HEIGHT,
   }, materials));
   root.add(createPizzeriaCheckeredFloor(kitchenHallRoomWidth, kitchenHallRoomDepth, kitchenHallRoomCenterX, kitchenHallRoomCenterZ, WALL_THICKNESS));
+  ([
+    gameRoomWestSideRoomCenterX,
+    gameRoomEastSideRoomCenterX,
+  ] as number[]).forEach((sideRoomCenterX) => {
+    root.add(createFloor({
+      width: gameRoomSideRoomWidth,
+      depth: gameRoomSideRoomDepth,
+      center: [sideRoomCenterX, gameRoomSideRoomDoorCenterZ],
+      ceilingHeight: WALL_HEIGHT,
+    }, materials));
+    root.add(createPizzeriaCheckeredFloor(
+      gameRoomSideRoomWidth,
+      gameRoomSideRoomDepth,
+      sideRoomCenterX,
+      gameRoomSideRoomDoorCenterZ,
+      WALL_THICKNESS,
+    ));
+  });
   root.add(createFloor({
     width: kitchenDepth,
     depth: kitchenWidth,
@@ -7312,14 +7344,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     {
       position: [kitchenHallRoomCenterX, WALL_HEIGHT / 2, kitchenHallRoomNorthZ + WALL_THICKNESS / 2],
       size: [kitchenHallRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
-    },
-    {
-      position: [kitchenHallRoomMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, kitchenHallRoomCenterZ],
-      size: [WALL_THICKNESS, WALL_HEIGHT, kitchenHallRoomDepth],
-    },
-    {
-      position: [kitchenHallRoomMaxX - WALL_THICKNESS / 2, WALL_HEIGHT / 2, kitchenHallRoomCenterZ],
-      size: [WALL_THICKNESS, WALL_HEIGHT, kitchenHallRoomDepth],
     },
     {
       position: [-224.775, WALL_HEIGHT / 2, 118.535],
@@ -7366,6 +7390,50 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [WALL_THICKNESS, BALL_PIT_ROOM_HEIGHT, northPartySideRoomDoorMinZ - northPartySideRoomMinZ],
     },
   ];
+  const addGameRoomSideWallSegments = (wallCenterX: number): void => {
+    ([
+      [kitchenHallRoomNorthZ, gameRoomSideRoomDoorMinZ],
+      [gameRoomSideRoomDoorMaxZ, kitchenHallRoomSouthZ],
+    ] as Array<[number, number]>).forEach(([startZ, endZ]) => {
+      const depth = endZ - startZ;
+      if (depth <= 0.24) {
+        return;
+      }
+
+      northPartyHallWalls.push({
+        position: [wallCenterX, WALL_HEIGHT / 2, startZ + depth / 2],
+        size: [WALL_THICKNESS, WALL_HEIGHT, depth],
+      });
+    });
+  };
+  addGameRoomSideWallSegments(kitchenHallRoomMinX + WALL_THICKNESS / 2);
+  addGameRoomSideWallSegments(kitchenHallRoomMaxX - WALL_THICKNESS / 2);
+  northPartyHallWalls.push(
+    {
+      position: [gameRoomWestSideRoomMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, gameRoomSideRoomDoorCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, gameRoomSideRoomDepth],
+    },
+    {
+      position: [gameRoomWestSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [gameRoomWestSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMaxZ - WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [gameRoomEastSideRoomMaxX - WALL_THICKNESS / 2, WALL_HEIGHT / 2, gameRoomSideRoomDoorCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, gameRoomSideRoomDepth],
+    },
+    {
+      position: [gameRoomEastSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [gameRoomEastSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMaxZ - WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+  );
   ([
     [kitchenMinZ, northPartyHallNorthZ],
     [northPartyHallNorthZ, kitchenDoorMinZ],
@@ -7421,46 +7489,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }
     pushWestWallSegment(cursorZ, endZ, WALL_HEIGHT);
   });
-  const gameRoomSideRoomMinX = -234.75;
-  const gameRoomSideRoomMaxX = -215.15;
-  const gameRoomSideRoomMinZ = 104.96;
-  const gameRoomSideRoomMaxZ = 110.36;
-  const gameRoomSideRoomMidX = (gameRoomSideRoomMinX + gameRoomSideRoomMaxX) / 2;
-  const gameRoomSideRoomWidth = gameRoomSideRoomMaxX - gameRoomSideRoomMinX;
-  const gameRoomSideRoomDepth = gameRoomSideRoomMaxZ - gameRoomSideRoomMinZ;
-  const gameRoomSideRoomDoorWidth = 3.1;
-  const addGameRoomSideRoomSouthWall = (startX: number, endX: number): void => {
-    const width = endX - startX;
-    if (width <= 0.22) {
-      return;
-    }
-
-    northPartyHallWalls.push({
-      position: [startX + width / 2, WALL_HEIGHT / 2, gameRoomSideRoomMaxZ - WALL_THICKNESS / 2],
-      size: [width, WALL_HEIGHT, WALL_THICKNESS],
-    });
-  };
-  northPartyHallWalls.push(
-    {
-      position: [gameRoomSideRoomMinX + gameRoomSideRoomWidth / 2, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + WALL_THICKNESS / 2],
-      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
-    },
-    {
-      position: [gameRoomSideRoomMidX, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + gameRoomSideRoomDepth / 2],
-      size: [WALL_THICKNESS, WALL_HEIGHT, gameRoomSideRoomDepth],
-    },
-  );
-  const westDoorCenterX = (gameRoomSideRoomMinX + gameRoomSideRoomMidX) / 2;
-  const eastDoorCenterX = (gameRoomSideRoomMidX + gameRoomSideRoomMaxX) / 2;
-  [
-    [gameRoomSideRoomMinX, westDoorCenterX - gameRoomSideRoomDoorWidth / 2],
-    [westDoorCenterX + gameRoomSideRoomDoorWidth / 2, gameRoomSideRoomMidX - WALL_THICKNESS / 2],
-    [gameRoomSideRoomMidX + WALL_THICKNESS / 2, eastDoorCenterX - gameRoomSideRoomDoorWidth / 2],
-    [eastDoorCenterX + gameRoomSideRoomDoorWidth / 2, gameRoomSideRoomMaxX],
-  ].forEach(([startX, endX]) => addGameRoomSideRoomSouthWall(startX, endX));
   const northPartyHallWallResult = createWalls(northPartyHallWalls, materials);
   root.add(northPartyHallWallResult.root);
   colliders.push(...northPartyHallWallResult.colliders);
+  const addGameRoomSideRoomDoorFrame = (wallX: number, facing: 1 | -1): void => {
+    const frameX = wallX + facing * (WALL_THICKNESS / 2 + 0.045);
+    const frameMaterial = materials.metal;
+    const leftPost = new Mesh(new BoxGeometry(0.18, 2.72, 0.18), frameMaterial);
+    leftPost.position.set(frameX, 1.36, gameRoomSideRoomDoorMinZ);
+    const rightPost = new Mesh(new BoxGeometry(0.18, 2.72, 0.18), frameMaterial);
+    rightPost.position.set(frameX, 1.36, gameRoomSideRoomDoorMaxZ);
+    const topPost = new Mesh(new BoxGeometry(0.2, 0.18, gameRoomSideRoomDoorWidth + 0.32), frameMaterial);
+    topPost.position.set(frameX, 2.78, gameRoomSideRoomDoorCenterZ);
+    root.add(leftPost, rightPost, topPost);
+  };
+  addGameRoomSideRoomDoorFrame(kitchenHallRoomMinX, 1);
+  addGameRoomSideRoomDoorFrame(kitchenHallRoomMaxX, -1);
 
   const kitchenHallRoomStageMaterial = new MeshStandardMaterial({
     color: 0x3b2419,
@@ -7516,8 +7560,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { centerX: -224.775, centerZ: 118.535, halfWidth: 0.9, halfDepth: 5.66 },
     { centerX: -228.225, centerZ: 113.66, halfWidth: 3.48, halfDepth: 0.86 },
     { centerX: -221.49, centerZ: 113.49, halfWidth: 3.28, halfDepth: 0.86 },
-    { centerX: gameRoomSideRoomMinX + gameRoomSideRoomWidth / 2, centerZ: gameRoomSideRoomMinZ + WALL_THICKNESS / 2, halfWidth: gameRoomSideRoomWidth / 2, halfDepth: 0.72 },
-    { centerX: gameRoomSideRoomMidX, centerZ: gameRoomSideRoomMinZ + gameRoomSideRoomDepth / 2, halfWidth: 0.72, halfDepth: gameRoomSideRoomDepth / 2 },
   ];
   root.add(createFoosballTable(-218.34, 125.89, 0));
   addCollider(colliders, -218.34, 125.89, 3.9, 2.25);
@@ -9676,7 +9718,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   boriAiPanel.position.y = employeeElevatorBasementFloorY + 1.08;
   const boriAiLabel = createInstructionHoverLabel("Bori's AI", 1.5, 0.46);
   boriAiLabel.position.set(-0.084, employeeElevatorBasementFloorY + 1.66, 0);
-  boriAiLabel.rotation.y = Math.PI / 2;
+  boriAiLabel.rotation.y = -Math.PI / 2;
   const boriAiLeverPivot = new Group();
   boriAiLeverPivot.position.set(-0.11, employeeElevatorBasementFloorY + 1.06, -0.72);
   const leverBase = new Mesh(new CylinderGeometry(0.12, 0.12, 0.05, 16), controlGlowMaterial);
@@ -9688,7 +9730,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const addControlPanelLabel = (text: string, y: number, z: number, width = 0.82): void => {
     const label = createInstructionHoverLabel(text, width, 0.18);
     label.position.set(-0.098, y, z);
-    label.rotation.y = Math.PI / 2;
+    label.rotation.y = -Math.PI / 2;
     boriAiControlRoot.add(label);
   };
   addControlPanelLabel('MAIN POWER', employeeElevatorBasementFloorY + 1.42, -0.72, 0.96);
