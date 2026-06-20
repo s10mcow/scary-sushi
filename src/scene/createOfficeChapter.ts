@@ -2399,6 +2399,61 @@ function createPartyTable(x: number, z: number, rotationY: number): Group {
   return root;
 }
 
+function createLargePartyTable(x: number, z: number, rotationY: number): Group {
+  const root = new Group();
+  root.position.set(x, 0, z);
+  root.rotation.y = rotationY;
+
+  const tableMaterial = new MeshStandardMaterial({
+    color: 0x7f573b,
+    roughness: 0.78,
+    metalness: 0.04,
+  });
+  const clothMaterial = new MeshStandardMaterial({
+    color: 0xd7c4a6,
+    roughness: 0.88,
+    metalness: 0.02,
+  });
+  const plateMaterial = new MeshStandardMaterial({
+    color: 0xeee4d6,
+    roughness: 0.68,
+    metalness: 0.04,
+  });
+  const cupColors = [0xc54435, 0x3f7fc4, 0xf0c04f, 0x6ea65b];
+  const tableLength = 15.85;
+  const tableDepth = 2.12;
+  const top = new Mesh(new BoxGeometry(tableLength, 0.2, tableDepth), tableMaterial);
+  top.position.set(0, 0.82, 0);
+  const cloth = new Mesh(new BoxGeometry(tableLength + 0.34, 0.09, tableDepth + 0.28), clothMaterial);
+  cloth.position.set(0, 0.95, 0);
+  root.add(top, cloth);
+
+  [-7.18, -3.58, 0, 3.58, 7.18].forEach((legX) => {
+    [-0.78, 0.78].forEach((legZ) => {
+      const leg = new Mesh(new CylinderGeometry(0.065, 0.082, 0.82, 10), tableMaterial);
+      leg.position.set(legX, 0.42, legZ);
+      root.add(leg);
+    });
+  });
+
+  Array.from({ length: 16 }).forEach((_, index) => {
+    const plateX = -6.95 + index * 0.93;
+    const sideZ = index % 2 === 0 ? -0.54 : 0.54;
+    const plate = new Mesh(new CylinderGeometry(0.19, 0.215, 0.038, 22), plateMaterial);
+    plate.position.set(plateX, 1.015, sideZ);
+    const cupMaterial = new MeshStandardMaterial({
+      color: cupColors[index % cupColors.length],
+      roughness: 0.54,
+      metalness: 0.04,
+    });
+    const cup = new Mesh(new CylinderGeometry(0.075, 0.058, 0.19, 12), cupMaterial);
+    cup.position.set(plateX + 0.2, 1.12, sideZ + (sideZ < 0 ? 0.2 : -0.2));
+    root.add(plate, cup);
+  });
+
+  return root;
+}
+
 function createQuackyCardboardStandee(x: number, z: number, rotationY: number): Group {
   const root = new Group();
   root.position.set(x, 0, z);
@@ -7536,8 +7591,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
   gameRoomSideRooms.forEach(addGameRoomSideRoomDoorFrame);
   gameRoomSideRooms.forEach((room) => {
-    const table = createPartyTable(room.centerX, room.centerZ, 0);
-    table.scale.set(4.8, 1, 1.55);
+    const table = createLargePartyTable(room.centerX, room.centerZ, 0);
     root.add(table);
     addCollider(colliders, room.centerX, room.centerZ, 16.2, 2.45);
   });
