@@ -7420,6 +7420,43 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     }
     pushWestWallSegment(cursorZ, endZ, WALL_HEIGHT);
   });
+  const gameRoomSideRoomMinX = -234.75;
+  const gameRoomSideRoomMaxX = -215.15;
+  const gameRoomSideRoomMinZ = 104.96;
+  const gameRoomSideRoomMaxZ = 110.36;
+  const gameRoomSideRoomMidX = (gameRoomSideRoomMinX + gameRoomSideRoomMaxX) / 2;
+  const gameRoomSideRoomWidth = gameRoomSideRoomMaxX - gameRoomSideRoomMinX;
+  const gameRoomSideRoomDepth = gameRoomSideRoomMaxZ - gameRoomSideRoomMinZ;
+  const gameRoomSideRoomDoorWidth = 3.1;
+  const addGameRoomSideRoomSouthWall = (startX: number, endX: number): void => {
+    const width = endX - startX;
+    if (width <= 0.22) {
+      return;
+    }
+
+    northPartyHallWalls.push({
+      position: [startX + width / 2, WALL_HEIGHT / 2, gameRoomSideRoomMaxZ - WALL_THICKNESS / 2],
+      size: [width, WALL_HEIGHT, WALL_THICKNESS],
+    });
+  };
+  northPartyHallWalls.push(
+    {
+      position: [gameRoomSideRoomMinX + gameRoomSideRoomWidth / 2, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [gameRoomSideRoomMidX, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + gameRoomSideRoomDepth / 2],
+      size: [WALL_THICKNESS, WALL_HEIGHT, gameRoomSideRoomDepth],
+    },
+  );
+  const westDoorCenterX = (gameRoomSideRoomMinX + gameRoomSideRoomMidX) / 2;
+  const eastDoorCenterX = (gameRoomSideRoomMidX + gameRoomSideRoomMaxX) / 2;
+  [
+    [gameRoomSideRoomMinX, westDoorCenterX - gameRoomSideRoomDoorWidth / 2],
+    [westDoorCenterX + gameRoomSideRoomDoorWidth / 2, gameRoomSideRoomMidX - WALL_THICKNESS / 2],
+    [gameRoomSideRoomMidX + WALL_THICKNESS / 2, eastDoorCenterX - gameRoomSideRoomDoorWidth / 2],
+    [eastDoorCenterX + gameRoomSideRoomDoorWidth / 2, gameRoomSideRoomMaxX],
+  ].forEach(([startX, endX]) => addGameRoomSideRoomSouthWall(startX, endX));
   const northPartyHallWallResult = createWalls(northPartyHallWalls, materials);
   root.add(northPartyHallWallResult.root);
   colliders.push(...northPartyHallWallResult.colliders);
@@ -7478,6 +7515,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { centerX: -224.775, centerZ: 118.535, halfWidth: 0.9, halfDepth: 5.66 },
     { centerX: -228.225, centerZ: 113.66, halfWidth: 3.48, halfDepth: 0.86 },
     { centerX: -221.49, centerZ: 113.49, halfWidth: 3.28, halfDepth: 0.86 },
+    { centerX: gameRoomSideRoomMinX + gameRoomSideRoomWidth / 2, centerZ: gameRoomSideRoomMinZ + WALL_THICKNESS / 2, halfWidth: gameRoomSideRoomWidth / 2, halfDepth: 0.72 },
+    { centerX: gameRoomSideRoomMidX, centerZ: gameRoomSideRoomMinZ + gameRoomSideRoomDepth / 2, halfWidth: 0.72, halfDepth: gameRoomSideRoomDepth / 2 },
   ];
   root.add(createFoosballTable(-218.34, 125.89, 0));
   addCollider(colliders, -218.34, 125.89, 3.9, 2.25);
@@ -7495,15 +7534,14 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     ));
     addCollider(colliders, cabinet.x, cabinet.z, 0.92, 1.12);
   });
-  const rollerCoasterX = -223.06;
-  const rollerCoasterZ = 115.06;
-  const rollerCoasterRearTarget = new Vector3(-221.2, 0, 113.94);
-  const rollerCoasterRotation = Math.atan2(
-    -(rollerCoasterRearTarget.x - rollerCoasterX),
-    -(rollerCoasterRearTarget.z - rollerCoasterZ),
-  );
+  const rollerCoasterRearWallX = -221.2;
+  const rollerCoasterRearWallZ = 113.94;
+  const rollerCoasterRearDepth = 1.23;
+  const rollerCoasterX = rollerCoasterRearWallX;
+  const rollerCoasterZ = rollerCoasterRearWallZ + rollerCoasterRearDepth;
+  const rollerCoasterRotation = Math.PI;
   root.add(createRollerCoasterSimulator(rollerCoasterX, rollerCoasterZ, rollerCoasterRotation));
-  addCollider(colliders, -223.06, 115.06, 2.45, 3.45);
+  addCollider(colliders, rollerCoasterX, rollerCoasterZ, 3.45, 2.45);
 
   [northPartyHallSouthZ - 4.8, northPartyHallSouthZ - 12.4, northPartyHallNorthZ + 3.2, kitchenHallRoomCenterZ].forEach((z) => {
     const fixture = new Mesh(new BoxGeometry(0.92, 0.1, 0.36), panelMaterial);
