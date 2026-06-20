@@ -5950,7 +5950,7 @@ export function createChapterSeven(): ChapterSevenData {
   house.add(leftWall);
   addCollider(colliders, CENTER_X - HOUSE_WIDTH / 2, HOUSE_CENTER_Z, HOUSE_WALL_THICKNESS, HOUSE_DEPTH);
 
-  const sideGlassDoorZ = 86.86 - HOUSE_CENTER_Z;
+  const sideGlassDoorZ = 87.10 - HOUSE_CENTER_Z;
   const sideGlassDoorWidth = 4.1;
   const sideGlassDoorHeight = 3.85;
   const sideGlassDoorStartZ = sideGlassDoorZ - sideGlassDoorWidth / 2;
