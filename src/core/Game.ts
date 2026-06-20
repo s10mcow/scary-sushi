@@ -12589,6 +12589,28 @@ export class Game {
       return;
     }
 
+    if (this.chapterNineActive) {
+      const nightBlend = this.chapterNine.isNight() ? 1 : 0;
+      this.lighting.ambient.intensity = MathUtils.lerp(0.7, 0.16, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(0.92, 0.24, nightBlend);
+      this.lighting.flashlight.intensity = MathUtils.lerp(GAME_CONFIG.flashlight.intensity * 0.58, GAME_CONFIG.flashlight.intensity * 1.45, nightBlend);
+      this.lighting.flashlight.distance = MathUtils.lerp(19, 31, nightBlend);
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0x8aa0a9);
+        this.scene.background.lerp(new Color(0x02040a), nightBlend);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0x9a9388);
+        this.scene.fog.color.lerp(new Color(0x05070d), nightBlend);
+        this.scene.fog.near = MathUtils.lerp(95, 30, nightBlend);
+        this.scene.fog.far = MathUtils.lerp(420, 175, nightBlend);
+      }
+
+      return;
+    }
+
     const playerZ = this.player.getPosition().z;
     const threshold = this.level.pantryEntrancePosition.z + 10;
     const mazeBlend = MathUtils.clamp((threshold - playerZ) / 18, 0, 1);
