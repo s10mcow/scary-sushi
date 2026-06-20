@@ -2520,6 +2520,48 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(television);
   };
 
+  const addTableRemote = (localX: number, localY: number, localZ: number, rotationY = 0): void => {
+    const remote = new Group();
+    remote.position.set(localX, localY, localZ);
+    remote.rotation.y = rotationY;
+
+    const body = new Mesh(new BoxGeometry(0.32, 0.065, 0.82), tvFrameMaterial);
+    body.position.y = 0.035;
+    const buttonMaterial = new MeshStandardMaterial({
+      color: 0x2f343d,
+      emissive: 0x020305,
+      emissiveIntensity: 0.08,
+      roughness: 0.42,
+      metalness: 0.12,
+    });
+    const redButtonMaterial = new MeshStandardMaterial({
+      color: 0xb92626,
+      emissive: 0x240303,
+      emissiveIntensity: 0.18,
+      roughness: 0.38,
+      metalness: 0.08,
+    });
+    const powerButton = new Mesh(new CylinderGeometry(0.055, 0.055, 0.018, 14), redButtonMaterial);
+    powerButton.rotation.x = Math.PI / 2;
+    powerButton.position.set(0, 0.08, -0.31);
+    const buttons = [
+      [-0.08, -0.15],
+      [0.08, -0.15],
+      [-0.08, 0.03],
+      [0.08, 0.03],
+      [-0.08, 0.21],
+      [0.08, 0.21],
+    ].map(([buttonX, buttonZ]) => {
+      const button = new Mesh(new CylinderGeometry(0.04, 0.04, 0.015, 12), buttonMaterial);
+      button.rotation.x = Math.PI / 2;
+      button.position.set(buttonX, 0.081, buttonZ);
+      return button;
+    });
+
+    remote.add(body, powerButton, ...buttons);
+    house.add(remote);
+  };
+
   const addHangingHomeSign = (
     localX: number,
     localY: number,
@@ -6306,6 +6348,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
+  addTableRemote(1226.18 - CENTER_X, 1.08, 97.15 - HOUSE_CENTER_Z, -0.18);
   addSideGrandfatherClock(1217.94 - CENTER_X, 87.41 - HOUSE_CENTER_Z, -1);
   addBookshelf(1220.53 - CENTER_X, 98.69 - HOUSE_CENTER_Z - 0.64, Math.PI, 0.84, 0.96);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
