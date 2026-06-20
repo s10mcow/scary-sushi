@@ -607,14 +607,38 @@ export function createChapterSeven(): ChapterSevenData {
       context.fillStyle = '#f1d1c2';
       context.fillRect(98, 138 + mouthOpen * 11, 14, 3);
 
-      context.fillStyle = '#22354f';
+      context.fillStyle = '#10263d';
       context.fillRect(210, 78, 270, 120);
-      context.fillStyle = '#e4edf7';
-      context.font = 'bold 28px Arial';
-      context.fillText('LOCAL REPORT', 230, 112);
-      context.font = '21px Arial';
-      context.fillText('People are talking live on TV.', 230, 150);
-      context.fillText('More details coming soon.', 230, 180);
+      const waterGradient = context.createLinearGradient(210, 78, 480, 198);
+      waterGradient.addColorStop(0, '#5fd8ff');
+      waterGradient.addColorStop(0.5, '#247dc5');
+      waterGradient.addColorStop(1, '#07375c');
+      context.fillStyle = waterGradient;
+      context.fillRect(220, 90, 250, 96);
+      for (let wave = 0; wave < 5; wave += 1) {
+        const waveY = 108 + wave * 15;
+        const wavePhase = elapsedSeconds * (1.8 + wave * 0.18) + wave * 0.9;
+        context.strokeStyle = wave % 2 === 0 ? 'rgba(220, 248, 255, 0.78)' : 'rgba(137, 220, 255, 0.72)';
+        context.lineWidth = wave % 2 === 0 ? 3 : 2;
+        context.beginPath();
+        for (let point = 0; point <= 250; point += 10) {
+          const x = 220 + point;
+          const y = waveY + Math.sin(point * 0.055 + wavePhase) * (4 + wave);
+          if (point === 0) {
+            context.moveTo(x, y);
+          } else {
+            context.lineTo(x, y);
+          }
+        }
+        context.stroke();
+      }
+      context.fillStyle = 'rgba(255, 255, 255, 0.32)';
+      context.beginPath();
+      context.ellipse(348 + Math.sin(elapsedSeconds * 1.4) * 26, 116, 46, 8, -0.12, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = '#9fe8ff';
+      context.lineWidth = 5;
+      context.strokeRect(220, 90, 250, 96);
 
       context.fillStyle = '#f4f4f4';
       context.fillRect(0, 232, canvas.width, 56);
