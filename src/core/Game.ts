@@ -954,6 +954,7 @@ type ChapterSevenInteractable =
   | { kind: 'cardboard-box'; item: ChapterSevenData['cardboardBox']; score: number }
   | { kind: 'kitchen-sink'; item: ChapterSevenData['kitchenSink']; score: number }
   | { kind: 'rear-fixture'; item: ChapterSevenData['rearFixtures'][number]; score: number }
+  | { kind: 'remote-button'; item: ChapterSevenData['remoteButtons'][number]; score: number }
   | { kind: 'swing'; item: ChapterSevenData['swingSet']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
@@ -13259,6 +13260,19 @@ export class Game {
         return;
       }
 
+      if (interactable?.kind === 'remote-button') {
+        const turnOn = interactable.item.action === 'tv-on';
+        this.chapterSeven.setTelevisionPowered(turnOn);
+        this.gameplaySfxAudio.playSmallPanel(true);
+        this.pushStatus(
+          turnOn
+            ? 'The TV turns on with breaking news and people talking on the screen.'
+            : 'The TV turns off.',
+          2.4,
+        );
+        return;
+      }
+
       if (interactable?.kind === 'cookie') {
         const cookie = interactable.item;
         cookie.collected = true;
@@ -17650,6 +17664,12 @@ export class Game {
             : 'Press E to turn on the faucet.';
         }
 
+        if (interactable.kind === 'remote-button') {
+          return interactable.item.action === 'tv-on'
+            ? 'Press E to turn on the TV.'
+            : 'Press E to turn off the TV.';
+        }
+
         if (interactable.kind === 'old-wooden-closet') {
           return interactable.item.open
             ? 'Press E to close the old wooden closet.'
@@ -18523,6 +18543,12 @@ export class Game {
           return interactable.item.open
             ? 'The kitchen faucet is running. Press E to turn it off.'
             : 'The kitchen faucet is off. Press E to turn it on.';
+        }
+
+        if (interactable.kind === 'remote-button') {
+          return interactable.item.action === 'tv-on'
+            ? 'Remote ON button in sight. Press E to turn the TV on.'
+            : 'Remote OFF button in sight. Press E to turn the TV off.';
         }
 
         if (interactable.kind === 'old-wooden-closet') {
@@ -22032,6 +22058,13 @@ export class Game {
     if (sinkScore !== null) {
       keepBest({ kind: 'kitchen-sink', item: this.chapterSeven.kitchenSink, score: sinkScore });
     }
+
+    this.chapterSeven.remoteButtons.forEach((button) => {
+      const remoteScore = this.getChapterSevenLookScore(button, 0.22, 1.15);
+      if (remoteScore !== null) {
+        keepBest({ kind: 'remote-button', item: button, score: remoteScore });
+      }
+    });
 
     this.chapterSeven.rearFixtures.forEach((fixture) => {
       const fixtureScore = fixture.kind === 'bathtub'

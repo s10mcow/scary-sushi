@@ -46,8 +46,11 @@ export interface ChapterSevenData {
   cardboardBox: ChapterSevenCardboardBox;
   kitchenSink: ChapterSevenKitchenSink;
   rearFixtures: ChapterSevenRearFixture[];
+  remoteButtons: ChapterSevenRemoteButton[];
   swingSet: ChapterSevenSwingSet;
   refreshCookiesForDay(day: number): void;
+  setTelevisionPowered(powered: boolean): void;
+  isTelevisionPowered(): boolean;
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
   isPlayerUnderBed(position: Vector3): boolean;
   isPlayerInsideOven(position: Vector3): boolean;
@@ -168,6 +171,13 @@ export interface ChapterSevenKitchenSink {
   open: boolean;
   openAmount: number;
   targetOpenAmount: number;
+}
+
+export interface ChapterSevenRemoteButton {
+  label: string;
+  action: 'tv-on' | 'tv-off';
+  interactPosition: Vector3;
+  aimPosition: Vector3;
 }
 
 export interface ChapterSevenSwingSet {
@@ -517,6 +527,82 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.18,
     metalness: 0.08,
   });
+  const createTelevisionNewsMaterial = (): MeshStandardMaterial => {
+    if (typeof document === 'undefined') {
+      return new MeshStandardMaterial({
+        color: 0x254a7a,
+        emissive: 0x16345f,
+        emissiveIntensity: 0.55,
+        roughness: 0.2,
+        metalness: 0.04,
+      });
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 288;
+    const context = canvas.getContext('2d');
+    if (context) {
+      const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, '#17345a');
+      gradient.addColorStop(0.55, '#2b5d91');
+      gradient.addColorStop(1, '#142238');
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.fillStyle = '#d82027';
+      context.fillRect(0, 0, canvas.width, 48);
+      context.fillStyle = '#ffffff';
+      context.font = 'bold 34px Arial';
+      context.textAlign = 'left';
+      context.textBaseline = 'middle';
+      context.fillText('BREAKING NEWS', 20, 25);
+
+      context.fillStyle = '#1d2733';
+      context.fillRect(30, 70, 150, 150);
+      context.fillStyle = '#d8b48d';
+      context.beginPath();
+      context.arc(105, 122, 36, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#2d2018';
+      context.fillRect(70, 86, 70, 24);
+      context.fillStyle = '#314f7d';
+      context.fillRect(60, 160, 90, 60);
+      context.fillStyle = '#10151c';
+      context.fillRect(90, 127, 30, 5);
+
+      context.fillStyle = '#22354f';
+      context.fillRect(210, 78, 270, 120);
+      context.fillStyle = '#e4edf7';
+      context.font = 'bold 28px Arial';
+      context.fillText('LOCAL REPORT', 230, 112);
+      context.font = '21px Arial';
+      context.fillText('People are talking live on TV.', 230, 150);
+      context.fillText('More details coming soon.', 230, 180);
+
+      context.fillStyle = '#f4f4f4';
+      context.fillRect(0, 232, canvas.width, 56);
+      context.fillStyle = '#c01620';
+      context.fillRect(0, 232, 160, 56);
+      context.fillStyle = '#ffffff';
+      context.font = 'bold 25px Arial';
+      context.fillText('LIVE', 50, 260);
+      context.fillStyle = '#172233';
+      context.font = 'bold 22px Arial';
+      context.fillText('Breaking news: house TV is now on', 180, 260);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return new MeshStandardMaterial({
+      map: texture,
+      emissive: 0x18345b,
+      emissiveIntensity: 0.55,
+      roughness: 0.18,
+      metalness: 0.05,
+    });
+  };
+  const tvNewsScreenMaterial = createTelevisionNewsMaterial();
   const smallTableLightTanMaterial = new MeshStandardMaterial({
     color: 0xd2aa72,
     emissive: 0x1f1408,
@@ -2509,7 +2595,7 @@ export function createChapterSeven(): ChapterSevenData {
     localY: number,
     localZ: number,
     normalZ: 1 | -1,
-  ): void => {
+  ): { setPowered(powered: boolean): void; isPowered(): boolean } => {
     const television = new Group();
     television.position.set(localX, localY, localZ + normalZ * 0.14);
     if (normalZ < 0) {
@@ -2532,9 +2618,22 @@ export function createChapterSeven(): ChapterSevenData {
 
     television.add(frame, screen, lowerStrip, powerDot);
     house.add(television);
+
+    let powered = false;
+    const setPowered = (nextPowered: boolean): void => {
+      powered = nextPowered;
+      screen.material = powered ? tvNewsScreenMaterial : tvScreenMaterial;
+      powerDot.visible = powered;
+    };
+    setPowered(false);
+
+    return {
+      setPowered,
+      isPowered: () => powered,
+    };
   };
 
-  const addTableRemote = (localX: number, localY: number, localZ: number, rotationY = 0): void => {
+  const addTableRemote = (localX: number, localY: number, localZ: number, rotationY = 0): ChapterSevenRemoteButton[] => {
     const remote = new Group();
     remote.position.set(localX, localY, localZ);
     remote.rotation.y = rotationY;
@@ -2632,35 +2731,59 @@ export function createChapterSeven(): ChapterSevenData {
       label.position.set(0, 0.129, z);
       remote.add(button, label);
     };
-    const onHandle = new Mesh(new BoxGeometry(0.09, 0.12, 0.18), new MeshStandardMaterial({
+    const onButtonMaterial = new MeshStandardMaterial({
       color: 0x1f7f35,
       emissive: 0x08280f,
       emissiveIntensity: 0.2,
       roughness: 0.34,
       metalness: 0.12,
-    }));
-    onHandle.position.set(-0.09, 0.143, -0.35);
-    const onLabel = new Mesh(new PlaneGeometry(0.13, 0.07), onLabelMaterial);
-    onLabel.rotation.x = -Math.PI / 2;
-    onLabel.position.set(-0.09, 0.207, -0.35);
-    remote.add(body, onHandle, onLabel);
-    addLabeledRoundButton(0.1, -0.35, 0.068, redButtonMaterial, offLabelMaterial, 0.14, 0.075);
+    });
+    remote.add(body);
+    addLabeledRoundButton(-0.09, 0.48, 0.068, onButtonMaterial, onLabelMaterial, 0.14, 0.075);
+    addLabeledRoundButton(0.1, 0.48, 0.068, redButtonMaterial, offLabelMaterial, 0.14, 0.075);
     [
-      [-0.105, -0.18],
-      [0, -0.18],
-      [0.105, -0.18],
-      [-0.105, -0.05],
-      [0, -0.05],
-      [0.105, -0.05],
-      [-0.105, 0.08],
-      [0, 0.08],
-      [0.105, 0.08],
+      [-0.105, 0.28],
+      [0, 0.28],
+      [0.105, 0.28],
+      [-0.105, 0.15],
+      [0, 0.15],
+      [0.105, 0.15],
+      [-0.105, 0.02],
+      [0, 0.02],
+      [0.105, 0.02],
     ].forEach(([buttonX, buttonZ]) => addPlainButton(buttonX, buttonZ));
-    addChannelButton(0.25, netflixLabelMaterial, 0.27);
-    addChannelButton(0.37, disneyLabelMaterial, 0.27);
-    addChannelButton(0.49, primeLabelMaterial, 0.25);
-    addChannelButton(0.61, youtubeLabelMaterial, 0.29);
+    addChannelButton(-0.18, netflixLabelMaterial, 0.27);
+    addChannelButton(-0.3, disneyLabelMaterial, 0.27);
+    addChannelButton(-0.42, primeLabelMaterial, 0.25);
+    addChannelButton(-0.54, youtubeLabelMaterial, 0.29);
     house.add(remote);
+
+    const makeRemoteTarget = (
+      label: string,
+      action: ChapterSevenRemoteButton['action'],
+      buttonX: number,
+      buttonZ: number,
+    ): ChapterSevenRemoteButton => {
+      const localButtonPosition = new Vector3(buttonX, localY + 0.14, buttonZ);
+      localButtonPosition.applyAxisAngle(new Vector3(0, 1, 0), rotationY);
+      const aimPosition = new Vector3(
+        CENTER_X + localX + localButtonPosition.x,
+        localButtonPosition.y,
+        HOUSE_CENTER_Z + localZ + localButtonPosition.z,
+      );
+
+      return {
+        label,
+        action,
+        interactPosition: aimPosition.clone(),
+        aimPosition,
+      };
+    };
+
+    return [
+      makeRemoteTarget('TV on button', 'tv-on', -0.09, 0.48),
+      makeRemoteTarget('TV off button', 'tv-off', 0.1, 0.48),
+    ];
   };
 
   const addHangingHomeSign = (
@@ -6449,7 +6572,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
-  addTableRemote(1226.18 - CENTER_X, 1.08, 97.15 - HOUSE_CENTER_Z, -0.18);
+  const remoteButtons = addTableRemote(1226.18 - CENTER_X, 1.08, 97.15 - HOUSE_CENTER_Z, -0.18);
   addSideGrandfatherClock(1217.94 - CENTER_X, 87.41 - HOUSE_CENTER_Z, -1);
   addBookshelf(1220.53 - CENTER_X, 98.69 - HOUSE_CENTER_Z - 0.64, Math.PI, 0.84, 0.96);
   addBookshelf(-25.05, -0.1, Math.PI / 2, 0.58, 0.84);
@@ -6481,7 +6604,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1215.49 - CENTER_X, 2.3, 66.62 - HOUSE_CENTER_Z, -1, chickenCoopPortraitMaterial);
   addSidePictureFrame(1235.69 - CENTER_X, 1.95, 94.79 - HOUSE_CENTER_Z, -1, birdNestPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
-  addWallTelevision(1230.33 - CENTER_X, 2.11, 80.19 - HOUSE_CENTER_Z, 1);
+  const wallTelevision = addWallTelevision(1230.33 - CENTER_X, 2.11, 80.19 - HOUSE_CENTER_Z, 1);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   addWallLamp(1236.31 - CENTER_X, 2.16, 66.09 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
@@ -7086,8 +7209,11 @@ export function createChapterSeven(): ChapterSevenData {
     cardboardBox,
     kitchenSink,
     rearFixtures,
+    remoteButtons,
     swingSet,
     refreshCookiesForDay,
+    setTelevisionPowered: wallTelevision.setPowered,
+    isTelevisionPowered: wallTelevision.isPowered,
     getSupportedFloorY(position: Vector3, crawling = false): number | null {
       const insideForest = position.x >= CENTER_X - HALF_SIZE
         && position.x <= CENTER_X + HALF_SIZE
@@ -7581,6 +7707,7 @@ export function createChapterSeven(): ChapterSevenData {
       kitchenSink.handlePivot.rotation.z = 0;
       kitchenSink.waterStream.visible = false;
       kitchenSink.waterStream.scale.y = 0.01;
+      wallTelevision.setPowered(false);
       swingInput = 0;
       swingSet.occupied = false;
       swingSet.angle = 0;
