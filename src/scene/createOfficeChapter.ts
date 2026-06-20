@@ -7198,15 +7198,21 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const gameRoomSideRoomDoorMinZ = gameRoomSideRoomDoorCenterZ - gameRoomSideRoomDoorWidth / 2;
   const gameRoomSideRoomDoorMaxZ = gameRoomSideRoomDoorCenterZ + gameRoomSideRoomDoorWidth / 2;
   const gameRoomSideRoomWidth = 7.6;
-  const gameRoomSideRoomDepth = 9.4;
+  const gameRoomSideRoomDepth = 18.8;
   const gameRoomSideRoomMinZ = gameRoomSideRoomDoorCenterZ - gameRoomSideRoomDepth / 2;
   const gameRoomSideRoomMaxZ = gameRoomSideRoomDoorCenterZ + gameRoomSideRoomDepth / 2;
+  const gameRoomOuterWestSideRoomMinX = kitchenHallRoomMinX - gameRoomSideRoomWidth * 2;
+  const gameRoomOuterWestSideRoomMaxX = kitchenHallRoomMinX - gameRoomSideRoomWidth;
+  const gameRoomOuterWestSideRoomCenterX = (gameRoomOuterWestSideRoomMinX + gameRoomOuterWestSideRoomMaxX) / 2;
   const gameRoomWestSideRoomMinX = kitchenHallRoomMinX - gameRoomSideRoomWidth;
   const gameRoomWestSideRoomMaxX = kitchenHallRoomMinX;
   const gameRoomWestSideRoomCenterX = (gameRoomWestSideRoomMinX + gameRoomWestSideRoomMaxX) / 2;
   const gameRoomEastSideRoomMinX = kitchenHallRoomMaxX;
   const gameRoomEastSideRoomMaxX = kitchenHallRoomMaxX + gameRoomSideRoomWidth;
   const gameRoomEastSideRoomCenterX = (gameRoomEastSideRoomMinX + gameRoomEastSideRoomMaxX) / 2;
+  const gameRoomOuterEastSideRoomMinX = kitchenHallRoomMaxX + gameRoomSideRoomWidth;
+  const gameRoomOuterEastSideRoomMaxX = kitchenHallRoomMaxX + gameRoomSideRoomWidth * 2;
+  const gameRoomOuterEastSideRoomCenterX = (gameRoomOuterEastSideRoomMinX + gameRoomOuterEastSideRoomMaxX) / 2;
   root.add(createFloor({
     width: PARTY_ROOM_WIDTH,
     depth: PARTY_ROOM_DEPTH,
@@ -7308,8 +7314,10 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   }, materials));
   root.add(createPizzeriaCheckeredFloor(kitchenHallRoomWidth, kitchenHallRoomDepth, kitchenHallRoomCenterX, kitchenHallRoomCenterZ, WALL_THICKNESS));
   ([
+    gameRoomOuterWestSideRoomCenterX,
     gameRoomWestSideRoomCenterX,
     gameRoomEastSideRoomCenterX,
+    gameRoomOuterEastSideRoomCenterX,
   ] as number[]).forEach((sideRoomCenterX) => {
     root.add(createFloor({
       width: gameRoomSideRoomWidth,
@@ -7408,10 +7416,34 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
   addGameRoomSideWallSegments(kitchenHallRoomMinX + WALL_THICKNESS / 2);
   addGameRoomSideWallSegments(kitchenHallRoomMaxX - WALL_THICKNESS / 2);
+  const addGameRoomSideRoomConnectionWall = (wallCenterX: number): void => {
+    ([
+      [gameRoomSideRoomMinZ, gameRoomSideRoomDoorMinZ],
+      [gameRoomSideRoomDoorMaxZ, gameRoomSideRoomMaxZ],
+    ] as Array<[number, number]>).forEach(([startZ, endZ]) => {
+      const depth = endZ - startZ;
+      if (depth <= 0.24) {
+        return;
+      }
+
+      northPartyHallWalls.push({
+        position: [wallCenterX, WALL_HEIGHT / 2, startZ + depth / 2],
+        size: [WALL_THICKNESS, WALL_HEIGHT, depth],
+      });
+    });
+  };
   northPartyHallWalls.push(
     {
-      position: [gameRoomWestSideRoomMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, gameRoomSideRoomDoorCenterZ],
+      position: [gameRoomOuterWestSideRoomMinX + WALL_THICKNESS / 2, WALL_HEIGHT / 2, gameRoomSideRoomDoorCenterZ],
       size: [WALL_THICKNESS, WALL_HEIGHT, gameRoomSideRoomDepth],
+    },
+    {
+      position: [gameRoomOuterWestSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [gameRoomOuterWestSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMaxZ - WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
     },
     {
       position: [gameRoomWestSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + WALL_THICKNESS / 2],
@@ -7422,10 +7454,6 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
     },
     {
-      position: [gameRoomEastSideRoomMaxX - WALL_THICKNESS / 2, WALL_HEIGHT / 2, gameRoomSideRoomDoorCenterZ],
-      size: [WALL_THICKNESS, WALL_HEIGHT, gameRoomSideRoomDepth],
-    },
-    {
       position: [gameRoomEastSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + WALL_THICKNESS / 2],
       size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
     },
@@ -7433,7 +7461,21 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       position: [gameRoomEastSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMaxZ - WALL_THICKNESS / 2],
       size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
     },
+    {
+      position: [gameRoomOuterEastSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMinZ + WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [gameRoomOuterEastSideRoomCenterX, WALL_HEIGHT / 2, gameRoomSideRoomMaxZ - WALL_THICKNESS / 2],
+      size: [gameRoomSideRoomWidth, WALL_HEIGHT, WALL_THICKNESS],
+    },
+    {
+      position: [gameRoomOuterEastSideRoomMaxX - WALL_THICKNESS / 2, WALL_HEIGHT / 2, gameRoomSideRoomDoorCenterZ],
+      size: [WALL_THICKNESS, WALL_HEIGHT, gameRoomSideRoomDepth],
+    },
   );
+  addGameRoomSideRoomConnectionWall(gameRoomWestSideRoomMinX + WALL_THICKNESS / 2);
+  addGameRoomSideRoomConnectionWall(gameRoomEastSideRoomMaxX - WALL_THICKNESS / 2);
   ([
     [kitchenMinZ, northPartyHallNorthZ],
     [northPartyHallNorthZ, kitchenDoorMinZ],
@@ -7505,6 +7547,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
   addGameRoomSideRoomDoorFrame(kitchenHallRoomMinX, 1);
   addGameRoomSideRoomDoorFrame(kitchenHallRoomMaxX, -1);
+  addGameRoomSideRoomDoorFrame(gameRoomWestSideRoomMinX, 1);
+  addGameRoomSideRoomDoorFrame(gameRoomEastSideRoomMaxX, -1);
 
   const kitchenHallRoomStageMaterial = new MeshStandardMaterial({
     color: 0x3b2419,
@@ -8067,8 +8111,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     { id: 'main-west-golden', kind: 'golden' as const, slogan: 'Golden smiles watch you', x: partyRoomMinX + WALL_THICKNESS + 0.026, z: partyRoomCenterZ + 4.4, rotationY: Math.PI / 2 },
     { id: 'game-stage-golden', kind: 'golden' as const, slogan: 'Golden fun never stops', x: kitchenHallRoomCenterX - 4.2, z: kitchenHallRoomNorthZ + WALL_THICKNESS + 0.026, rotationY: 0 },
     { id: 'game-room-marker-golden', kind: 'golden' as const, slogan: 'Golden games begin here', x: -231.65, z: 100.95, rotationY: 0, y: 2.02 },
-    { id: 'game-west-room-golden', kind: 'golden' as const, slogan: 'Gold room gold rules', x: gameRoomWestSideRoomMinX + WALL_THICKNESS + 0.026, z: gameRoomSideRoomDoorCenterZ + 1.9, rotationY: Math.PI / 2 },
-    { id: 'game-east-room-golden', kind: 'golden' as const, slogan: 'Bori sees the games', x: gameRoomEastSideRoomMaxX - WALL_THICKNESS - 0.026, z: gameRoomSideRoomDoorCenterZ - 1.8, rotationY: -Math.PI / 2 },
+    { id: 'game-west-room-golden', kind: 'golden' as const, slogan: 'Gold room gold rules', x: gameRoomOuterWestSideRoomMinX + WALL_THICKNESS + 0.026, z: gameRoomSideRoomDoorCenterZ + 1.9, rotationY: Math.PI / 2 },
+    { id: 'game-east-room-golden', kind: 'golden' as const, slogan: 'Bori sees the games', x: gameRoomOuterEastSideRoomMaxX - WALL_THICKNESS - 0.026, z: gameRoomSideRoomDoorCenterZ - 1.8, rotationY: -Math.PI / 2 },
     { id: 'game-east-bori', kind: 'bori' as const, slogan: 'Play games win prizes', x: kitchenHallRoomMaxX - WALL_THICKNESS - 0.026, z: kitchenHallRoomCenterZ + 6.2, rotationY: -Math.PI / 2 },
     { id: 'game-west-quacky', kind: 'quacky' as const, slogan: 'Quack laugh party', x: kitchenHallRoomMinX + WALL_THICKNESS + 0.026, z: kitchenHallRoomCenterZ + 4.2, rotationY: Math.PI / 2 },
     { id: 'north-hall-fluffle', kind: 'fluffle' as const, slogan: 'Fast games big smiles', x: northPartyHallOpeningMinX + WALL_THICKNESS + 0.026, z: northPartyHallNorthZ + 4.8, rotationY: Math.PI / 2 },
