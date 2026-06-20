@@ -6483,6 +6483,7 @@ export function createChapterSeven(): ChapterSevenData {
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   addWallTelevision(1230.33 - CENTER_X, 2.11, 80.19 - HOUSE_CENTER_Z, 1);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
+  addWallLamp(1236.31 - CENTER_X, 2.16, 66.09 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
     1187.12 - CENTER_X,
