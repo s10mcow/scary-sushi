@@ -517,6 +517,20 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.18,
     metalness: 0.08,
   });
+  const smallTableLightTanMaterial = new MeshStandardMaterial({
+    color: 0xd2aa72,
+    emissive: 0x1f1408,
+    emissiveIntensity: 0.04,
+    roughness: 0.82,
+    metalness: 0.02,
+  });
+  const smallTableDarkTanMaterial = new MeshStandardMaterial({
+    color: 0x8f6237,
+    emissive: 0x120805,
+    emissiveIntensity: 0.045,
+    roughness: 0.88,
+    metalness: 0.02,
+  });
   const houseRoofMaterial = new MeshStandardMaterial({
     color: 0x4d2d22,
     emissive: 0x120605,
@@ -2525,7 +2539,51 @@ export function createChapterSeven(): ChapterSevenData {
     remote.position.set(localX, localY, localZ);
     remote.rotation.y = rotationY;
 
-    const body = new Mesh(new BoxGeometry(0.32, 0.065, 0.82), tvFrameMaterial);
+    const createRemoteLabelMaterial = (
+      text: string,
+      background: string,
+      foreground: string,
+      fallbackColor: number,
+      fontSize = 34,
+    ): MeshStandardMaterial => {
+      if (typeof document === 'undefined') {
+        return new MeshStandardMaterial({
+          color: fallbackColor,
+          roughness: 0.5,
+          metalness: 0.04,
+        });
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 128;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.fillStyle = background;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = foreground;
+        context.font = `bold ${fontSize}px Arial`;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2 + 2);
+      }
+      const texture = new CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      return new MeshStandardMaterial({
+        map: texture,
+        roughness: 0.48,
+        metalness: 0.04,
+      });
+    };
+
+    const onLabelMaterial = createRemoteLabelMaterial('ON', '#d8efe0', '#17391f', 0x8ad8a0, 46);
+    const offLabelMaterial = createRemoteLabelMaterial('OFF', '#f1d8d8', '#4a1717', 0xd98a8a, 42);
+    const netflixLabelMaterial = createRemoteLabelMaterial('Netflix', '#151515', '#e23434', 0x151515, 30);
+    const disneyLabelMaterial = createRemoteLabelMaterial('Disney', '#1d3c88', '#e8f2ff', 0x1d3c88, 30);
+    const primeLabelMaterial = createRemoteLabelMaterial('Prime', '#1b5a78', '#d8f7ff', 0x1b5a78, 32);
+    const youtubeLabelMaterial = createRemoteLabelMaterial('YouTube', '#f3f3f3', '#c62020', 0xf3f3f3, 28);
+
+    const body = new Mesh(new BoxGeometry(0.38, 0.075, 1.42), tvFrameMaterial);
     body.position.y = 0.035;
     const buttonMaterial = new MeshStandardMaterial({
       color: 0x2f343d,
@@ -2541,24 +2599,67 @@ export function createChapterSeven(): ChapterSevenData {
       roughness: 0.38,
       metalness: 0.08,
     });
-    const powerButton = new Mesh(new CylinderGeometry(0.055, 0.055, 0.018, 14), redButtonMaterial);
-    powerButton.rotation.x = Math.PI / 2;
-    powerButton.position.set(0, 0.08, -0.31);
-    const buttons = [
-      [-0.08, -0.15],
-      [0.08, -0.15],
-      [-0.08, 0.03],
-      [0.08, 0.03],
-      [-0.08, 0.21],
-      [0.08, 0.21],
-    ].map(([buttonX, buttonZ]) => {
-      const button = new Mesh(new CylinderGeometry(0.04, 0.04, 0.015, 12), buttonMaterial);
-      button.rotation.x = Math.PI / 2;
-      button.position.set(buttonX, 0.081, buttonZ);
-      return button;
-    });
-
-    remote.add(body, powerButton, ...buttons);
+    const addLabeledRoundButton = (
+      x: number,
+      z: number,
+      radius: number,
+      material: MeshStandardMaterial,
+      labelMaterial: MeshStandardMaterial,
+      labelWidth: number,
+      labelDepth: number,
+    ): void => {
+      const button = new Mesh(new CylinderGeometry(radius, radius, 0.05, 18), material);
+      button.position.set(x, 0.102, z);
+      const label = new Mesh(new PlaneGeometry(labelWidth, labelDepth), labelMaterial);
+      label.rotation.x = -Math.PI / 2;
+      label.position.set(x, 0.129, z);
+      remote.add(button, label);
+    };
+    const addPlainButton = (x: number, z: number, radius = 0.038): void => {
+      const button = new Mesh(new CylinderGeometry(radius, radius, 0.04, 14), buttonMaterial);
+      button.position.set(x, 0.098, z);
+      remote.add(button);
+    };
+    const addChannelButton = (
+      z: number,
+      labelMaterial: MeshStandardMaterial,
+      width: number,
+    ): void => {
+      const button = new Mesh(new BoxGeometry(width, 0.045, 0.105), buttonMaterial);
+      button.position.set(0, 0.102, z);
+      const label = new Mesh(new PlaneGeometry(width * 0.84, 0.076), labelMaterial);
+      label.rotation.x = -Math.PI / 2;
+      label.position.set(0, 0.129, z);
+      remote.add(button, label);
+    };
+    const onHandle = new Mesh(new BoxGeometry(0.09, 0.12, 0.18), new MeshStandardMaterial({
+      color: 0x1f7f35,
+      emissive: 0x08280f,
+      emissiveIntensity: 0.2,
+      roughness: 0.34,
+      metalness: 0.12,
+    }));
+    onHandle.position.set(-0.09, 0.143, -0.35);
+    const onLabel = new Mesh(new PlaneGeometry(0.13, 0.07), onLabelMaterial);
+    onLabel.rotation.x = -Math.PI / 2;
+    onLabel.position.set(-0.09, 0.207, -0.35);
+    remote.add(body, onHandle, onLabel);
+    addLabeledRoundButton(0.1, -0.35, 0.068, redButtonMaterial, offLabelMaterial, 0.14, 0.075);
+    [
+      [-0.105, -0.18],
+      [0, -0.18],
+      [0.105, -0.18],
+      [-0.105, -0.05],
+      [0, -0.05],
+      [0.105, -0.05],
+      [-0.105, 0.08],
+      [0, 0.08],
+      [0.105, 0.08],
+    ].forEach(([buttonX, buttonZ]) => addPlainButton(buttonX, buttonZ));
+    addChannelButton(0.25, netflixLabelMaterial, 0.27);
+    addChannelButton(0.37, disneyLabelMaterial, 0.27);
+    addChannelButton(0.49, primeLabelMaterial, 0.25);
+    addChannelButton(0.61, youtubeLabelMaterial, 0.29);
     house.add(remote);
   };
 
@@ -2976,9 +3077,9 @@ export function createChapterSeven(): ChapterSevenData {
     const table = new Group();
     table.position.set(localX, 0, localZ);
 
-    const top = new Mesh(new BoxGeometry(2, 0.16, 2), furnitureWoodMaterial);
+    const top = new Mesh(new BoxGeometry(2, 0.16, 2), smallTableLightTanMaterial);
     top.position.y = 1;
-    const lowerShelf = new Mesh(new BoxGeometry(1.72, 0.09, 1.72), houseTrimMaterial);
+    const lowerShelf = new Mesh(new BoxGeometry(1.72, 0.09, 1.72), smallTableDarkTanMaterial);
     lowerShelf.position.y = 0.46;
     const legs = [
       [-0.78, -0.78],
@@ -2986,7 +3087,7 @@ export function createChapterSeven(): ChapterSevenData {
       [-0.78, 0.78],
       [0.78, 0.78],
     ].map(([legX, legZ]) => {
-      const leg = new Mesh(new BoxGeometry(0.16, 0.92, 0.16), furnitureWoodMaterial);
+      const leg = new Mesh(new BoxGeometry(0.16, 0.92, 0.16), smallTableDarkTanMaterial);
       leg.position.set(legX, 0.5, legZ);
       return leg;
     });
