@@ -19,6 +19,7 @@ import type { CollisionBox } from '../types/world';
 import type { HudJumpScareVariant } from '../ui/createHud';
 
 export type ChapterNineAnimatronicId = 'bonnie' | 'chica' | 'freddy' | 'foxy' | 'golden-freddy';
+export type ChapterNineHeldItem = 'camera' | 'empty';
 
 export interface ChapterNineInteractionResult {
   message: string;
@@ -38,9 +39,13 @@ export interface ChapterNineData {
   spawn: Vector3;
   lookTarget: Vector3;
   shoulderCamera: Group;
+  cameraScreenMaterial: MeshStandardMaterial;
   update(deltaSeconds: number, playerPosition: Vector3): void;
   interact(playerPosition: Vector3): ChapterNineInteractionResult;
   record(playerPosition: Vector3): string;
+  cycleHeldItem(step: number): void;
+  setHeldItem(item: ChapterNineHeldItem): void;
+  getHeldItem(): ChapterNineHeldItem;
   consumeJumpscareEvent(): ChapterNineJumpscareEvent | null;
   getSupportedFloorY(position: Vector3): number | null;
   getPhaseLabel(): string;
@@ -365,6 +370,28 @@ function createCameraScreenMaterial(): MeshStandardMaterial {
   });
 }
 
+function createBrickWallMaterial(): MeshStandardMaterial {
+  return makeCanvasMaterial((context, canvas) => {
+    context.fillStyle = '#6b4038';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const brickWidth = 84;
+    const brickHeight = 34;
+    context.lineWidth = 4;
+    for (let y = 0; y < canvas.height + brickHeight; y += brickHeight) {
+      const row = Math.floor(y / brickHeight);
+      const stagger = row % 2 === 0 ? 0 : brickWidth / 2;
+      for (let x = -brickWidth; x < canvas.width + brickWidth; x += brickWidth) {
+        const brickX = x + stagger;
+        const shade = 1 + ((row + Math.floor(x / brickWidth)) % 4) * 0.04;
+        context.fillStyle = `rgb(${Math.round(107 * shade)}, ${Math.round(64 * shade)}, ${Math.round(56 * shade)})`;
+        context.fillRect(brickX + 2, y + 2, brickWidth - 4, brickHeight - 4);
+        context.strokeStyle = '#a69a90';
+        context.strokeRect(brickX + 1, y + 1, brickWidth - 2, brickHeight - 2);
+      }
+    }
+  });
+}
+
 export function createChapterNine(): ChapterNineData {
   const root = new Group();
   root.name = 'Chapter 9: Freddy Pizza Complex';
@@ -379,7 +406,7 @@ export function createChapterNine(): ChapterNineData {
   const treeTrunkMaterial = new MeshStandardMaterial({ color: 0x5b3821, roughness: 0.86 });
   const treeLeafMaterial = new MeshStandardMaterial({ color: 0x1f5f2d, roughness: 0.9 });
   const dirtyConcreteMaterial = new MeshStandardMaterial({ color: 0x6c6860, roughness: 0.94, metalness: 0.01 });
-  const brickMaterial = new MeshStandardMaterial({ color: 0x6b4038, roughness: 0.88, metalness: 0.01 });
+  const brickMaterial = createBrickWallMaterial();
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const wallInteriorMaterial = new MeshStandardMaterial({ color: 0x60584f, roughness: 0.9 });
@@ -520,8 +547,8 @@ export function createChapterNine(): ChapterNineData {
   addWall(-4.85, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 4.3, WALL_THICKNESS, brickMaterial);
   addWall(4.85, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 4.3, WALL_THICKNESS, brickMaterial);
   addBox(root, 11, 2.55, WALL_THICKNESS, 0, 5.92, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, brickMaterial);
-  const shellColliders = colliders.slice();
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
+  const shellColliders = colliders.slice();
 
   const shellObjects = [
     ...preservedExteriorObjects,
@@ -539,13 +566,39 @@ export function createChapterNine(): ChapterNineData {
     });
   });
 
-  const doorMaterial = new MeshStandardMaterial({ color: 0x3a2419, roughness: 0.74, metalness: 0.04 });
-  const leftDoor = addBox(root, 2.55, 4.55, 0.18, -1.32, 2.28, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.08, doorMaterial);
-  const rightDoor = addBox(root, 2.55, 4.55, 0.18, 1.32, 2.28, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.08, doorMaterial);
-  const doorGap = addBox(root, 0.08, 4.65, 0.22, 0, 2.32, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.11, blackMetalMaterial);
-  const leftHandle = addBox(root, 0.12, 0.32, 0.18, -0.34, 2.25, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.26, metalMaterial);
-  const rightHandle = addBox(root, 0.12, 0.32, 0.18, 0.34, 2.25, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.26, metalMaterial);
-  shellObjects.push(leftDoor, rightDoor, doorGap, leftHandle, rightHandle);
+  const doorFrameMaterial = new MeshStandardMaterial({ color: 0x2c211c, roughness: 0.68, metalness: 0.12 });
+  const doorGlassMaterial = new MeshStandardMaterial({
+    color: 0xbce8f5,
+    transparent: true,
+    opacity: 0.44,
+    roughness: 0.05,
+    metalness: 0.02,
+    side: DoubleSide,
+  });
+  const makeEntranceDoor = (hingeX: number, side: -1 | 1): Group => {
+    const door = new Group();
+    door.position.set(hingeX, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.12);
+    const panelOffsetX = side * 0.68;
+    const glassPane = new Mesh(new BoxGeometry(1.12, 2.52, 0.06), doorGlassMaterial);
+    glassPane.position.set(panelOffsetX, 2.24, 0);
+    const topRail = new Mesh(new BoxGeometry(1.36, 0.16, 0.12), doorFrameMaterial);
+    topRail.position.set(panelOffsetX, 3.58, 0);
+    const bottomRail = topRail.clone();
+    bottomRail.position.y = 0.92;
+    const innerRail = new Mesh(new BoxGeometry(0.14, 2.84, 0.12), doorFrameMaterial);
+    innerRail.position.set(panelOffsetX - side * 0.58, 2.24, 0);
+    const outerRail = innerRail.clone();
+    outerRail.position.x = panelOffsetX + side * 0.58;
+    const handle = new Mesh(new BoxGeometry(0.1, 0.36, 0.16), metalMaterial);
+    handle.position.set(panelOffsetX - side * 0.42, 2.15, 0.13);
+    door.add(glassPane, topRail, bottomRail, innerRail, outerRail, handle);
+    root.add(door);
+    return door;
+  };
+  const leftDoor = makeEntranceDoor(-1.54, 1);
+  const rightDoor = makeEntranceDoor(1.54, -1);
+  const doorGap = addBox(root, 0.08, 3.05, 0.14, 0, 2.24, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.14, blackMetalMaterial);
+  shellObjects.push(leftDoor, rightDoor, doorGap);
 
   const sign = new Mesh(new PlaneGeometry(40, 10), createComplexSignMaterial());
   sign.position.set(0, 9.0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.28);
@@ -1018,13 +1071,47 @@ export function createChapterNine(): ChapterNineData {
   let inVent = false;
   let ventExitCooldown = 0;
   let cameraRecording = false;
+  let heldItem: ChapterNineHeldItem = 'camera';
+  let doorOpen = false;
+  let doorMotionTime = 0;
+  let doorMotionFrom = 0;
+  let doorMotionTo = 0;
+  let doorProgress = 0;
 
   const getFilmedCount = (): number => filmingTargets.filter((target) => target.filmed).length;
   const getPuzzleCount = (): number => puzzleStations.filter((station) => station.solved).length;
 
   const updateEscapeState = (): void => {
     escapeUnlocked = getFilmedCount() >= FOOTAGE_TARGET && getPuzzleCount() >= PUZZLE_TARGET;
-    frontDoorCollider.enabled = night && insideDuringNight && !escapeUnlocked;
+    frontDoorCollider.enabled = doorProgress < 0.72;
+  };
+
+  const setDoorProgress = (progress: number): void => {
+    const clamped = Math.max(0, Math.min(1, progress));
+    const eased = clamped * clamped * (3 - 2 * clamped);
+    const bounce = doorOpen ? Math.sin(clamped * Math.PI * 5) * (1 - clamped) * 0.08 : 0;
+    const openAngle = Math.PI / 2.35;
+    leftDoor.rotation.y = (eased + bounce) * openAngle;
+    rightDoor.rotation.y = -(eased + bounce) * openAngle;
+    doorProgress = clamped;
+    updateEscapeState();
+  };
+
+  const toggleEntranceDoors = (): void => {
+    doorOpen = !doorOpen;
+    doorMotionFrom = doorProgress;
+    doorMotionTo = doorOpen ? 1 : 0;
+    doorMotionTime = 0;
+  };
+
+  const updateEntranceDoors = (deltaSeconds: number): void => {
+    if (Math.abs(doorProgress - doorMotionTo) < 0.001) {
+      setDoorProgress(doorMotionTo);
+      return;
+    }
+    doorMotionTime = Math.min(0.95, doorMotionTime + deltaSeconds);
+    const t = doorMotionTime / 0.95;
+    setDoorProgress(doorMotionFrom + (doorMotionTo - doorMotionFrom) * t);
   };
 
   const moveAnimatronic = (bot: ChapterNineAnimatronic, deltaSeconds: number, playerPosition: Vector3): void => {
@@ -1099,6 +1186,12 @@ export function createChapterNine(): ChapterNineData {
     inVent = false;
     ventExitCooldown = 0;
     cameraRecording = false;
+    heldItem = 'camera';
+    doorOpen = false;
+    doorMotionTime = 0;
+    doorMotionFrom = 0;
+    doorMotionTo = 0;
+    setDoorProgress(0);
     lastJumpscareEvent = null;
     filmingTargets.forEach((target) => {
       target.filmed = false;
@@ -1116,7 +1209,6 @@ export function createChapterNine(): ChapterNineData {
       bot.leftEye.visible = true;
       bot.rightEye.visible = true;
     });
-    frontDoorCollider.enabled = false;
     shoulderCamera.visible = true;
     redDot.visible = false;
     screenRecLight.visible = false;
@@ -1130,6 +1222,7 @@ export function createChapterNine(): ChapterNineData {
     spawn,
     lookTarget,
     shoulderCamera,
+    cameraScreenMaterial,
     update(deltaSeconds: number, playerPosition: Vector3): void {
       phaseTime += deltaSeconds;
       ventExitCooldown = Math.max(0, ventExitCooldown - deltaSeconds);
@@ -1144,6 +1237,7 @@ export function createChapterNine(): ChapterNineData {
         insideDuringNight = true;
       }
       updateEscapeState();
+      updateEntranceDoors(deltaSeconds);
       animatronics.forEach((bot) => moveAnimatronic(bot, deltaSeconds, playerPosition));
       const recordingBlink = cameraRecording && Math.sin(phaseTime * 11) > -0.2;
       redDot.visible = recordingBlink;
@@ -1155,6 +1249,11 @@ export function createChapterNine(): ChapterNineData {
       });
     },
     interact(playerPosition: Vector3): ChapterNineInteractionResult {
+      const doorInteractPosition = new Vector3(0, GAME_CONFIG.player.height, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 2.3);
+      if (playerPosition.distanceTo(doorInteractPosition) <= GAME_CONFIG.player.interactionRange + 2.2) {
+        toggleEntranceDoors();
+        return { message: doorOpen ? 'The glass entrance doors swing open and bounce against the side walls.' : 'The glass entrance doors swing shut.' };
+      }
       if (ventExitCooldown <= 0) {
         const vent = ventEntries.find((entry) => playerPosition.distanceTo(entry.position) <= GAME_CONFIG.player.interactionRange + 1.6);
         if (vent) {
@@ -1182,6 +1281,9 @@ export function createChapterNine(): ChapterNineData {
       return { message: 'The Freddy Pizza Complex building shell is still standing, but the interior is empty.' };
     },
     record(playerPosition: Vector3): string {
+      if (heldItem !== 'camera') {
+        return 'You are not holding the shoulder camera. Spin the mouse wheel to select it.';
+      }
       cameraRecording = !cameraRecording;
       if (FOOTAGE_TARGET === 0) {
         return cameraRecording
@@ -1210,6 +1312,26 @@ export function createChapterNine(): ChapterNineData {
       updateEscapeState();
       return `Recorded ${nearest.label}. Evidence: ${getFilmedCount()}/${FOOTAGE_TARGET}.`;
     },
+    cycleHeldItem(step: number): void {
+      heldItem = heldItem === 'camera' ? 'empty' : 'camera';
+      if (step === 0) {
+        heldItem = 'camera';
+      }
+      if (heldItem === 'empty') {
+        cameraRecording = false;
+        redDot.visible = false;
+        screenRecLight.visible = false;
+      }
+    },
+    setHeldItem(item: ChapterNineHeldItem): void {
+      heldItem = item;
+      if (heldItem === 'empty') {
+        cameraRecording = false;
+        redDot.visible = false;
+        screenRecLight.visible = false;
+      }
+    },
+    getHeldItem: () => heldItem,
     consumeJumpscareEvent(): ChapterNineJumpscareEvent | null {
       const event = lastJumpscareEvent;
       lastJumpscareEvent = null;

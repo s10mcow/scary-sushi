@@ -27,6 +27,7 @@ import {
   TorusGeometry,
   Vector3,
   VideoTexture,
+  WebGLRenderTarget,
 } from 'three';
 
 import type { AppShell } from './AppShell';
@@ -994,6 +995,7 @@ export class Game {
   private readonly chapterSeven: ChapterSevenData;
   private readonly chapterEight: ChapterEightData;
   private readonly chapterNine: ChapterNineData;
+  private readonly chapterNineCameraRenderTarget = new WebGLRenderTarget(256, 144);
   private readonly zombieMode: ZombieModeData;
   private readonly doomMode: DoomModeData;
   private readonly lighting;
@@ -1416,6 +1418,8 @@ export class Game {
     this.chapterEight = createChapterEight();
     this.chapterEight.root.visible = false;
     this.chapterNine = createChapterNine();
+    this.chapterNine.cameraScreenMaterial.map = this.chapterNineCameraRenderTarget.texture;
+    this.chapterNine.cameraScreenMaterial.needsUpdate = true;
     this.chapterNine.root.visible = false;
     this.zombieMode = createZombieMode();
     this.zombieMode.root.visible = false;
@@ -2940,7 +2944,7 @@ export class Game {
     }
 
     const hotbarSlot = this.input.consumeHotbarSlot();
-    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterEightActive) && hotbarSlot) {
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterEightActive || this.chapterNineActive) && hotbarSlot) {
       if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.selectOfficeTabletCameraBySlot(hotbarSlot);
       } else if (this.microphoneSoundToolActive) {
@@ -2952,6 +2956,13 @@ export class Game {
         this.syncHud();
       } else if (this.chapterEightActive) {
         this.selectChapterEightHotbarSlot(hotbarSlot);
+      } else if (this.chapterNineActive) {
+        if (hotbarSlot === 1) {
+          this.chapterNine.setHeldItem('camera');
+        } else if (hotbarSlot === 2) {
+          this.chapterNine.setHeldItem('empty');
+        }
+        this.syncHud();
       } else {
         this.handleOfficeHotbarSlot(hotbarSlot);
       }
@@ -2972,6 +2983,9 @@ export class Game {
         this.syncHud();
       } else if (this.chapterEightActive) {
         this.cycleChapterEightHeldItem(itemCycle);
+      } else if (this.chapterNineActive) {
+        this.chapterNine.cycleHeldItem(itemCycle);
+        this.syncHud();
       } else if (this.zombieModeActive) {
         this.cycleZombieWeapon(itemCycle);
       } else if (this.doomModeActive) {
@@ -3597,6 +3611,16 @@ export class Game {
   };
 
   private renderScene(): void {
+    if (this.chapterNineActive && this.chapterNine.getHeldItem() === 'camera') {
+      const previousTarget = this.renderer.getRenderTarget();
+      const cameraWasVisible = this.chapterNine.shoulderCamera.visible;
+      this.chapterNine.shoulderCamera.visible = false;
+      this.renderer.setRenderTarget(this.chapterNineCameraRenderTarget);
+      this.renderer.render(this.scene, this.camera);
+      this.renderer.setRenderTarget(previousTarget);
+      this.chapterNine.shoulderCamera.visible = cameraWasVisible;
+    }
+
     if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
       const camera = this.getActiveOfficeTabletCamera();
       if (camera) {
@@ -12941,7 +12965,7 @@ export class Game {
         : 0,
     );
     this.hud.setFlashlight(this.flashlight.isEnabled());
-    this.chapterNine.shoulderCamera.visible = this.chapterNineActive && locked && !this.chapterMenuOpen;
+    this.chapterNine.shoulderCamera.visible = this.chapterNineActive && locked && !this.chapterMenuOpen && this.chapterNine.getHeldItem() === 'camera';
     this.hud.setHealthLabel('Health');
     this.hud.setStaminaLabel(this.doomModeActive ? 'Armor' : 'Stamina');
     const intro = this.getIntroHudState();
@@ -17538,12 +17562,19 @@ export class Game {
     }
 
     if (this.chapterNineActive) {
+      const chapterNineHeldItem = this.chapterNine.getHeldItem();
       return [
         {
-          label: 'Shoulder Camera [REC]',
+          label: 'Shoulder Camera [1]',
           count: this.chapterNine.getFootageCount(),
           filled: true,
-          selected: true,
+          selected: chapterNineHeldItem === 'camera',
+        },
+        {
+          label: 'Empty Hands [2]',
+          count: 0,
+          filled: false,
+          selected: chapterNineHeldItem === 'empty',
         },
         {
           label: this.chapterNine.getPhaseLabel(),
@@ -17565,7 +17596,7 @@ export class Game {
           count: this.chapterNine.isEscapeUnlocked() ? 1 : 0,
           filled: this.chapterNine.isEscapeUnlocked(),
         },
-        ...Array.from({ length: 4 }, () => ({
+        ...Array.from({ length: 3 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
