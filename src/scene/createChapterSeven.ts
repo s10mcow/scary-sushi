@@ -2736,7 +2736,8 @@ export function createChapterSeven(): ChapterSevenData {
     normalZ: 1 | -1,
   ): { setPowered(powered: boolean): void; isPowered(): boolean } => {
     const television = new Group();
-    television.position.set(localX, localY, localZ + normalZ * 0.14);
+    television.position.set(localX, localY, localZ + normalZ * 0.24);
+    television.scale.setScalar(2);
     if (normalZ < 0) {
       television.rotation.y = Math.PI;
     }
@@ -6971,27 +6972,27 @@ export function createChapterSeven(): ChapterSevenData {
     addLaundryAppliance(rearRoomLeftFixtureX, rearRoomBackFixtureZ + 2.35, 'dryer', rearRoomLaundryRotation),
   ];
   addCookie(house, HOUSE_FRIDGE_X + 9.1, KITCHEN_COUNTER_SURFACE_Y + COOKIE_SURFACE_OFFSET, HOUSE_FRIDGE_Z + 0.42, 0.88, 'Kitchen counter hidden cookie');
-  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + 4.2, 1.81, rearRoomBackFixtureZ - 0.56, 0.78, 'Toilet tank hidden cookie');
-  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 0.36, 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
+  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + 4.2, getCookieRestY(1.79, 0.78), rearRoomBackFixtureZ - 0.56, 0.78, 'Toilet tank hidden cookie');
+  addCookie(house, HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, getCookieRestY(0.34, 0.82), 57.30 - HOUSE_CENTER_Z - 0.38, 0.82, 'Bathtub hidden cookie');
   addCookie(house, 1208.45 - CENTER_X, getCookieRestY(0.22, 0.9), 101.1 - HOUSE_CENTER_Z, 0.9, 'Balcony hidden cookie');
   addCookie(house, 1238.7 - CENTER_X, getCookieRestY(0, 0.9), 72.2 - HOUSE_CENTER_Z, 0.9, 'Backyard hidden cookie');
-  addCookie(house, 1216.55 - CENTER_X, 0.93, 97.2 - HOUSE_CENTER_Z, 0.86, 'Rose table easy cookie');
-  addCookie(house, 1225.35 - CENTER_X, 1.11, 97.84 - HOUSE_CENTER_Z, 0.86, 'Plant table easy cookie');
-  addCookie(house, 1232.2 - CENTER_X, 1.25, 97.1 - HOUSE_CENTER_Z, 0.9, 'Couch easy cookie');
-  addCookie(house, HOUSE_LEFT_ROOM_WALL_X - 1.18, 0.89, HOUSE_DEPTH / 2 - 1.5, 0.9, 'Bean bag easy cookie');
-  addCookie(house, leftRoomCenterX - 0.62, 1.13, 0.26, 0.9, 'Dining table easy cookie');
-  addCookie(house, 1199.25 - CENTER_X, 1.08, 85.28 - HOUSE_CENTER_Z, 0.86, 'Fish tank table easy cookie');
-  addCookie(house, 1201.12 - CENTER_X, 1.08, 85.55 - HOUSE_CENTER_Z, 0.86, 'Fish tank table second easy cookie');
-  addCookie(house, 1203.55 - CENTER_X, 1.02, 96.1 - HOUSE_CENTER_Z, 0.86, 'Book table easy cookie');
-  addCookie(house, 1226.0 - CENTER_X, 1.11, 97.28 - HOUSE_CENTER_Z, 0.82, 'Remote table easy cookie');
+  addCookie(house, 1216.55 - CENTER_X, getCookieRestY(0.9, 0.86), 97.2 - HOUSE_CENTER_Z, 0.86, 'Rose table easy cookie');
+  addCookie(house, 1225.35 - CENTER_X, getCookieRestY(1.08, 0.86), 97.84 - HOUSE_CENTER_Z, 0.86, 'Plant table easy cookie');
+  addCookie(house, 1232.2 - CENTER_X, getCookieRestY(1.22, 0.9), 97.1 - HOUSE_CENTER_Z, 0.9, 'Couch easy cookie');
+  addCookie(house, HOUSE_LEFT_ROOM_WALL_X - 1.18, getCookieRestY(0.84, 0.9), HOUSE_DEPTH / 2 - 1.5, 0.9, 'Bean bag easy cookie');
+  addCookie(house, leftRoomCenterX - 0.62, getCookieRestY(1.1, 0.9), 0.26, 0.9, 'Dining table easy cookie');
+  addCookie(house, 1199.25 - CENTER_X, getCookieRestY(1.04, 0.86), 85.28 - HOUSE_CENTER_Z, 0.86, 'Fish tank table easy cookie');
+  addCookie(house, 1201.12 - CENTER_X, getCookieRestY(1.04, 0.86), 85.55 - HOUSE_CENTER_Z, 0.86, 'Fish tank table second easy cookie');
+  addCookie(house, 1203.55 - CENTER_X, getCookieRestY(1, 0.86), 96.1 - HOUSE_CENTER_Z, 0.86, 'Book table easy cookie');
+  addCookie(house, 1226.0 - CENTER_X, getCookieRestY(1.08, 0.82), 97.28 - HOUSE_CENTER_Z, 0.82, 'Remote table easy cookie');
   addCookie(house, 1220.35 - CENTER_X, getCookieRestY(0.055, 0.88), 89.25 - HOUSE_CENTER_Z, 0.88, 'Rug edge easy cookie');
-  addCookie(house, 1213.0 - CENTER_X, 1.05, 63.85 - HOUSE_CENTER_Z, 0.82, 'Rocking chair easy cookie');
-  addCookie(house, 1204.0 - CENTER_X, 1.12, 52.98 - HOUSE_CENTER_Z, 0.82, 'Dryer top easy cookie');
-  addCookie(house, 1205.15 - CENTER_X, 1.12, 53.35 - HOUSE_CENTER_Z, 0.82, 'Washer top easy cookie');
-  addCookie(house, 1208.9 - CENTER_X, 1.44, 53.62 - HOUSE_CENTER_Z, 0.82, 'Bathroom sink counter easy cookie');
-  addCookie(house, 1214.45 - CENTER_X, 0.82, 57.2 - HOUSE_CENTER_Z, 0.82, 'Bathtub rim easy cookie');
-  addCookie(house, 1239.88 - CENTER_X, 0.82, 91.35 - HOUSE_CENTER_Z, 0.86, 'Backyard round table easy cookie');
-  addCookie(house, 1246.9 - CENTER_X, 0.82, 62.25 - HOUSE_CENTER_Z, 0.82, 'Backyard swing seat easy cookie');
+  addCookie(house, 1213.0 - CENTER_X, getCookieRestY(0.9, 0.82), 63.85 - HOUSE_CENTER_Z, 0.82, 'Rocking chair easy cookie');
+  addCookie(house, 1204.0 - CENTER_X, getCookieRestY(KITCHEN_COUNTER_SURFACE_Y + 0.38, 0.82), 52.98 - HOUSE_CENTER_Z, 0.82, 'Dryer top easy cookie');
+  addCookie(house, 1205.15 - CENTER_X, getCookieRestY(KITCHEN_COUNTER_SURFACE_Y + 0.38, 0.82), 53.35 - HOUSE_CENTER_Z, 0.82, 'Washer top easy cookie');
+  addCookie(house, 1208.9 - CENTER_X, getCookieRestY(1.42, 0.82), 53.62 - HOUSE_CENTER_Z, 0.82, 'Bathroom sink counter easy cookie');
+  addCookie(house, 1214.45 - CENTER_X, getCookieRestY(0.92, 0.82), 57.2 - HOUSE_CENTER_Z, 0.82, 'Bathtub rim easy cookie');
+  addCookie(house, 1239.88 - CENTER_X, getCookieRestY(1.12, 0.86), 91.35 - HOUSE_CENTER_Z, 0.86, 'Backyard round table easy cookie');
+  addCookie(house, 1246.9 - CENTER_X, getCookieRestY(0.56, 0.82), 62.25 - HOUSE_CENTER_Z, 0.82, 'Backyard swing seat easy cookie');
   const kitchenUpperCupboards = [
     addUpperCupboard(HOUSE_FRIDGE_X, HOUSE_FRIDGE_Z, 1.62, 'Upper cupboards over the fridge'),
     addUpperCupboard(HOUSE_FRIDGE_X + 2.3, HOUSE_FRIDGE_Z, 2.1, 'Upper cupboards over the counter'),
@@ -7251,8 +7252,8 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
-  addCookie(house, leftPorchChairX + 0.05, 0.93, leftPorchChairZ + 0.02, 0.82, 'Porch rocking chair easy cookie');
-  addCookie(house, rightPorchChairX - 0.02, 0.93, rightPorchChairZ + 0.02, 0.82, 'Porch rocking chair second easy cookie');
+  addCookie(house, leftPorchChairX + 0.05, getCookieRestY(0.9, 0.82), leftPorchChairZ + 0.02, 0.82, 'Porch rocking chair easy cookie');
+  addCookie(house, rightPorchChairX - 0.02, getCookieRestY(0.9, 0.82), rightPorchChairZ + 0.02, 0.82, 'Porch rocking chair second easy cookie');
   addCookie(cardboardBox.root, 0.18, 0.42, 0.18, 0.86, 'Cardboard box easy cookie');
   addOutdoorRoundTableSet(1240.54, 91.39);
   const swingSet = addOutdoorSwingSet(1246.8, 62.24, 0, 1.05);
