@@ -7198,25 +7198,33 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const gameRoomSideRoomCentersZ = [gameRoomSideRoomNorthCenterZ, gameRoomSideRoomSouthCenterZ] as const;
   const gameRoomSideRoomDoorWidth = 2.65;
   const gameRoomSideRoomLength = 37.6;
-  const gameRoomSideRoomDepth = 4.65;
+  const gameRoomSideRoomDoorDepth = 4.65;
+  const gameRoomSideRoomMinZ = gameRoomSideRoomNorthCenterZ - gameRoomSideRoomDoorDepth / 2;
+  const gameRoomSideRoomMaxZ = gameRoomSideRoomSouthCenterZ + gameRoomSideRoomDoorDepth / 2;
+  const gameRoomSideRoomDepth = gameRoomSideRoomMaxZ - gameRoomSideRoomMinZ;
+  const gameRoomSideRoomCenterZ = (gameRoomSideRoomMinZ + gameRoomSideRoomMaxZ) / 2;
+  const gameRoomSideRoomOpenings = gameRoomSideRoomCentersZ.map((centerZ) => ({
+    centerZ,
+    openingMinZ: centerZ - gameRoomSideRoomDoorWidth / 2,
+    openingMaxZ: centerZ + gameRoomSideRoomDoorWidth / 2,
+  }));
   const gameRoomWestSideRoomMinX = kitchenHallRoomMinX - gameRoomSideRoomLength;
   const gameRoomWestSideRoomMaxX = kitchenHallRoomMinX;
   const gameRoomWestSideRoomCenterX = (gameRoomWestSideRoomMinX + gameRoomWestSideRoomMaxX) / 2;
   const gameRoomEastSideRoomMinX = kitchenHallRoomMaxX;
   const gameRoomEastSideRoomMaxX = kitchenHallRoomMaxX + gameRoomSideRoomLength;
   const gameRoomEastSideRoomCenterX = (gameRoomEastSideRoomMinX + gameRoomEastSideRoomMaxX) / 2;
-  const gameRoomSideRooms = ([
+  const gameRoomSideRooms = [
     { side: 'west' as const, centerX: gameRoomWestSideRoomCenterX, minX: gameRoomWestSideRoomMinX, maxX: gameRoomWestSideRoomMaxX, wallX: kitchenHallRoomMinX, frameFacing: 1 as const },
     { side: 'east' as const, centerX: gameRoomEastSideRoomCenterX, minX: gameRoomEastSideRoomMinX, maxX: gameRoomEastSideRoomMaxX, wallX: kitchenHallRoomMaxX, frameFacing: -1 as const },
-  ]).flatMap((sideRoom) => gameRoomSideRoomCentersZ.map((centerZ) => ({
+  ].map((sideRoom) => ({
     ...sideRoom,
-    centerZ,
+    centerZ: gameRoomSideRoomCenterZ,
     depth: gameRoomSideRoomDepth,
-    minZ: centerZ - gameRoomSideRoomDepth / 2,
-    maxZ: centerZ + gameRoomSideRoomDepth / 2,
-    openingMinZ: centerZ - gameRoomSideRoomDoorWidth / 2,
-    openingMaxZ: centerZ + gameRoomSideRoomDoorWidth / 2,
-  })));
+    minZ: gameRoomSideRoomMinZ,
+    maxZ: gameRoomSideRoomMaxZ,
+    openings: gameRoomSideRoomOpenings,
+  }));
   root.add(createFloor({
     width: PARTY_ROOM_WIDTH,
     depth: PARTY_ROOM_DEPTH,
@@ -7430,11 +7438,11 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   };
   addGameRoomWallOutsideOpenings(
     kitchenHallRoomMinX + WALL_THICKNESS / 2,
-    gameRoomSideRooms.filter((room) => room.side === 'west'),
+    gameRoomSideRooms.filter((room) => room.side === 'west').flatMap((room) => room.openings),
   );
   addGameRoomWallOutsideOpenings(
     kitchenHallRoomMaxX - WALL_THICKNESS / 2,
-    gameRoomSideRooms.filter((room) => room.side === 'east'),
+    gameRoomSideRooms.filter((room) => room.side === 'east').flatMap((room) => room.openings),
   );
   gameRoomSideRooms.forEach((room) => {
     const outerWallX = room.side === 'west'
@@ -7516,20 +7524,22 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const addGameRoomSideRoomDoorFrame = (room: typeof gameRoomSideRooms[number]): void => {
     const frameX = room.wallX + room.frameFacing * (WALL_THICKNESS / 2 + 0.045);
     const frameMaterial = materials.metal;
-    const leftPost = new Mesh(new BoxGeometry(0.18, 2.72, 0.18), frameMaterial);
-    leftPost.position.set(frameX, 1.36, room.openingMinZ);
-    const rightPost = new Mesh(new BoxGeometry(0.18, 2.72, 0.18), frameMaterial);
-    rightPost.position.set(frameX, 1.36, room.openingMaxZ);
-    const topPost = new Mesh(new BoxGeometry(0.2, 0.18, gameRoomSideRoomDoorWidth + 0.32), frameMaterial);
-    topPost.position.set(frameX, 2.78, room.centerZ);
-    root.add(leftPost, rightPost, topPost);
+    room.openings.forEach((opening) => {
+      const leftPost = new Mesh(new BoxGeometry(0.18, 2.72, 0.18), frameMaterial);
+      leftPost.position.set(frameX, 1.36, opening.openingMinZ);
+      const rightPost = new Mesh(new BoxGeometry(0.18, 2.72, 0.18), frameMaterial);
+      rightPost.position.set(frameX, 1.36, opening.openingMaxZ);
+      const topPost = new Mesh(new BoxGeometry(0.2, 0.18, gameRoomSideRoomDoorWidth + 0.32), frameMaterial);
+      topPost.position.set(frameX, 2.78, opening.centerZ);
+      root.add(leftPost, rightPost, topPost);
+    });
   };
   gameRoomSideRooms.forEach(addGameRoomSideRoomDoorFrame);
   gameRoomSideRooms.forEach((room) => {
     const table = createPartyTable(room.centerX, room.centerZ, 0);
-    table.scale.set(1.68, 1, 1.34);
+    table.scale.set(4.8, 1, 1.55);
     root.add(table);
-    addCollider(colliders, room.centerX, room.centerZ, 5.72, 2.08);
+    addCollider(colliders, room.centerX, room.centerZ, 16.2, 2.45);
   });
 
   const kitchenHallRoomStageMaterial = new MeshStandardMaterial({
