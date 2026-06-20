@@ -169,31 +169,85 @@ function createComplexSignMaterial(): MeshStandardMaterial {
     context.textAlign = 'center';
     context.fillText("FREDDY'S PIZZA COMPLEX", canvas.width / 2, 58);
     const mascots = [
-      ['#7a4a2c', 'B'],
-      ['#5743a8', 'Bo'],
-      ['#d7b230', 'C'],
-      ['#a3342a', 'F'],
-      ['#d0a13a', 'G'],
+      ['#7a4a2c', 'FREDDY', 'bear'],
+      ['#5743a8', 'BONNIE', 'rabbit'],
+      ['#d7b230', 'CHICA', 'chicken'],
+      ['#a3342a', 'FOXY', 'fox'],
+      ['#d0a13a', 'GOLDEN', 'bear'],
     ] as const;
-    mascots.forEach(([color, letter], index) => {
+    mascots.forEach(([color, label, kind], index) => {
       const x = 104 + index * 76;
+      context.save();
+      context.translate(x, 126);
       context.fillStyle = color;
       context.beginPath();
-      context.roundRect(x - 31, 87, 62, 75, 18);
+      context.roundRect(-31, -38, 62, 67, 20);
       context.fill();
+      if (kind === 'rabbit') {
+        [-16, 16].forEach((earX) => {
+          context.fillStyle = color;
+          context.beginPath();
+          context.roundRect(earX - 7, -78, 14, 46, 7);
+          context.fill();
+          context.fillStyle = '#caa9d8';
+          context.beginPath();
+          context.roundRect(earX - 3, -70, 6, 31, 3);
+          context.fill();
+        });
+      } else if (kind === 'fox') {
+        [-22, 22].forEach((earX) => {
+          context.fillStyle = color;
+          context.beginPath();
+          context.moveTo(earX, -60);
+          context.lineTo(earX - 14, -32);
+          context.lineTo(earX + 14, -32);
+          context.closePath();
+          context.fill();
+        });
+      } else {
+        [-24, 24].forEach((earX) => {
+          context.fillStyle = color;
+          context.beginPath();
+          context.arc(earX, -34, 13, 0, Math.PI * 2);
+          context.fill();
+        });
+      }
       context.fillStyle = '#f7f0ce';
       context.beginPath();
-      context.arc(x - 12, 116, 5, 0, Math.PI * 2);
-      context.arc(x + 12, 116, 5, 0, Math.PI * 2);
+      context.arc(-13, -7, 5, 0, Math.PI * 2);
+      context.arc(13, -7, 5, 0, Math.PI * 2);
       context.fill();
-      context.strokeStyle = '#19120d';
-      context.lineWidth = 4;
+      context.fillStyle = kind === 'chicken' ? '#e88f26' : '#d8b88c';
       context.beginPath();
-      context.arc(x, 132, 15, 0.2, Math.PI - 0.2);
-      context.stroke();
+      if (kind === 'chicken') {
+        context.moveTo(0, 6);
+        context.lineTo(25, 18);
+        context.lineTo(0, 30);
+        context.lineTo(-25, 18);
+        context.closePath();
+      } else if (kind === 'fox') {
+        context.ellipse(0, 16, 26, 15, 0, 0, Math.PI * 2);
+      } else {
+        context.ellipse(0, 17, 24, 16, 0, 0, Math.PI * 2);
+      }
+      context.fill();
+      context.fillStyle = '#171717';
+      context.beginPath();
+      context.arc(0, 8, 4, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#f7f0ce';
+      [-12, -4, 4, 12].forEach((toothX) => {
+        context.fillRect(toothX - 2, 24, 4, 9);
+      });
+      if (kind === 'bear') {
+        context.fillStyle = '#111';
+        context.fillRect(-16, -59, 32, 11);
+        context.fillRect(-10, -82, 20, 24);
+      }
+      context.restore();
       context.fillStyle = '#fff4d0';
-      context.font = 'bold 22px Arial';
-      context.fillText(letter, x, 190);
+      context.font = 'bold 17px Arial';
+      context.fillText(label, x, 204);
     });
     context.fillStyle = '#f2ece0';
     context.font = 'bold 25px Arial';
@@ -607,31 +661,49 @@ export function createChapterNine(): ChapterNineData {
     const bellyMaterial = new MeshStandardMaterial({ color: 0xd4b486, roughness: 0.58, metalness: 0.08 });
     const toothMaterial = new MeshStandardMaterial({ color: 0xf2ead0, roughness: 0.38 });
     const darkMaterial = new MeshStandardMaterial({ color: 0x151515, roughness: 0.58, metalness: 0.28 });
-    const body = new Mesh(new BoxGeometry(1.45, 1.95, 0.82), bodyMaterial);
-    body.position.y = 1.55;
-    const chestPlate = new Mesh(new BoxGeometry(1.12, 1.18, 0.08), bellyMaterial);
-    chestPlate.position.set(0, 1.62, 0.46);
+    const body = new Mesh(new SphereGeometry(0.9, 28, 18), bodyMaterial);
+    body.scale.set(0.86, 1.12, 0.56);
+    body.position.y = 1.5;
+    const belly = new Mesh(new SphereGeometry(0.52, 22, 14), bellyMaterial);
+    belly.scale.set(1, 1.18, 0.28);
+    belly.position.set(0, 1.36, 0.5);
+    const chestPlate = new Mesh(new BoxGeometry(0.78, 0.24, 0.1), darkMaterial);
+    chestPlate.position.set(0, 2.06, 0.54);
+    chestPlate.rotation.z = Math.PI / 4;
+    const chestPlateB = chestPlate.clone();
+    chestPlateB.rotation.z = -Math.PI / 4;
     const neck = new Mesh(new CylinderGeometry(0.26, 0.32, 0.34, 14), metalMaterial);
     neck.position.y = 2.58;
     const head = new Group();
     head.position.y = 2.95;
-    const skull = new Mesh(new SphereGeometry(0.72, 28, 18), bodyMaterial);
-    skull.scale.set(1.02, 0.88, 0.82);
-    const muzzle = new Mesh(new BoxGeometry(0.74, 0.28, 0.32), bellyMaterial);
-    muzzle.position.set(0, -0.12, 0.52);
-    const jaw = new Mesh(new BoxGeometry(0.86, 0.24, 0.42), bodyMaterial);
-    jaw.position.set(0, -0.39, 0.35);
+    const skull = new Mesh(new SphereGeometry(0.75, 30, 18), bodyMaterial);
+    skull.scale.set(variant === 'fox' ? 0.95 : 1.08, 0.94, 0.86);
+    const muzzle = new Mesh(new SphereGeometry(0.36, 18, 12), variant === 'chicken' ? bodyMaterial : bellyMaterial);
+    muzzle.scale.set(variant === 'fox' ? 1.35 : 1.05, 0.58, variant === 'fox' ? 1.12 : 0.82);
+    muzzle.position.set(0, -0.12, 0.58);
+    const nose = new Mesh(new SphereGeometry(0.09, 12, 8), darkMaterial);
+    nose.scale.set(1.25, 0.7, 0.72);
+    nose.position.set(0, -0.03, variant === 'fox' ? 1.0 : 0.86);
+    const jaw = new Mesh(new SphereGeometry(0.34, 18, 10), variant === 'chicken' ? new MeshStandardMaterial({ color: 0xe88922, roughness: 0.62 }) : bodyMaterial);
+    jaw.scale.set(1.2, 0.38, 0.72);
+    jaw.position.set(0, -0.43, 0.49);
     const eyeMaterial = new MeshBasicMaterial({ color: id === 'golden-freddy' ? 0xff2733 : 0xf7f1ca });
-    const leftEye = new Mesh(new SphereGeometry(0.075, 10, 8), eyeMaterial);
-    leftEye.position.set(-0.24, 0.12, 0.56);
+    const leftEye = new Mesh(new SphereGeometry(0.09, 12, 8), eyeMaterial);
+    leftEye.position.set(-0.27, 0.12, 0.6);
     const rightEye = leftEye.clone();
-    rightEye.position.x = 0.22;
-    head.add(skull, muzzle, jaw, leftEye, rightEye);
-    [-0.27, -0.09, 0.09, 0.27].forEach((x) => {
-      const topTooth = new Mesh(new BoxGeometry(0.07, 0.16, 0.05), toothMaterial);
-      topTooth.position.set(x, -0.17, 0.71);
-      const bottomTooth = new Mesh(new BoxGeometry(0.07, 0.13, 0.05), toothMaterial);
-      bottomTooth.position.set(x, -0.29, 0.62);
+    rightEye.position.x = 0.27;
+    const leftBrow = new Mesh(new BoxGeometry(0.25, 0.06, 0.06), darkMaterial);
+    leftBrow.position.set(-0.27, 0.29, 0.58);
+    leftBrow.rotation.z = 0.22;
+    const rightBrow = leftBrow.clone();
+    rightBrow.position.x = 0.27;
+    rightBrow.rotation.z = -0.22;
+    head.add(skull, muzzle, nose, jaw, leftEye, rightEye, leftBrow, rightBrow);
+    [-0.28, -0.14, 0, 0.14, 0.28].forEach((x) => {
+      const topTooth = new Mesh(new BoxGeometry(0.055, 0.18, 0.055), toothMaterial);
+      topTooth.position.set(x, -0.2, 0.79);
+      const bottomTooth = new Mesh(new BoxGeometry(0.055, 0.14, 0.055), toothMaterial);
+      bottomTooth.position.set(x, -0.05, 0.22);
       jaw.add(bottomTooth);
       head.add(topTooth);
     });
@@ -646,16 +718,20 @@ export function createChapterNine(): ChapterNineData {
         head.add(ear);
       });
     } else if (variant === 'chicken') {
-      const beak = new Mesh(new ConeGeometry(0.28, 0.62, 4), new MeshStandardMaterial({ color: 0xe88922, roughness: 0.62 }));
-      beak.position.set(0, -0.08, 0.78);
+      const beakMaterial = new MeshStandardMaterial({ color: 0xe88922, roughness: 0.62 });
+      const beak = new Mesh(new ConeGeometry(0.34, 0.72, 4), beakMaterial);
+      beak.position.set(0, -0.06, 0.94);
       beak.rotation.x = Math.PI / 2;
-      const bib = new Mesh(new PlaneGeometry(0.95, 0.72), createSignMaterial('LET', 'EAT', '#f6e68a'));
-      bib.position.set(0, 1.54, 0.48);
+      const bib = new Mesh(new PlaneGeometry(1.05, 0.78), createSignMaterial('LET', 'EAT', '#f6e68a'));
+      bib.position.set(0, 1.44, 0.6);
+      const feather = new Mesh(new ConeGeometry(0.18, 0.45, 8), bodyMaterial);
+      feather.position.set(0, 0.68, 0);
+      feather.rotation.z = 0.18;
       model.add(bib);
-      head.add(beak);
+      head.add(beak, feather);
     } else if (variant === 'fox') {
-      const snout = new Mesh(new ConeGeometry(0.28, 0.62, 12), bodyMaterial);
-      snout.position.set(0, -0.06, 0.72);
+      const snout = new Mesh(new ConeGeometry(0.32, 0.78, 12), bodyMaterial);
+      snout.position.set(0, -0.06, 0.88);
       snout.rotation.x = Math.PI / 2;
       const eyePatch = new Mesh(new BoxGeometry(0.3, 0.18, 0.04), darkMaterial);
       eyePatch.position.set(-0.24, 0.12, 0.63);
@@ -677,21 +753,26 @@ export function createChapterNine(): ChapterNineData {
       head.add(hat, brim);
     }
     const leftArm = new Group();
-    leftArm.position.set(-0.94, 2.18, 0);
+    leftArm.position.set(-0.92, 2.0, 0);
     const rightArm = new Group();
-    rightArm.position.set(0.94, 2.18, 0);
+    rightArm.position.set(0.92, 2.0, 0);
     const makeLimb = (length = 1.45): Group => {
       const limb = new Group();
-      const upper = new Mesh(new BoxGeometry(0.32, length * 0.48, 0.32), bodyMaterial);
+      const upper = new Mesh(new CylinderGeometry(0.19, 0.22, length * 0.48, 14), bodyMaterial);
       upper.position.y = -length * 0.22;
       const joint = new Mesh(new SphereGeometry(0.2, 14, 10), metalMaterial);
       joint.position.y = -length * 0.48;
-      const lower = new Mesh(new BoxGeometry(0.3, length * 0.48, 0.3), bodyMaterial);
+      const lower = new Mesh(new CylinderGeometry(0.17, 0.2, length * 0.48, 14), bodyMaterial);
       lower.position.y = -length * 0.74;
-      const hand = new Mesh(new SphereGeometry(0.18, 14, 10), bodyMaterial);
-      hand.scale.set(1.1, 0.82, 1);
+      const hand = new Mesh(new SphereGeometry(0.24, 16, 10), bodyMaterial);
+      hand.scale.set(1.25, 0.78, 1.1);
       hand.position.y = -length;
       limb.add(upper, joint, lower, hand);
+      [-0.14, 0, 0.14].forEach((fingerX) => {
+        const finger = new Mesh(new BoxGeometry(0.055, 0.2, 0.06), toothMaterial);
+        finger.position.set(fingerX, -length - 0.12, 0.08);
+        limb.add(finger);
+      });
       return limb;
     };
     leftArm.add(makeLimb(1.55));
@@ -702,15 +783,16 @@ export function createChapterNine(): ChapterNineData {
     rightLeg.position.set(0.38, 0.82, 0);
     leftLeg.add(makeLimb(1.3));
     rightLeg.add(makeLimb(1.3));
-    const leftFoot = new Mesh(new BoxGeometry(0.52, 0.25, 0.88), bodyMaterial);
-    leftFoot.position.set(-0.38, 0.13, 0.18);
+    const leftFoot = new Mesh(new SphereGeometry(0.36, 16, 10), bodyMaterial);
+    leftFoot.scale.set(1.08, 0.42, 1.5);
+    leftFoot.position.set(-0.38, 0.13, 0.24);
     const rightFoot = leftFoot.clone();
     rightFoot.position.x = 0.38;
-    const leftShoulder = new Mesh(new SphereGeometry(0.22, 14, 10), metalMaterial);
-    leftShoulder.position.set(-0.9, 2.17, 0);
+    const leftShoulder = new Mesh(new SphereGeometry(0.28, 16, 10), metalMaterial);
+    leftShoulder.position.set(-0.88, 2.06, 0);
     const rightShoulder = leftShoulder.clone();
-    rightShoulder.position.x = 0.9;
-    model.add(body, chestPlate, neck, head, leftArm, rightArm, leftLeg, rightLeg, leftFoot, rightFoot, leftShoulder, rightShoulder);
+    rightShoulder.position.x = 0.88;
+    model.add(body, belly, chestPlate, chestPlateB, neck, head, leftArm, rightArm, leftLeg, rightLeg, leftFoot, rightFoot, leftShoulder, rightShoulder);
     root.add(model);
     return {
       id,
