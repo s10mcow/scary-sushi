@@ -2528,6 +2528,10 @@ export class Game {
   }
 
   private maybeHandleOfficeGoldenBoriConversation(normalized: string, insulted: boolean): void {
+    void normalized;
+    void insulted;
+    return;
+
     if (
       !this.officeChapterActive
       || !this.officeMicrophoneEnabled
@@ -20388,19 +20392,8 @@ export class Game {
   }
 
   private speakOfficeBoriAiLine(line: string, mode: 'robot' | 'rehearsal' | 'angry' = 'rehearsal'): void {
-    if (this.officeChapterActive) {
-      this.officeChapter.animateGoldenBoriSpeech(this.getOfficeBoriAiSpeechDuration(line));
-    }
-
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(line);
-    utterance.rate = mode === 'robot' ? 0.72 : mode === 'angry' ? 0.94 : 0.86;
-    utterance.pitch = mode === 'robot' ? 0.34 : mode === 'angry' ? 0.56 : 0.72;
-    utterance.volume = mode === 'robot' ? 0.95 : 0.84;
-    window.speechSynthesis.speak(utterance);
+    void this.getOfficeBoriAiSpeechDuration(line);
+    void mode;
   }
 
   private updateOfficeBoriAiActivationAlarm(deltaSeconds: number): void {
