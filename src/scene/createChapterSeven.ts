@@ -2590,7 +2590,7 @@ export function createChapterSeven(): ChapterSevenData {
       openAmount: 0,
       targetOpenAmount: 0,
       openDirection,
-      pushRadius: orientation === 'front' ? 4.9 : 3.7,
+      pushRadius: 2,
       interactionMode: 'push',
     };
   };
