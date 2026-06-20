@@ -527,22 +527,30 @@ export function createChapterSeven(): ChapterSevenData {
     roughness: 0.18,
     metalness: 0.08,
   });
-  const createTelevisionNewsMaterial = (): MeshStandardMaterial => {
+  const createTelevisionNewsScreen = (): { material: MeshStandardMaterial; update(elapsedSeconds: number, powered: boolean): void } => {
     if (typeof document === 'undefined') {
-      return new MeshStandardMaterial({
+      const material = new MeshStandardMaterial({
         color: 0x254a7a,
         emissive: 0x16345f,
         emissiveIntensity: 0.55,
         roughness: 0.2,
         metalness: 0.04,
       });
+      return {
+        material,
+        update: () => {},
+      };
     }
 
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 288;
     const context = canvas.getContext('2d');
-    if (context) {
+    const drawNewsFrame = (elapsedSeconds: number): void => {
+      if (!context) {
+        return;
+      }
+
       const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
       gradient.addColorStop(0, '#17345a');
       gradient.addColorStop(0.55, '#2b5d91');
@@ -582,11 +590,12 @@ export function createChapterSeven(): ChapterSevenData {
       context.lineTo(126, 111);
       context.stroke();
       context.fillStyle = '#3b1613';
+      const mouthOpen = 0.35 + Math.abs(Math.sin(elapsedSeconds * 13.5)) * 0.65;
       context.beginPath();
-      context.ellipse(105, 140, 13, 18, 0, 0, Math.PI * 2);
+      context.ellipse(105, 140, 12, 4 + mouthOpen * 15, 0, 0, Math.PI * 2);
       context.fill();
       context.fillStyle = '#f1d1c2';
-      context.fillRect(97, 153, 16, 3);
+      context.fillRect(98, 138 + mouthOpen * 11, 14, 3);
 
       context.fillStyle = '#22354f';
       context.fillRect(210, 78, 270, 120);
@@ -607,19 +616,32 @@ export function createChapterSeven(): ChapterSevenData {
       context.fillStyle = '#172233';
       context.font = 'bold 22px Arial';
       context.fillText('Breaking news: house TV is now on', 180, 260);
-    }
+    };
+
+    drawNewsFrame(0);
 
     const texture = new CanvasTexture(canvas);
     texture.needsUpdate = true;
-    return new MeshStandardMaterial({
+    const material = new MeshStandardMaterial({
       map: texture,
       emissive: 0x18345b,
       emissiveIntensity: 0.55,
       roughness: 0.18,
       metalness: 0.05,
     });
+    return {
+      material,
+      update(elapsedSeconds: number, powered: boolean): void {
+        if (!powered) {
+          return;
+        }
+
+        drawNewsFrame(elapsedSeconds);
+        texture.needsUpdate = true;
+      },
+    };
   };
-  const tvNewsScreenMaterial = createTelevisionNewsMaterial();
+  const tvNewsScreen = createTelevisionNewsScreen();
   const smallTableLightTanMaterial = new MeshStandardMaterial({
     color: 0xd2aa72,
     emissive: 0x1f1408,
@@ -2639,7 +2661,7 @@ export function createChapterSeven(): ChapterSevenData {
     let powered = false;
     const setPowered = (nextPowered: boolean): void => {
       powered = nextPowered;
-      screen.material = powered ? tvNewsScreenMaterial : tvScreenMaterial;
+      screen.material = powered ? tvNewsScreen.material : tvScreenMaterial;
       powerDot.visible = powered;
     };
     setPowered(false);
@@ -7572,6 +7594,7 @@ export function createChapterSeven(): ChapterSevenData {
     },
     update(deltaSeconds: number, playerPosition?: Vector3, nightBlend = 0): void {
       forestTime += deltaSeconds;
+      tvNewsScreen.update(forestTime, wallTelevision.isPowered());
       grandfatherClockChimeTimer = Math.max(0, grandfatherClockChimeTimer - deltaSeconds);
       grandfatherClockMotionParts.forEach((part, partIndex) => {
         const chimeStrength = MathUtils.clamp(grandfatherClockChimeTimer / 2.7, 0, 1);
