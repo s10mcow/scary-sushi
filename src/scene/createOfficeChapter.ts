@@ -7199,6 +7199,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   const gameRoomSideRoomDoorWidth = 2.65;
   const gameRoomSideRoomLength = 18.8;
   const gameRoomSideRoomDepth = 4.65;
+  const gameRoomWestSideRoomDepth = 5.25;
   const gameRoomWestSideRoomMinX = kitchenHallRoomMinX - gameRoomSideRoomLength;
   const gameRoomWestSideRoomMaxX = kitchenHallRoomMinX;
   const gameRoomWestSideRoomCenterX = (gameRoomWestSideRoomMinX + gameRoomWestSideRoomMaxX) / 2;
@@ -7211,8 +7212,9 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   ]).flatMap((sideRoom) => gameRoomSideRoomCentersZ.map((centerZ) => ({
     ...sideRoom,
     centerZ,
-    minZ: centerZ - gameRoomSideRoomDepth / 2,
-    maxZ: centerZ + gameRoomSideRoomDepth / 2,
+    depth: sideRoom.side === 'west' ? gameRoomWestSideRoomDepth : gameRoomSideRoomDepth,
+    minZ: centerZ - (sideRoom.side === 'west' ? gameRoomWestSideRoomDepth : gameRoomSideRoomDepth) / 2,
+    maxZ: centerZ + (sideRoom.side === 'west' ? gameRoomWestSideRoomDepth : gameRoomSideRoomDepth) / 2,
     openingMinZ: centerZ - gameRoomSideRoomDoorWidth / 2,
     openingMaxZ: centerZ + gameRoomSideRoomDoorWidth / 2,
   })));
@@ -7319,13 +7321,13 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   gameRoomSideRooms.forEach((sideRoom) => {
     root.add(createFloor({
       width: gameRoomSideRoomLength,
-      depth: gameRoomSideRoomDepth,
+      depth: sideRoom.depth,
       center: [sideRoom.centerX, sideRoom.centerZ],
       ceilingHeight: WALL_HEIGHT,
     }, materials));
     root.add(createPizzeriaCheckeredFloor(
       gameRoomSideRoomLength,
-      gameRoomSideRoomDepth,
+      sideRoom.depth,
       sideRoom.centerX,
       sideRoom.centerZ,
       WALL_THICKNESS,
@@ -7442,7 +7444,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     northPartyHallWalls.push(
       {
         position: [outerWallX, WALL_HEIGHT / 2, room.centerZ],
-        size: [WALL_THICKNESS, WALL_HEIGHT, gameRoomSideRoomDepth],
+        size: [WALL_THICKNESS, WALL_HEIGHT, room.depth],
       },
       {
         position: [room.centerX, WALL_HEIGHT / 2, room.minZ + WALL_THICKNESS / 2],
