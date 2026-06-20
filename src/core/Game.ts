@@ -1179,6 +1179,8 @@ export class Game {
   private officeBoriAiLineIndex = 0;
   private officeBoriAiActivationAlarmTimer = 0;
   private officeBoriAiActivationAlarmPulseTimer = 0;
+  private officeGoldenBoriConversationCooldown = 0;
+  private officeGoldenBoriConversationLineIndex = 0;
   private readonly officePosterPhotoIds = new Set<string>();
   private readonly officePosterPhotos: OfficePosterPhoto[] = [];
   private officePosterPhotoIndex = 0;
@@ -2280,6 +2282,7 @@ export class Game {
     }
 
     const insulted = this.isOfficeInsultNormalized(normalized);
+    this.maybeHandleOfficeGoldenBoriConversation(normalized, insulted);
     const target = this.getOfficeSpeechTarget(normalized);
     const dislikeReason = target ? this.getOfficeSpeechDislikeReason(target, normalized, insulted) : null;
     if (!insulted && !dislikeReason) {
@@ -2287,6 +2290,93 @@ export class Game {
     }
 
     this.handleOfficeProvocativeSpeech(transcript, target, dislikeReason ?? 'that sounded wrong');
+  }
+
+  private getOfficeGoldenBoriConversationReply(normalized: string, insulted: boolean): string {
+    if (insulted) {
+      return 'Careful. I heard that.';
+    }
+
+    if (/\b(hello|hi|hey|yo|sup|what's up|whats up)\b/.test(normalized)) {
+      return 'Hello there. I can hear you just fine.';
+    }
+
+    if (/\b(who are you|your name|what are you)\b/.test(normalized)) {
+      return "I'm Golden Bori. The show gets louder when I wake up.";
+    }
+
+    if (/\b(are you alive|can you hear|you hear me|listen)\b/.test(normalized)) {
+      return 'I hear every word in this room.';
+    }
+
+    if (/\b(game|games|arcade|play|stage|room)\b/.test(normalized)) {
+      return 'The games are ready. Keep moving and I might keep watching.';
+    }
+
+    if (/\b(scared|scary|creepy|afraid|danger)\b/.test(normalized)) {
+      return 'Good. A little fear keeps the performance sharp.';
+    }
+
+    if (/\b(friend|nice|cool|awesome|good|great)\b/.test(normalized)) {
+      return 'That is better. Talk nice and maybe I stay calm.';
+    }
+
+    if (/\b(why|what|when|where|how)\b/.test(normalized)) {
+      const questionReplies = [
+        'That depends on how loudly you ask.',
+        "I know this place better than you do.",
+        'Some answers are down in the dark.',
+        'Ask again when the lights are lower.',
+      ];
+      const reply = questionReplies[this.officeGoldenBoriConversationLineIndex % questionReplies.length] ?? questionReplies[0];
+      this.officeGoldenBoriConversationLineIndex += 1;
+      return reply;
+    }
+
+    const replies = [
+      'I heard you.',
+      'Keep talking. I am listening.',
+      'Say that again when you are closer.',
+      'The voice box is working now.',
+      'Interesting. Bori will remember that.',
+    ];
+    const reply = replies[this.officeGoldenBoriConversationLineIndex % replies.length] ?? replies[0];
+    this.officeGoldenBoriConversationLineIndex += 1;
+    return reply;
+  }
+
+  private maybeHandleOfficeGoldenBoriConversation(normalized: string, insulted: boolean): void {
+    if (
+      !this.officeChapterActive
+      || !this.officeGameModeActive
+      || this.officeGameModePowerOut
+      || this.activeOfficeJumpscare
+      || this.officeDeathNoticePhase
+      || this.officeGoldenBoriConversationCooldown > 0
+    ) {
+      return;
+    }
+
+    const status = this.officeChapter.getGoldenBoriStatus();
+    const playerPosition = this.player.getPosition();
+    const distanceToGoldenBori = Math.hypot(
+      status.position.x - playerPosition.x,
+      status.position.z - playerPosition.z,
+    );
+    const addressedGoldenBori = /\b(golden|gold|bori|bory|boris|boy|boar|roy)\b/.test(normalized);
+    const conversationalSpeech = /\b(hello|hi|hey|yo|sup|what|why|when|where|how|can you|are you|do you|tell me|talk|say)\b/.test(normalized);
+    if (!addressedGoldenBori && (!conversationalSpeech || distanceToGoldenBori > 8.75)) {
+      return;
+    }
+    if (distanceToGoldenBori > 22) {
+      return;
+    }
+
+    const line = this.getOfficeGoldenBoriConversationReply(normalized, insulted);
+    this.officeGoldenBoriConversationCooldown = MathUtils.clamp(2.2 + line.length * 0.045, 2.8, 6.2);
+    this.officeBoriAiRehearsalTimer = Math.max(this.officeBoriAiRehearsalTimer, this.officeGoldenBoriConversationCooldown + 1.2);
+    this.speakOfficeBoriAiLine(line, insulted || status.angry || status.chasing ? 'angry' : 'rehearsal');
+    this.pushStatus(`Golden Bori says: "${line}"`, 2.8);
   }
 
   private handleOfficeProvocativeSpeech(
@@ -3127,6 +3217,7 @@ export class Game {
         this.officeInsultHeardTimer > 0,
         this.officeGameModeActive && this.officeGameModeNightPhase,
       );
+      this.officeGoldenBoriConversationCooldown = Math.max(0, this.officeGoldenBoriConversationCooldown - deltaSeconds);
       this.updateOfficeBoriAiActivationAlarm(deltaSeconds);
       this.updateOfficeBoriAiRehearsal(deltaSeconds);
       this.updateOfficeDoorSoundPlayback();
@@ -6086,6 +6177,8 @@ export class Game {
     this.officeBoriAiLineIndex = 0;
     this.officeBoriAiActivationAlarmTimer = 0;
     this.officeBoriAiActivationAlarmPulseTimer = 0;
+    this.officeGoldenBoriConversationCooldown = 0;
+    this.officeGoldenBoriConversationLineIndex = 0;
     this.clearOfficeHeldPrizeItem();
   }
 
@@ -20098,7 +20191,15 @@ export class Game {
     this.syncHud();
   }
 
+  private getOfficeBoriAiSpeechDuration(line: string): number {
+    return MathUtils.clamp(0.95 + line.length * 0.052, 1.2, 6.4);
+  }
+
   private speakOfficeBoriAiLine(line: string, mode: 'robot' | 'rehearsal' | 'angry' = 'rehearsal'): void {
+    if (this.officeChapterActive) {
+      this.officeChapter.animateGoldenBoriSpeech(this.getOfficeBoriAiSpeechDuration(line));
+    }
+
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
       return;
     }

@@ -506,6 +506,7 @@ export interface OfficeChapterData {
   isPartyShowActive(): boolean;
   isPartyShowMusicActive(): boolean;
   getPartyShowMusicTime(): number;
+  animateGoldenBoriSpeech(durationSeconds: number): void;
   update(
     deltaSeconds: number,
     playerPosition?: Vector3,
@@ -11278,6 +11279,8 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   let goldenBoriCatchCooldown = 0;
   let goldenBoriStuckTimer = 0;
   let goldenBoriPhotoMoving = false;
+  let goldenBoriTalkTimer = 0;
+  let goldenBoriTalkElapsed = 0;
   const goldenBoriChaseTarget = new Vector3();
   const goldenBoriStageFloors = [kitchenHallRoomStageFloor, stageFloor, foxStageFloor];
   const getGoldenBoriRootY = (x: number, z: number): number => {
@@ -12302,6 +12305,35 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     goldenBoriCollider.centerZ = goldenBori.root.position.z;
   };
 
+  const animateGoldenBoriSpeech = (durationSeconds: number): void => {
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      return;
+    }
+
+    goldenBoriTalkTimer = Math.max(goldenBoriTalkTimer, durationSeconds);
+  };
+
+  const updateGoldenBoriSpeechMouth = (deltaSeconds: number): void => {
+    if (!goldenBori.mouth || !goldenBori.mouthBasePosition) {
+      return;
+    }
+
+    if (goldenBoriTalkTimer > 0) {
+      goldenBoriTalkTimer = Math.max(0, goldenBoriTalkTimer - deltaSeconds);
+      goldenBoriTalkElapsed += deltaSeconds;
+      const syllablePulse = Math.abs(Math.sin(goldenBoriTalkElapsed * 15.5));
+      const smallerPulse = Math.abs(Math.sin(goldenBoriTalkElapsed * 7.2 + 0.6));
+      const openAmount = 0.08 + syllablePulse * 0.36 + smallerPulse * 0.1;
+      goldenBori.mouth.position.copy(goldenBori.mouthBasePosition);
+      goldenBori.mouth.position.y -= openAmount * 0.18;
+      goldenBori.mouth.rotation.x = MathUtils.lerp(goldenBori.mouth.rotation.x, openAmount, 1 - Math.exp(-deltaSeconds * 18));
+      return;
+    }
+
+    goldenBori.mouth.position.lerp(goldenBori.mouthBasePosition, 1 - Math.exp(-deltaSeconds * 10));
+    goldenBori.mouth.rotation.x = MathUtils.lerp(goldenBori.mouth.rotation.x, 0, 1 - Math.exp(-deltaSeconds * 10));
+  };
+
   const updateBathroomFixtures = (deltaSeconds: number): void => {
     const blend = 1 - Math.exp(-9.5 * deltaSeconds);
     bathroomEntranceDoor.openAmount = MathUtils.lerp(
@@ -12809,6 +12841,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
       goldenBoriPhotoMoving = false;
       resetGoldenBori();
     }
+    updateGoldenBoriSpeechMouth(deltaSeconds);
     updateBasketballThrow(deltaSeconds);
     updateFoxyPlay(deltaSeconds);
     updateFoxyStory(deltaSeconds);
@@ -12829,10 +12862,16 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     goldenBoriStepSoundIndex = -1;
     goldenBoriCatchCooldown = 3.5;
     goldenBoriStuckTimer = 0;
+    goldenBoriTalkTimer = 0;
+    goldenBoriTalkElapsed = 0;
     goldenBori.homePosition.copy(goldenBoriStageHomePosition);
     goldenBori.root.position.copy(goldenBoriStageHomePosition);
     goldenBori.root.rotation.set(0, goldenBori.homeRotationY, 0);
     resetAnimatronicPartsTowardHome(goldenBori, 1);
+    if (goldenBori.mouth && goldenBori.mouthBasePosition) {
+      goldenBori.mouth.position.copy(goldenBori.mouthBasePosition);
+      goldenBori.mouth.rotation.set(0, 0, 0);
+    }
     updateGoldenBoriRageEyes();
     goldenBoriCollider.centerX = goldenBori.root.position.x;
     goldenBoriCollider.centerZ = goldenBori.root.position.z;
@@ -13123,6 +13162,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
     isPartyShowActive,
     isPartyShowMusicActive,
     getPartyShowMusicTime,
+    animateGoldenBoriSpeech,
     update,
     getGoldenBoriPhotoTarget() {
       return {
