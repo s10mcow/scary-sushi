@@ -6080,13 +6080,14 @@ export function createChapterSeven(): ChapterSevenData {
     HOUSE_WALL_THICKNESS,
   );
 
+  const bookshelfWallLength = 18;
   addHouseWall(
     1218.25 - CENTER_X,
-    98.69 - HOUSE_CENTER_Z - 10,
+    98.69 - HOUSE_CENTER_Z - bookshelfWallLength / 2,
     HOUSE_WALL_THICKNESS,
-    20,
+    bookshelfWallLength,
   );
-  const bigTableDividerLength = 15;
+  const bigTableDividerLength = 11;
   addHouseWall(
     1235.69 - CENTER_X - bigTableDividerLength / 2,
     79.96 - HOUSE_CENTER_Z,
