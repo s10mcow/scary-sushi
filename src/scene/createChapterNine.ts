@@ -343,8 +343,11 @@ export function createChapterNine(): ChapterNineData {
   const lookTarget = new Vector3(0, 1.7, 20);
 
   const asphaltMaterial = new MeshStandardMaterial({ color: 0x1b1b1d, roughness: 0.96, metalness: 0.02 });
+  const grassMaterial = new MeshStandardMaterial({ color: 0x2f7d32, roughness: 0.96, metalness: 0.0 });
+  const treeTrunkMaterial = new MeshStandardMaterial({ color: 0x5b3821, roughness: 0.86 });
+  const treeLeafMaterial = new MeshStandardMaterial({ color: 0x1f5f2d, roughness: 0.9 });
   const dirtyConcreteMaterial = new MeshStandardMaterial({ color: 0x6c6860, roughness: 0.94, metalness: 0.01 });
-  const brickMaterial = new MeshStandardMaterial({ color: 0x7b382e, roughness: 0.88, metalness: 0.01 });
+  const brickMaterial = new MeshStandardMaterial({ color: 0x6b4038, roughness: 0.88, metalness: 0.01 });
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const wallInteriorMaterial = new MeshStandardMaterial({ color: 0x60584f, roughness: 0.9 });
@@ -401,8 +404,10 @@ export function createChapterNine(): ChapterNineData {
     addBox(root, width, 0.08, depth, x, -0.035, z, checkeredFloorMaterial);
   };
 
-  const emptyGround = addBox(root, 190, 0.12, 150, 0, -0.06, 20, asphaltMaterial);
+  const preservedExteriorObjects: object[] = [];
+  const emptyGround = addBox(root, 220, 0.12, 180, 0, -0.06, 8, grassMaterial);
   emptyGround.name = 'Chapter 9 empty ground';
+  preservedExteriorObjects.push(emptyGround);
   addFloor(0, 44, 190, 112, asphaltMaterial);
   addFloor(0, 25, 146, 28, dirtyConcreteMaterial);
   addFloor(0, 82, 116, 42, asphaltMaterial);
@@ -452,16 +457,42 @@ export function createChapterNine(): ChapterNineData {
     addBox(root, 0.45, 1.05, 0.45, x, 0.52, 37, new MeshStandardMaterial({ color: 0xb28b24, roughness: 0.66, metalness: 0.12 }));
   });
 
+  const addTree = (x: number, z: number, scale = 1): void => {
+    const tree = new Group();
+    tree.position.set(x, 0, z);
+    const trunk = new Mesh(new CylinderGeometry(0.32 * scale, 0.46 * scale, 3.2 * scale, 10), treeTrunkMaterial);
+    trunk.position.y = 1.6 * scale;
+    const lowerLeaves = new Mesh(new ConeGeometry(1.8 * scale, 3.2 * scale, 12), treeLeafMaterial);
+    lowerLeaves.position.y = 4.0 * scale;
+    const upperLeaves = new Mesh(new ConeGeometry(1.35 * scale, 2.6 * scale, 12), treeLeafMaterial);
+    upperLeaves.position.y = 5.5 * scale;
+    tree.add(trunk, lowerLeaves, upperLeaves);
+    root.add(tree);
+    preservedExteriorObjects.push(tree);
+  };
+  [
+    [-82, -76, 1.05], [-54, -84, 0.9], [-18, -86, 1.15], [24, -86, 0.95], [58, -78, 1.1],
+    [-88, -46, 0.9], [-88, -12, 1.12], [-88, 24, 0.98], [-78, 58, 1.06],
+    [88, -48, 1.08], [88, -14, 0.92], [88, 22, 1.0], [78, 58, 1.14],
+    [-48, 68, 1.02], [-18, 72, 0.9], [22, 72, 1.1], [52, 68, 0.96],
+  ].forEach(([x, z, scale]) => addTree(x, z, scale));
+
+  const shellStartChildIndex = root.children.length;
   addCheckeredFloor(0, BUILDING_CENTER_Z, BUILDING_WIDTH, BUILDING_DEPTH);
   addWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH, WALL_THICKNESS, brickMaterial);
   addWall(-BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH, brickMaterial);
   addWall(BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH, brickMaterial);
   addWall(-36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
   addWall(36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
+  addWall(-4.85, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 4.3, WALL_THICKNESS, brickMaterial);
+  addWall(4.85, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 4.3, WALL_THICKNESS, brickMaterial);
   const shellColliders = colliders.slice();
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
 
-  const shellObjects = root.children.slice();
+  const shellObjects = [
+    ...preservedExteriorObjects,
+    ...root.children.slice(shellStartChildIndex),
+  ];
   const roof = addBox(root, BUILDING_WIDTH + 2.2, 0.42, BUILDING_DEPTH + 2.2, 0, WALL_HEIGHT + 0.22, BUILDING_CENTER_Z, roofMaterial);
   const ceiling = addBox(root, BUILDING_WIDTH - 2.2, 0.12, BUILDING_DEPTH - 2.2, 0, WALL_HEIGHT - 0.08, BUILDING_CENTER_Z, ceilingMaterial);
   shellObjects.push(roof, ceiling);
@@ -473,6 +504,14 @@ export function createChapterNine(): ChapterNineData {
       shellObjects.push(addBox(root, 5.8, 0.08, 0.8, x, WALL_HEIGHT - 0.54, z, neonMaterial));
     });
   });
+
+  const doorMaterial = new MeshStandardMaterial({ color: 0x3a2419, roughness: 0.74, metalness: 0.04 });
+  const leftDoor = addBox(root, 2.55, 4.55, 0.18, -1.32, 2.28, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.08, doorMaterial);
+  const rightDoor = addBox(root, 2.55, 4.55, 0.18, 1.32, 2.28, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.08, doorMaterial);
+  const doorGap = addBox(root, 0.08, 4.65, 0.22, 0, 2.32, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.11, blackMetalMaterial);
+  const leftHandle = addBox(root, 0.12, 0.32, 0.18, -0.34, 2.25, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.26, metalMaterial);
+  const rightHandle = addBox(root, 0.12, 0.32, 0.18, 0.34, 2.25, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.26, metalMaterial);
+  shellObjects.push(leftDoor, rightDoor, doorGap, leftHandle, rightHandle);
 
   const sign = new Mesh(new PlaneGeometry(40, 10), createComplexSignMaterial());
   sign.position.set(0, 9.0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.28);
@@ -486,7 +525,6 @@ export function createChapterNine(): ChapterNineData {
   const glassRight = glassLeft.clone();
   glassRight.position.x = 12;
   root.add(glassLeft, glassRight);
-  shellObjects.push(glassLeft, glassRight);
   const crackMaterial = new MeshBasicMaterial({ color: 0xe6f8ff, transparent: true, opacity: 0.65, side: DoubleSide });
   [-12, 12].forEach((x, paneIndex) => {
     for (let crack = 0; crack < 6; crack += 1) {
@@ -494,7 +532,6 @@ export function createChapterNine(): ChapterNineData {
       shard.position.set(x + (crack - 2.5) * 0.52, 3.1 + Math.sin(crack) * 0.6, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.36);
       shard.rotation.z = (crack - 2.5) * 0.35 + paneIndex * 0.2;
       root.add(shard);
-      shellObjects.push(shard);
     }
   });
 
