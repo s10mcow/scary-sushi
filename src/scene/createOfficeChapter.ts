@@ -8993,7 +8993,7 @@ export function createOfficeChapter(options: OfficeChapterOptions = {}): OfficeC
   root.add(createRestaurantSinkStation(sinkStation.x, sinkStation.z, sinkStation.rotationY));
   addCollider(colliders, sinkStation.x, sinkStation.z, sinkStation.colliderWidth, sinkStation.colliderDepth);
 
-  const fridgeLine = { x: kitchenCenterX + 5.15, z: kitchenCenterZ - 1.35, rotationY: -Math.PI / 2, colliderWidth: 0.98, colliderDepth: 3.75 };
+  const fridgeLine = { x: kitchenEastX - 0.46, z: kitchenMinZ + 2.65, rotationY: -Math.PI / 2, colliderWidth: 0.98, colliderDepth: 3.75 };
   root.add(createRestaurantFridgeLine(fridgeLine.x, fridgeLine.z, fridgeLine.rotationY));
   addCollider(colliders, fridgeLine.x, fridgeLine.z, fridgeLine.colliderWidth, fridgeLine.colliderDepth);
 
