@@ -3245,6 +3245,177 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
 
+  const addFishTankTable = (localX: number, localZ: number): void => {
+    const table = new Group();
+    table.position.set(localX, 0, localZ);
+
+    const tableLength = 5;
+    const tableDepth = 1.45;
+    const top = new Mesh(new BoxGeometry(tableLength, 0.16, tableDepth), smallTableLightTanMaterial);
+    top.position.y = 0.96;
+    const apronFront = new Mesh(new BoxGeometry(tableLength, 0.18, 0.12), smallTableDarkTanMaterial);
+    apronFront.position.set(0, 0.81, tableDepth / 2 - 0.06);
+    const apronBack = apronFront.clone();
+    apronBack.position.z = -tableDepth / 2 + 0.06;
+    const legs = [
+      [-2.2, -0.52],
+      [2.2, -0.52],
+      [-2.2, 0.52],
+      [2.2, 0.52],
+    ].map(([legX, legZ]) => {
+      const leg = new Mesh(new BoxGeometry(0.18, 0.9, 0.18), smallTableDarkTanMaterial);
+      leg.position.set(legX, 0.45, legZ);
+      return leg;
+    });
+
+    const tank = new Group();
+    tank.position.set(0, 1.12, 0);
+    const glassMaterial = new MeshStandardMaterial({
+      color: 0xaee7f2,
+      emissive: 0x0b2630,
+      emissiveIntensity: 0.08,
+      roughness: 0.06,
+      metalness: 0.02,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const waterMaterial = new MeshStandardMaterial({
+      color: 0x4eb0de,
+      emissive: 0x0d3852,
+      emissiveIntensity: 0.22,
+      roughness: 0.18,
+      metalness: 0.01,
+      transparent: true,
+      opacity: 0.48,
+      depthWrite: false,
+    });
+    const pebbleMaterials = [
+      new MeshStandardMaterial({ color: 0xe66a5f, roughness: 0.72, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0xf0d256, roughness: 0.72, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0x5fb6ee, roughness: 0.72, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0x72c76a, roughness: 0.72, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0xc985e8, roughness: 0.72, metalness: 0.01 }),
+    ];
+    const fishMaterials = [
+      new MeshStandardMaterial({ color: 0xffa62b, emissive: 0x2b1202, emissiveIntensity: 0.07, roughness: 0.5, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0x56c8ff, emissive: 0x041825, emissiveIntensity: 0.08, roughness: 0.45, metalness: 0.01 }),
+      new MeshStandardMaterial({ color: 0xf05b8c, emissive: 0x260512, emissiveIntensity: 0.07, roughness: 0.45, metalness: 0.01 }),
+    ];
+    const seaweedMaterial = new MeshStandardMaterial({
+      color: 0x247c45,
+      emissive: 0x06210f,
+      emissiveIntensity: 0.07,
+      roughness: 0.78,
+      metalness: 0.01,
+    });
+    const chestMaterial = new MeshStandardMaterial({
+      color: 0x8a4f24,
+      emissive: 0x120806,
+      emissiveIntensity: 0.05,
+      roughness: 0.76,
+      metalness: 0.02,
+    });
+    const chestTrimMaterial = new MeshStandardMaterial({
+      color: 0xd8b24f,
+      emissive: 0x251803,
+      emissiveIntensity: 0.12,
+      roughness: 0.44,
+      metalness: 0.22,
+    });
+
+    const tankWidth = 3.82;
+    const tankHeight = 1.16;
+    const tankDepth = 0.92;
+    const backGlass = new Mesh(new BoxGeometry(tankWidth, tankHeight, 0.035), glassMaterial);
+    backGlass.position.set(0, tankHeight / 2, -tankDepth / 2);
+    const frontGlass = backGlass.clone();
+    frontGlass.position.z = tankDepth / 2;
+    const leftGlass = new Mesh(new BoxGeometry(0.035, tankHeight, tankDepth), glassMaterial);
+    leftGlass.position.set(-tankWidth / 2, tankHeight / 2, 0);
+    const rightGlass = leftGlass.clone();
+    rightGlass.position.x = tankWidth / 2;
+    const bottomGlass = new Mesh(new BoxGeometry(tankWidth, 0.045, tankDepth), glassMaterial);
+    bottomGlass.position.y = 0.02;
+    const topRim = new Mesh(new BoxGeometry(tankWidth + 0.1, 0.08, tankDepth + 0.1), tvFrameMaterial);
+    topRim.position.y = tankHeight + 0.04;
+    const water = new Mesh(new BoxGeometry(tankWidth - 0.16, 0.82, tankDepth - 0.12), waterMaterial);
+    water.position.y = 0.48;
+    const sand = new Mesh(new BoxGeometry(tankWidth - 0.22, 0.12, tankDepth - 0.14), new MeshStandardMaterial({
+      color: 0xd8bc74,
+      roughness: 0.92,
+      metalness: 0.01,
+    }));
+    sand.position.y = 0.1;
+
+    const pebbles = Array.from({ length: 18 }, (_, index) => {
+      const pebble = new Mesh(new SphereGeometry(0.055 + (index % 3) * 0.01, 8, 6), pebbleMaterials[index % pebbleMaterials.length]);
+      pebble.scale.set(1.15, 0.45, 0.9);
+      pebble.position.set(-1.62 + (index % 9) * 0.4, 0.19, -0.3 + Math.floor(index / 9) * 0.42);
+      return pebble;
+    });
+
+    const makeFish = (x: number, y: number, z: number, material: MeshStandardMaterial, direction: 1 | -1): Group => {
+      const fish = new Group();
+      fish.position.set(x, y, z);
+      fish.rotation.y = direction > 0 ? 0 : Math.PI;
+      const body = new Mesh(new SphereGeometry(0.14, 14, 8), material);
+      body.scale.set(1.55, 0.72, 0.85);
+      const tail = new Mesh(new ConeGeometry(0.105, 0.16, 3), material);
+      tail.position.x = -0.22;
+      tail.rotation.z = Math.PI / 2;
+      const eye = new Mesh(new SphereGeometry(0.018, 8, 6), tvFrameMaterial);
+      eye.position.set(0.16, 0.04, 0.065);
+      fish.add(body, tail, eye);
+      return fish;
+    };
+
+    const seaweed = [-1.46, -1.12, 1.25, 1.55].map((weedX, index) => {
+      const weed = new Group();
+      weed.position.set(weedX, 0.2, index % 2 === 0 ? -0.28 : 0.26);
+      const stalks = [0, 1, 2].map((stalkIndex) => {
+        const stalk = new Mesh(new CylinderGeometry(0.018, 0.028, 0.48 + stalkIndex * 0.12, 8), seaweedMaterial);
+        stalk.position.set((stalkIndex - 1) * 0.055, 0.24 + stalkIndex * 0.06, 0);
+        stalk.rotation.z = (stalkIndex - 1) * 0.18;
+        return stalk;
+      });
+      weed.add(...stalks);
+      return weed;
+    });
+
+    const chest = new Group();
+    chest.position.set(0.54, 0.24, 0.24);
+    const chestBase = new Mesh(new BoxGeometry(0.44, 0.24, 0.28), chestMaterial);
+    const chestLid = new Mesh(new CylinderGeometry(0.16, 0.16, 0.46, 16, 1, false, 0, Math.PI), chestMaterial);
+    chestLid.rotation.z = Math.PI / 2;
+    chestLid.position.y = 0.13;
+    const chestBand = new Mesh(new BoxGeometry(0.5, 0.045, 0.32), chestTrimMaterial);
+    chestBand.position.y = 0.02;
+    chest.add(chestBase, chestLid, chestBand);
+
+    tank.add(
+      backGlass,
+      frontGlass,
+      leftGlass,
+      rightGlass,
+      bottomGlass,
+      topRim,
+      water,
+      sand,
+      ...pebbles,
+      makeFish(-0.92, 0.72, 0.18, fishMaterials[0], 1),
+      makeFish(0.08, 0.55, -0.18, fishMaterials[1], -1),
+      makeFish(1.05, 0.82, 0.05, fishMaterials[2], 1),
+      ...seaweed,
+      chest,
+    );
+
+    table.add(top, apronFront, apronBack, ...legs, tank);
+    house.add(table);
+    addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, tableLength + 0.18, tableDepth + 0.18);
+  };
+
   const addRoundRoseTable = (localX: number, localZ: number): void => {
     const table = new Group();
     table.position.set(localX, 0, localZ);
@@ -6572,6 +6743,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSquareBookTable(1204.02 - CENTER_X, 96.34 - HOUSE_CENTER_Z);
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
+  addFishTankTable(1199.97 - CENTER_X, 85.39 - HOUSE_CENTER_Z);
   const remoteButtons = addTableRemote(1226.18 - CENTER_X, 1.08, 97.15 - HOUSE_CENTER_Z, -0.18);
   addSideGrandfatherClock(1217.94 - CENTER_X, 87.41 - HOUSE_CENTER_Z, -1);
   addBookshelf(1220.53 - CENTER_X, 98.69 - HOUSE_CENTER_Z - 0.64, Math.PI, 0.84, 0.96);
@@ -6606,7 +6778,7 @@ export function createChapterSeven(): ChapterSevenData {
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
   const wallTelevision = addWallTelevision(1230.33 - CENTER_X, 2.11, 80.19 - HOUSE_CENTER_Z, 1);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
-  addWallLamp(1236.31 - CENTER_X, 2.16, 66.09 - HOUSE_CENTER_Z);
+  addWallLamp(1236.31 - CENTER_X, 3.67, 66.14 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
   const backBedroomDoorFacingDrawer = addDrawer(
     1187.12 - CENTER_X,
