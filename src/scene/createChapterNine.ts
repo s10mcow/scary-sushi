@@ -181,6 +181,31 @@ function createComplexSignMaterial(): MeshStandardMaterial {
       context.translate(x, 126);
       context.fillStyle = color;
       context.beginPath();
+      context.roundRect(-25, 35, 50, 42, 12);
+      context.fill();
+      context.fillStyle = '#d8b88c';
+      context.beginPath();
+      context.ellipse(0, 54, 17, 21, 0, 0, Math.PI * 2);
+      context.fill();
+      if (kind === 'bear') {
+        context.fillStyle = '#111';
+        context.beginPath();
+        context.moveTo(-12, 38);
+        context.lineTo(0, 48);
+        context.lineTo(12, 38);
+        context.lineTo(0, 42);
+        context.closePath();
+        context.fill();
+      } else if (kind === 'chicken') {
+        context.fillStyle = '#fff4d0';
+        context.font = 'bold 12px Arial';
+        context.fillText('EAT', 0, 60);
+      } else if (kind === 'fox') {
+        context.fillStyle = '#c2c5c7';
+        context.fillRect(22, 45, 13, 8);
+      }
+      context.fillStyle = color;
+      context.beginPath();
       context.roundRect(-31, -38, 62, 67, 20);
       context.fill();
       if (kind === 'rabbit') {
@@ -249,9 +274,6 @@ function createComplexSignMaterial(): MeshStandardMaterial {
       context.font = 'bold 17px Arial';
       context.fillText(label, x, 204);
     });
-    context.fillStyle = '#f2ece0';
-    context.font = 'bold 25px Arial';
-    context.fillText('CHECK IN  -  PARTIES  -  ARCADE  -  SECURITY', canvas.width / 2, 226);
   });
 }
 
@@ -383,6 +405,35 @@ export function createChapterNine(): ChapterNineData {
     addBox(root, 0.22, 4.6, 0.22, x, 2.7, 35, blackMetalMaterial);
     addBox(root, 4.2, 0.18, 0.26, x, 5.0, 35, neonMaterial);
   });
+  const addExteriorCar = (x: number, z: number, color: number, rotationY = 0): void => {
+    const car = new Group();
+    car.position.set(x, 0, z);
+    car.rotation.y = rotationY;
+    const carMaterial = new MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.18 });
+    const body = new Mesh(new BoxGeometry(4.6, 0.9, 2.1), carMaterial);
+    body.position.y = 0.62;
+    const cabin = new Mesh(new BoxGeometry(2.2, 0.82, 1.72), glassMaterial);
+    cabin.position.set(-0.25, 1.25, 0);
+    const wheels = [
+      [-1.55, -1.02],
+      [1.55, -1.02],
+      [-1.55, 1.02],
+      [1.55, 1.02],
+    ].map(([wheelX, wheelZ]) => {
+      const wheel = new Mesh(new CylinderGeometry(0.42, 0.42, 0.32, 16), blackMetalMaterial);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(wheelX, 0.38, wheelZ);
+      return wheel;
+    });
+    car.add(body, cabin, ...wheels);
+    root.add(car);
+  };
+  addExteriorCar(-30, 82, 0x263a5c, 0);
+  addExteriorCar(12, 82, 0x5a2321, 0);
+  addExteriorCar(36, 68, 0x1d4d38, Math.PI / 2);
+  [-6, 6].forEach((x) => {
+    addBox(root, 0.45, 1.05, 0.45, x, 0.52, 37, new MeshStandardMaterial({ color: 0xb28b24, roughness: 0.66, metalness: 0.12 }));
+  });
 
   addCheckeredFloor(0, BUILDING_CENTER_Z, BUILDING_WIDTH, BUILDING_DEPTH);
   addWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH, WALL_THICKNESS, brickMaterial);
@@ -425,6 +476,13 @@ export function createChapterNine(): ChapterNineData {
     }
   });
 
+  const addWallPlaque = (label: string, x: number, y: number, z: number, rotationY = 0, width = 8): void => {
+    const plaque = new Mesh(new PlaneGeometry(width, 1.35), createSignMaterial(label.toUpperCase(), '', '#c7b073'));
+    plaque.position.set(x, y, z);
+    plaque.rotation.y = rotationY;
+    root.add(plaque);
+  };
+
   const rooms = [
     [-42, 10, 28, 28, 'Arcade'],
     [0, 10, 42, 28, 'Main Dining'],
@@ -437,23 +495,15 @@ export function createChapterNine(): ChapterNineData {
     [42, -56, 28, 20, 'Bathrooms'],
   ] as const;
   rooms.forEach(([roomX, roomZ, , depth, label]) => {
-    const plaque = new Mesh(new PlaneGeometry(8, 1.6), createSignMaterial(label.toUpperCase(), '', '#c7b073'));
-    plaque.position.set(roomX, 4.35, roomZ + depth / 2 - 0.32);
-    root.add(plaque);
+    addWallPlaque(label, roomX, 4.35, roomZ + depth / 2 - 0.3);
   });
-  [
-    [-24, 31.5, 'BOOKING'],
-    [24, 31.5, 'PRIZES'],
-    [-58, -8, 'PARTS'],
-    [-58, -42, 'SECURITY'],
-    [58, -8, 'STAFF KITCHEN'],
-    [58, -42, 'RESTROOMS'],
-    [0, -8, 'MAIN STAGE'],
-  ].forEach(([x, z, label]) => {
-    const plaque = new Mesh(new PlaneGeometry(7.2, 1.05), createSignMaterial(String(label), '', '#d8c58a'));
-    plaque.position.set(Number(x), 3.35, Number(z));
-    root.add(plaque);
-  });
+  addWallPlaque('BOOKING', -24, 3.35, 31.72, 0, 7.2);
+  addWallPlaque('PRIZES', 24, 3.35, 31.72, 0, 7.2);
+  addWallPlaque('PARTS', -64.72, 3.35, -8, Math.PI / 2, 7.2);
+  addWallPlaque('SECURITY', -64.72, 3.35, -42, Math.PI / 2, 7.2);
+  addWallPlaque('STAFF KITCHEN', 64.72, 3.35, -8, -Math.PI / 2, 8.8);
+  addWallPlaque('RESTROOMS', 64.72, 3.35, -42, -Math.PI / 2, 7.2);
+  addWallPlaque('MAIN STAGE', 0, 3.35, -7.72, 0, 8.4);
 
   addWall(-21, -6, WALL_THICKNESS, 64);
   addWall(21, -6, WALL_THICKNESS, 64);
@@ -524,6 +574,44 @@ export function createChapterNine(): ChapterNineData {
   addCollider(colliders, 0, -36, 31, 12);
   const curtain = addBox(root, 32, 6.4, 0.28, 0, 3.5, -41.6, new MeshStandardMaterial({ color: 0x5d111b, roughness: 0.9 }));
   curtain.name = 'Dirty stage curtain';
+  const addStageDrums = (): void => {
+    const drumMaterial = new MeshStandardMaterial({ color: 0x8d1d22, roughness: 0.55, metalness: 0.12 });
+    [-1.2, 1.2].forEach((x) => {
+      const drum = new Mesh(new CylinderGeometry(0.52, 0.52, 0.5, 18), drumMaterial);
+      drum.rotation.x = Math.PI / 2;
+      drum.position.set(x, 1.28, -33.2);
+      root.add(drum);
+    });
+    const bass = new Mesh(new CylinderGeometry(0.82, 0.82, 0.56, 22), drumMaterial);
+    bass.rotation.x = Math.PI / 2;
+    bass.position.set(0, 1.22, -32.2);
+    root.add(bass);
+    [-1.8, 1.8].forEach((x) => {
+      const cymbal = new Mesh(new CylinderGeometry(0.65, 0.78, 0.05, 22), metalMaterial);
+      cymbal.position.set(x, 2.02, -32.8);
+      root.add(cymbal);
+      addBox(root, 0.06, 0.86, 0.06, x, 1.6, -32.8, blackMetalMaterial);
+    });
+  };
+  const addGuitarStand = (x: number, z: number): void => {
+    addBox(root, 0.08, 1.65, 0.08, x, 1.76, z, blackMetalMaterial);
+    const guitarBody = new Mesh(new SphereGeometry(0.36, 18, 12), new MeshStandardMaterial({ color: 0x2b4d9a, roughness: 0.45, metalness: 0.18 }));
+    guitarBody.scale.set(0.75, 1.05, 0.18);
+    guitarBody.position.set(x, 1.44, z + 0.1);
+    const neck = new Mesh(new BoxGeometry(0.12, 1.15, 0.08), woodMaterial);
+    neck.position.set(x, 2.12, z + 0.1);
+    root.add(guitarBody, neck);
+  };
+  const addMicStand = (x: number, z: number): void => {
+    addBox(root, 0.06, 1.8, 0.06, x, 1.86, z, blackMetalMaterial);
+    const mic = new Mesh(new CylinderGeometry(0.09, 0.09, 0.42, 14), metalMaterial);
+    mic.rotation.z = Math.PI / 2;
+    mic.position.set(x, 2.76, z + 0.12);
+    root.add(mic);
+  };
+  addStageDrums();
+  addGuitarStand(-8.8, -32.2);
+  addMicStand(8.8, -32.2);
 
   const addKitchenFixture = (x: number, z: number, width: number, depth: number, label: string): void => {
     addBox(root, width, 1.45, depth, x, 0.72, z, metalMaterial);
