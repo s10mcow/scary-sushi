@@ -175,7 +175,7 @@ export interface ChapterSevenKitchenSink {
 
 export interface ChapterSevenRemoteButton {
   label: string;
-  action: 'tv-on' | 'tv-off';
+  action: 'tv-toggle';
   interactPosition: Vector3;
   aimPosition: Vector3;
 }
@@ -569,7 +569,24 @@ export function createChapterSeven(): ChapterSevenData {
       context.fillStyle = '#314f7d';
       context.fillRect(60, 160, 90, 60);
       context.fillStyle = '#10151c';
-      context.fillRect(90, 127, 30, 5);
+      context.beginPath();
+      context.arc(91, 120, 4, 0, Math.PI * 2);
+      context.arc(119, 120, 4, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = '#10151c';
+      context.lineWidth = 3;
+      context.beginPath();
+      context.moveTo(84, 111);
+      context.lineTo(98, 108);
+      context.moveTo(112, 108);
+      context.lineTo(126, 111);
+      context.stroke();
+      context.fillStyle = '#3b1613';
+      context.beginPath();
+      context.ellipse(105, 140, 13, 18, 0, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#f1d1c2';
+      context.fillRect(97, 153, 16, 3);
 
       context.fillStyle = '#22354f';
       context.fillRect(210, 78, 270, 120);
@@ -2758,32 +2775,18 @@ export function createChapterSeven(): ChapterSevenData {
     addChannelButton(-0.54, youtubeLabelMaterial, 0.29);
     house.add(remote);
 
-    const makeRemoteTarget = (
-      label: string,
-      action: ChapterSevenRemoteButton['action'],
-      buttonX: number,
-      buttonZ: number,
-    ): ChapterSevenRemoteButton => {
-      const localButtonPosition = new Vector3(buttonX, localY + 0.14, buttonZ);
-      localButtonPosition.applyAxisAngle(new Vector3(0, 1, 0), rotationY);
-      const aimPosition = new Vector3(
-        CENTER_X + localX + localButtonPosition.x,
-        localButtonPosition.y,
-        HOUSE_CENTER_Z + localZ + localButtonPosition.z,
-      );
+    const makeRemoteTarget = (): ChapterSevenRemoteButton => {
+      const aimPosition = new Vector3(CENTER_X + localX, localY + 0.14, HOUSE_CENTER_Z + localZ);
 
       return {
-        label,
-        action,
+        label: 'TV remote',
+        action: 'tv-toggle',
         interactPosition: aimPosition.clone(),
         aimPosition,
       };
     };
 
-    return [
-      makeRemoteTarget('TV on button', 'tv-on', -0.09, 0.48),
-      makeRemoteTarget('TV off button', 'tv-off', 0.1, 0.48),
-    ];
+    return [makeRemoteTarget()];
   };
 
   const addHangingHomeSign = (
@@ -5530,12 +5533,12 @@ export function createChapterSeven(): ChapterSevenData {
       collider,
     });
     const interactPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.85);
-    const aimPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, depth / 2 + 0.08);
+    const aimPoint = getRotatedLocalPoint(localX, localZ, rotationY, 0, -0.04);
     return {
       label: 'Bathroom sink faucet',
       kind: 'bathroom-sink',
       interactPosition: new Vector3(CENTER_X + interactPoint.x, GAME_CONFIG.player.height, HOUSE_CENTER_Z + interactPoint.z),
-      aimPosition: new Vector3(CENTER_X + aimPoint.x, 0.8, HOUSE_CENTER_Z + aimPoint.z),
+      aimPosition: new Vector3(CENTER_X + aimPoint.x, baseHeight + 0.66, HOUSE_CENTER_Z + aimPoint.z),
       doorPivots: [handlePivot],
       collider,
       animation: 'faucet',

@@ -13261,7 +13261,7 @@ export class Game {
       }
 
       if (interactable?.kind === 'remote-button') {
-        const turnOn = interactable.item.action === 'tv-on';
+        const turnOn = !this.chapterSeven.isTelevisionPowered();
         this.chapterSeven.setTelevisionPowered(turnOn);
         this.gameplaySfxAudio.playSmallPanel(true);
         this.pushStatus(
@@ -17665,9 +17665,9 @@ export class Game {
         }
 
         if (interactable.kind === 'remote-button') {
-          return interactable.item.action === 'tv-on'
-            ? 'Press E to turn on the TV.'
-            : 'Press E to turn off the TV.';
+          return this.chapterSeven.isTelevisionPowered()
+            ? 'Press E on the remote to turn off the TV.'
+            : 'Press E on the remote to turn on the TV.';
         }
 
         if (interactable.kind === 'old-wooden-closet') {
@@ -18546,9 +18546,9 @@ export class Game {
         }
 
         if (interactable.kind === 'remote-button') {
-          return interactable.item.action === 'tv-on'
-            ? 'Remote ON button in sight. Press E to turn the TV on.'
-            : 'Remote OFF button in sight. Press E to turn the TV off.';
+          return this.chapterSeven.isTelevisionPowered()
+            ? 'Remote in sight. Press E to turn the TV off.'
+            : 'Remote in sight. Press E to turn the TV on.';
         }
 
         if (interactable.kind === 'old-wooden-closet') {
@@ -22060,7 +22060,7 @@ export class Game {
     }
 
     this.chapterSeven.remoteButtons.forEach((button) => {
-      const remoteScore = this.getChapterSevenLookScore(button, 0.22, 1.15);
+      const remoteScore = this.getChapterSevenLookScore(button, 0.5, 1.2);
       if (remoteScore !== null) {
         keepBest({ kind: 'remote-button', item: button, score: remoteScore });
       }
