@@ -744,6 +744,7 @@ export function createChapterNine(): ChapterNineData {
     const innerMaterial = new MeshStandardMaterial({ color: 0x221d24, roughness: 0.8, metalness: 0.25 });
     const purpleMaterial = new MeshStandardMaterial({ color: 0x6b2b85, roughness: 0.68 });
     const stainMaterial = new MeshStandardMaterial({ color: 0x4a0809, roughness: 0.92 });
+    const corpseMaterial = new MeshStandardMaterial({ color: 0x5a1513, roughness: 0.9, metalness: 0.02 });
     const eyeMaterial = new MeshBasicMaterial({ color: 0x151018 });
     const toothMaterial = new MeshStandardMaterial({ color: 0xd7d0aa, roughness: 0.7 });
 
@@ -761,15 +762,44 @@ export function createChapterNine(): ChapterNineData {
     backContactPlate.position.set(0, 0.84, 0.23);
     backContactPlate.rotation.copy(torso.rotation);
 
-    const chestOpening = new Mesh(new BoxGeometry(0.44, 0.36, 0.065), innerMaterial);
-    chestOpening.position.set(0, 0.8, -0.37);
+    const chestOpening = new Mesh(new BoxGeometry(0.66, 0.58, 0.08), innerMaterial);
+    chestOpening.position.set(0, 0.79, -0.4);
     chestOpening.rotation.copy(torso.rotation);
-    const innerBonnie = new Mesh(new BoxGeometry(0.26, 0.22, 0.045), new MeshStandardMaterial({ color: 0x2d2342, roughness: 0.78 }));
-    innerBonnie.position.set(0, 0.81, -0.42);
-    innerBonnie.rotation.copy(torso.rotation);
-    const crackedChestEdge = new Mesh(new BoxGeometry(0.52, 0.045, 0.075), edgeMaterial);
-    crackedChestEdge.position.set(0, 1.01, -0.38);
+    const crackedChestEdge = new Mesh(new BoxGeometry(0.74, 0.055, 0.095), edgeMaterial);
+    crackedChestEdge.position.set(0, 1.1, -0.4);
     crackedChestEdge.rotation.copy(torso.rotation);
+    const lowerChestEdge = new Mesh(new BoxGeometry(0.68, 0.055, 0.095), edgeMaterial);
+    lowerChestEdge.position.set(0, 0.47, -0.4);
+    lowerChestEdge.rotation.copy(torso.rotation);
+    const leftChestEdge = new Mesh(new BoxGeometry(0.055, 0.58, 0.095), edgeMaterial);
+    leftChestEdge.position.set(-0.37, 0.78, -0.4);
+    leftChestEdge.rotation.copy(torso.rotation);
+    const rightChestEdge = leftChestEdge.clone();
+    rightChestEdge.position.x = 0.37;
+
+    const corpse = new Group();
+    corpse.position.set(0, 0.78, -0.47);
+    corpse.rotation.copy(torso.rotation);
+    const corpseTorso = new Mesh(new SphereGeometry(0.24, 14, 10), corpseMaterial);
+    corpseTorso.scale.set(1.15, 1.55, 0.42);
+    corpseTorso.position.set(0, -0.03, -0.015);
+    const corpseHead = new Mesh(new SphereGeometry(0.12, 12, 8), corpseMaterial);
+    corpseHead.scale.set(0.9, 1.05, 0.7);
+    corpseHead.position.set(0.03, 0.31, -0.02);
+    const corpseLeftArm = new Mesh(new CylinderGeometry(0.035, 0.045, 0.42, 8), corpseMaterial);
+    corpseLeftArm.position.set(-0.2, -0.02, -0.01);
+    corpseLeftArm.rotation.z = 0.55;
+    const corpseRightArm = corpseLeftArm.clone();
+    corpseRightArm.position.x = 0.2;
+    corpseRightArm.rotation.z = -0.55;
+    const corpseRib = new Mesh(new BoxGeometry(0.34, 0.035, 0.025), toothMaterial);
+    corpseRib.position.set(0, 0.08, -0.13);
+    const corpseRibTwo = corpseRib.clone();
+    corpseRibTwo.position.y = -0.02;
+    const cavityStain = new Mesh(new SphereGeometry(0.24, 12, 8), stainMaterial);
+    cavityStain.scale.set(1.45, 1.0, 0.12);
+    cavityStain.position.set(0, -0.08, -0.15);
+    corpse.add(cavityStain, corpseTorso, corpseHead, corpseLeftArm, corpseRightArm, corpseRib, corpseRibTwo);
 
     const bowTie = new Group();
     bowTie.position.set(0, 1.14, -0.34);
@@ -863,8 +893,11 @@ export function createChapterNine(): ChapterNineData {
       pelvis,
       neckStub,
       chestOpening,
-      innerBonnie,
+      corpse,
       crackedChestEdge,
+      lowerChestEdge,
+      leftChestEdge,
+      rightChestEdge,
       bowTie,
       shoulderLeft,
       shoulderRight,
@@ -990,7 +1023,15 @@ export function createChapterNine(): ChapterNineData {
   addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96) + Math.PI);
   addWallShelf(-14.34, 2.04, 16.02, 1);
   addWallShelf(-14.34, 3.44, 16.12, 1);
-  addCollapsedAnimatronic(-8.12, 13.52, -0.55);
+  addCollapsedAnimatronic(-7.2, 13.06, 2.03);
+  const collapsedAnimatronicLanding = {
+    centerX: -7.5,
+    centerZ: 13.2,
+    rotationY: 2.03,
+    halfWidth: 0.48,
+    halfDepth: 0.58,
+    floorY: GAME_CONFIG.player.height + 0.42,
+  };
   const shellColliders = colliders.slice();
 
   const shellObjects = [
@@ -1853,6 +1894,18 @@ export function createChapterNine(): ChapterNineData {
     getSupportedFloorY(position: Vector3): number | null {
       if (inVent && position.y > 2.2) {
         return 3.1 + GAME_CONFIG.player.height;
+      }
+      const landingDx = position.x - collapsedAnimatronicLanding.centerX;
+      const landingDz = position.z - collapsedAnimatronicLanding.centerZ;
+      const landingCos = Math.cos(collapsedAnimatronicLanding.rotationY);
+      const landingSin = Math.sin(collapsedAnimatronicLanding.rotationY);
+      const landingLocalX = landingDx * landingCos - landingDz * landingSin;
+      const landingLocalZ = landingDx * landingSin + landingDz * landingCos;
+      if (
+        Math.abs(landingLocalX) <= collapsedAnimatronicLanding.halfWidth
+        && Math.abs(landingLocalZ) <= collapsedAnimatronicLanding.halfDepth
+      ) {
+        return collapsedAnimatronicLanding.floorY;
       }
       if (Math.abs(position.x) <= 92 && position.z >= -84 && position.z <= 126) {
         return GAME_CONFIG.player.height;
