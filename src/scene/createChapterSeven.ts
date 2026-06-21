@@ -3800,6 +3800,31 @@ export function createChapterSeven(): ChapterSevenData {
       roughness: 0.48,
       metalness: 0.02,
     });
+    const seedMaterial = new MeshStandardMaterial({
+      color: 0xd8bc77,
+      roughness: 0.82,
+      metalness: 0.01,
+    });
+    const waterBottleMaterial = new MeshStandardMaterial({
+      color: 0xc7eef6,
+      emissive: 0x0c2a34,
+      emissiveIntensity: 0.06,
+      roughness: 0.08,
+      metalness: 0.02,
+      transparent: true,
+      opacity: 0.48,
+      depthWrite: false,
+    });
+    const waterFillMaterial = new MeshStandardMaterial({
+      color: 0x4cb9e6,
+      emissive: 0x08324c,
+      emissiveIntensity: 0.12,
+      roughness: 0.16,
+      metalness: 0.01,
+      transparent: true,
+      opacity: 0.62,
+      depthWrite: false,
+    });
 
     const cage = new Group();
     cage.position.y = 0.9;
@@ -3813,10 +3838,13 @@ export function createChapterSeven(): ChapterSevenData {
     const topRing = new Mesh(new TorusGeometry(0.34, 0.018, 8, 36), cageMetalMaterial);
     topRing.position.y = 1.22;
     topRing.rotation.x = Math.PI / 2;
-    const topCap = new Mesh(new SphereGeometry(0.095, 14, 8), cageMetalMaterial);
-    topCap.position.y = 1.34;
+    const roofPeakRing = new Mesh(new TorusGeometry(0.08, 0.015, 8, 24), cageMetalMaterial);
+    roofPeakRing.position.y = 1.5;
+    roofPeakRing.rotation.x = Math.PI / 2;
+    const topCap = new Mesh(new SphereGeometry(0.07, 14, 8), cageMetalMaterial);
+    topCap.position.y = 1.57;
     const hook = new Mesh(new TorusGeometry(0.12, 0.014, 8, 22, Math.PI * 1.45), cageMetalMaterial);
-    hook.position.y = 1.5;
+    hook.position.y = 1.72;
     hook.rotation.z = Math.PI / 2;
 
     const verticalBars = Array.from({ length: 14 }, (_, index) => {
@@ -3825,22 +3853,60 @@ export function createChapterSeven(): ChapterSevenData {
       bar.position.set(Math.sin(angle) * 0.48, 0.52, Math.cos(angle) * 0.48);
       return bar;
     });
-    const domeBars = Array.from({ length: 10 }, (_, index) => {
-      const angle = (index / 10) * Math.PI * 2;
-      const bar = new Mesh(new CylinderGeometry(0.009, 0.009, 0.54, 8), cageMetalMaterial);
-      bar.position.set(Math.sin(angle) * 0.34, 1.06, Math.cos(angle) * 0.34);
-      bar.rotation.z = Math.sin(angle) * 0.34;
-      bar.rotation.x = Math.cos(angle) * 0.34;
-      return bar;
+    const roofRibs = Array.from({ length: 12 }, (_, index) => {
+      const angle = (index / 12) * Math.PI * 2;
+      const ribGroup = new Group();
+      ribGroup.rotation.y = angle;
+      const rib = new Mesh(new CylinderGeometry(0.009, 0.009, 0.39, 8), cageMetalMaterial);
+      rib.position.set(0.21, 1.36, 0);
+      rib.rotation.z = -0.75;
+      ribGroup.add(rib);
+      return ribGroup;
     });
 
     const perch = new Mesh(new CylinderGeometry(0.025, 0.025, 0.82, 12), perchMaterial);
     perch.position.y = 0.48;
     perch.rotation.z = Math.PI / 2;
 
+    const foodBowl = new Group();
+    foodBowl.position.set(-0.26, 0.22, -0.24);
+    const bowl = new Mesh(new CylinderGeometry(0.13, 0.16, 0.08, 18, 1, true), cageTrayMaterial);
+    bowl.position.y = 0.04;
+    const bowlRim = new Mesh(new TorusGeometry(0.13, 0.012, 8, 20), cageMetalMaterial);
+    bowlRim.position.y = 0.085;
+    bowlRim.rotation.x = Math.PI / 2;
+    const seeds = [
+      [-0.04, 0.105, 0.02],
+      [0.02, 0.112, -0.03],
+      [0.045, 0.106, 0.025],
+      [-0.015, 0.118, 0.05],
+      [0.0, 0.11, 0.0],
+    ].map(([seedX, seedY, seedZ], index) => {
+      const seed = new Mesh(new SphereGeometry(0.018, 8, 6), seedMaterial);
+      seed.scale.set(1.25, 0.46, 0.72);
+      seed.position.set(seedX, seedY, seedZ);
+      seed.rotation.y = index * 0.7;
+      return seed;
+    });
+    foodBowl.add(bowl, bowlRim, ...seeds);
+
+    const waterBottle = new Group();
+    waterBottle.position.set(0.38, 0.66, -0.2);
+    const bottle = new Mesh(new CylinderGeometry(0.06, 0.07, 0.44, 18), waterBottleMaterial);
+    const waterFill = new Mesh(new CylinderGeometry(0.053, 0.06, 0.24, 18), waterFillMaterial);
+    waterFill.position.y = -0.08;
+    const cap = new Mesh(new CylinderGeometry(0.065, 0.065, 0.04, 16), cageMetalMaterial);
+    cap.position.y = 0.24;
+    const nozzle = new Mesh(new CylinderGeometry(0.016, 0.018, 0.22, 10), cageMetalMaterial);
+    nozzle.position.set(-0.075, -0.18, 0);
+    nozzle.rotation.z = Math.PI / 2.8;
+    const waterDrop = new Mesh(new SphereGeometry(0.018, 8, 6), waterFillMaterial);
+    waterDrop.position.set(-0.16, -0.23, 0);
+    waterBottle.add(bottle, waterFill, cap, nozzle, waterDrop);
+
     const parrot = new Group();
     parrot.position.set(-0.08, 0.58, 0.02);
-    parrot.rotation.y = -0.55;
+    parrot.rotation.y = Math.PI;
     const body = new Mesh(new SphereGeometry(0.13, 18, 12), parrotGreenMaterial);
     body.scale.set(0.72, 1.08, 0.82);
     const belly = new Mesh(new SphereGeometry(0.085, 14, 8), parrotYellowMaterial);
@@ -3866,7 +3932,21 @@ export function createChapterSeven(): ChapterSevenData {
     rightEye.position.x = 0.06;
     parrot.add(body, belly, head, leftWing, rightWing, tail, beak, leftEye, rightEye);
 
-    cage.add(tray, bottomRing, middleRing, topRing, topCap, hook, ...verticalBars, ...domeBars, perch, parrot);
+    cage.add(
+      tray,
+      bottomRing,
+      middleRing,
+      topRing,
+      roofPeakRing,
+      topCap,
+      hook,
+      ...verticalBars,
+      ...roofRibs,
+      perch,
+      foodBowl,
+      waterBottle,
+      parrot,
+    );
     table.add(top, topLip, pedestal, foot, cage);
     house.add(table);
 
