@@ -458,8 +458,8 @@ function createGrayWallBandMaterial(repeatX = 1): MeshStandardMaterial {
     context.fillStyle = '#9c1620';
     context.fillRect(0, 412, canvas.width, 10);
     context.fillRect(0, 496, canvas.width, 12);
-    const checkerSize = 14;
-    for (let y = 430; y < 488; y += checkerSize) {
+    const checkerSize = 20;
+    for (let y = 430; y < 490; y += checkerSize) {
       for (let x = 0; x < canvas.width; x += checkerSize) {
         const even = (Math.floor(x / checkerSize) + Math.floor(y / checkerSize)) % 2 === 0;
         context.fillStyle = even ? '#f1eee5' : '#1b1b1d';
@@ -471,10 +471,10 @@ function createGrayWallBandMaterial(repeatX = 1): MeshStandardMaterial {
     for (let x = 0; x <= canvas.width; x += checkerSize) {
       context.beginPath();
       context.moveTo(x, 430);
-      context.lineTo(x, 488);
+      context.lineTo(x, 490);
       context.stroke();
     }
-    for (let y = 430; y <= 488; y += checkerSize) {
+    for (let y = 430; y <= 490; y += checkerSize) {
       context.beginPath();
       context.moveTo(0, y);
       context.lineTo(canvas.width, y);
@@ -510,7 +510,7 @@ export function createChapterNine(): ChapterNineData {
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const wallInteriorMaterial = new MeshStandardMaterial({ color: 0x60584f, roughness: 0.9 });
-  const addedWallMaterial = createGrayWallBandMaterial(4);
+  const addedWallMaterial = createGrayWallBandMaterial(3.2);
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
   const roofMaterial = new MeshStandardMaterial({ color: 0x191715, roughness: 0.86, metalness: 0.12 });
   const woodMaterial = new MeshStandardMaterial({ color: 0x5b3b22, roughness: 0.82 });
@@ -565,7 +565,19 @@ export function createChapterNine(): ChapterNineData {
     addWall(x, z, width, depth, createBrickMaterialFor(runLength));
   };
 
-  const addAngledWall = (startX: number, startZ: number, endX: number, endZ: number, material: MeshStandardMaterial): void => {
+  const addWallJoinCap = (x: number, z: number, material: MeshStandardMaterial): void => {
+    addBox(root, WALL_THICKNESS * 1.45, WALL_HEIGHT, WALL_THICKNESS * 1.45, x, WALL_HEIGHT / 2, z, material);
+    addCollider(colliders, x, z, WALL_THICKNESS * 1.45, WALL_THICKNESS * 1.45);
+  };
+
+  const addAngledWall = (
+    startX: number,
+    startZ: number,
+    endX: number,
+    endZ: number,
+    material: MeshStandardMaterial,
+    capEnds = false,
+  ): void => {
     const dx = endX - startX;
     const dz = endZ - startZ;
     const length = Math.hypot(dx, dz);
@@ -580,6 +592,10 @@ export function createChapterNine(): ChapterNineData {
       halfDepth: WALL_THICKNESS / 2,
       rotationY: wall.rotation.y,
     });
+    if (capEnds) {
+      addWallJoinCap(startX, startZ, material);
+      addWallJoinCap(endX, endZ, material);
+    }
   };
 
   const addFloor = (x: number, z: number, width: number, depth: number, material: MeshStandardMaterial): void => {
@@ -673,7 +689,7 @@ export function createChapterNine(): ChapterNineData {
   addBrickWall(33.535, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 62.93, WALL_THICKNESS, 62.93);
   addBox(root, 4.14, 3.39, WALL_THICKNESS, 0, 5.505, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, createBrickMaterialFor(4.14, 3.39));
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
-  addAngledWall(-9.07, 29.40, -14.16, 23.96, addedWallMaterial);
+  addAngledWall(-9.07, 29.40, -14.16, 23.96, addedWallMaterial, true);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
