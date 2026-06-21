@@ -11,8 +11,15 @@ export function isBlocked(
       return false;
     }
 
-    const overlapX = Math.abs(x - collider.centerX) < collider.halfWidth + radius;
-    const overlapZ = Math.abs(z - collider.centerZ) < collider.halfDepth + radius;
+    const dx = x - collider.centerX;
+    const dz = z - collider.centerZ;
+    const rotationY = collider.rotationY ?? 0;
+    const cos = Math.cos(rotationY);
+    const sin = Math.sin(rotationY);
+    const localX = dx * cos - dz * sin;
+    const localZ = dx * sin + dz * cos;
+    const overlapX = Math.abs(localX) < collider.halfWidth + radius;
+    const overlapZ = Math.abs(localZ) < collider.halfDepth + radius;
 
     return overlapX && overlapZ;
   });

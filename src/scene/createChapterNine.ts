@@ -359,7 +359,7 @@ function createCheckeredFloorMaterial(): MeshStandardMaterial {
   const texture = new CanvasTexture(canvas);
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.repeat.set(16, 12);
+  texture.repeat.set(12, 9);
   texture.needsUpdate = true;
   return new MeshStandardMaterial({
     map: texture,
@@ -441,6 +441,58 @@ function createBrickWallMaterial(repeatX = 4.5, repeatY = 2.8): MeshStandardMate
   });
 }
 
+function createGrayWallBandMaterial(repeatX = 1): MeshStandardMaterial {
+  if (typeof document === 'undefined') {
+    return new MeshStandardMaterial({ color: 0x6f7376, roughness: 0.88 });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const context = canvas.getContext('2d');
+  if (context) {
+    context.fillStyle = '#6f7376';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#5f6366';
+    context.fillRect(0, 420, canvas.width, 92);
+    context.fillStyle = '#9c1620';
+    context.fillRect(0, 412, canvas.width, 10);
+    context.fillRect(0, 496, canvas.width, 12);
+    const checkerSize = 14;
+    for (let y = 430; y < 488; y += checkerSize) {
+      for (let x = 0; x < canvas.width; x += checkerSize) {
+        const even = (Math.floor(x / checkerSize) + Math.floor(y / checkerSize)) % 2 === 0;
+        context.fillStyle = even ? '#f1eee5' : '#1b1b1d';
+        context.fillRect(x, y, checkerSize, checkerSize);
+      }
+    }
+    context.strokeStyle = 'rgba(0,0,0,0.28)';
+    context.lineWidth = 2;
+    for (let x = 0; x <= canvas.width; x += checkerSize) {
+      context.beginPath();
+      context.moveTo(x, 430);
+      context.lineTo(x, 488);
+      context.stroke();
+    }
+    for (let y = 430; y <= 488; y += checkerSize) {
+      context.beginPath();
+      context.moveTo(0, y);
+      context.lineTo(canvas.width, y);
+      context.stroke();
+    }
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(Math.max(1, repeatX), 1);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.84,
+    metalness: 0.01,
+  });
+}
+
 export function createChapterNine(): ChapterNineData {
   const root = new Group();
   root.name = 'Chapter 9: Freddy Pizza Complex';
@@ -458,7 +510,7 @@ export function createChapterNine(): ChapterNineData {
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const wallInteriorMaterial = new MeshStandardMaterial({ color: 0x60584f, roughness: 0.9 });
-  const addedWallMaterial = new MeshStandardMaterial({ color: 0x6f7376, roughness: 0.88 });
+  const addedWallMaterial = createGrayWallBandMaterial(4);
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
   const roofMaterial = new MeshStandardMaterial({ color: 0x191715, roughness: 0.86, metalness: 0.12 });
   const woodMaterial = new MeshStandardMaterial({ color: 0x5b3b22, roughness: 0.82 });
@@ -521,7 +573,13 @@ export function createChapterNine(): ChapterNineData {
     wall.position.set((startX + endX) / 2, WALL_HEIGHT / 2, (startZ + endZ) / 2);
     wall.rotation.y = Math.atan2(-dz, dx);
     root.add(wall);
-    addCollider(colliders, wall.position.x, wall.position.z, Math.abs(dx) + WALL_THICKNESS, Math.abs(dz) + WALL_THICKNESS);
+    colliders.push({
+      centerX: wall.position.x,
+      centerZ: wall.position.z,
+      halfWidth: length / 2,
+      halfDepth: WALL_THICKNESS / 2,
+      rotationY: wall.rotation.y,
+    });
   };
 
   const addFloor = (x: number, z: number, width: number, depth: number, material: MeshStandardMaterial): void => {

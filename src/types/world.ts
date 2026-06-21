@@ -5,6 +5,7 @@ export interface CollisionBox {
   centerZ: number;
   halfWidth: number;
   halfDepth: number;
+  rotationY?: number;
   enabled?: boolean;
 }
 
