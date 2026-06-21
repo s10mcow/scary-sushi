@@ -172,6 +172,21 @@ function createSignMaterial(title: string, subtitle: string, color = '#d9c382'):
   });
 }
 
+function createVoiceTapeLabelMaterial(): MeshStandardMaterial {
+  return makeCanvasMaterial((context, canvas) => {
+    context.fillStyle = '#e3d3a4';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#4d3218';
+    context.lineWidth = 12;
+    context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+    context.fillStyle = '#24180e';
+    context.font = 'bold 64px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('VOICE TAPE', canvas.width / 2, canvas.height / 2);
+  });
+}
+
 function createComplexSignMaterial(): MeshStandardMaterial {
   return makeCanvasMaterial((context, canvas) => {
     context.fillStyle = '#0e0b09';
@@ -852,9 +867,9 @@ export function createChapterNine(): ChapterNineData {
     redRecordButton.position.set(0.18, 0.075, 0.105);
     const playButton = new Mesh(new BoxGeometry(0.07, 0.018, 0.045), new MeshStandardMaterial({ color: 0xb8bdc0, roughness: 0.42, metalness: 0.28 }));
     playButton.position.set(0.06, 0.075, 0.11);
-    const tapeLabel = new Mesh(new PlaneGeometry(0.28, 0.11), createSignMaterial('VOICE', 'TAPE', '#d6c18a'));
+    const tapeLabel = new Mesh(new PlaneGeometry(0.34, 0.105), createVoiceTapeLabelMaterial());
     tapeLabel.rotation.x = -Math.PI / 2;
-    tapeLabel.position.set(-0.03, 0.093, -0.105);
+    tapeLabel.position.set(-0.02, 0.093, -0.105);
     voiceTape.add(recorderBody, cassetteWindow, leftReel, rightReel, redRecordButton, playButton, tapeLabel);
     [-0.18, -0.11, -0.04].forEach((lineX) => {
       const grille = new Mesh(new BoxGeometry(0.018, 0.015, 0.12), blackMetalMaterial);
