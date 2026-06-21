@@ -807,7 +807,7 @@ export function createChapterNine(): ChapterNineData {
   addCurvedWall(-9.09, 15.05, -9.04, 15.28, -8.87, 15.38, 3);
   addAngledWall(-8.87, 15.38, -8.96, 19.07);
   addAngledCountertop(-8.96, 19.07, -14.21, 18.77);
-  addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96));
+  addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96) + Math.PI);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
