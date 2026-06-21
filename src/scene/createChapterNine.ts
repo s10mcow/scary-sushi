@@ -725,6 +725,88 @@ export function createChapterNine(): ChapterNineData {
     root.add(shelf);
   };
 
+  const addCollapsedAnimatronic = (x: number, z: number, rotationY = 0): void => {
+    const heap = new Group();
+    heap.position.set(x, 0, z);
+    heap.rotation.y = rotationY;
+
+    const shellMaterial = new MeshStandardMaterial({ color: 0xb99334, roughness: 0.72, metalness: 0.2 });
+    const wornShellMaterial = new MeshStandardMaterial({ color: 0x8f7229, roughness: 0.86, metalness: 0.12 });
+    const innerMaterial = new MeshStandardMaterial({ color: 0x221d24, roughness: 0.8, metalness: 0.25 });
+    const purpleMaterial = new MeshStandardMaterial({ color: 0x6b2b85, roughness: 0.68 });
+    const stainMaterial = new MeshStandardMaterial({ color: 0x4a0809, roughness: 0.92 });
+    const eyeMaterial = new MeshBasicMaterial({ color: 0x151018 });
+    const toothMaterial = new MeshStandardMaterial({ color: 0xd7d0aa, roughness: 0.7 });
+
+    const torso = new Mesh(new BoxGeometry(0.86, 0.68, 0.58), shellMaterial);
+    torso.position.set(0, 0.48, 0);
+    torso.rotation.set(0.18, 0.08, -0.42);
+    const chestOpening = new Mesh(new BoxGeometry(0.42, 0.34, 0.065), innerMaterial);
+    chestOpening.position.set(-0.04, 0.52, -0.31);
+    chestOpening.rotation.copy(torso.rotation);
+    const innerBonnie = new Mesh(new BoxGeometry(0.26, 0.22, 0.045), new MeshStandardMaterial({ color: 0x2d2342, roughness: 0.78 }));
+    innerBonnie.position.set(-0.04, 0.53, -0.35);
+    innerBonnie.rotation.copy(torso.rotation);
+
+    const bowTie = new Group();
+    bowTie.position.set(0.06, 0.76, -0.35);
+    bowTie.rotation.copy(torso.rotation);
+    const bowCenter = new Mesh(new BoxGeometry(0.12, 0.12, 0.045), purpleMaterial);
+    const bowLeft = new Mesh(new BoxGeometry(0.22, 0.16, 0.045), purpleMaterial);
+    bowLeft.position.x = -0.16;
+    bowLeft.rotation.z = 0.3;
+    const bowRight = new Mesh(new BoxGeometry(0.22, 0.16, 0.045), purpleMaterial);
+    bowRight.position.x = 0.16;
+    bowRight.rotation.z = -0.3;
+    const bowStain = new Mesh(new BoxGeometry(0.18, 0.05, 0.048), stainMaterial);
+    bowStain.position.set(0.02, -0.02, -0.003);
+    bowTie.add(bowLeft, bowRight, bowCenter, bowStain);
+
+    const addLimb = (px: number, py: number, pz: number, rx: number, rz: number, length: number): void => {
+      const limb = new Mesh(new CylinderGeometry(0.12, 0.15, length, 10), wornShellMaterial);
+      limb.position.set(px, py, pz);
+      limb.rotation.set(rx, 0, rz);
+      heap.add(limb);
+    };
+    addLimb(-0.48, 0.3, -0.06, 1.35, -0.75, 0.86);
+    addLimb(0.44, 0.24, 0.04, 1.18, 0.95, 0.76);
+    addLimb(-0.26, 0.16, 0.44, 1.48, -0.28, 0.96);
+    addLimb(0.32, 0.16, 0.38, 1.42, 0.32, 0.88);
+
+    const detachedHead = new Group();
+    detachedHead.position.set(0.88, 0.3, -0.28);
+    detachedHead.rotation.set(0.45, -0.8, 0.22);
+    const head = new Mesh(new SphereGeometry(0.34, 16, 12), shellMaterial);
+    head.scale.set(1.0, 0.82, 0.9);
+    const snout = new Mesh(new BoxGeometry(0.34, 0.18, 0.22), wornShellMaterial);
+    snout.position.set(0, -0.03, -0.28);
+    const leftEye = new Mesh(new SphereGeometry(0.035, 8, 6), eyeMaterial);
+    leftEye.position.set(-0.11, 0.08, -0.31);
+    const rightEye = new Mesh(new SphereGeometry(0.035, 8, 6), eyeMaterial);
+    rightEye.position.set(0.11, 0.08, -0.31);
+    const tooth = new Mesh(new BoxGeometry(0.05, 0.08, 0.025), toothMaterial);
+    tooth.position.set(0, -0.15, -0.4);
+    const earLeft = new Mesh(new BoxGeometry(0.14, 0.62, 0.12), shellMaterial);
+    earLeft.position.set(-0.17, 0.44, 0);
+    earLeft.rotation.z = -0.28;
+    const earRight = new Mesh(new BoxGeometry(0.14, 0.46, 0.12), wornShellMaterial);
+    earRight.position.set(0.18, 0.32, 0.02);
+    earRight.rotation.z = 0.48;
+    detachedHead.add(head, snout, leftEye, rightEye, tooth, earLeft, earRight);
+
+    const stainOne = new Mesh(new CylinderGeometry(0.18, 0.22, 0.018, 16), stainMaterial);
+    stainOne.position.set(-0.08, 0.19, -0.42);
+    stainOne.rotation.x = Math.PI / 2;
+    stainOne.scale.set(1.35, 0.7, 1);
+    const stainTwo = new Mesh(new CylinderGeometry(0.11, 0.15, 0.014, 14), stainMaterial);
+    stainTwo.position.set(0.78, 0.04, -0.45);
+    stainTwo.rotation.x = Math.PI / 2;
+    stainTwo.scale.set(1.5, 0.75, 1);
+
+    heap.add(torso, chestOpening, innerBonnie, bowTie, detachedHead, stainOne, stainTwo);
+    root.add(heap);
+  };
+
   const addFloor = (x: number, z: number, width: number, depth: number, material: MeshStandardMaterial): void => {
     addBox(root, width, 0.12, depth, x, -0.06, z, material);
   };
@@ -834,6 +916,7 @@ export function createChapterNine(): ChapterNineData {
   addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96) + Math.PI);
   addWallShelf(-14.34, 2.04, 16.02, 1);
   addWallShelf(-14.34, 3.44, 16.12, 1);
+  addCollapsedAnimatronic(-8.12, 13.52, -0.55);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
