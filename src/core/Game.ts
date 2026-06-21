@@ -13640,7 +13640,9 @@ export class Game {
     }
 
     if (this.chapterNineActive) {
-      const result = this.chapterNine.interact(this.player.getPosition());
+      const cameraPosition = this.camera.getWorldPosition(new Vector3());
+      const cameraForward = this.camera.getWorldDirection(new Vector3()).normalize();
+      const result = this.chapterNine.interact(this.player.getPosition(), cameraPosition, cameraForward);
       if (result.teleport) {
         this.player.teleport(result.teleport);
       }

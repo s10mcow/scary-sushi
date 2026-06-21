@@ -43,7 +43,7 @@ export interface ChapterNineData {
   shoulderCamera: Group;
   cameraScreenMaterial: MeshStandardMaterial;
   update(deltaSeconds: number, playerPosition: Vector3): void;
-  interact(playerPosition: Vector3): ChapterNineInteractionResult;
+  interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult;
   record(playerPosition: Vector3): string;
   cycleHeldItem(step: number): void;
   setHeldItem(item: ChapterNineHeldItem): void;
@@ -1164,6 +1164,9 @@ export function createChapterNine(): ChapterNineData {
       rightArmPivot,
       scannerMaterial,
       scannerGlassMaterial,
+      open: false,
+      timer: 0,
+      progress: 0,
     };
   };
   const keycardGates = [
@@ -1829,9 +1832,6 @@ export function createChapterNine(): ChapterNineData {
   let sideDoorMotionTo = 0;
   let sideDoorProgress = 0;
   let keycardCollected = false;
-  let keycardGateOpen = false;
-  let keycardGateTimer = 0;
-  let keycardGateProgress = 0;
 
   const getFilmedCount = (): number => filmingTargets.filter((target) => target.filmed).length;
   const getPuzzleCount = (): number => puzzleStations.filter((station) => station.solved).length;
@@ -1895,37 +1895,75 @@ export function createChapterNine(): ChapterNineData {
     setSideDoorProgress(sideDoorMotionFrom + (sideDoorMotionTo - sideDoorMotionFrom) * t);
   };
 
-  const setKeycardGateProgress = (progress: number): void => {
+  const setKeycardGateProgress = (gate: (typeof keycardGates)[number], progress: number): void => {
     const clamped = Math.max(0, Math.min(1, progress));
     const eased = clamped * clamped * (3 - 2 * clamped);
-    keycardGates.forEach((gate) => {
-      gate.leftArmPivot.rotation.y = -eased * Math.PI / 2;
-      gate.rightArmPivot.rotation.y = eased * Math.PI / 2;
-      gate.collider.enabled = clamped < 0.72;
-    });
-    keycardGateProgress = clamped;
+    gate.leftArmPivot.rotation.y = -eased * Math.PI / 2;
+    gate.rightArmPivot.rotation.y = eased * Math.PI / 2;
+    gate.collider.enabled = clamped < 0.72;
+    gate.progress = clamped;
   };
 
-  const openKeycardGate = (): void => {
-    keycardGateOpen = true;
-    keycardGateTimer = 3.2;
+  const openKeycardGate = (gate: (typeof keycardGates)[number]): void => {
+    gate.open = true;
+    gate.timer = 3.2;
   };
 
   const updateKeycardGate = (deltaSeconds: number): void => {
-    if (keycardGateOpen) {
-      keycardGateTimer = Math.max(0, keycardGateTimer - deltaSeconds);
-      setKeycardGateProgress(Math.min(1, keycardGateProgress + deltaSeconds * 2.4));
-      if (keycardGateTimer <= 0) {
-        keycardGateOpen = false;
-      }
-    } else {
-      setKeycardGateProgress(Math.max(0, keycardGateProgress - deltaSeconds * 2.1));
-    }
-    const active = keycardGateOpen || keycardGateProgress > 0.05;
     keycardGates.forEach((gate) => {
+      if (gate.open) {
+        gate.timer = Math.max(0, gate.timer - deltaSeconds);
+        setKeycardGateProgress(gate, Math.min(1, gate.progress + deltaSeconds * 2.4));
+        if (gate.timer <= 0) {
+          gate.open = false;
+        }
+      } else {
+        setKeycardGateProgress(gate, Math.max(0, gate.progress - deltaSeconds * 2.1));
+      }
+      const active = gate.open || gate.progress > 0.05;
       gate.scannerMaterial.emissiveIntensity = active ? 1.35 : 0.35;
       gate.scannerGlassMaterial.emissiveIntensity = active ? 1.8 : 0.7;
     });
+  };
+
+  const getAimedKeycardGate = (
+    playerPosition: Vector3,
+    aimOrigin?: Vector3,
+    aimDirection?: Vector3,
+  ): (typeof keycardGates)[number] | null => {
+    const candidates = keycardGates.filter((gate) => {
+      return playerPosition.distanceTo(gate.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.75;
+    });
+    if (candidates.length === 0) {
+      return null;
+    }
+    if (!aimOrigin || !aimDirection || aimDirection.lengthSq() < 0.0001) {
+      return candidates.sort((a, b) => {
+        return a.interactPosition.distanceTo(playerPosition) - b.interactPosition.distanceTo(playerPosition);
+      })[0];
+    }
+
+    const forward = aimDirection.clone().normalize();
+    const aimed = candidates
+      .map((gate) => {
+        const toGate = gate.interactPosition.clone().sub(aimOrigin);
+        const along = toGate.dot(forward);
+        if (along <= 0.15) {
+          return null;
+        }
+        const closestPoint = aimOrigin.clone().addScaledVector(forward, along);
+        const missDistance = closestPoint.distanceTo(gate.interactPosition);
+        return {
+          gate,
+          missDistance,
+          score: missDistance + playerPosition.distanceTo(gate.interactPosition) * 0.035,
+        };
+      })
+      .filter((entry): entry is { gate: (typeof keycardGates)[number]; missDistance: number; score: number } => Boolean(entry))
+      .filter((entry) => entry.missDistance <= 0.95)
+      .sort((a, b) => a.score - b.score)[0];
+
+    return aimed?.gate ?? null;
   };
 
   const moveAnimatronic = (bot: ChapterNineAnimatronic, deltaSeconds: number, playerPosition: Vector3): void => {
@@ -2013,10 +2051,10 @@ export function createChapterNine(): ChapterNineData {
     setSideDoorProgress(0);
     keycardCollected = false;
     keycardPickup.visible = true;
-    keycardGateOpen = false;
-    keycardGateTimer = 0;
-    setKeycardGateProgress(0);
     keycardGates.forEach((gate) => {
+      gate.open = false;
+      gate.timer = 0;
+      setKeycardGateProgress(gate, 0);
       gate.scannerMaterial.emissiveIntensity = 0.35;
       gate.scannerGlassMaterial.emissiveIntensity = 0.7;
     });
@@ -2078,7 +2116,7 @@ export function createChapterNine(): ChapterNineData {
         }
       });
     },
-    interact(playerPosition: Vector3): ChapterNineInteractionResult {
+    interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult {
       if (playerPosition.distanceTo(voiceTapeInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.55) {
         return {
           message: 'The voice tape clicks softly. It holds scratchy animatronic speech tests and old rehearsal lines.',
@@ -2105,16 +2143,14 @@ export function createChapterNine(): ChapterNineData {
           message: 'You pick up the red and blue keycard. It appears in your inventory.',
         };
       }
-      const nearbyKeycardGate = keycardGates.some((gate) => {
-        return playerPosition.distanceTo(gate.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.75;
-      });
-      if (nearbyKeycardGate) {
+      const aimedKeycardGate = getAimedKeycardGate(playerPosition, aimOrigin, aimDirection);
+      if (aimedKeycardGate) {
         if (!keycardCollected) {
           return {
             message: 'The scanner flashes red. You need the red and blue keycard first.',
           };
         }
-        openKeycardGate();
+        openKeycardGate(aimedKeycardGate);
         return {
           message: 'The keycard scanner accepts the card. The gate opens so you can walk through.',
         };
