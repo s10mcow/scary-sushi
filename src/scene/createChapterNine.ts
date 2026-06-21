@@ -1012,7 +1012,7 @@ export function createChapterNine(): ChapterNineData {
   addWall(-14.59, 20.005, WALL_THICKNESS, 6.05);
   addWall(-14.6, 16.87, WALL_THICKNESS, 0.28);
   addWall(-14.575, 13.83, WALL_THICKNESS, 5.86);
-  addAngledWall(-14.39, 10.55, -12.4, 8.91);
+  addAngledWall(-14.39, 10.55, -12.03, 8.73);
   addCurvedWall(-14.16, 23.96, -14.59, 23.5, -14.59, 23.03, 6, customAngledWallLength / WALL_HEIGHT);
   addAngledWall(4.33, 29.67, 4.39, 14.98);
   addAngledWall(-5.77, 14.95, -9.75, 6.94);
@@ -1020,20 +1020,25 @@ export function createChapterNine(): ChapterNineData {
   addCurvedWall(-5.77, 14.95, -5.98, 14.99, -6.16, 14.82, 3);
   addCurvedWall(-9.09, 15.05, -9.04, 15.28, -8.87, 15.38, 3);
   addAngledWall(-8.87, 15.38, -8.96, 19.07);
+  addAngledWall(-10.04, 7.13, -9.75, 6.94);
   addAngledCountertop(-8.96, 19.07, -14.21, 18.77);
   addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96) + Math.PI);
   addWallShelf(-14.34, 2.04, 16.02, 1);
   addWallShelf(-14.34, 3.44, 16.12, 1);
 
   const sideDoor = (() => {
-    const centerX = -10.93;
-    const centerZ = 7.96;
-    const width = 1.48;
+    const leftX = -12.03;
+    const leftZ = 8.73;
+    const rightX = -10.04;
+    const rightZ = 7.13;
+    const centerX = (leftX + rightX) / 2;
+    const centerZ = (leftZ + rightZ) / 2;
+    const width = Math.hypot(rightX - leftX, rightZ - leftZ) - 0.18;
     const height = 2.95;
     const thickness = 0.16;
-    const rotationY = Math.atan2(-(8.91 - 10.55), -12.4 - -14.39);
-    const hingeX = centerX - Math.cos(rotationY) * width * 0.5;
-    const hingeZ = centerZ + Math.sin(rotationY) * width * 0.5;
+    const rotationY = Math.atan2(-(rightZ - leftZ), rightX - leftX);
+    const hingeX = centerX + Math.cos(rotationY) * width * 0.5;
+    const hingeZ = centerZ - Math.sin(rotationY) * width * 0.5;
     const doorMaterial = new MeshStandardMaterial({ color: 0x4c3322, roughness: 0.78, metalness: 0.04 });
     const trimMaterial = new MeshStandardMaterial({ color: 0x251911, roughness: 0.84, metalness: 0.08 });
     const handleMaterial = new MeshStandardMaterial({ color: 0xa48a4c, roughness: 0.42, metalness: 0.36 });
@@ -1054,11 +1059,11 @@ export function createChapterNine(): ChapterNineData {
     swing.position.set(hingeX, 0, hingeZ);
     swing.rotation.y = rotationY;
     const slab = new Mesh(new BoxGeometry(width, height, thickness), doorMaterial);
-    slab.position.set(width / 2, height / 2, 0);
+    slab.position.set(-width / 2, height / 2, 0);
     const inset = new Mesh(new BoxGeometry(width - 0.28, height - 0.52, 0.035), new MeshStandardMaterial({ color: 0x66472f, roughness: 0.82 }));
-    inset.position.set(width / 2, height / 2, -thickness / 2 - 0.02);
+    inset.position.set(-width / 2, height / 2, -thickness / 2 - 0.02);
     const handle = new Mesh(new SphereGeometry(0.085, 12, 8), handleMaterial);
-    handle.position.set(width * 0.78, height * 0.5, -thickness / 2 - 0.08);
+    handle.position.set(-width * 0.78, height * 0.5, -thickness / 2 - 0.08);
     const backHandle = handle.clone();
     backHandle.position.z = thickness / 2 + 0.08;
     swing.add(slab, inset, handle, backHandle);
@@ -1716,7 +1721,7 @@ export function createChapterNine(): ChapterNineData {
     const clamped = Math.max(0, Math.min(1, progress));
     const eased = clamped * clamped * (3 - 2 * clamped);
     const bounce = sideDoorOpen ? Math.sin(clamped * Math.PI * 4) * (1 - clamped) * 0.1 : 0;
-    sideDoor.swing.rotation.y = sideDoor.rotationY - (eased + bounce) * Math.PI / 2.45;
+    sideDoor.swing.rotation.y = sideDoor.rotationY + (eased + bounce) * Math.PI / 2.45;
     sideDoor.collider.enabled = clamped < 0.72;
     sideDoorProgress = clamped;
   };
