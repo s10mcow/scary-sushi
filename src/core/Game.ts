@@ -5831,6 +5831,10 @@ export class Game {
       return true;
     }
 
+    if (recordingId) {
+      return false;
+    }
+
     if (!this.microphoneSoundPreviewUrl) {
       this.loadSavedMicrophoneSounds();
     }
@@ -13638,6 +13642,9 @@ export class Game {
       }
       if (result.lookTarget) {
         this.player.lookToward(result.lookTarget, 0.35);
+      }
+      if (result.glassDoorOpened) {
+        this.playMicrophoneSoundEffect(undefined, '001');
       }
       this.pushStatus(result.message, 2.8);
       return;

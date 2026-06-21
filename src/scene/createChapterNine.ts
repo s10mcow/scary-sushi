@@ -26,6 +26,7 @@ export interface ChapterNineInteractionResult {
   message: string;
   teleport?: Vector3;
   lookTarget?: Vector3;
+  glassDoorOpened?: boolean;
 }
 
 export interface ChapterNineJumpscareEvent {
@@ -1421,7 +1422,10 @@ export function createChapterNine(): ChapterNineData {
       const doorInteractPosition = new Vector3(0, GAME_CONFIG.player.height, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 2.3);
       if (playerPosition.distanceTo(doorInteractPosition) <= GAME_CONFIG.player.interactionRange + 2.2) {
         toggleEntranceDoors();
-        return { message: doorOpen ? 'The glass entrance doors swing open and bounce against the side walls.' : 'The glass entrance doors swing shut.' };
+        return {
+          message: doorOpen ? 'The glass entrance doors swing open and bounce against the side walls.' : 'The glass entrance doors swing shut.',
+          glassDoorOpened: doorOpen,
+        };
       }
       if (ventExitCooldown <= 0) {
         const vent = ventEntries.find((entry) => playerPosition.distanceTo(entry.position) <= GAME_CONFIG.player.interactionRange + 1.6);
