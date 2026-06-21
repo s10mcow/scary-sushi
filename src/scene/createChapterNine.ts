@@ -731,6 +731,7 @@ export function createChapterNine(): ChapterNineData {
   addAngledWall(-5.77, 14.95, -9.75, 6.94);
   addAngledWall(-6.16, 14.82, -9.09, 15.05);
   addCurvedWall(-5.77, 14.95, -5.98, 14.99, -6.16, 14.82, 3);
+  addAngledWall(-8.87, 15.38, -8.96, 19.07);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
