@@ -1311,7 +1311,7 @@ export class Game {
   private microphoneSoundDiscardStop = false;
   private microphoneSoundSaved = false;
   private microphoneSoundMessage = 'No custom sound recorded yet.';
-  private microphoneSoundLibraryLoaded = false;
+  private microphoneSoundLibraryScope: string | null = null;
   private readonly microphoneSoundRecordings: MicrophoneSoundRecording[] = [];
   private microphoneSoundJumpscareRecordingId: string | null = null;
   private cameraToolActive = false;
@@ -5284,6 +5284,7 @@ export class Game {
 
     this.microphoneSoundToolActive = active;
     if (active) {
+      this.loadSavedMicrophoneSounds();
       this.setPlacementToolActive(false);
       this.clearCameraToolState();
       this.paintbrushActive = false;
@@ -5630,13 +5631,28 @@ export class Game {
   }
 
   private loadSavedMicrophoneSounds(): void {
-    if (this.microphoneSoundLibraryLoaded) {
+    const scope = this.getMicrophoneSoundLibraryScope();
+    if (this.microphoneSoundLibraryScope === scope) {
       return;
     }
 
-    this.microphoneSoundLibraryLoaded = true;
+    this.microphoneSoundPlayback?.pause();
+    this.microphoneSoundPlayback = null;
+    this.revokeMicrophoneSoundPreviewUrl();
+    this.microphoneSoundPreviewRecordingId = null;
+    this.microphoneSoundSaved = false;
+    this.microphoneSoundJumpscareRecordingId = null;
+    this.microphoneSoundRecordings.length = 0;
+    this.microphoneSoundLibraryScope = scope;
+    this.microphoneSoundMessage = 'No custom sound recorded yet.';
+
     try {
-      const rawRecordings = window.localStorage.getItem(MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY);
+      const recordingsKey = this.getMicrophoneSoundRecordingsStorageKey(scope);
+      const scopedRecordings = window.localStorage.getItem(recordingsKey);
+      const fallbackRecordings = scope === 'chapter-3-five-nights-at-boris'
+        ? window.localStorage.getItem(MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY)
+        : null;
+      const rawRecordings = scopedRecordings ?? fallbackRecordings;
       if (rawRecordings) {
         const parsedRecordings = JSON.parse(rawRecordings) as MicrophoneSoundRecording[];
         let migratedIds = false;
@@ -5661,19 +5677,19 @@ export class Game {
             });
           }
         });
-        if (migratedIds) {
+        if (migratedIds || (!scopedRecordings && fallbackRecordings)) {
           this.saveMicrophoneSoundLibrary();
         }
       }
 
       const legacyDataUrl = window.localStorage.getItem(MICROPHONE_SOUND_LEGACY_STORAGE_KEY);
-      if (legacyDataUrl && this.microphoneSoundRecordings.length === 0) {
+      if (scope === 'chapter-3-five-nights-at-boris' && legacyDataUrl && this.microphoneSoundRecordings.length === 0) {
         this.microphoneSoundRecordings.push({
           id: '001',
           dataUrl: legacyDataUrl,
           createdAt: Date.now(),
         });
-        window.localStorage.setItem(MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY, '2');
+        window.localStorage.setItem(this.getMicrophoneSoundNextIndexStorageKey(scope), '2');
         this.saveMicrophoneSoundLibrary();
       }
 
@@ -5690,12 +5706,14 @@ export class Game {
   }
 
   private saveMicrophoneSoundLibrary(): void {
+    const scope = this.microphoneSoundLibraryScope ?? this.getMicrophoneSoundLibraryScope();
     try {
-      window.localStorage.setItem(MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY, JSON.stringify(this.microphoneSoundRecordings));
+      const recordingsKey = this.getMicrophoneSoundRecordingsStorageKey(scope);
+      window.localStorage.setItem(recordingsKey, JSON.stringify(this.microphoneSoundRecordings));
       if (this.microphoneSoundJumpscareRecordingId) {
-        window.localStorage.setItem(`${MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY}:jumpscare`, this.microphoneSoundJumpscareRecordingId);
+        window.localStorage.setItem(`${recordingsKey}:jumpscare`, this.microphoneSoundJumpscareRecordingId);
       } else {
-        window.localStorage.removeItem(`${MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY}:jumpscare`);
+        window.localStorage.removeItem(`${recordingsKey}:jumpscare`);
       }
     } catch {
       // Local storage may be unavailable or full.
@@ -5704,8 +5722,10 @@ export class Game {
 
   private getNextMicrophoneSoundRecordingId(): string {
     let nextIndex = this.microphoneSoundRecordings.length + 1;
+    const scope = this.microphoneSoundLibraryScope ?? this.getMicrophoneSoundLibraryScope();
+    const nextIndexKey = this.getMicrophoneSoundNextIndexStorageKey(scope);
     try {
-      const savedNextIndex = Number.parseInt(window.localStorage.getItem(MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY) ?? '', 10);
+      const savedNextIndex = Number.parseInt(window.localStorage.getItem(nextIndexKey) ?? '', 10);
       if (Number.isFinite(savedNextIndex) && savedNextIndex > 0) {
         nextIndex = Math.max(nextIndex, savedNextIndex);
       }
@@ -5719,12 +5739,48 @@ export class Game {
     }, 0);
     nextIndex = Math.max(nextIndex, maxExistingIndex + 1);
     try {
-      window.localStorage.setItem(MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY, String(nextIndex + 1));
+      window.localStorage.setItem(nextIndexKey, String(nextIndex + 1));
     } catch {
       // Local storage is optional.
     }
 
     return String(nextIndex).padStart(3, '0');
+  }
+
+  private getMicrophoneSoundLibraryScope(): string {
+    if (this.chapterNineActive) {
+      return 'chapter-9-freddys-pizza-complex';
+    }
+    if (this.chapterEightActive) {
+      return 'chapter-8-the-woods';
+    }
+    if (this.chapterSevenActive) {
+      return 'chapter-7-the-house';
+    }
+    if (this.chapterSixActive) {
+      return 'chapter-6-rainbow-friends';
+    }
+    if (this.chapterFiveActive) {
+      return 'chapter-5';
+    }
+    if (this.chapterFourActive) {
+      return 'chapter-4';
+    }
+    if (this.officeChapterActive) {
+      return 'chapter-3-five-nights-at-boris';
+    }
+    if (this.chapterTwoActive) {
+      return 'chapter-2';
+    }
+    return 'global';
+  }
+
+  private getMicrophoneSoundRecordingsStorageKey(scope = this.getMicrophoneSoundLibraryScope()): string {
+    return `${MICROPHONE_SOUND_RECORDINGS_STORAGE_KEY}:${scope}`;
+  }
+
+  private getMicrophoneSoundNextIndexStorageKey(scope = this.getMicrophoneSoundLibraryScope()): string {
+    return `${MICROPHONE_SOUND_NEXT_INDEX_STORAGE_KEY}:${scope}`;
   }
 
   private normalizeMicrophoneSoundRecordingId(recordingId: string): string {
@@ -17574,6 +17630,7 @@ export class Game {
     }
 
     if (this.chapterNineActive) {
+      this.loadSavedMicrophoneSounds();
       const chapterNineHeldItem = this.chapterNine.getHeldItem();
       return [
         {
