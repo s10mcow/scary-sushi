@@ -578,26 +578,29 @@ export function createChapterNine(): ChapterNineData {
   const makeEntranceDoor = (hingeX: number, side: -1 | 1): Group => {
     const door = new Group();
     door.position.set(hingeX, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.12);
-    const panelOffsetX = side * 0.9;
+    const panelOffsetX = side * 0.93;
     const glassPane = new Mesh(new BoxGeometry(1.52, 3.08, 0.06), doorGlassMaterial);
     glassPane.position.set(panelOffsetX, 1.84, 0);
-    const topRail = new Mesh(new BoxGeometry(1.78, 0.16, 0.12), doorFrameMaterial);
+    const topRail = new Mesh(new BoxGeometry(1.86, 0.16, 0.12), doorFrameMaterial);
     topRail.position.set(panelOffsetX, 3.45, 0);
     const bottomRail = topRail.clone();
     bottomRail.position.y = 0.17;
     const innerRail = new Mesh(new BoxGeometry(0.14, 3.38, 0.12), doorFrameMaterial);
-    innerRail.position.set(panelOffsetX - side * 0.82, 1.81, 0);
+    innerRail.position.set(panelOffsetX + side * 0.86, 1.81, 0);
     const outerRail = innerRail.clone();
-    outerRail.position.x = panelOffsetX + side * 0.82;
+    outerRail.position.x = panelOffsetX - side * 0.86;
     const handle = new Mesh(new BoxGeometry(0.1, 0.36, 0.16), metalMaterial);
-    handle.position.set(panelOffsetX - side * 0.55, 1.82, 0.13);
+    handle.position.set(panelOffsetX + side * 0.58, 1.82, 0.13);
     door.add(glassPane, topRail, bottomRail, innerRail, outerRail, handle);
     root.add(door);
     return door;
   };
-  const leftDoor = makeEntranceDoor(-1.98, 1);
-  const rightDoor = makeEntranceDoor(1.98, -1);
-  shellObjects.push(leftDoor, rightDoor);
+  const doorwayFrameLeft = addBox(root, 0.18, 3.72, 0.18, -1.98, 1.86, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.1, doorFrameMaterial);
+  const doorwayFrameRight = addBox(root, 0.18, 3.72, 0.18, 1.98, 1.86, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.1, doorFrameMaterial);
+  const doorwayFrameTop = addBox(root, 4.14, 0.18, 0.18, 0, 3.72, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.1, doorFrameMaterial);
+  const leftDoor = makeEntranceDoor(-1.86, 1);
+  const rightDoor = makeEntranceDoor(1.86, -1);
+  shellObjects.push(doorwayFrameLeft, doorwayFrameRight, doorwayFrameTop, leftDoor, rightDoor);
 
   const sign = new Mesh(new PlaneGeometry(40, 10), createComplexSignMaterial());
   sign.position.set(0, 9.0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 0.28);
