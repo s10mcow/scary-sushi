@@ -510,7 +510,7 @@ export function createChapterNine(): ChapterNineData {
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const createGrayMaterialFor = (runLength: number, height = WALL_HEIGHT): MeshStandardMaterial => (
-    createGrayWallBandMaterial(Math.max(1, runLength / height))
+    createGrayWallBandMaterial(Math.max(0.05, runLength / height))
   );
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
   const roofMaterial = new MeshStandardMaterial({ color: 0x191715, roughness: 0.86, metalness: 0.12 });
@@ -597,6 +597,28 @@ export function createChapterNine(): ChapterNineData {
       halfDepth: WALL_THICKNESS / 2,
       rotationY: wall.rotation.y,
     });
+  };
+
+  const addCurvedWall = (
+    startX: number,
+    startZ: number,
+    controlX: number,
+    controlZ: number,
+    endX: number,
+    endZ: number,
+    segments = 6,
+  ): void => {
+    let previousX = startX;
+    let previousZ = startZ;
+    for (let index = 1; index <= segments; index += 1) {
+      const t = index / segments;
+      const inverseT = 1 - t;
+      const x = inverseT * inverseT * startX + 2 * inverseT * t * controlX + t * t * endX;
+      const z = inverseT * inverseT * startZ + 2 * inverseT * t * controlZ + t * t * endZ;
+      addAngledWall(previousX, previousZ, x, z, WALL_THICKNESS * 0.08);
+      previousX = x;
+      previousZ = z;
+    }
   };
 
   const addFloor = (x: number, z: number, width: number, depth: number, material: MeshStandardMaterial): void => {
@@ -690,9 +712,9 @@ export function createChapterNine(): ChapterNineData {
   addBrickWall(33.535, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 62.93, WALL_THICKNESS, 62.93);
   addBox(root, 4.14, 3.39, WALL_THICKNESS, 0, 5.505, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, createBrickMaterialFor(4.14, 3.39));
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
-  addAngledWall(-9.07, 29.40, -14.16, 23.96, WALL_THICKNESS * 1.8);
+  addAngledWall(-9.07, 29.40, -14.16, 23.96);
   addWall(-14.59, 20.005, WALL_THICKNESS, 6.05);
-  addAngledWall(-14.59, 23.03, -14.16, 23.96, WALL_THICKNESS * 0.35);
+  addCurvedWall(-14.59, 23.03, -14.59, 23.5, -14.16, 23.96);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
