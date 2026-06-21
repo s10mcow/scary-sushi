@@ -851,7 +851,7 @@ export function createChapterNine(): ChapterNineData {
 
     const detachedHead = new Group();
     detachedHead.position.set(0.88, 0.22, 0.7);
-    detachedHead.rotation.set(0.64, -0.88, 0.12);
+    detachedHead.rotation.set(0.64, 2.26, 0.12);
     const head = new Mesh(new SphereGeometry(0.34, 16, 12), shellMaterial);
     head.scale.set(1.0, 0.82, 0.9);
     const snout = new Mesh(new BoxGeometry(0.34, 0.18, 0.22), wornShellMaterial);
