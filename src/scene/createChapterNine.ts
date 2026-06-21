@@ -691,6 +691,7 @@ export function createChapterNine(): ChapterNineData {
   addBox(root, 4.14, 3.39, WALL_THICKNESS, 0, 5.505, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, createBrickMaterialFor(4.14, 3.39));
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
   addAngledWall(-9.07, 29.40, -14.16, 23.96, WALL_THICKNESS * 1.8);
+  addWall(-14.59, 20.005, WALL_THICKNESS, 6.05);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
