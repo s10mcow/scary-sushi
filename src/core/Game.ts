@@ -2947,6 +2947,22 @@ export class Game {
     if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterEightActive || this.chapterNineActive) && hotbarSlot) {
       if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.selectOfficeTabletCameraBySlot(hotbarSlot);
+      } else if (this.chapterNineActive) {
+        if (hotbarSlot === 1) {
+          this.chapterNine.setHeldItem('coordinate-tool');
+          this.setPlacementToolActive(true);
+        } else if (hotbarSlot === 2) {
+          this.chapterNine.setHeldItem('camera');
+          this.setPlacementToolActive(false);
+          this.setMicrophoneSoundToolActive(false);
+        } else if (hotbarSlot === 3) {
+          this.chapterNine.setHeldItem('mic-sound');
+          this.setPlacementToolActive(false);
+          this.setMicrophoneSoundToolActive(true);
+        } else if (this.microphoneSoundToolActive) {
+          this.previewMicrophoneSoundBySlot(hotbarSlot);
+        }
+        this.syncHud();
       } else if (this.microphoneSoundToolActive) {
         this.previewMicrophoneSoundBySlot(hotbarSlot);
       } else if (this.chapterFourActive) {
@@ -2956,15 +2972,6 @@ export class Game {
         this.syncHud();
       } else if (this.chapterEightActive) {
         this.selectChapterEightHotbarSlot(hotbarSlot);
-      } else if (this.chapterNineActive) {
-        if (hotbarSlot === 1) {
-          this.chapterNine.setHeldItem('coordinate-tool');
-          this.setPlacementToolActive(true);
-        } else if (hotbarSlot === 2) {
-          this.chapterNine.setHeldItem('camera');
-          this.setPlacementToolActive(false);
-        }
-        this.syncHud();
       } else {
         this.handleOfficeHotbarSlot(hotbarSlot);
       }
@@ -2987,7 +2994,9 @@ export class Game {
         this.cycleChapterEightHeldItem(itemCycle);
       } else if (this.chapterNineActive) {
         this.chapterNine.cycleHeldItem(itemCycle);
-        this.setPlacementToolActive(this.chapterNine.getHeldItem() === 'coordinate-tool');
+        const chapterNineHeldItem = this.chapterNine.getHeldItem();
+        this.setPlacementToolActive(chapterNineHeldItem === 'coordinate-tool');
+        this.setMicrophoneSoundToolActive(chapterNineHeldItem === 'mic-sound');
         this.syncHud();
       } else if (this.zombieModeActive) {
         this.cycleZombieWeapon(itemCycle);
@@ -17158,12 +17167,12 @@ export class Game {
 
     if (this.chapterNineActive) {
       return [
-        'Inventory: Shoulder Camera',
+        'Inventory: Coordinate Tool, Shoulder Camera, Mic Sound Tool',
         `Phase: ${this.chapterNine.getPhaseLabel()} / ${Math.ceil(this.chapterNine.getPhaseRemaining())}s`,
         `Evidence filmed: ${this.chapterNine.getFootageCount()}/${this.chapterNine.getFootageTarget()}`,
         `Puzzles solved: ${this.chapterNine.getPuzzleCount()}/${this.chapterNine.getPuzzleTarget()}`,
         this.chapterNine.isEscapeUnlocked() ? 'Escape: unlocked. Reach the front doors.' : 'Escape: locked until enough footage and puzzle steps are complete.',
-        'Left click records nearby evidence. E uses vents, puzzle stations, and the front doors.',
+        'Press 1 for Coordinate Tool, 2 for Shoulder Camera, 3 for Mic Sound Tool. Left click records nearby evidence when the camera is held.',
       ].join('\n');
     }
 
@@ -17578,7 +17587,13 @@ export class Game {
           filled: true,
           selected: chapterNineHeldItem === 'camera',
         },
-        ...Array.from({ length: 7 }, () => ({
+        {
+          label: `Mic Sound ${chapterNineHeldItem === 'mic-sound' ? '[Held]' : '[3]'}`,
+          count: this.microphoneSoundRecordings.length + (this.microphoneSoundPreviewUrl && !this.microphoneSoundSaved ? 1 : 0),
+          filled: true,
+          selected: chapterNineHeldItem === 'mic-sound',
+        },
+        ...Array.from({ length: 6 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,

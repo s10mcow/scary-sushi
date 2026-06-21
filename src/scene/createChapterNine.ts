@@ -20,7 +20,7 @@ import type { CollisionBox } from '../types/world';
 import type { HudJumpScareVariant } from '../ui/createHud';
 
 export type ChapterNineAnimatronicId = 'bonnie' | 'chica' | 'freddy' | 'foxy' | 'golden-freddy';
-export type ChapterNineHeldItem = 'coordinate-tool' | 'camera';
+export type ChapterNineHeldItem = 'coordinate-tool' | 'camera' | 'mic-sound';
 
 export interface ChapterNineInteractionResult {
   message: string;
@@ -1460,11 +1460,13 @@ export function createChapterNine(): ChapterNineData {
       return `Recorded ${nearest.label}. Evidence: ${getFilmedCount()}/${FOOTAGE_TARGET}.`;
     },
     cycleHeldItem(step: number): void {
-      heldItem = heldItem === 'camera' ? 'coordinate-tool' : 'camera';
+      const items: ChapterNineHeldItem[] = ['coordinate-tool', 'camera', 'mic-sound'];
+      const currentIndex = items.indexOf(heldItem);
+      heldItem = items[(currentIndex + (step > 0 ? 1 : -1) + items.length) % items.length];
       if (step === 0) {
         heldItem = 'camera';
       }
-      if (heldItem === 'coordinate-tool') {
+      if (heldItem !== 'camera') {
         cameraRecording = false;
         redDot.visible = false;
         screenRecLight.visible = false;
@@ -1472,7 +1474,7 @@ export function createChapterNine(): ChapterNineData {
     },
     setHeldItem(item: ChapterNineHeldItem): void {
       heldItem = item;
-      if (heldItem === 'coordinate-tool') {
+      if (heldItem !== 'camera') {
         cameraRecording = false;
         redDot.visible = false;
         screenRecLight.visible = false;
