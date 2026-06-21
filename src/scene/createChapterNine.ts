@@ -1096,10 +1096,10 @@ export function createChapterNine(): ChapterNineData {
   root.add(keycardPickup);
   const keycardPickupPosition = new Vector3(-10.72, GAME_CONFIG.player.height, 18.98);
 
-  const keycardGate = (() => {
+  const createKeycardGate = (centerX: number, centerZ: number, rotationY: number) => {
     const gate = new Group();
-    gate.position.set(2.34, 0, 15.05);
-    gate.rotation.y = Math.PI / 2;
+    gate.position.set(centerX, 0, centerZ);
+    gate.rotation.y = rotationY;
 
     const scannerMaterial = new MeshStandardMaterial({
       color: 0x17252b,
@@ -1155,17 +1155,21 @@ export function createChapterNine(): ChapterNineData {
     gate.add(leftPost, rightPost, leftArmPivot, rightArmPivot, topBar);
     root.add(gate);
 
-    const collider = addCollider(colliders, 2.34, 15.05, 1.35, 0.38);
-    collider.rotationY = Math.PI / 2;
+    const collider = addCollider(colliders, centerX, centerZ, 1.35, 0.38);
+    collider.rotationY = rotationY;
     return {
       collider,
-      interactPosition: new Vector3(2.34, GAME_CONFIG.player.height, 15.05),
+      interactPosition: new Vector3(centerX, GAME_CONFIG.player.height, centerZ),
       leftArmPivot,
       rightArmPivot,
       scannerMaterial,
       scannerGlassMaterial,
     };
-  })();
+  };
+  const keycardGates = [
+    createKeycardGate(1.26, 15.05, 0),
+    createKeycardGate(3.42, 15.05, 0),
+  ];
 
   const sideDoor = (() => {
     const leftX = -12.03;
@@ -1894,9 +1898,11 @@ export function createChapterNine(): ChapterNineData {
   const setKeycardGateProgress = (progress: number): void => {
     const clamped = Math.max(0, Math.min(1, progress));
     const eased = clamped * clamped * (3 - 2 * clamped);
-    keycardGate.leftArmPivot.rotation.y = -eased * Math.PI / 2;
-    keycardGate.rightArmPivot.rotation.y = eased * Math.PI / 2;
-    keycardGate.collider.enabled = clamped < 0.72;
+    keycardGates.forEach((gate) => {
+      gate.leftArmPivot.rotation.y = -eased * Math.PI / 2;
+      gate.rightArmPivot.rotation.y = eased * Math.PI / 2;
+      gate.collider.enabled = clamped < 0.72;
+    });
     keycardGateProgress = clamped;
   };
 
@@ -1916,8 +1922,10 @@ export function createChapterNine(): ChapterNineData {
       setKeycardGateProgress(Math.max(0, keycardGateProgress - deltaSeconds * 2.1));
     }
     const active = keycardGateOpen || keycardGateProgress > 0.05;
-    keycardGate.scannerMaterial.emissiveIntensity = active ? 1.35 : 0.35;
-    keycardGate.scannerGlassMaterial.emissiveIntensity = active ? 1.8 : 0.7;
+    keycardGates.forEach((gate) => {
+      gate.scannerMaterial.emissiveIntensity = active ? 1.35 : 0.35;
+      gate.scannerGlassMaterial.emissiveIntensity = active ? 1.8 : 0.7;
+    });
   };
 
   const moveAnimatronic = (bot: ChapterNineAnimatronic, deltaSeconds: number, playerPosition: Vector3): void => {
@@ -2008,8 +2016,10 @@ export function createChapterNine(): ChapterNineData {
     keycardGateOpen = false;
     keycardGateTimer = 0;
     setKeycardGateProgress(0);
-    keycardGate.scannerMaterial.emissiveIntensity = 0.35;
-    keycardGate.scannerGlassMaterial.emissiveIntensity = 0.7;
+    keycardGates.forEach((gate) => {
+      gate.scannerMaterial.emissiveIntensity = 0.35;
+      gate.scannerGlassMaterial.emissiveIntensity = 0.7;
+    });
     lastJumpscareEvent = null;
     filmingTargets.forEach((target) => {
       target.filmed = false;
@@ -2095,7 +2105,10 @@ export function createChapterNine(): ChapterNineData {
           message: 'You pick up the red and blue keycard. It appears in your inventory.',
         };
       }
-      if (playerPosition.distanceTo(keycardGate.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.75) {
+      const nearbyKeycardGate = keycardGates.some((gate) => {
+        return playerPosition.distanceTo(gate.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.75;
+      });
+      if (nearbyKeycardGate) {
         if (!keycardCollected) {
           return {
             message: 'The scanner flashes red. You need the red and blue keycard first.',
