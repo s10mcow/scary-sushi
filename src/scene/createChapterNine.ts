@@ -313,17 +313,35 @@ function createPosterMaterial(name: string, slogan: string, color: string): Mesh
 }
 
 function createCheckeredFloorMaterial(): MeshStandardMaterial {
-  return makeCanvasMaterial((context, canvas) => {
-    const tile = 4;
+  if (typeof document === 'undefined') {
+    return new MeshStandardMaterial({ color: 0x3a3a36, roughness: 0.72 });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const context = canvas.getContext('2d');
+  if (context) {
+    const tile = 64;
     for (let y = 0; y < canvas.height; y += tile) {
       for (let x = 0; x < canvas.width; x += tile) {
         const even = (Math.floor(x / tile) + Math.floor(y / tile)) % 2 === 0;
-        context.fillStyle = even ? '#bdbab0' : '#151516';
+        const base = even ? 188 : 24;
+        const edge = even ? 166 : 12;
+        const gradient = context.createLinearGradient(x, y, x + tile, y + tile);
+        gradient.addColorStop(0, `rgb(${base + 10}, ${base + 8}, ${base + 2})`);
+        gradient.addColorStop(0.55, `rgb(${base}, ${base - 2}, ${Math.max(0, base - 8)})`);
+        gradient.addColorStop(1, `rgb(${edge}, ${edge}, ${Math.max(0, edge - 4)})`);
+        context.fillStyle = gradient;
         context.fillRect(x, y, tile, tile);
+        context.fillStyle = 'rgba(255,255,255,0.06)';
+        context.fillRect(x + 6, y + 5, tile - 12, 2);
+        context.fillStyle = 'rgba(0,0,0,0.08)';
+        context.fillRect(x + 5, y + tile - 8, tile - 10, 3);
       }
     }
-    context.strokeStyle = 'rgba(0,0,0,0.22)';
-    context.lineWidth = 2;
+    context.strokeStyle = 'rgba(0,0,0,0.34)';
+    context.lineWidth = 5;
     for (let x = 0; x <= canvas.width; x += tile) {
       context.beginPath();
       context.moveTo(x, 0);
@@ -336,6 +354,17 @@ function createCheckeredFloorMaterial(): MeshStandardMaterial {
       context.lineTo(canvas.width, y);
       context.stroke();
     }
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(16, 12);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.58,
+    metalness: 0.02,
   });
 }
 
@@ -571,14 +600,15 @@ export function createChapterNine(): ChapterNineData {
 
   const shellStartChildIndex = root.children.length;
   addCheckeredFloor(0, BUILDING_CENTER_Z, BUILDING_WIDTH, BUILDING_DEPTH);
-  addWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH, WALL_THICKNESS, brickMaterial);
-  addWall(-BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH, brickMaterial);
-  addWall(BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH, brickMaterial);
-  addWall(-36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
-  addWall(36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
-  addWall(-4.49, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 5.02, WALL_THICKNESS, brickMaterial);
-  addWall(4.49, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 5.02, WALL_THICKNESS, brickMaterial);
-  addBox(root, 4.14, 3.45, WALL_THICKNESS, 0, 5.475, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, brickMaterial);
+  const wallJoinOverlap = 0.28;
+  addWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH + wallJoinOverlap, WALL_THICKNESS, brickMaterial);
+  addWall(-BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, brickMaterial);
+  addWall(BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, brickMaterial);
+  addWall(-36.05, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58.3, WALL_THICKNESS, brickMaterial);
+  addWall(36.05, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58.3, WALL_THICKNESS, brickMaterial);
+  addWall(-4.54, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 5.12, WALL_THICKNESS, brickMaterial);
+  addWall(4.54, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 5.12, WALL_THICKNESS, brickMaterial);
+  addBox(root, 4.24, 3.45, WALL_THICKNESS, 0, 5.475, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, brickMaterial);
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
   addAngledWall(-9.07, 29.40, -14.16, 23.96, addedWallMaterial);
   const shellColliders = colliders.slice();
