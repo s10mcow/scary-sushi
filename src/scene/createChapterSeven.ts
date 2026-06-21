@@ -3741,6 +3741,139 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
 
+  const addBirdCageTable = (localX: number, localZ: number): void => {
+    const table = new Group();
+    table.position.set(localX, 0, localZ);
+
+    const top = new Mesh(new CylinderGeometry(0.72, 0.72, 0.14, 32), smallTableLightTanMaterial);
+    top.position.y = 0.76;
+    const topLip = new Mesh(new TorusGeometry(0.72, 0.03, 8, 36), smallTableDarkTanMaterial);
+    topLip.position.y = 0.84;
+    topLip.rotation.x = Math.PI / 2;
+    const pedestal = new Mesh(new CylinderGeometry(0.14, 0.2, 0.66, 16), smallTableDarkTanMaterial);
+    pedestal.position.y = 0.4;
+    const foot = new Mesh(new CylinderGeometry(0.44, 0.52, 0.08, 24), houseTrimMaterial);
+    foot.position.y = 0.08;
+
+    const cageMetalMaterial = new MeshStandardMaterial({
+      color: 0x2d2926,
+      emissive: 0x030201,
+      emissiveIntensity: 0.04,
+      roughness: 0.36,
+      metalness: 0.58,
+    });
+    const cageTrayMaterial = new MeshStandardMaterial({
+      color: 0x6a4a2f,
+      emissive: 0x100805,
+      emissiveIntensity: 0.04,
+      roughness: 0.72,
+      metalness: 0.06,
+    });
+    const perchMaterial = new MeshStandardMaterial({
+      color: 0x8b5a30,
+      roughness: 0.76,
+      metalness: 0.02,
+    });
+    const parrotGreenMaterial = new MeshStandardMaterial({
+      color: 0x41a33e,
+      emissive: 0x061c07,
+      emissiveIntensity: 0.06,
+      roughness: 0.58,
+      metalness: 0.01,
+    });
+    const parrotBlueMaterial = new MeshStandardMaterial({
+      color: 0x2d78cf,
+      emissive: 0x031326,
+      emissiveIntensity: 0.08,
+      roughness: 0.54,
+      metalness: 0.01,
+    });
+    const parrotYellowMaterial = new MeshStandardMaterial({
+      color: 0xf0cf43,
+      emissive: 0x251a03,
+      emissiveIntensity: 0.06,
+      roughness: 0.56,
+      metalness: 0.01,
+    });
+    const parrotBeakMaterial = new MeshStandardMaterial({
+      color: 0xe1882d,
+      roughness: 0.48,
+      metalness: 0.02,
+    });
+
+    const cage = new Group();
+    cage.position.y = 0.9;
+    const tray = new Mesh(new CylinderGeometry(0.48, 0.52, 0.14, 36), cageTrayMaterial);
+    tray.position.y = 0.07;
+    const bottomRing = new Mesh(new TorusGeometry(0.5, 0.018, 8, 40), cageMetalMaterial);
+    bottomRing.position.y = 0.18;
+    bottomRing.rotation.x = Math.PI / 2;
+    const middleRing = bottomRing.clone();
+    middleRing.position.y = 0.84;
+    const topRing = new Mesh(new TorusGeometry(0.34, 0.018, 8, 36), cageMetalMaterial);
+    topRing.position.y = 1.22;
+    topRing.rotation.x = Math.PI / 2;
+    const topCap = new Mesh(new SphereGeometry(0.095, 14, 8), cageMetalMaterial);
+    topCap.position.y = 1.34;
+    const hook = new Mesh(new TorusGeometry(0.12, 0.014, 8, 22, Math.PI * 1.45), cageMetalMaterial);
+    hook.position.y = 1.5;
+    hook.rotation.z = Math.PI / 2;
+
+    const verticalBars = Array.from({ length: 14 }, (_, index) => {
+      const angle = (index / 14) * Math.PI * 2;
+      const bar = new Mesh(new CylinderGeometry(0.011, 0.011, 0.72, 8), cageMetalMaterial);
+      bar.position.set(Math.sin(angle) * 0.48, 0.52, Math.cos(angle) * 0.48);
+      return bar;
+    });
+    const domeBars = Array.from({ length: 10 }, (_, index) => {
+      const angle = (index / 10) * Math.PI * 2;
+      const bar = new Mesh(new CylinderGeometry(0.009, 0.009, 0.54, 8), cageMetalMaterial);
+      bar.position.set(Math.sin(angle) * 0.34, 1.06, Math.cos(angle) * 0.34);
+      bar.rotation.z = Math.sin(angle) * 0.34;
+      bar.rotation.x = Math.cos(angle) * 0.34;
+      return bar;
+    });
+
+    const perch = new Mesh(new CylinderGeometry(0.025, 0.025, 0.82, 12), perchMaterial);
+    perch.position.y = 0.48;
+    perch.rotation.z = Math.PI / 2;
+
+    const parrot = new Group();
+    parrot.position.set(-0.08, 0.58, 0.02);
+    parrot.rotation.y = -0.55;
+    const body = new Mesh(new SphereGeometry(0.13, 18, 12), parrotGreenMaterial);
+    body.scale.set(0.72, 1.08, 0.82);
+    const belly = new Mesh(new SphereGeometry(0.085, 14, 8), parrotYellowMaterial);
+    belly.position.set(0.02, -0.015, 0.055);
+    belly.scale.set(0.72, 0.9, 0.35);
+    const head = new Mesh(new SphereGeometry(0.082, 16, 10), parrotGreenMaterial);
+    head.position.set(0.02, 0.15, 0.01);
+    const leftWing = new Mesh(new SphereGeometry(0.07, 12, 8), parrotBlueMaterial);
+    leftWing.position.set(-0.08, 0.01, 0.005);
+    leftWing.scale.set(0.5, 1.18, 0.28);
+    const rightWing = leftWing.clone();
+    rightWing.position.x = 0.08;
+    const tail = new Mesh(new ConeGeometry(0.055, 0.24, 8), parrotBlueMaterial);
+    tail.position.set(0, -0.15, -0.02);
+    tail.rotation.x = Math.PI;
+    const beak = new Mesh(new ConeGeometry(0.028, 0.08, 10), parrotBeakMaterial);
+    beak.position.set(0.02, 0.15, 0.09);
+    beak.rotation.x = Math.PI / 2;
+    const eyeMaterial = new MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
+    const leftEye = new Mesh(new SphereGeometry(0.012, 8, 6), eyeMaterial);
+    leftEye.position.set(-0.03, 0.18, 0.075);
+    const rightEye = leftEye.clone();
+    rightEye.position.x = 0.06;
+    parrot.add(body, belly, head, leftWing, rightWing, tail, beak, leftEye, rightEye);
+
+    cage.add(tray, bottomRing, middleRing, topRing, topCap, hook, ...verticalBars, ...domeBars, perch, parrot);
+    table.add(top, topLip, pedestal, foot, cage);
+    house.add(table);
+
+    const tableCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.68, 1.68);
+    addCrawlUnderCollider(tableCollider, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.68, 1.68, 0.14);
+  };
+
   const addSideGrandfatherClock = (wallLocalX: number, localZ: number, normalX: 1 | -1): void => {
     const depth = 0.68;
     const clock = new Group();
@@ -6913,6 +7046,7 @@ export function createChapterSeven(): ChapterSevenData {
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
   addFishTankTable(1199.97 - CENTER_X, 85.39 - HOUSE_CENTER_Z);
+  addBirdCageTable(1228.25 - CENTER_X, 78.63 - HOUSE_CENTER_Z);
   const remoteButtons = addTableRemote(1226.18 - CENTER_X, 1.08, 97.15 - HOUSE_CENTER_Z, -0.18);
   addSideGrandfatherClock(1217.94 - CENTER_X, 87.41 - HOUSE_CENTER_Z, -1);
   addBookshelf(1220.53 - CENTER_X, 98.69 - HOUSE_CENTER_Z - 0.64, Math.PI, 0.84, 0.96);
