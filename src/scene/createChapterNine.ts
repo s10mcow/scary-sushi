@@ -195,7 +195,7 @@ function createTurnstileLabelMaterial(label: string): MeshStandardMaterial {
     context.lineWidth = 12;
     context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
     context.fillStyle = '#dff7ff';
-    context.font = 'bold 104px Arial';
+    context.font = label.length > 4 ? 'bold 76px Arial' : 'bold 104px Arial';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText(label, canvas.width / 2, canvas.height / 2);
@@ -1091,12 +1091,13 @@ export function createChapterNine(): ChapterNineData {
     spinTimer: number;
   }> = [];
 
-  const addKeycardTurnstile = (label: 'IN' | 'OUT', x: number, z: number): void => {
+  const addKeycardTurnstile = (label: string, x: number, z: number): void => {
     const turnstile = new Group();
     turnstile.position.set(x, 0, z);
     turnstile.rotation.y = Math.PI / 2;
 
-    const bodyMaterial = new MeshStandardMaterial({ color: 0x2d3238, roughness: 0.48, metalness: 0.34 });
+    const bodyMaterial = new MeshStandardMaterial({ color: 0x343a42, roughness: 0.42, metalness: 0.42 });
+    const bevelMaterial = new MeshStandardMaterial({ color: 0x59636c, roughness: 0.38, metalness: 0.48 });
     const rubberMaterial = new MeshStandardMaterial({ color: 0x0c0d0f, roughness: 0.62, metalness: 0.18 });
     const scannerMaterial = new MeshStandardMaterial({
       color: 0x12362f,
@@ -1106,46 +1107,59 @@ export function createChapterNine(): ChapterNineData {
       metalness: 0.12,
     });
 
-    const pedestal = new Mesh(new BoxGeometry(0.52, 1.18, 0.56), bodyMaterial);
+    const pedestal = new Mesh(new CylinderGeometry(0.42, 0.54, 1.18, 3), bodyMaterial);
     pedestal.position.y = 0.59;
-    const rubberBase = new Mesh(new BoxGeometry(0.64, 0.12, 0.66), rubberMaterial);
+    pedestal.rotation.y = Math.PI / 6;
+    const topCap = new Mesh(new CylinderGeometry(0.46, 0.4, 0.14, 3), bevelMaterial);
+    topCap.position.y = 1.21;
+    topCap.rotation.y = Math.PI / 6;
+    const rubberBase = new Mesh(new CylinderGeometry(0.58, 0.68, 0.12, 3), rubberMaterial);
     rubberBase.position.y = 0.06;
-    const scanner = new Mesh(new BoxGeometry(0.48, 0.16, 0.38), scannerMaterial);
-    scanner.position.set(0, 1.28, -0.04);
+    rubberBase.rotation.y = Math.PI / 6;
+    const scanner = new Mesh(new BoxGeometry(0.42, 0.12, 0.3), scannerMaterial);
+    scanner.position.set(0, 1.36, -0.08);
     scanner.rotation.x = -0.18;
-    const scannerWedge = new Mesh(new ConeGeometry(0.25, 0.28, 3), scannerMaterial);
-    scannerWedge.position.set(0, 1.43, -0.04);
-    scannerWedge.rotation.set(Math.PI / 2, 0, Math.PI / 6);
-    const labelPlate = new Mesh(new PlaneGeometry(0.42, 0.22), createTurnstileLabelMaterial(label));
-    labelPlate.position.set(0, 1.33, -0.235);
+    const scannerGlass = new Mesh(new BoxGeometry(0.22, 0.018, 0.18), new MeshStandardMaterial({
+      color: 0x9cf7d8,
+      emissive: 0x36f0a3,
+      emissiveIntensity: 0.75,
+      roughness: 0.16,
+      metalness: 0.02,
+    }));
+    scannerGlass.position.set(0, 1.435, -0.205);
+    scannerGlass.rotation.x = -0.18;
+    const labelPlate = new Mesh(new PlaneGeometry(0.52, 0.22), createTurnstileLabelMaterial(label));
+    labelPlate.position.set(0, 1.08, -0.31);
     labelPlate.rotation.x = -0.18;
 
     const rotor = new Group();
-    rotor.position.set(0, 0.92, 0.34);
+    rotor.position.set(0, 0.9, 0.38);
     for (let index = 0; index < 3; index += 1) {
       const armPivot = new Group();
       armPivot.rotation.y = (index / 3) * Math.PI * 2;
-      const arm = new Mesh(new CylinderGeometry(0.035, 0.035, 0.9, 10), metalMaterial);
-      arm.position.x = 0.45;
+      const arm = new Mesh(new CylinderGeometry(0.032, 0.038, 1.02, 14), metalMaterial);
+      arm.position.x = 0.51;
       arm.rotation.z = Math.PI / 2;
       const tip = new Mesh(new SphereGeometry(0.055, 8, 6), metalMaterial);
-      tip.position.x = 0.9;
+      tip.position.x = 1.02;
       armPivot.add(arm, tip);
       rotor.add(armPivot);
     }
-    const hub = new Mesh(new SphereGeometry(0.13, 14, 10), metalMaterial);
+    const hub = new Mesh(new SphereGeometry(0.15, 18, 12), metalMaterial);
     rotor.add(hub);
 
     const guardLeft = new Mesh(new BoxGeometry(0.09, 1.05, 0.08), blackMetalMaterial);
-    guardLeft.position.set(-0.42, 0.58, 0.32);
+    guardLeft.position.set(-0.5, 0.58, 0.34);
     const guardRight = guardLeft.clone();
-    guardRight.position.x = 0.42;
-    const entryRail = new Mesh(new BoxGeometry(0.76, 0.08, 0.08), blackMetalMaterial);
-    entryRail.position.set(0, 1.08, 0.32);
+    guardRight.position.x = 0.5;
+    const entryRail = new Mesh(new BoxGeometry(0.94, 0.08, 0.08), blackMetalMaterial);
+    entryRail.position.set(0, 1.08, 0.34);
+    const lowerRail = new Mesh(new BoxGeometry(0.94, 0.06, 0.06), blackMetalMaterial);
+    lowerRail.position.set(0, 0.56, 0.34);
 
-    turnstile.add(rubberBase, pedestal, scanner, scannerWedge, labelPlate, rotor, guardLeft, guardRight, entryRail);
+    turnstile.add(rubberBase, pedestal, topCap, scanner, scannerGlass, labelPlate, rotor, guardLeft, guardRight, entryRail, lowerRail);
     root.add(turnstile);
-    addCollider(colliders, x, z, 0.7, 0.7);
+    addCollider(colliders, x, z, 0.9, 0.85);
     keycardTurnstiles.push({
       label,
       rotor,
@@ -1155,8 +1169,7 @@ export function createChapterNine(): ChapterNineData {
     });
   };
 
-  addKeycardTurnstile('IN', 1.21, 14.98);
-  addKeycardTurnstile('OUT', 3.47, 15.12);
+  addKeycardTurnstile('IN / OUT', 2.34, 15.05);
 
   const sideDoor = (() => {
     const leftX = -12.03;
