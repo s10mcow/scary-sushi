@@ -2958,9 +2958,11 @@ export class Game {
         this.selectChapterEightHotbarSlot(hotbarSlot);
       } else if (this.chapterNineActive) {
         if (hotbarSlot === 1) {
-          this.chapterNine.setHeldItem('camera');
+          this.chapterNine.setHeldItem('coordinate-tool');
+          this.setPlacementToolActive(true);
         } else if (hotbarSlot === 2) {
-          this.chapterNine.setHeldItem('empty');
+          this.chapterNine.setHeldItem('camera');
+          this.setPlacementToolActive(false);
         }
         this.syncHud();
       } else {
@@ -2985,6 +2987,7 @@ export class Game {
         this.cycleChapterEightHeldItem(itemCycle);
       } else if (this.chapterNineActive) {
         this.chapterNine.cycleHeldItem(itemCycle);
+        this.setPlacementToolActive(this.chapterNine.getHeldItem() === 'coordinate-tool');
         this.syncHud();
       } else if (this.zombieModeActive) {
         this.cycleZombieWeapon(itemCycle);
@@ -17565,38 +17568,17 @@ export class Game {
       const chapterNineHeldItem = this.chapterNine.getHeldItem();
       return [
         {
-          label: 'Shoulder Camera [1]',
-          count: this.chapterNine.getFootageCount(),
+          ...coordinateToolSlot,
+          label: `Coordinate Tool ${chapterNineHeldItem === 'coordinate-tool' ? '[Held]' : '[1]'}`,
+          selected: chapterNineHeldItem === 'coordinate-tool',
+        },
+        {
+          label: `Shoulder Camera ${chapterNineHeldItem === 'camera' ? '[Held]' : '[2]'}`,
+          count: 1,
           filled: true,
           selected: chapterNineHeldItem === 'camera',
         },
-        {
-          label: 'Empty Hands [2]',
-          count: 0,
-          filled: false,
-          selected: chapterNineHeldItem === 'empty',
-        },
-        {
-          label: this.chapterNine.getPhaseLabel(),
-          count: Math.max(1, Math.ceil(this.chapterNine.getPhaseRemaining())),
-          filled: true,
-        },
-        {
-          label: 'Evidence',
-          count: this.chapterNine.getFootageCount(),
-          filled: this.chapterNine.getFootageCount() >= this.chapterNine.getFootageTarget(),
-        },
-        {
-          label: 'Puzzles',
-          count: this.chapterNine.getPuzzleCount(),
-          filled: this.chapterNine.getPuzzleCount() >= this.chapterNine.getPuzzleTarget(),
-        },
-        {
-          label: this.chapterNine.isEscapeUnlocked() ? 'Escape Ready' : 'Escape Locked',
-          count: this.chapterNine.isEscapeUnlocked() ? 1 : 0,
-          filled: this.chapterNine.isEscapeUnlocked(),
-        },
-        ...Array.from({ length: 3 }, () => ({
+        ...Array.from({ length: 7 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -25403,6 +25385,7 @@ export class Game {
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
     this.chapterNine.reset();
+    this.setPlacementToolActive(true);
     this.chapterNine.root.visible = true;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
@@ -25439,7 +25422,7 @@ export class Game {
     this.chapterSevenOvenHideAnchor.visible = false;
     this.chapterSevenOvenDoorOverlay.visible = false;
     this.chapterEightHeldItemAnchor.visible = false;
-    this.chapterNine.shoulderCamera.visible = true;
+    this.chapterNine.shoulderCamera.visible = false;
     this.chapterTwoKeycards.clear();
     this.chapterTwoPuzzlePiecesCollected = 0;
     this.chapterTwoRedPuzzleSolved = false;

@@ -20,7 +20,7 @@ import type { CollisionBox } from '../types/world';
 import type { HudJumpScareVariant } from '../ui/createHud';
 
 export type ChapterNineAnimatronicId = 'bonnie' | 'chica' | 'freddy' | 'foxy' | 'golden-freddy';
-export type ChapterNineHeldItem = 'camera' | 'empty';
+export type ChapterNineHeldItem = 'coordinate-tool' | 'camera';
 
 export interface ChapterNineInteractionResult {
   message: string;
@@ -400,7 +400,7 @@ function createCameraScreenMaterial(): MeshStandardMaterial {
   });
 }
 
-function createBrickWallMaterial(): MeshStandardMaterial {
+function createBrickWallMaterial(repeatX = 4.5, repeatY = 2.8): MeshStandardMaterial {
   if (typeof document === 'undefined') {
     return new MeshStandardMaterial({ color: 0x6b4038, roughness: 0.88, metalness: 0.01 });
   }
@@ -431,7 +431,7 @@ function createBrickWallMaterial(): MeshStandardMaterial {
   const texture = new CanvasTexture(canvas);
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.repeat.set(4.5, 2.8);
+  texture.repeat.set(repeatX, repeatY);
   texture.needsUpdate = true;
   return new MeshStandardMaterial({
     map: texture,
@@ -455,7 +455,6 @@ export function createChapterNine(): ChapterNineData {
   const treeTrunkMaterial = new MeshStandardMaterial({ color: 0x5b3821, roughness: 0.86 });
   const treeLeafMaterial = new MeshStandardMaterial({ color: 0x1f5f2d, roughness: 0.9 });
   const dirtyConcreteMaterial = new MeshStandardMaterial({ color: 0x6c6860, roughness: 0.94, metalness: 0.01 });
-  const brickMaterial = createBrickWallMaterial();
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const wallInteriorMaterial = new MeshStandardMaterial({ color: 0x60584f, roughness: 0.9 });
@@ -504,6 +503,14 @@ export function createChapterNine(): ChapterNineData {
   const addWall = (x: number, z: number, width: number, depth: number, material = wallInteriorMaterial): void => {
     addBox(root, width, WALL_HEIGHT, depth, x, WALL_HEIGHT / 2, z, material);
     addCollider(colliders, x, z, width, depth);
+  };
+
+  const createBrickMaterialFor = (runLength: number, height = WALL_HEIGHT): MeshStandardMaterial => (
+    createBrickWallMaterial(Math.max(1.4, runLength * 1.18), Math.max(1.4, height * 2.35))
+  );
+
+  const addBrickWall = (x: number, z: number, width: number, depth: number, runLength: number): void => {
+    addWall(x, z, width, depth, createBrickMaterialFor(runLength));
   };
 
   const addAngledWall = (startX: number, startZ: number, endX: number, endZ: number, material: MeshStandardMaterial): void => {
@@ -601,14 +608,12 @@ export function createChapterNine(): ChapterNineData {
   const shellStartChildIndex = root.children.length;
   addCheckeredFloor(0, BUILDING_CENTER_Z, BUILDING_WIDTH, BUILDING_DEPTH);
   const wallJoinOverlap = 0.28;
-  addWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH + wallJoinOverlap, WALL_THICKNESS, brickMaterial);
-  addWall(-BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, brickMaterial);
-  addWall(BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, brickMaterial);
-  addWall(-36.05, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58.3, WALL_THICKNESS, brickMaterial);
-  addWall(36.05, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58.3, WALL_THICKNESS, brickMaterial);
-  addWall(-4.54, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 5.12, WALL_THICKNESS, brickMaterial);
-  addWall(4.54, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 5.12, WALL_THICKNESS, brickMaterial);
-  addBox(root, 4.24, 3.45, WALL_THICKNESS, 0, 5.475, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, brickMaterial);
+  addBrickWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH + wallJoinOverlap, WALL_THICKNESS, BUILDING_WIDTH + wallJoinOverlap);
+  addBrickWall(-BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, BUILDING_DEPTH + wallJoinOverlap);
+  addBrickWall(BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, BUILDING_DEPTH + wallJoinOverlap);
+  addBrickWall(-33.535, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 62.93, WALL_THICKNESS, 62.93);
+  addBrickWall(33.535, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 62.93, WALL_THICKNESS, 62.93);
+  addBox(root, 4.14, 3.39, WALL_THICKNESS, 0, 5.505, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, createBrickMaterialFor(4.14, 3.39));
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
   addAngledWall(-9.07, 29.40, -14.16, 23.96, addedWallMaterial);
   const shellColliders = colliders.slice();
@@ -1136,7 +1141,7 @@ export function createChapterNine(): ChapterNineData {
   let inVent = false;
   let ventExitCooldown = 0;
   let cameraRecording = false;
-  let heldItem: ChapterNineHeldItem = 'camera';
+  let heldItem: ChapterNineHeldItem = 'coordinate-tool';
   let doorOpen = false;
   let doorMotionTime = 0;
   let doorMotionFrom = 0;
@@ -1251,7 +1256,7 @@ export function createChapterNine(): ChapterNineData {
     inVent = false;
     ventExitCooldown = 0;
     cameraRecording = false;
-    heldItem = 'camera';
+    heldItem = 'coordinate-tool';
     doorOpen = false;
     doorMotionTime = 0;
     doorMotionFrom = 0;
@@ -1378,11 +1383,11 @@ export function createChapterNine(): ChapterNineData {
       return `Recorded ${nearest.label}. Evidence: ${getFilmedCount()}/${FOOTAGE_TARGET}.`;
     },
     cycleHeldItem(step: number): void {
-      heldItem = heldItem === 'camera' ? 'empty' : 'camera';
+      heldItem = heldItem === 'camera' ? 'coordinate-tool' : 'camera';
       if (step === 0) {
         heldItem = 'camera';
       }
-      if (heldItem === 'empty') {
+      if (heldItem === 'coordinate-tool') {
         cameraRecording = false;
         redDot.visible = false;
         screenRecLight.visible = false;
@@ -1390,7 +1395,7 @@ export function createChapterNine(): ChapterNineData {
     },
     setHeldItem(item: ChapterNineHeldItem): void {
       heldItem = item;
-      if (heldItem === 'empty') {
+      if (heldItem === 'coordinate-tool') {
         cameraRecording = false;
         redDot.visible = false;
         screenRecLight.visible = false;
