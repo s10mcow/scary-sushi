@@ -412,8 +412,8 @@ function createBrickWallMaterial(repeatX = 4.5, repeatY = 2.8): MeshStandardMate
   if (context) {
     context.fillStyle = '#6b4038';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const brickWidth = 70;
-    const brickHeight = 30;
+    const brickWidth = 58;
+    const brickHeight = 25;
     context.lineWidth = 3;
     for (let y = 0; y < canvas.height + brickHeight; y += brickHeight) {
       const row = Math.floor(y / brickHeight);
@@ -561,7 +561,7 @@ export function createChapterNine(): ChapterNineData {
   };
 
   const createBrickMaterialFor = (runLength: number, height = WALL_HEIGHT): MeshStandardMaterial => (
-    createBrickWallMaterial(Math.max(1, runLength / 10.5), Math.max(1, height / 2.65))
+    createBrickWallMaterial(Math.max(1, runLength / 8.75), Math.max(1, height / 2.25))
   );
 
   const addBrickWall = (x: number, z: number, width: number, depth: number, runLength: number): void => {
