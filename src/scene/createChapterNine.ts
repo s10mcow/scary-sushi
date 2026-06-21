@@ -442,7 +442,7 @@ function createBrickWallMaterial(repeatX = 4.5, repeatY = 2.8): MeshStandardMate
   });
 }
 
-function createGrayWallBandMaterial(repeatX = 1): MeshStandardMaterial {
+function createGrayWallBandMaterial(repeatX = 1, offsetX = 0): MeshStandardMaterial {
   if (typeof document === 'undefined') {
     return new MeshStandardMaterial({ color: 0x6f7376, roughness: 0.88 });
   }
@@ -485,7 +485,8 @@ function createGrayWallBandMaterial(repeatX = 1): MeshStandardMaterial {
   const texture = new CanvasTexture(canvas);
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.repeat.set(Math.max(1, repeatX), 1);
+  texture.repeat.set(Math.max(0.05, repeatX), 1);
+  texture.offset.set(offsetX, 0);
   texture.needsUpdate = true;
   return new MeshStandardMaterial({
     map: texture,
@@ -510,8 +511,8 @@ export function createChapterNine(): ChapterNineData {
   const dirtyConcreteMaterial = new MeshStandardMaterial({ color: 0x6c6860, roughness: 0.94, metalness: 0.01 });
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
-  const createGrayMaterialFor = (runLength: number, height = WALL_HEIGHT): MeshStandardMaterial => (
-    createGrayWallBandMaterial(Math.max(0.05, runLength / height))
+  const createGrayMaterialFor = (runLength: number, height = WALL_HEIGHT, offsetX = 0): MeshStandardMaterial => (
+    createGrayWallBandMaterial(Math.max(0.05, runLength / height), offsetX)
   );
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
   const roofMaterial = new MeshStandardMaterial({ color: 0x191715, roughness: 0.86, metalness: 0.12 });
@@ -574,6 +575,7 @@ export function createChapterNine(): ChapterNineData {
     endX: number,
     endZ: number,
     joinExtension = 0,
+    textureOffset = 0,
     material?: MeshStandardMaterial,
   ): void => {
     const dx = endX - startX;
@@ -586,7 +588,7 @@ export function createChapterNine(): ChapterNineData {
     const extendedEndX = endX + unitX * joinExtension;
     const extendedEndZ = endZ + unitZ * joinExtension;
     const extendedLength = length + joinExtension * 2;
-    const wallMaterial = material ?? createGrayMaterialFor(extendedLength);
+    const wallMaterial = material ?? createGrayMaterialFor(extendedLength, WALL_HEIGHT, textureOffset - joinExtension / WALL_HEIGHT);
     const wall = new Mesh(new BoxGeometry(extendedLength, WALL_HEIGHT, WALL_THICKNESS), wallMaterial);
     wall.position.set((extendedStartX + extendedEndX) / 2, WALL_HEIGHT / 2, (extendedStartZ + extendedEndZ) / 2);
     wall.rotation.y = Math.atan2(-dz, dx);
@@ -608,15 +610,19 @@ export function createChapterNine(): ChapterNineData {
     endX: number,
     endZ: number,
     segments = 6,
+    textureOffset = 0,
   ): void => {
     let previousX = startX;
     let previousZ = startZ;
+    let traveled = 0;
     for (let index = 1; index <= segments; index += 1) {
       const t = index / segments;
       const inverseT = 1 - t;
       const x = inverseT * inverseT * startX + 2 * inverseT * t * controlX + t * t * endX;
       const z = inverseT * inverseT * startZ + 2 * inverseT * t * controlZ + t * t * endZ;
-      addAngledWall(previousX, previousZ, x, z, WALL_THICKNESS * 0.08);
+      const segmentLength = Math.hypot(x - previousX, z - previousZ);
+      addAngledWall(previousX, previousZ, x, z, WALL_THICKNESS * 0.08, textureOffset + traveled / WALL_HEIGHT);
+      traveled += segmentLength;
       previousX = x;
       previousZ = z;
     }
@@ -713,9 +719,12 @@ export function createChapterNine(): ChapterNineData {
   addBrickWall(33.535, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 62.93, WALL_THICKNESS, 62.93);
   addBox(root, 4.14, 3.39, WALL_THICKNESS, 0, 5.505, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, createBrickMaterialFor(4.14, 3.39));
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
+  const customAngledWallLength = Math.hypot(-14.16 - -9.07, 23.96 - 29.40);
+  const customUpperFillerLength = Math.hypot(-9.07 - -8.93, 29.40 - 29.65);
+  addCurvedWall(-8.93, 29.65, -8.96, 29.51, -9.07, 29.40, 4, -customUpperFillerLength / WALL_HEIGHT);
   addAngledWall(-9.07, 29.40, -14.16, 23.96);
   addWall(-14.59, 20.005, WALL_THICKNESS, 6.05);
-  addCurvedWall(-14.59, 23.03, -14.59, 23.5, -14.16, 23.96);
+  addCurvedWall(-14.16, 23.96, -14.59, 23.5, -14.59, 23.03, 6, customAngledWallLength / WALL_HEIGHT);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
