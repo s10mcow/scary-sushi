@@ -1024,6 +1024,58 @@ export function createChapterNine(): ChapterNineData {
   addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96) + Math.PI);
   addWallShelf(-14.34, 2.04, 16.02, 1);
   addWallShelf(-14.34, 3.44, 16.12, 1);
+
+  const sideDoor = (() => {
+    const centerX = -10.93;
+    const centerZ = 7.96;
+    const width = 1.48;
+    const height = 2.95;
+    const thickness = 0.16;
+    const rotationY = Math.atan2(-(8.91 - 10.55), -12.4 - -14.39);
+    const hingeX = centerX - Math.cos(rotationY) * width * 0.5;
+    const hingeZ = centerZ + Math.sin(rotationY) * width * 0.5;
+    const doorMaterial = new MeshStandardMaterial({ color: 0x4c3322, roughness: 0.78, metalness: 0.04 });
+    const trimMaterial = new MeshStandardMaterial({ color: 0x251911, roughness: 0.84, metalness: 0.08 });
+    const handleMaterial = new MeshStandardMaterial({ color: 0xa48a4c, roughness: 0.42, metalness: 0.36 });
+
+    const frame = new Group();
+    frame.position.set(centerX, 0, centerZ);
+    frame.rotation.y = rotationY;
+    const leftPost = new Mesh(new BoxGeometry(0.14, height + 0.26, 0.22), trimMaterial);
+    leftPost.position.set(-width / 2 - 0.08, (height + 0.26) / 2, 0);
+    const rightPost = leftPost.clone();
+    rightPost.position.x = width / 2 + 0.08;
+    const topPost = new Mesh(new BoxGeometry(width + 0.42, 0.18, 0.24), trimMaterial);
+    topPost.position.set(0, height + 0.08, 0);
+    frame.add(leftPost, rightPost, topPost);
+    root.add(frame);
+
+    const swing = new Group();
+    swing.position.set(hingeX, 0, hingeZ);
+    swing.rotation.y = rotationY;
+    const slab = new Mesh(new BoxGeometry(width, height, thickness), doorMaterial);
+    slab.position.set(width / 2, height / 2, 0);
+    const inset = new Mesh(new BoxGeometry(width - 0.28, height - 0.52, 0.035), new MeshStandardMaterial({ color: 0x66472f, roughness: 0.82 }));
+    inset.position.set(width / 2, height / 2, -thickness / 2 - 0.02);
+    const handle = new Mesh(new SphereGeometry(0.085, 12, 8), handleMaterial);
+    handle.position.set(width * 0.78, height * 0.5, -thickness / 2 - 0.08);
+    const backHandle = handle.clone();
+    backHandle.position.z = thickness / 2 + 0.08;
+    swing.add(slab, inset, handle, backHandle);
+    root.add(swing);
+
+    const collider = addCollider(colliders, centerX, centerZ, width + 0.1, thickness + 0.08);
+    collider.rotationY = rotationY;
+    return {
+      swing,
+      collider,
+      centerX,
+      centerZ,
+      interactPosition: new Vector3(centerX, GAME_CONFIG.player.height, centerZ),
+      rotationY,
+    };
+  })();
+
   const collapsedAnimatronicRotation = -1.1115926535897938;
   addCollapsedAnimatronic(-7.2, 13.06, collapsedAnimatronicRotation);
   const collapsedAnimatronicLanding = {
@@ -1618,6 +1670,11 @@ export function createChapterNine(): ChapterNineData {
   let doorMotionFrom = 0;
   let doorMotionTo = 0;
   let doorProgress = 0;
+  let sideDoorOpen = false;
+  let sideDoorMotionTime = 0;
+  let sideDoorMotionFrom = 0;
+  let sideDoorMotionTo = 0;
+  let sideDoorProgress = 0;
 
   const getFilmedCount = (): number => filmingTargets.filter((target) => target.filmed).length;
   const getPuzzleCount = (): number => puzzleStations.filter((station) => station.solved).length;
@@ -1653,6 +1710,32 @@ export function createChapterNine(): ChapterNineData {
     doorMotionTime = Math.min(0.95, doorMotionTime + deltaSeconds);
     const t = doorMotionTime / 0.95;
     setDoorProgress(doorMotionFrom + (doorMotionTo - doorMotionFrom) * t);
+  };
+
+  const setSideDoorProgress = (progress: number): void => {
+    const clamped = Math.max(0, Math.min(1, progress));
+    const eased = clamped * clamped * (3 - 2 * clamped);
+    const bounce = sideDoorOpen ? Math.sin(clamped * Math.PI * 4) * (1 - clamped) * 0.1 : 0;
+    sideDoor.swing.rotation.y = sideDoor.rotationY - (eased + bounce) * Math.PI / 2.45;
+    sideDoor.collider.enabled = clamped < 0.72;
+    sideDoorProgress = clamped;
+  };
+
+  const toggleSideDoor = (): void => {
+    sideDoorOpen = !sideDoorOpen;
+    sideDoorMotionFrom = sideDoorProgress;
+    sideDoorMotionTo = sideDoorOpen ? 1 : 0;
+    sideDoorMotionTime = 0;
+  };
+
+  const updateSideDoor = (deltaSeconds: number): void => {
+    if (Math.abs(sideDoorProgress - sideDoorMotionTo) < 0.001) {
+      setSideDoorProgress(sideDoorMotionTo);
+      return;
+    }
+    sideDoorMotionTime = Math.min(0.9, sideDoorMotionTime + deltaSeconds);
+    const t = sideDoorMotionTime / 0.9;
+    setSideDoorProgress(sideDoorMotionFrom + (sideDoorMotionTo - sideDoorMotionFrom) * t);
   };
 
   const moveAnimatronic = (bot: ChapterNineAnimatronic, deltaSeconds: number, playerPosition: Vector3): void => {
@@ -1733,6 +1816,11 @@ export function createChapterNine(): ChapterNineData {
     doorMotionFrom = 0;
     doorMotionTo = 0;
     setDoorProgress(0);
+    sideDoorOpen = false;
+    sideDoorMotionTime = 0;
+    sideDoorMotionFrom = 0;
+    sideDoorMotionTo = 0;
+    setSideDoorProgress(0);
     lastJumpscareEvent = null;
     filmingTargets.forEach((target) => {
       target.filmed = false;
@@ -1779,6 +1867,7 @@ export function createChapterNine(): ChapterNineData {
       }
       updateEscapeState();
       updateEntranceDoors(deltaSeconds);
+      updateSideDoor(deltaSeconds);
       animatronics.forEach((bot) => moveAnimatronic(bot, deltaSeconds, playerPosition));
       const recordingBlink = cameraRecording && Math.sin(phaseTime * 11) > -0.2;
       redDot.visible = recordingBlink;
@@ -1798,6 +1887,12 @@ export function createChapterNine(): ChapterNineData {
           message: `You sit in the ${chair.label}.`,
           teleport: chair.sitPosition.clone(),
           lookTarget: chair.lookTarget.clone(),
+        };
+      }
+      if (playerPosition.distanceTo(sideDoor.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.9) {
+        toggleSideDoor();
+        return {
+          message: sideDoorOpen ? 'The side door swings open, bumps the wall, and settles.' : 'The side door closes back into place.',
         };
       }
       const doorInteractPosition = new Vector3(0, GAME_CONFIG.player.height, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 2.3);
