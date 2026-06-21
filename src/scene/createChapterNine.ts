@@ -1024,11 +1024,12 @@ export function createChapterNine(): ChapterNineData {
   addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96) + Math.PI);
   addWallShelf(-14.34, 2.04, 16.02, 1);
   addWallShelf(-14.34, 3.44, 16.12, 1);
-  addCollapsedAnimatronic(-7.2, 13.06, 2.03);
+  const collapsedAnimatronicRotation = -1.1115926535897938;
+  addCollapsedAnimatronic(-7.2, 13.06, collapsedAnimatronicRotation);
   const collapsedAnimatronicLanding = {
     centerX: -7.5,
     centerZ: 13.2,
-    rotationY: 2.03,
+    rotationY: collapsedAnimatronicRotation,
     halfWidth: 0.48,
     halfDepth: 0.58,
     floorY: GAME_CONFIG.player.height + 0.42,
