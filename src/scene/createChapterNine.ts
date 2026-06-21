@@ -512,7 +512,6 @@ export function createChapterNine(): ChapterNineData {
   const createGrayMaterialFor = (runLength: number, height = WALL_HEIGHT): MeshStandardMaterial => (
     createGrayWallBandMaterial(Math.max(1, runLength / height))
   );
-  const addedWallMaterial = createGrayMaterialFor(7.45);
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
   const roofMaterial = new MeshStandardMaterial({ color: 0x191715, roughness: 0.86, metalness: 0.12 });
   const woodMaterial = new MeshStandardMaterial({ color: 0x5b3b22, roughness: 0.82 });
@@ -573,8 +572,8 @@ export function createChapterNine(): ChapterNineData {
     startZ: number,
     endX: number,
     endZ: number,
-    material: MeshStandardMaterial,
     joinExtension = 0,
+    material?: MeshStandardMaterial,
   ): void => {
     const dx = endX - startX;
     const dz = endZ - startZ;
@@ -586,7 +585,8 @@ export function createChapterNine(): ChapterNineData {
     const extendedEndX = endX + unitX * joinExtension;
     const extendedEndZ = endZ + unitZ * joinExtension;
     const extendedLength = length + joinExtension * 2;
-    const wall = new Mesh(new BoxGeometry(extendedLength, WALL_HEIGHT, WALL_THICKNESS), material);
+    const wallMaterial = material ?? createGrayMaterialFor(extendedLength);
+    const wall = new Mesh(new BoxGeometry(extendedLength, WALL_HEIGHT, WALL_THICKNESS), wallMaterial);
     wall.position.set((extendedStartX + extendedEndX) / 2, WALL_HEIGHT / 2, (extendedStartZ + extendedEndZ) / 2);
     wall.rotation.y = Math.atan2(-dz, dx);
     root.add(wall);
@@ -690,7 +690,7 @@ export function createChapterNine(): ChapterNineData {
   addBrickWall(33.535, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 62.93, WALL_THICKNESS, 62.93);
   addBox(root, 4.14, 3.39, WALL_THICKNESS, 0, 5.505, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, createBrickMaterialFor(4.14, 3.39));
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
-  addAngledWall(-9.07, 29.40, -14.16, 23.96, addedWallMaterial, WALL_THICKNESS * 1.8);
+  addAngledWall(-9.07, 29.40, -14.16, 23.96, WALL_THICKNESS * 1.8);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
