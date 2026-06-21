@@ -701,6 +701,30 @@ export function createChapterNine(): ChapterNineData {
     root.add(register);
   };
 
+  const addWallShelf = (x: number, y: number, z: number, normalX: number): void => {
+    const depth = 0.58;
+    const length = 2.8;
+    const thickness = 0.12;
+    const shelf = new Group();
+    shelf.position.set(x + normalX * depth / 2, y, z);
+
+    const board = new Mesh(new BoxGeometry(depth, thickness, length), woodMaterial);
+    const lip = new Mesh(new BoxGeometry(0.08, 0.18, length), darkWoodMaterial);
+    lip.position.set(normalX * (depth / 2 - 0.04), 0.03, 0);
+    shelf.add(board, lip);
+
+    [-0.9, 0.9].forEach((offsetZ) => {
+      const bracket = new Mesh(new BoxGeometry(0.08, 0.48, 0.08), metalMaterial);
+      bracket.position.set(-normalX * (depth / 2 - 0.12), -0.24, offsetZ);
+      const brace = new Mesh(new BoxGeometry(0.08, 0.56, 0.08), metalMaterial);
+      brace.position.set(-normalX * 0.08, -0.26, offsetZ);
+      brace.rotation.z = normalX > 0 ? -0.72 : 0.72;
+      shelf.add(bracket, brace);
+    });
+
+    root.add(shelf);
+  };
+
   const addFloor = (x: number, z: number, width: number, depth: number, material: MeshStandardMaterial): void => {
     addBox(root, width, 0.12, depth, x, -0.06, z, material);
   };
@@ -808,6 +832,8 @@ export function createChapterNine(): ChapterNineData {
   addAngledWall(-8.87, 15.38, -8.96, 19.07);
   addAngledCountertop(-8.96, 19.07, -14.21, 18.77);
   addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96) + Math.PI);
+  addWallShelf(-14.34, 2.04, 16.02, 1);
+  addWallShelf(-14.34, 3.44, 16.12, 1);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
