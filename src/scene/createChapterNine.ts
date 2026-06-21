@@ -517,6 +517,7 @@ export function createChapterNine(): ChapterNineData {
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
   const roofMaterial = new MeshStandardMaterial({ color: 0x191715, roughness: 0.86, metalness: 0.12 });
   const woodMaterial = new MeshStandardMaterial({ color: 0x5b3b22, roughness: 0.82 });
+  const darkWoodMaterial = new MeshStandardMaterial({ color: 0x3f2615, roughness: 0.86 });
   const metalMaterial = new MeshStandardMaterial({ color: 0x777b7b, roughness: 0.46, metalness: 0.36 });
   const blackMetalMaterial = new MeshStandardMaterial({ color: 0x111214, roughness: 0.5, metalness: 0.45 });
   const paintedLineMaterial = new MeshStandardMaterial({ color: 0xd7d0bb, roughness: 0.78 });
@@ -628,6 +629,33 @@ export function createChapterNine(): ChapterNineData {
     }
   };
 
+  const addAngledCountertop = (startX: number, startZ: number, endX: number, endZ: number): void => {
+    const dx = endX - startX;
+    const dz = endZ - startZ;
+    const length = Math.hypot(dx, dz);
+    const rotationY = Math.atan2(-dz, dx);
+    const centerX = (startX + endX) / 2;
+    const centerZ = (startZ + endZ) / 2;
+    const counter = new Group();
+    counter.position.set(centerX, 0, centerZ);
+    counter.rotation.y = rotationY;
+
+    const top = new Mesh(new BoxGeometry(length, 0.24, 0.92), woodMaterial);
+    top.position.y = 1.05;
+    const base = new Mesh(new BoxGeometry(length - 0.22, 0.82, 0.72), darkWoodMaterial);
+    base.position.y = 0.49;
+    counter.add(top, base);
+    root.add(counter);
+
+    colliders.push({
+      centerX,
+      centerZ,
+      halfWidth: length / 2,
+      halfDepth: 0.46,
+      rotationY,
+    });
+  };
+
   const addFloor = (x: number, z: number, width: number, depth: number, material: MeshStandardMaterial): void => {
     addBox(root, width, 0.12, depth, x, -0.06, z, material);
   };
@@ -732,6 +760,7 @@ export function createChapterNine(): ChapterNineData {
   addAngledWall(-6.16, 14.82, -9.09, 15.05);
   addCurvedWall(-5.77, 14.95, -5.98, 14.99, -6.16, 14.82, 3);
   addAngledWall(-8.87, 15.38, -8.96, 19.07);
+  addAngledCountertop(-8.96, 19.07, -14.21, 18.77);
   const shellColliders = colliders.slice();
 
   const shellObjects = [
