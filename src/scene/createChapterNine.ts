@@ -656,6 +656,51 @@ export function createChapterNine(): ChapterNineData {
     });
   };
 
+  const addCashRegister = (x: number, surfaceY: number, z: number, rotationY = 0): void => {
+    const register = new Group();
+    register.position.set(x, surfaceY, z);
+    register.rotation.y = rotationY;
+
+    const bodyMaterial = new MeshStandardMaterial({ color: 0x2b2d30, roughness: 0.5, metalness: 0.18 });
+    const drawerMaterial = new MeshStandardMaterial({ color: 0x56595f, roughness: 0.42, metalness: 0.28 });
+    const buttonMaterial = new MeshStandardMaterial({ color: 0xd9d2bf, roughness: 0.56 });
+    const screenMaterial = new MeshBasicMaterial({ color: 0x69d66d });
+    const receiptMaterial = new MeshStandardMaterial({ color: 0xf2ead7, roughness: 0.72 });
+
+    const drawer = new Mesh(new BoxGeometry(0.86, 0.22, 0.58), bodyMaterial);
+    drawer.position.y = 0.11;
+    const frontPlate = new Mesh(new BoxGeometry(0.7, 0.08, 0.035), drawerMaterial);
+    frontPlate.position.set(0, 0.13, -0.305);
+    const topSlope = new Mesh(new BoxGeometry(0.78, 0.18, 0.42), bodyMaterial);
+    topSlope.position.set(0, 0.29, -0.03);
+    topSlope.rotation.x = -0.18;
+
+    const screenPost = new Mesh(new BoxGeometry(0.12, 0.3, 0.1), bodyMaterial);
+    screenPost.position.set(0, 0.46, 0.18);
+    const screen = new Mesh(new BoxGeometry(0.56, 0.34, 0.06), bodyMaterial);
+    screen.position.set(0, 0.7, 0.23);
+    screen.rotation.x = -0.12;
+    const display = new Mesh(new PlaneGeometry(0.44, 0.2), screenMaterial);
+    display.position.set(0, 0.705, 0.262);
+    display.rotation.x = -0.12;
+
+    const receipt = new Mesh(new BoxGeometry(0.28, 0.035, 0.32), receiptMaterial);
+    receipt.position.set(-0.24, 0.42, 0.0);
+    receipt.rotation.x = -0.18;
+
+    register.add(drawer, frontPlate, topSlope, screenPost, screen, display, receipt);
+    for (let row = 0; row < 3; row += 1) {
+      for (let column = 0; column < 4; column += 1) {
+        const button = new Mesh(new BoxGeometry(0.09, 0.035, 0.07), buttonMaterial);
+        button.position.set(-0.2 + column * 0.13, 0.405, -0.15 + row * 0.09);
+        button.rotation.x = -0.18;
+        register.add(button);
+      }
+    }
+
+    root.add(register);
+  };
+
   const addFloor = (x: number, z: number, width: number, depth: number, material: MeshStandardMaterial): void => {
     addBox(root, width, 0.12, depth, x, -0.06, z, material);
   };
@@ -762,6 +807,7 @@ export function createChapterNine(): ChapterNineData {
   addCurvedWall(-9.09, 15.05, -9.04, 15.28, -8.87, 15.38, 3);
   addAngledWall(-8.87, 15.38, -8.96, 19.07);
   addAngledCountertop(-8.96, 19.07, -14.21, 18.77);
+  addCashRegister(-12.82, 1.17, 18.99, Math.atan2(-(18.77 - 19.07), -14.21 - -8.96));
   const shellColliders = colliders.slice();
 
   const shellObjects = [
