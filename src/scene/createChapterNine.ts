@@ -9,6 +9,7 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
+  RepeatWrapping,
   SphereGeometry,
   TorusGeometry,
   Vector3,
@@ -371,11 +372,19 @@ function createCameraScreenMaterial(): MeshStandardMaterial {
 }
 
 function createBrickWallMaterial(): MeshStandardMaterial {
-  return makeCanvasMaterial((context, canvas) => {
+  if (typeof document === 'undefined') {
+    return new MeshStandardMaterial({ color: 0x6b4038, roughness: 0.88, metalness: 0.01 });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext('2d');
+  if (context) {
     context.fillStyle = '#6b4038';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const brickWidth = 46;
-    const brickHeight = 20;
+    const brickWidth = 38;
+    const brickHeight = 17;
     context.lineWidth = 3;
     for (let y = 0; y < canvas.height + brickHeight; y += brickHeight) {
       const row = Math.floor(y / brickHeight);
@@ -389,6 +398,17 @@ function createBrickWallMaterial(): MeshStandardMaterial {
         context.strokeRect(brickX + 1, y + 1, brickWidth - 2, brickHeight - 2);
       }
     }
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(4.5, 2.8);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    color: 0xffffff,
+    roughness: 0.88,
+    metalness: 0.01,
   });
 }
 
@@ -556,9 +576,9 @@ export function createChapterNine(): ChapterNineData {
   addWall(BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH, brickMaterial);
   addWall(-36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
   addWall(36, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 58, WALL_THICKNESS, brickMaterial);
-  addWall(-4.85, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 4.3, WALL_THICKNESS, brickMaterial);
-  addWall(4.85, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 4.3, WALL_THICKNESS, brickMaterial);
-  addBox(root, 11, 2.55, WALL_THICKNESS, 0, 5.92, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, brickMaterial);
+  addWall(-4.49, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 5.02, WALL_THICKNESS, brickMaterial);
+  addWall(4.49, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 5.02, WALL_THICKNESS, brickMaterial);
+  addBox(root, 4.14, 3.45, WALL_THICKNESS, 0, 5.475, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, brickMaterial);
   const frontDoorCollider = addCollider(colliders, 0, BUILDING_CENTER_Z + BUILDING_DEPTH / 2, 11, WALL_THICKNESS);
   addAngledWall(-9.07, 29.40, -14.16, 23.96, addedWallMaterial);
   const shellColliders = colliders.slice();
