@@ -20,7 +20,7 @@ import type { CollisionBox } from '../types/world';
 import type { HudJumpScareVariant } from '../ui/createHud';
 
 export type ChapterNineAnimatronicId = 'bonnie' | 'chica' | 'freddy' | 'foxy' | 'golden-freddy';
-export type ChapterNineHeldItem = 'coordinate-tool' | 'camera' | 'mic-sound';
+export type ChapterNineHeldItem = 'coordinate-tool' | 'camera' | 'mic-sound' | 'keycard';
 
 export interface ChapterNineInteractionResult {
   message: string;
@@ -48,6 +48,7 @@ export interface ChapterNineData {
   cycleHeldItem(step: number): void;
   setHeldItem(item: ChapterNineHeldItem): void;
   getHeldItem(): ChapterNineHeldItem;
+  hasKeycard(): boolean;
   consumeJumpscareEvent(): ChapterNineJumpscareEvent | null;
   getSupportedFloorY(position: Vector3): number | null;
   getPhaseLabel(): string;
@@ -187,7 +188,7 @@ function createVoiceTapeLabelMaterial(): MeshStandardMaterial {
   });
 }
 
-function createTurnstileLabelMaterial(label: string): MeshStandardMaterial {
+function createKeycardGateLabelMaterial(label: string): MeshStandardMaterial {
   return makeCanvasMaterial((context, canvas) => {
     context.fillStyle = '#101214';
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -195,7 +196,7 @@ function createTurnstileLabelMaterial(label: string): MeshStandardMaterial {
     context.lineWidth = 12;
     context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
     context.fillStyle = '#dff7ff';
-    context.font = label.length > 4 ? 'bold 76px Arial' : 'bold 104px Arial';
+    context.font = label.length > 4 ? 'bold 72px Arial' : 'bold 104px Arial';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText(label, canvas.width / 2, canvas.height / 2);
@@ -1083,93 +1084,88 @@ export function createChapterNine(): ChapterNineData {
   addWallShelf(-14.34, 2.04, 16.02, 1);
   addWallShelf(-14.34, 3.44, 16.12, 1);
 
-  const keycardTurnstiles: Array<{
-    label: string;
-    rotor: Group;
-    scannerMaterial: MeshStandardMaterial;
-    interactPosition: Vector3;
-    spinTimer: number;
-  }> = [];
+  const keycardPickup = new Group();
+  keycardPickup.position.set(-10.72, 1.25, 18.98);
+  keycardPickup.rotation.y = 0.08;
+  const keycardBase = new Mesh(new BoxGeometry(0.46, 0.025, 0.3), new MeshStandardMaterial({ color: 0xb62632, roughness: 0.42, metalness: 0.06 }));
+  const keycardStripe = new Mesh(new BoxGeometry(0.42, 0.028, 0.085), new MeshStandardMaterial({ color: 0x2352b7, roughness: 0.38, metalness: 0.08 }));
+  keycardStripe.position.set(0, 0.016, -0.07);
+  const keycardChip = new Mesh(new BoxGeometry(0.09, 0.03, 0.08), new MeshStandardMaterial({ color: 0xd3b356, roughness: 0.32, metalness: 0.42 }));
+  keycardChip.position.set(-0.13, 0.02, 0.06);
+  keycardPickup.add(keycardBase, keycardStripe, keycardChip);
+  root.add(keycardPickup);
+  const keycardPickupPosition = new Vector3(-10.72, GAME_CONFIG.player.height, 18.98);
 
-  const addKeycardTurnstile = (label: string, x: number, z: number): void => {
-    const turnstile = new Group();
-    turnstile.position.set(x, 0, z);
-    turnstile.rotation.y = Math.PI / 2;
+  const keycardGate = (() => {
+    const gate = new Group();
+    gate.position.set(2.34, 0, 15.05);
+    gate.rotation.y = Math.PI / 2;
 
-    const bodyMaterial = new MeshStandardMaterial({ color: 0x343a42, roughness: 0.42, metalness: 0.42 });
-    const bevelMaterial = new MeshStandardMaterial({ color: 0x59636c, roughness: 0.38, metalness: 0.48 });
-    const rubberMaterial = new MeshStandardMaterial({ color: 0x0c0d0f, roughness: 0.62, metalness: 0.18 });
     const scannerMaterial = new MeshStandardMaterial({
-      color: 0x12362f,
-      emissive: 0x22e090,
-      emissiveIntensity: 0.45,
+      color: 0x17252b,
+      emissive: 0x1acb78,
+      emissiveIntensity: 0.35,
       roughness: 0.36,
-      metalness: 0.12,
+      metalness: 0.18,
     });
-
-    const pedestal = new Mesh(new CylinderGeometry(0.42, 0.54, 1.18, 3), bodyMaterial);
-    pedestal.position.y = 0.59;
-    pedestal.rotation.y = Math.PI / 6;
-    const topCap = new Mesh(new CylinderGeometry(0.46, 0.4, 0.14, 3), bevelMaterial);
-    topCap.position.y = 1.21;
-    topCap.rotation.y = Math.PI / 6;
-    const rubberBase = new Mesh(new CylinderGeometry(0.58, 0.68, 0.12, 3), rubberMaterial);
-    rubberBase.position.y = 0.06;
-    rubberBase.rotation.y = Math.PI / 6;
-    const scanner = new Mesh(new BoxGeometry(0.42, 0.12, 0.3), scannerMaterial);
-    scanner.position.set(0, 1.36, -0.08);
-    scanner.rotation.x = -0.18;
-    const scannerGlass = new Mesh(new BoxGeometry(0.22, 0.018, 0.18), new MeshStandardMaterial({
-      color: 0x9cf7d8,
-      emissive: 0x36f0a3,
-      emissiveIntensity: 0.75,
-      roughness: 0.16,
+    const scannerGlassMaterial = new MeshStandardMaterial({
+      color: 0x95f0d2,
+      emissive: 0x2ff0aa,
+      emissiveIntensity: 0.7,
+      roughness: 0.14,
       metalness: 0.02,
-    }));
-    scannerGlass.position.set(0, 1.435, -0.205);
-    scannerGlass.rotation.x = -0.18;
-    const labelPlate = new Mesh(new PlaneGeometry(0.52, 0.22), createTurnstileLabelMaterial(label));
-    labelPlate.position.set(0, 1.08, -0.31);
-    labelPlate.rotation.x = -0.18;
-
-    const rotor = new Group();
-    rotor.position.set(0, 0.9, 0.38);
-    for (let index = 0; index < 3; index += 1) {
-      const armPivot = new Group();
-      armPivot.rotation.y = (index / 3) * Math.PI * 2;
-      const arm = new Mesh(new CylinderGeometry(0.032, 0.038, 1.02, 14), metalMaterial);
-      arm.position.x = 0.51;
-      arm.rotation.z = Math.PI / 2;
-      const tip = new Mesh(new SphereGeometry(0.055, 8, 6), metalMaterial);
-      tip.position.x = 1.02;
-      armPivot.add(arm, tip);
-      rotor.add(armPivot);
-    }
-    const hub = new Mesh(new SphereGeometry(0.15, 18, 12), metalMaterial);
-    rotor.add(hub);
-
-    const guardLeft = new Mesh(new BoxGeometry(0.09, 1.05, 0.08), blackMetalMaterial);
-    guardLeft.position.set(-0.5, 0.58, 0.34);
-    const guardRight = guardLeft.clone();
-    guardRight.position.x = 0.5;
-    const entryRail = new Mesh(new BoxGeometry(0.94, 0.08, 0.08), blackMetalMaterial);
-    entryRail.position.set(0, 1.08, 0.34);
-    const lowerRail = new Mesh(new BoxGeometry(0.94, 0.06, 0.06), blackMetalMaterial);
-    lowerRail.position.set(0, 0.56, 0.34);
-
-    turnstile.add(rubberBase, pedestal, topCap, scanner, scannerGlass, labelPlate, rotor, guardLeft, guardRight, entryRail, lowerRail);
-    root.add(turnstile);
-    addCollider(colliders, x, z, 0.9, 0.85);
-    keycardTurnstiles.push({
-      label,
-      rotor,
-      scannerMaterial,
-      interactPosition: new Vector3(x, GAME_CONFIG.player.height, z),
-      spinTimer: 0,
     });
-  };
+    const postMaterial = new MeshStandardMaterial({ color: 0x414950, roughness: 0.42, metalness: 0.42 });
+    const armMaterial = new MeshStandardMaterial({ color: 0xc2c7c9, roughness: 0.28, metalness: 0.56 });
 
-  addKeycardTurnstile('IN / OUT', 2.34, 15.05);
+    const addScannerPost = (x: number, label: string): Group => {
+      const post = new Group();
+      post.position.set(x, 0, 0);
+      const base = new Mesh(new BoxGeometry(0.32, 0.12, 0.48), blackMetalMaterial);
+      base.position.y = 0.06;
+      const body = new Mesh(new BoxGeometry(0.26, 1.32, 0.36), postMaterial);
+      body.position.y = 0.72;
+      const scanner = new Mesh(new BoxGeometry(0.3, 0.14, 0.3), scannerMaterial);
+      scanner.position.set(0, 1.48, -0.04);
+      scanner.rotation.x = -0.16;
+      const glass = new Mesh(new BoxGeometry(0.16, 0.018, 0.15), scannerGlassMaterial);
+      glass.position.set(0, 1.555, -0.15);
+      glass.rotation.x = -0.16;
+      const labelPlate = new Mesh(new PlaneGeometry(0.28, 0.16), createKeycardGateLabelMaterial(label));
+      labelPlate.position.set(0, 1.14, -0.185);
+      labelPlate.rotation.x = -0.1;
+      post.add(base, body, scanner, glass, labelPlate);
+      return post;
+    };
+
+    const leftPost = addScannerPost(-0.58, 'IN');
+    const rightPost = addScannerPost(0.58, 'OUT');
+    const leftArmPivot = new Group();
+    leftArmPivot.position.set(-0.45, 1.02, 0.03);
+    const rightArmPivot = new Group();
+    rightArmPivot.position.set(0.45, 1.02, 0.03);
+    const leftArm = new Mesh(new BoxGeometry(0.9, 0.075, 0.075), armMaterial);
+    leftArm.position.x = 0.45;
+    const rightArm = new Mesh(new BoxGeometry(0.9, 0.075, 0.075), armMaterial);
+    rightArm.position.x = -0.45;
+    leftArmPivot.add(leftArm);
+    rightArmPivot.add(rightArm);
+    const topBar = new Mesh(new BoxGeometry(1.46, 0.07, 0.07), blackMetalMaterial);
+    topBar.position.set(0, 1.67, 0.14);
+    gate.add(leftPost, rightPost, leftArmPivot, rightArmPivot, topBar);
+    root.add(gate);
+
+    const collider = addCollider(colliders, 2.34, 15.05, 1.35, 0.38);
+    collider.rotationY = Math.PI / 2;
+    return {
+      collider,
+      interactPosition: new Vector3(2.34, GAME_CONFIG.player.height, 15.05),
+      leftArmPivot,
+      rightArmPivot,
+      scannerMaterial,
+      scannerGlassMaterial,
+    };
+  })();
 
   const sideDoor = (() => {
     const leftX = -12.03;
@@ -1828,6 +1824,10 @@ export function createChapterNine(): ChapterNineData {
   let sideDoorMotionFrom = 0;
   let sideDoorMotionTo = 0;
   let sideDoorProgress = 0;
+  let keycardCollected = false;
+  let keycardGateOpen = false;
+  let keycardGateTimer = 0;
+  let keycardGateProgress = 0;
 
   const getFilmedCount = (): number => filmingTargets.filter((target) => target.filmed).length;
   const getPuzzleCount = (): number => puzzleStations.filter((station) => station.solved).length;
@@ -1891,14 +1891,33 @@ export function createChapterNine(): ChapterNineData {
     setSideDoorProgress(sideDoorMotionFrom + (sideDoorMotionTo - sideDoorMotionFrom) * t);
   };
 
-  const updateKeycardTurnstiles = (deltaSeconds: number): void => {
-    keycardTurnstiles.forEach((turnstile) => {
-      if (turnstile.spinTimer > 0) {
-        turnstile.spinTimer = Math.max(0, turnstile.spinTimer - deltaSeconds);
-        turnstile.rotor.rotation.y += deltaSeconds * Math.PI * 3.2;
+  const setKeycardGateProgress = (progress: number): void => {
+    const clamped = Math.max(0, Math.min(1, progress));
+    const eased = clamped * clamped * (3 - 2 * clamped);
+    keycardGate.leftArmPivot.rotation.y = -eased * Math.PI / 2;
+    keycardGate.rightArmPivot.rotation.y = eased * Math.PI / 2;
+    keycardGate.collider.enabled = clamped < 0.72;
+    keycardGateProgress = clamped;
+  };
+
+  const openKeycardGate = (): void => {
+    keycardGateOpen = true;
+    keycardGateTimer = 3.2;
+  };
+
+  const updateKeycardGate = (deltaSeconds: number): void => {
+    if (keycardGateOpen) {
+      keycardGateTimer = Math.max(0, keycardGateTimer - deltaSeconds);
+      setKeycardGateProgress(Math.min(1, keycardGateProgress + deltaSeconds * 2.4));
+      if (keycardGateTimer <= 0) {
+        keycardGateOpen = false;
       }
-      turnstile.scannerMaterial.emissiveIntensity = turnstile.spinTimer > 0 ? 1.6 : 0.45;
-    });
+    } else {
+      setKeycardGateProgress(Math.max(0, keycardGateProgress - deltaSeconds * 2.1));
+    }
+    const active = keycardGateOpen || keycardGateProgress > 0.05;
+    keycardGate.scannerMaterial.emissiveIntensity = active ? 1.35 : 0.35;
+    keycardGate.scannerGlassMaterial.emissiveIntensity = active ? 1.8 : 0.7;
   };
 
   const moveAnimatronic = (bot: ChapterNineAnimatronic, deltaSeconds: number, playerPosition: Vector3): void => {
@@ -1984,11 +2003,13 @@ export function createChapterNine(): ChapterNineData {
     sideDoorMotionFrom = 0;
     sideDoorMotionTo = 0;
     setSideDoorProgress(0);
-    keycardTurnstiles.forEach((turnstile) => {
-      turnstile.spinTimer = 0;
-      turnstile.rotor.rotation.y = 0;
-      turnstile.scannerMaterial.emissiveIntensity = 0.45;
-    });
+    keycardCollected = false;
+    keycardPickup.visible = true;
+    keycardGateOpen = false;
+    keycardGateTimer = 0;
+    setKeycardGateProgress(0);
+    keycardGate.scannerMaterial.emissiveIntensity = 0.35;
+    keycardGate.scannerGlassMaterial.emissiveIntensity = 0.7;
     lastJumpscareEvent = null;
     filmingTargets.forEach((target) => {
       target.filmed = false;
@@ -2036,7 +2057,7 @@ export function createChapterNine(): ChapterNineData {
       updateEscapeState();
       updateEntranceDoors(deltaSeconds);
       updateSideDoor(deltaSeconds);
-      updateKeycardTurnstiles(deltaSeconds);
+      updateKeycardGate(deltaSeconds);
       animatronics.forEach((bot) => moveAnimatronic(bot, deltaSeconds, playerPosition));
       const recordingBlink = cameraRecording && Math.sin(phaseTime * 11) > -0.2;
       redDot.visible = recordingBlink;
@@ -2063,13 +2084,26 @@ export function createChapterNine(): ChapterNineData {
           lookTarget: chair.lookTarget.clone(),
         };
       }
-      const turnstile = keycardTurnstiles
-        .filter((entry) => entry.interactPosition.distanceTo(playerPosition) <= GAME_CONFIG.player.interactionRange + 0.55)
-        .sort((a, b) => a.interactPosition.distanceTo(playerPosition) - b.interactPosition.distanceTo(playerPosition))[0];
-      if (turnstile) {
-        turnstile.spinTimer = 1.1;
+      if (!keycardCollected && playerPosition.distanceTo(keycardPickupPosition) <= GAME_CONFIG.player.interactionRange + 0.55) {
+        keycardCollected = true;
+        keycardPickup.visible = false;
+        heldItem = 'keycard';
+        cameraRecording = false;
+        redDot.visible = false;
+        screenRecLight.visible = false;
         return {
-          message: `${turnstile.label} scanner accepts the keycard. The bars rotate for one person.`,
+          message: 'You pick up the red and blue keycard. It appears in your inventory.',
+        };
+      }
+      if (playerPosition.distanceTo(keycardGate.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.75) {
+        if (!keycardCollected) {
+          return {
+            message: 'The scanner flashes red. You need the red and blue keycard first.',
+          };
+        }
+        openKeycardGate();
+        return {
+          message: 'The keycard scanner accepts the card. The gate opens so you can walk through.',
         };
       }
       if (playerPosition.distanceTo(sideDoor.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.9) {
@@ -2145,9 +2179,12 @@ export function createChapterNine(): ChapterNineData {
       return `Recorded ${nearest.label}. Evidence: ${getFilmedCount()}/${FOOTAGE_TARGET}.`;
     },
     cycleHeldItem(step: number): void {
-      const items: ChapterNineHeldItem[] = ['coordinate-tool', 'camera', 'mic-sound'];
+      const items: ChapterNineHeldItem[] = keycardCollected
+        ? ['coordinate-tool', 'camera', 'mic-sound', 'keycard']
+        : ['coordinate-tool', 'camera', 'mic-sound'];
       const currentIndex = items.indexOf(heldItem);
-      heldItem = items[(currentIndex + (step > 0 ? 1 : -1) + items.length) % items.length];
+      const safeCurrentIndex = currentIndex >= 0 ? currentIndex : 0;
+      heldItem = items[(safeCurrentIndex + (step > 0 ? 1 : -1) + items.length) % items.length];
       if (step === 0) {
         heldItem = 'camera';
       }
@@ -2158,6 +2195,9 @@ export function createChapterNine(): ChapterNineData {
       }
     },
     setHeldItem(item: ChapterNineHeldItem): void {
+      if (item === 'keycard' && !keycardCollected) {
+        return;
+      }
       heldItem = item;
       if (heldItem !== 'camera') {
         cameraRecording = false;
@@ -2166,6 +2206,7 @@ export function createChapterNine(): ChapterNineData {
       }
     },
     getHeldItem: () => heldItem,
+    hasKeycard: () => keycardCollected,
     consumeJumpscareEvent(): ChapterNineJumpscareEvent | null {
       const event = lastJumpscareEvent;
       lastJumpscareEvent = null;

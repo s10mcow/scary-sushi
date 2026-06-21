@@ -2959,6 +2959,10 @@ export class Game {
           this.chapterNine.setHeldItem('mic-sound');
           this.setPlacementToolActive(false);
           this.setMicrophoneSoundToolActive(true);
+        } else if (hotbarSlot === 4) {
+          this.chapterNine.setHeldItem('keycard');
+          this.setPlacementToolActive(false);
+          this.setMicrophoneSoundToolActive(false);
         } else if (this.microphoneSoundToolActive) {
           this.previewMicrophoneSoundBySlot(hotbarSlot);
         }
@@ -17657,7 +17661,13 @@ export class Game {
           filled: true,
           selected: chapterNineHeldItem === 'mic-sound',
         },
-        ...Array.from({ length: 6 }, () => ({
+        {
+          label: `Red/Blue Keycard ${chapterNineHeldItem === 'keycard' ? '[Held]' : '[4]'}`,
+          count: this.chapterNine.hasKeycard() ? 1 : 0,
+          filled: this.chapterNine.hasKeycard(),
+          selected: chapterNineHeldItem === 'keycard',
+        },
+        ...Array.from({ length: 5 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
