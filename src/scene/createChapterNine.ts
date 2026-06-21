@@ -187,6 +187,21 @@ function createVoiceTapeLabelMaterial(): MeshStandardMaterial {
   });
 }
 
+function createTurnstileLabelMaterial(label: string): MeshStandardMaterial {
+  return makeCanvasMaterial((context, canvas) => {
+    context.fillStyle = '#101214';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#78d7ff';
+    context.lineWidth = 12;
+    context.strokeRect(18, 18, canvas.width - 36, canvas.height - 36);
+    context.fillStyle = '#dff7ff';
+    context.font = 'bold 104px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(label, canvas.width / 2, canvas.height / 2);
+  });
+}
+
 function createComplexSignMaterial(): MeshStandardMaterial {
   return makeCanvasMaterial((context, canvas) => {
     context.fillStyle = '#0e0b09';
@@ -1068,6 +1083,81 @@ export function createChapterNine(): ChapterNineData {
   addWallShelf(-14.34, 2.04, 16.02, 1);
   addWallShelf(-14.34, 3.44, 16.12, 1);
 
+  const keycardTurnstiles: Array<{
+    label: string;
+    rotor: Group;
+    scannerMaterial: MeshStandardMaterial;
+    interactPosition: Vector3;
+    spinTimer: number;
+  }> = [];
+
+  const addKeycardTurnstile = (label: 'IN' | 'OUT', x: number, z: number): void => {
+    const turnstile = new Group();
+    turnstile.position.set(x, 0, z);
+    turnstile.rotation.y = Math.PI / 2;
+
+    const bodyMaterial = new MeshStandardMaterial({ color: 0x2d3238, roughness: 0.48, metalness: 0.34 });
+    const rubberMaterial = new MeshStandardMaterial({ color: 0x0c0d0f, roughness: 0.62, metalness: 0.18 });
+    const scannerMaterial = new MeshStandardMaterial({
+      color: 0x12362f,
+      emissive: 0x22e090,
+      emissiveIntensity: 0.45,
+      roughness: 0.36,
+      metalness: 0.12,
+    });
+
+    const pedestal = new Mesh(new BoxGeometry(0.52, 1.18, 0.56), bodyMaterial);
+    pedestal.position.y = 0.59;
+    const rubberBase = new Mesh(new BoxGeometry(0.64, 0.12, 0.66), rubberMaterial);
+    rubberBase.position.y = 0.06;
+    const scanner = new Mesh(new BoxGeometry(0.48, 0.16, 0.38), scannerMaterial);
+    scanner.position.set(0, 1.28, -0.04);
+    scanner.rotation.x = -0.18;
+    const scannerWedge = new Mesh(new ConeGeometry(0.25, 0.28, 3), scannerMaterial);
+    scannerWedge.position.set(0, 1.43, -0.04);
+    scannerWedge.rotation.set(Math.PI / 2, 0, Math.PI / 6);
+    const labelPlate = new Mesh(new PlaneGeometry(0.42, 0.22), createTurnstileLabelMaterial(label));
+    labelPlate.position.set(0, 1.33, -0.235);
+    labelPlate.rotation.x = -0.18;
+
+    const rotor = new Group();
+    rotor.position.set(0, 0.92, 0.34);
+    for (let index = 0; index < 3; index += 1) {
+      const armPivot = new Group();
+      armPivot.rotation.y = (index / 3) * Math.PI * 2;
+      const arm = new Mesh(new CylinderGeometry(0.035, 0.035, 0.9, 10), metalMaterial);
+      arm.position.x = 0.45;
+      arm.rotation.z = Math.PI / 2;
+      const tip = new Mesh(new SphereGeometry(0.055, 8, 6), metalMaterial);
+      tip.position.x = 0.9;
+      armPivot.add(arm, tip);
+      rotor.add(armPivot);
+    }
+    const hub = new Mesh(new SphereGeometry(0.13, 14, 10), metalMaterial);
+    rotor.add(hub);
+
+    const guardLeft = new Mesh(new BoxGeometry(0.09, 1.05, 0.08), blackMetalMaterial);
+    guardLeft.position.set(-0.42, 0.58, 0.32);
+    const guardRight = guardLeft.clone();
+    guardRight.position.x = 0.42;
+    const entryRail = new Mesh(new BoxGeometry(0.76, 0.08, 0.08), blackMetalMaterial);
+    entryRail.position.set(0, 1.08, 0.32);
+
+    turnstile.add(rubberBase, pedestal, scanner, scannerWedge, labelPlate, rotor, guardLeft, guardRight, entryRail);
+    root.add(turnstile);
+    addCollider(colliders, x, z, 0.7, 0.7);
+    keycardTurnstiles.push({
+      label,
+      rotor,
+      scannerMaterial,
+      interactPosition: new Vector3(x, GAME_CONFIG.player.height, z),
+      spinTimer: 0,
+    });
+  };
+
+  addKeycardTurnstile('IN', 1.21, 14.98);
+  addKeycardTurnstile('OUT', 3.47, 15.12);
+
   const sideDoor = (() => {
     const leftX = -12.03;
     const leftZ = 8.73;
@@ -1788,6 +1878,16 @@ export function createChapterNine(): ChapterNineData {
     setSideDoorProgress(sideDoorMotionFrom + (sideDoorMotionTo - sideDoorMotionFrom) * t);
   };
 
+  const updateKeycardTurnstiles = (deltaSeconds: number): void => {
+    keycardTurnstiles.forEach((turnstile) => {
+      if (turnstile.spinTimer > 0) {
+        turnstile.spinTimer = Math.max(0, turnstile.spinTimer - deltaSeconds);
+        turnstile.rotor.rotation.y += deltaSeconds * Math.PI * 3.2;
+      }
+      turnstile.scannerMaterial.emissiveIntensity = turnstile.spinTimer > 0 ? 1.6 : 0.45;
+    });
+  };
+
   const moveAnimatronic = (bot: ChapterNineAnimatronic, deltaSeconds: number, playerPosition: Vector3): void => {
     bot.scareCooldown = Math.max(0, bot.scareCooldown - deltaSeconds);
     const distanceToPlayer = bot.root.position.distanceTo(playerPosition);
@@ -1871,6 +1971,11 @@ export function createChapterNine(): ChapterNineData {
     sideDoorMotionFrom = 0;
     sideDoorMotionTo = 0;
     setSideDoorProgress(0);
+    keycardTurnstiles.forEach((turnstile) => {
+      turnstile.spinTimer = 0;
+      turnstile.rotor.rotation.y = 0;
+      turnstile.scannerMaterial.emissiveIntensity = 0.45;
+    });
     lastJumpscareEvent = null;
     filmingTargets.forEach((target) => {
       target.filmed = false;
@@ -1918,6 +2023,7 @@ export function createChapterNine(): ChapterNineData {
       updateEscapeState();
       updateEntranceDoors(deltaSeconds);
       updateSideDoor(deltaSeconds);
+      updateKeycardTurnstiles(deltaSeconds);
       animatronics.forEach((bot) => moveAnimatronic(bot, deltaSeconds, playerPosition));
       const recordingBlink = cameraRecording && Math.sin(phaseTime * 11) > -0.2;
       redDot.visible = recordingBlink;
@@ -1942,6 +2048,15 @@ export function createChapterNine(): ChapterNineData {
           message: `You sit in the ${chair.label}.`,
           teleport: chair.sitPosition.clone(),
           lookTarget: chair.lookTarget.clone(),
+        };
+      }
+      const turnstile = keycardTurnstiles
+        .filter((entry) => entry.interactPosition.distanceTo(playerPosition) <= GAME_CONFIG.player.interactionRange + 0.55)
+        .sort((a, b) => a.interactPosition.distanceTo(playerPosition) - b.interactPosition.distanceTo(playerPosition))[0];
+      if (turnstile) {
+        turnstile.spinTimer = 1.1;
+        return {
+          message: `${turnstile.label} scanner accepts the keycard. The bars rotate for one person.`,
         };
       }
       if (playerPosition.distanceTo(sideDoor.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.9) {
