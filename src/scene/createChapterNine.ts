@@ -77,6 +77,14 @@ interface ChapterNinePuzzleStation {
   solvedMessage: string;
 }
 
+interface ChapterNineSeat {
+  id: string;
+  label: string;
+  interactPosition: Vector3;
+  sitPosition: Vector3;
+  lookTarget: Vector3;
+}
+
 interface ChapterNineAnimatronic {
   id: ChapterNineAnimatronicId;
   name: string;
@@ -1485,6 +1493,59 @@ export function createChapterNine(): ChapterNineData {
   colliders.length = 0;
   colliders.push(...shellColliders);
 
+  const seatedChairs: ChapterNineSeat[] = [];
+  const addSitChair = (id: string, label: string, x: number, z: number, rotationY: number): void => {
+    const chair = new Group();
+    chair.position.set(x, 0, z);
+    chair.rotation.y = rotationY;
+
+    const seat = new Mesh(new BoxGeometry(0.92, 0.22, 0.86), woodMaterial);
+    seat.position.y = 0.62;
+    const cushion = new Mesh(new BoxGeometry(0.78, 0.08, 0.68), new MeshStandardMaterial({ color: 0x65462e, roughness: 0.82 }));
+    cushion.position.y = 0.78;
+    const back = new Mesh(new BoxGeometry(0.98, 1.08, 0.18), darkWoodMaterial);
+    back.position.set(0, 1.13, -0.48);
+    const backInset = new Mesh(new BoxGeometry(0.68, 0.72, 0.05), new MeshStandardMaterial({ color: 0x7a5636, roughness: 0.8 }));
+    backInset.position.set(0, 1.18, -0.585);
+    const frontRail = new Mesh(new BoxGeometry(0.9, 0.12, 0.12), darkWoodMaterial);
+    frontRail.position.set(0, 0.48, 0.38);
+    const sideRailLeft = new Mesh(new BoxGeometry(0.1, 0.12, 0.78), darkWoodMaterial);
+    sideRailLeft.position.set(-0.43, 0.48, 0);
+    const sideRailRight = sideRailLeft.clone();
+    sideRailRight.position.x = 0.43;
+
+    [
+      [-0.34, 0.29],
+      [0.34, 0.29],
+      [-0.34, -0.34],
+      [0.34, -0.34],
+    ].forEach(([legX, legZ]) => {
+      const leg = new Mesh(new BoxGeometry(0.14, 0.76, 0.14), darkWoodMaterial);
+      leg.position.set(legX, 0.28, legZ);
+      chair.add(leg);
+    });
+
+    chair.add(seat, cushion, back, backInset, frontRail, sideRailLeft, sideRailRight);
+    root.add(chair);
+
+    const forward = new Vector3(Math.sin(rotationY), 0, Math.cos(rotationY));
+    seatedChairs.push({
+      id,
+      label,
+      interactPosition: new Vector3(x, GAME_CONFIG.player.height, z),
+      sitPosition: new Vector3(x + forward.x * 0.08, GAME_CONFIG.player.height, z + forward.z * 0.08),
+      lookTarget: new Vector3(x + forward.x * 4, 1.45, z + forward.z * 4),
+    });
+  };
+
+  addSitChair('front-chair-1', 'front wall chair', -3.25, 28.8, Math.PI);
+  addSitChair('front-chair-2', 'front wall chair', -5.98, 28.92, Math.PI);
+  addSitChair('front-left-chair-1', 'angled wall chair', -8.81, 27.99, 2.55);
+  addSitChair('front-left-chair-2', 'angled wall chair', -10.73, 25.98, 2.32);
+  addSitChair('right-wall-chair-1', 'right wall chair', 3.19, 26.22, -Math.PI / 2);
+  addSitChair('right-wall-chair-2', 'right wall chair', 2.96, 22.86, -Math.PI / 2);
+  addSitChair('right-wall-chair-3', 'right wall chair', 2.93, 20.29, -Math.PI / 2);
+
   const shoulderCamera = new Group();
   shoulderCamera.name = 'Chapter 9 shoulder recording camera';
   const cameraBody = new Mesh(new BoxGeometry(0.55, 0.34, 0.34), recordingMaterial);
@@ -1686,6 +1747,16 @@ export function createChapterNine(): ChapterNineData {
       });
     },
     interact(playerPosition: Vector3): ChapterNineInteractionResult {
+      const chair = seatedChairs
+        .filter((entry) => entry.interactPosition.distanceTo(playerPosition) <= GAME_CONFIG.player.interactionRange + 0.65)
+        .sort((a, b) => a.interactPosition.distanceTo(playerPosition) - b.interactPosition.distanceTo(playerPosition))[0];
+      if (chair) {
+        return {
+          message: `You sit in the ${chair.label}.`,
+          teleport: chair.sitPosition.clone(),
+          lookTarget: chair.lookTarget.clone(),
+        };
+      }
       const doorInteractPosition = new Vector3(0, GAME_CONFIG.player.height, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 2.3);
       if (playerPosition.distanceTo(doorInteractPosition) <= GAME_CONFIG.player.interactionRange + 2.2) {
         toggleEntranceDoors();
