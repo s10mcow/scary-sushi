@@ -412,8 +412,8 @@ function createBrickWallMaterial(repeatX = 4.5, repeatY = 2.8): MeshStandardMate
   if (context) {
     context.fillStyle = '#6b4038';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const brickWidth = 78;
-    const brickHeight = 34;
+    const brickWidth = 70;
+    const brickHeight = 30;
     context.lineWidth = 3;
     for (let y = 0; y < canvas.height + brickHeight; y += brickHeight) {
       const row = Math.floor(y / brickHeight);
@@ -561,7 +561,7 @@ export function createChapterNine(): ChapterNineData {
   };
 
   const createBrickMaterialFor = (runLength: number, height = WALL_HEIGHT): MeshStandardMaterial => (
-    createBrickWallMaterial(Math.max(1, runLength / 12), Math.max(1, height / 3))
+    createBrickWallMaterial(Math.max(1, runLength / 10.5), Math.max(1, height / 2.65))
   );
 
   const addBrickWall = (x: number, z: number, width: number, depth: number, runLength: number): void => {
@@ -682,7 +682,7 @@ export function createChapterNine(): ChapterNineData {
 
   const shellStartChildIndex = root.children.length;
   addCheckeredFloor(0, BUILDING_CENTER_Z, BUILDING_WIDTH, BUILDING_DEPTH);
-  const wallJoinOverlap = 0.28;
+  const wallJoinOverlap = 0;
   addBrickWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH + wallJoinOverlap, WALL_THICKNESS, BUILDING_WIDTH + wallJoinOverlap);
   addBrickWall(-BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, BUILDING_DEPTH + wallJoinOverlap);
   addBrickWall(BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, BUILDING_DEPTH + wallJoinOverlap);
