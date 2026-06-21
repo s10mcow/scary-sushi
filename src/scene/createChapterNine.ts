@@ -838,6 +838,29 @@ export function createChapterNine(): ChapterNineData {
     const rightHand = new Mesh(new BoxGeometry(0.18, 0.12, 0.2), wornShellMaterial);
     rightHand.position.set(0.63, 0.04, 0.09);
     rightHand.rotation.set(0.08, -0.1, 0.12);
+    const voiceTape = new Group();
+    voiceTape.position.set(-0.82, 0.065, 0.26);
+    voiceTape.rotation.set(0.02, -0.24, 0.08);
+    const recorderBody = new Mesh(new BoxGeometry(0.48, 0.09, 0.3), new MeshStandardMaterial({ color: 0x17191d, roughness: 0.58, metalness: 0.18 }));
+    const cassetteWindow = new Mesh(new BoxGeometry(0.28, 0.018, 0.16), new MeshStandardMaterial({ color: 0x302a22, roughness: 0.62, metalness: 0.04 }));
+    cassetteWindow.position.set(0, 0.055, -0.015);
+    const leftReel = new Mesh(new CylinderGeometry(0.055, 0.055, 0.018, 14), metalMaterial);
+    leftReel.position.set(-0.09, 0.075, -0.015);
+    const rightReel = leftReel.clone();
+    rightReel.position.x = 0.09;
+    const redRecordButton = new Mesh(new CylinderGeometry(0.035, 0.035, 0.018, 10), stainMaterial);
+    redRecordButton.position.set(0.18, 0.075, 0.105);
+    const playButton = new Mesh(new BoxGeometry(0.07, 0.018, 0.045), new MeshStandardMaterial({ color: 0xb8bdc0, roughness: 0.42, metalness: 0.28 }));
+    playButton.position.set(0.06, 0.075, 0.11);
+    const tapeLabel = new Mesh(new PlaneGeometry(0.28, 0.11), createSignMaterial('VOICE', 'TAPE', '#d6c18a'));
+    tapeLabel.rotation.x = -Math.PI / 2;
+    tapeLabel.position.set(-0.03, 0.093, -0.105);
+    voiceTape.add(recorderBody, cassetteWindow, leftReel, rightReel, redRecordButton, playButton, tapeLabel);
+    [-0.18, -0.11, -0.04].forEach((lineX) => {
+      const grille = new Mesh(new BoxGeometry(0.018, 0.015, 0.12), blackMetalMaterial);
+      grille.position.set(lineX, 0.078, 0.085);
+      voiceTape.add(grille);
+    });
     addLimb(-0.24, 0.14, 0.74, 1.57, -0.04, -0.04, 1.08, 0.14);
     addLimb(0.24, 0.14, 0.74, 1.57, 0.04, 0.04, 1.08, 0.14);
     addLimb(-0.25, 0.13, 1.34, 1.57, 0.03, 0.04, 0.74, 0.12);
@@ -903,6 +926,7 @@ export function createChapterNine(): ChapterNineData {
       shoulderRight,
       leftHand,
       rightHand,
+      voiceTape,
       detachedHead,
       leftFoot,
       rightFoot,
@@ -1083,6 +1107,9 @@ export function createChapterNine(): ChapterNineData {
 
   const collapsedAnimatronicRotation = -1.1115926535897938;
   addCollapsedAnimatronic(-7.2, 13.06, collapsedAnimatronicRotation);
+  const voiceTapeInteractPosition = new Vector3(-0.82, 0, 0.26)
+    .applyAxisAngle(new Vector3(0, 1, 0), collapsedAnimatronicRotation)
+    .add(new Vector3(-7.2, GAME_CONFIG.player.height, 13.06));
   const collapsedAnimatronicLanding = {
     centerX: -7.5,
     centerZ: 13.2,
@@ -1884,6 +1911,11 @@ export function createChapterNine(): ChapterNineData {
       });
     },
     interact(playerPosition: Vector3): ChapterNineInteractionResult {
+      if (playerPosition.distanceTo(voiceTapeInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.55) {
+        return {
+          message: 'The voice tape clicks softly. It holds scratchy animatronic speech tests and old rehearsal lines.',
+        };
+      }
       const chair = seatedChairs
         .filter((entry) => entry.interactPosition.distanceTo(playerPosition) <= GAME_CONFIG.player.interactionRange + 0.65)
         .sort((a, b) => a.interactPosition.distanceTo(playerPosition) - b.interactPosition.distanceTo(playerPosition))[0];
