@@ -126,6 +126,8 @@ import {
   createHud,
   type HudChapterId,
   type HudChapterFiveMonitorAction,
+  type ChapterSevenGrandpaTradeId,
+  type ChapterSevenGrandpaTradeView,
   type HudJumpScareVariant,
   type MinecraftInventoryAction,
   type OfficeCameraPuppetHudPhase,
@@ -198,8 +200,8 @@ const START_IN_CHAPTER_THREE = false;
 const START_IN_CHAPTER_FOUR = false;
 const START_IN_CHAPTER_FIVE = false;
 const START_IN_CHAPTER_SIX = false;
-const START_IN_CHAPTER_SEVEN = false;
-const START_IN_CHAPTER_NINE = true;
+const START_IN_CHAPTER_SEVEN = true;
+const START_IN_CHAPTER_NINE = false;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -960,6 +962,7 @@ type ChapterSevenInteractable =
   | { kind: 'rear-fixture'; item: ChapterSevenData['rearFixtures'][number]; score: number }
   | { kind: 'remote-button'; item: ChapterSevenData['remoteButtons'][number]; score: number }
   | { kind: 'swing'; item: ChapterSevenData['swingSet']; score: number }
+  | { kind: 'grandpa'; item: ChapterSevenData['grandpa']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
 type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'torch' | 'empty';
@@ -1248,6 +1251,10 @@ export class Game {
   private chapterSevenCookieCount = 0;
   private chapterSevenCookieTarget = 25;
   private chapterSevenCookiePickerOpen = false;
+  private chapterSevenGrandpaTradingOpen = false;
+  private chapterSevenHasBirdCageKey = false;
+  private chapterSevenLongerNightUses = 0;
+  private chapterSevenLongerNightDuration = 0;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -1615,6 +1622,7 @@ export class Game {
     this.hud.onMinecraftInventoryAction(this.handleMinecraftInventoryAction);
     this.hud.onChapterFiveMonitorAction(this.handleChapterFiveMonitorAction);
     this.hud.onChapterSevenCookieTargetSelect(this.handleChapterSevenCookieTargetSelect);
+    this.hud.onChapterSevenGrandpaTrade(this.handleChapterSevenGrandpaTrade);
     this.hud.onCuratorSave(this.handleCuratorSave);
     this.player.controls.addEventListener('lock', this.handleLockChange);
     this.player.controls.addEventListener('unlock', this.handleLockChange);
@@ -1801,6 +1809,9 @@ export class Game {
 
       event.preventDefault();
       event.stopImmediatePropagation();
+      if (this.chapterSevenGrandpaTradingOpen) {
+        this.setChapterSevenGrandpaTradingOpen(false);
+      }
       this.setChapterSevenCookiePickerOpen(!this.chapterSevenCookiePickerOpen);
       return;
     }
@@ -1882,8 +1893,8 @@ export class Game {
     }
 
     const clickedMenu = event.target instanceof Element
-      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker');
-    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen) {
+      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading');
+    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen) {
       if (clickedMenu) {
         return;
       }
@@ -1893,10 +1904,11 @@ export class Game {
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
       this.chapterSevenCookiePickerOpen = false;
+      this.chapterSevenGrandpaTradingOpen = false;
       this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker')) {
+    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading')) {
       return;
     }
 
@@ -2673,6 +2685,7 @@ export class Game {
       this.curatorToolOpen = false;
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
+      this.chapterSevenGrandpaTradingOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -2711,6 +2724,57 @@ export class Game {
     this.syncHud();
   }
 
+  private setChapterSevenGrandpaTradingOpen(open: boolean): void {
+    if (!this.chapterSevenActive) {
+      open = false;
+    }
+
+    if (this.chapterSevenGrandpaTradingOpen === open) {
+      this.syncHud();
+      return;
+    }
+
+    this.chapterSevenGrandpaTradingOpen = open;
+    if (open) {
+      this.chapterMenuOpen = false;
+      this.curatorToolOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+      this.chapterSevenCookiePickerOpen = false;
+    }
+
+    if (open && this.player.isLocked()) {
+      this.syncHud();
+      this.player.controls.unlock();
+      return;
+    }
+
+    this.syncHud();
+  }
+
+  private getChapterSevenGrandpaTrades(): ChapterSevenGrandpaTradeView[] {
+    return [
+      {
+        id: 'bird-cage-key',
+        label: 'the bird cage key',
+        cost: 25,
+        description: 'A little metal key for the bird cage.',
+        ownedLabel: this.chapterSevenHasBirdCageKey ? 'Already bought. The bird cage key is yours.' : undefined,
+        enabled: !this.chapterSevenHasBirdCageKey && this.chapterSevenCookieCount >= 25,
+      },
+      {
+        id: 'longer-night-watch',
+        label: 'the longer night item',
+        cost: 15,
+        description: 'A watch item with 2 uses. Right click it to make night last 2:30.',
+        ownedLabel: this.chapterSevenLongerNightUses > 0
+          ? `Owned. Uses left: ${this.chapterSevenLongerNightUses}.`
+          : undefined,
+        enabled: this.chapterSevenLongerNightUses <= 0 && this.chapterSevenCookieCount >= 15,
+      },
+    ];
+  }
+
   private readonly handleChapterSevenCookieTargetSelect = (target: number): void => {
     if (![25, 50, 80].includes(target)) {
       return;
@@ -2719,6 +2783,36 @@ export class Game {
     this.chapterSevenCookieTarget = target;
     this.chapterSevenCookiePickerOpen = false;
     this.pushStatus(`Cookie goal set to ${target}. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 2.4);
+    this.syncHud();
+  };
+
+  private readonly handleChapterSevenGrandpaTrade = (tradeId: ChapterSevenGrandpaTradeId): void => {
+    if (!this.chapterSevenActive || !this.chapterSevenGrandpaTradingOpen) {
+      return;
+    }
+
+    const trade = this.getChapterSevenGrandpaTrades().find((candidate) => candidate.id === tradeId);
+    if (!trade) {
+      return;
+    }
+
+    if (!trade.enabled) {
+      this.pushStatus(
+        trade.ownedLabel ?? `You need ${trade.cost} cookies for ${trade.label}.`,
+        2.5,
+      );
+      this.syncHud();
+      return;
+    }
+
+    this.chapterSevenCookieCount = Math.max(0, this.chapterSevenCookieCount - trade.cost);
+    if (tradeId === 'bird-cage-key') {
+      this.chapterSevenHasBirdCageKey = true;
+      this.pushStatus('You traded 25 cookies for the bird cage key.', 2.8);
+    } else {
+      this.chapterSevenLongerNightUses = 2;
+      this.pushStatus('You traded 15 cookies for the longer night watch. It has 2 uses.', 2.8);
+    }
     this.syncHud();
   };
 
@@ -3220,7 +3314,9 @@ export class Game {
     }
 
     const secondaryFireRequested = this.input.consumeSecondaryFire();
-    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && secondaryFireRequested && this.chapterEightActive && this.player.isLocked() && !this.placementToolActive) {
+    if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && secondaryFireRequested && this.chapterSevenActive && this.player.isLocked() && !this.placementToolActive) {
+      this.useChapterSevenLongerNightWatch();
+    } else if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && secondaryFireRequested && this.chapterEightActive && this.player.isLocked() && !this.placementToolActive) {
       this.handleChapterEightSecondaryFire();
     } else if (!jumpscareLocked && !chapterTwoBearRefusing && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && secondaryFireRequested && this.chapterSixActive && this.player.isLocked() && !this.chapterSix.isInventoryOpen() && !this.placementToolActive) {
       if (this.chapterSix.petLookedAtPossum()) {
@@ -12427,6 +12523,9 @@ export class Game {
   }
 
   private getChapterSevenPhaseDuration(): number {
+    if (this.chapterSevenNightMode && this.chapterSevenLongerNightDuration > 0) {
+      return this.chapterSevenLongerNightDuration;
+    }
     return this.chapterSevenNightMode ? CHAPTER_SEVEN_NIGHT_SECONDS : CHAPTER_SEVEN_DAY_SECONDS;
   }
 
@@ -12449,6 +12548,7 @@ export class Game {
       const wasNightMode = this.chapterSevenNightMode;
       this.chapterSevenPhaseTime -= this.getChapterSevenPhaseDuration();
       this.chapterSevenNightMode = !this.chapterSevenNightMode;
+      this.chapterSevenLongerNightDuration = 0;
       if (wasNightMode && !this.chapterSevenNightMode) {
         passedIntoDay += 1;
       }
@@ -12472,6 +12572,27 @@ export class Game {
         : 'The grandfather clock chimes. Day mode returns to the house.',
       3,
     );
+  }
+
+  private useChapterSevenLongerNightWatch(): void {
+    if (this.chapterSevenLongerNightUses <= 0) {
+      return;
+    }
+
+    if (!this.chapterSevenNightMode) {
+      this.pushStatus('The longer night watch only works at night.', 2.2);
+      return;
+    }
+
+    if (this.chapterSevenLongerNightDuration > 0) {
+      this.pushStatus('The longer night watch is already active for this night.', 2.2);
+      return;
+    }
+
+    this.chapterSevenLongerNightUses = Math.max(0, this.chapterSevenLongerNightUses - 1);
+    this.chapterSevenLongerNightDuration = 150;
+    this.pushStatus(`The longer night watch ticks loudly. This night now lasts 2:30. Uses left: ${this.chapterSevenLongerNightUses}.`, 3);
+    this.syncHud();
   }
 
   private updateChapterSevenAmbientAudio(deltaSeconds: number): void {
@@ -13110,6 +13231,11 @@ export class Game {
     this.hud.setChapterSevenDayCounter(this.chapterSevenActive, this.chapterSevenDayCount);
     this.hud.setChapterSevenCookieCounter(this.chapterSevenActive, this.chapterSevenCookieCount, this.chapterSevenCookieTarget);
     this.hud.setChapterSevenCookiePicker(this.chapterSevenActive && this.chapterSevenCookiePickerOpen, this.chapterSevenCookieTarget);
+    this.hud.setChapterSevenTrading(
+      this.chapterSevenActive && this.chapterSevenGrandpaTradingOpen,
+      this.chapterSevenCookieCount,
+      this.getChapterSevenGrandpaTrades(),
+    );
     const chapterSevenPhaseSecondsLeft = this.getChapterSevenPhaseSecondsLeft();
     this.hud.setChapterSevenPhaseTimer(
       this.chapterSevenActive,
@@ -13451,6 +13577,12 @@ export class Game {
         : this.getNearestChapterSevenBathtubFaucet();
       if (!interactable && nearestBathtubFaucet) {
         this.toggleChapterSevenBathtubFaucet(nearestBathtubFaucet);
+        return;
+      }
+
+      if (interactable?.kind === 'grandpa') {
+        this.setChapterSevenGrandpaTradingOpen(true);
+        this.pushStatus('Grandpa opens his trading menu.', 2.2);
         return;
       }
 
@@ -17262,8 +17394,13 @@ export class Game {
     }
 
     if (this.chapterSevenActive) {
+      const chapterSevenItems = [
+        'Coordinate Tool',
+        this.chapterSevenHasBirdCageKey ? 'Bird Cage Key' : null,
+        this.chapterSevenLongerNightUses > 0 ? `Longer Night Watch x${this.chapterSevenLongerNightUses}` : null,
+      ].filter((item): item is string => Boolean(item));
       return [
-        'Inventory: Coordinate Tool',
+        `Inventory: ${chapterSevenItems.join(', ')}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 7: The House',
         this.getChapterSevenDayNightHudLine(),
@@ -18026,6 +18163,10 @@ export class Game {
 
         if (interactable.kind === 'cookie') {
           return 'Press E to grab the cookie.';
+        }
+
+        if (interactable.kind === 'grandpa') {
+          return 'Press E near Grandpa to open trading.';
         }
 
         if (interactable.kind === 'cardboard-box') {
@@ -18915,6 +19056,10 @@ export class Game {
 
         if (interactable.kind === 'cookie') {
           return 'Cookie in reach. Press E to grab it.';
+        }
+
+        if (interactable.kind === 'grandpa') {
+          return 'Grandpa is ready to trade. Press E to open the trading menu.';
         }
 
         if (interactable.kind === 'cardboard-box') {
@@ -22505,6 +22650,11 @@ export class Game {
       }
     });
 
+    const grandpaScore = this.getChapterSevenLookScore(this.chapterSeven.grandpa, 0.74, 0.15);
+    if (grandpaScore !== null) {
+      keepBest({ kind: 'grandpa', item: this.chapterSeven.grandpa, score: grandpaScore });
+    }
+
     const swingScore = this.getChapterSevenLookScore(this.chapterSeven.swingSet, 1.0, 1.25);
     if (swingScore !== null) {
       keepBest({ kind: 'swing', item: this.chapterSeven.swingSet, score: swingScore });
@@ -25285,6 +25435,10 @@ export class Game {
     this.chapterSevenDayCount = 1;
     this.chapterSevenCookieCount = 0;
     this.chapterSevenCookiePickerOpen = false;
+    this.chapterSevenGrandpaTradingOpen = false;
+    this.chapterSevenHasBirdCageKey = false;
+    this.chapterSevenLongerNightUses = 0;
+    this.chapterSevenLongerNightDuration = 0;
     this.chapterSevenCricketCooldown = 0;
     this.chapterSeven.setDay(this.chapterSevenDayCount);
     this.chapterFourBoxHeldAnchor.visible = false;

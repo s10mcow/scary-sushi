@@ -48,6 +48,7 @@ export interface ChapterSevenData {
   rearFixtures: ChapterSevenRearFixture[];
   remoteButtons: ChapterSevenRemoteButton[];
   swingSet: ChapterSevenSwingSet;
+  grandpa: ChapterSevenGrandpa;
   refreshCookiesForDay(day: number, forceReroll?: boolean): void;
   setDay(day: number): void;
   setTelevisionPowered(powered: boolean): void;
@@ -117,6 +118,12 @@ export interface ChapterSevenCookiePickup {
   active: boolean;
   spawnChance: number;
   shuffleSeed: number;
+}
+
+export interface ChapterSevenGrandpa {
+  root: Group;
+  interactPosition: Vector3;
+  aimPosition: Vector3;
 }
 
 interface ChapterSevenCounterSurface {
@@ -4752,9 +4759,14 @@ export function createChapterSeven(): ChapterSevenData {
   const addSeatedGrandpa = (localX: number, localZ: number, rotationY = 0): Group => {
     const grandpa = new Group();
     grandpa.name = 'Front porch Grandpa';
-    grandpa.position.set(localX, 0, localZ);
+    const seatBackOffset = 0.22;
+    grandpa.position.set(
+      localX - Math.sin(rotationY) * seatBackOffset,
+      0,
+      localZ - Math.cos(rotationY) * seatBackOffset,
+    );
     grandpa.rotation.y = rotationY;
-    grandpa.scale.setScalar(0.86);
+    grandpa.scale.setScalar(1.04);
     grandpa.visible = true;
 
     const skinMaterial = new MeshStandardMaterial({
@@ -4895,15 +4907,15 @@ export function createChapterSeven(): ChapterSevenData {
 
     const makeLeg = (side: -1 | 1): Group => {
       const leg = new Group();
-      leg.position.set(side * 0.22, 1.12, 0.18);
+      leg.position.set(side * 0.22, 1.12, 0.02);
       const thigh = new Mesh(new BoxGeometry(0.2, 0.5, 0.18), pantsMaterial);
-      thigh.position.set(0, -0.08, 0.18);
+      thigh.position.set(0, -0.08, 0.12);
       thigh.rotation.x = -1.28;
       const shin = new Mesh(new BoxGeometry(0.18, 0.56, 0.16), pantsMaterial);
-      shin.position.set(0, -0.42, 0.54);
+      shin.position.set(0, -0.42, 0.42);
       shin.rotation.x = -0.08;
       const shoe = new Mesh(new BoxGeometry(0.2, 0.1, 0.34), shoeMaterial);
-      shoe.position.set(0, -0.7, 0.7);
+      shoe.position.set(0, -0.7, 0.56);
       shoe.rotation.x = 0.04;
       leg.add(thigh, shin, shoe);
       return leg;
@@ -7809,6 +7821,13 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(leftPorchChairX, leftPorchChairZ, leftPorchChairRotation);
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const daySixGrandpa = addSeatedGrandpa(leftPorchChairX, leftPorchChairZ, leftPorchChairRotation);
+  const daySixGrandpaWorldPosition = new Vector3();
+  daySixGrandpa.getWorldPosition(daySixGrandpaWorldPosition);
+  const grandpaInteractable: ChapterSevenGrandpa = {
+    root: daySixGrandpa,
+    interactPosition: daySixGrandpaWorldPosition.clone().setY(GAME_CONFIG.player.height),
+    aimPosition: daySixGrandpaWorldPosition.clone().setY(2.25),
+  };
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
   addCookie(house, leftPorchChairX + 0.05, getCookieRestY(0.9, 0.82), leftPorchChairZ + 0.02, 0.82, 'Porch rocking chair easy cookie');
   addCookie(house, rightPorchChairX - 0.02, getCookieRestY(0.9, 0.82), rightPorchChairZ + 0.02, 0.82, 'Porch rocking chair second easy cookie');
@@ -8110,6 +8129,7 @@ export function createChapterSeven(): ChapterSevenData {
     rearFixtures,
     remoteButtons,
     swingSet,
+    grandpa: grandpaInteractable,
     refreshCookiesForDay,
     setDay(day: number): void {
       daySixGrandpa.visible = day >= 1;

@@ -92,6 +92,7 @@ export interface HudController {
   onMinecraftInventoryAction(handler: (action: MinecraftInventoryAction) => void): void;
   onChapterFiveMonitorAction(handler: (action: HudChapterFiveMonitorAction) => void): void;
   onChapterSevenCookieTargetSelect(handler: (target: number) => void): void;
+  onChapterSevenGrandpaTrade(handler: (tradeId: ChapterSevenGrandpaTradeId) => void): void;
   onCuratorSave(handler: (slotLabel: string, summary: string) => void): void;
   setTheme(theme: 'default' | 'doom'): void;
   setCrosshairMode(mode: 'default' | 'firearm' | 'minecraft'): void;
@@ -106,6 +107,7 @@ export interface HudController {
   setChapterSevenDayCounter(active: boolean, day: number): void;
   setChapterSevenCookieCounter(active: boolean, cookies: number, target: number): void;
   setChapterSevenCookiePicker(active: boolean, currentTarget: number): void;
+  setChapterSevenTrading(active: boolean, cookies: number, trades: ChapterSevenGrandpaTradeView[]): void;
   setChapterSevenPhaseTimer(active: boolean, phase: 'day' | 'night', secondsLeft: number, urgent: boolean): void;
   setChapterMenu(active: boolean, currentChapter: HudChapterId): void;
   setCompass(active: boolean, headingDegrees: number): void;
@@ -153,6 +155,17 @@ export interface HudController {
   setHotbar(slots: HotbarSlotView[]): void;
   setJumpscare(variant: HudJumpScareVariant | null, intensity: number): void;
   destroy(): void;
+}
+
+export type ChapterSevenGrandpaTradeId = 'bird-cage-key' | 'longer-night-watch';
+
+export interface ChapterSevenGrandpaTradeView {
+  id: ChapterSevenGrandpaTradeId;
+  label: string;
+  cost: number;
+  description: string;
+  ownedLabel?: string;
+  enabled: boolean;
 }
 
 export type HudChapterFiveMonitorAction =
@@ -499,6 +512,7 @@ export function createHud(host: HTMLElement): HudController {
   root.style.setProperty('--scare-intensity', '0');
   root.style.setProperty('--threat-eye-intensity', '0');
   let chapterSevenCookieTargetSelectHandler: ((target: number) => void) | null = null;
+  let chapterSevenGrandpaTradeHandler: ((tradeId: ChapterSevenGrandpaTradeId) => void) | null = null;
 
   const backdrop = document.createElement('div');
   backdrop.className = 'hud__backdrop';
@@ -1088,6 +1102,23 @@ export function createHud(host: HTMLElement): HudController {
 
   chapterSevenCookiePickerOptions.append(...chapterSevenCookieTargetButtons);
   chapterSevenCookiePicker.append(chapterSevenCookiePickerTitle, chapterSevenCookiePickerOptions);
+
+  const chapterSevenTrading = document.createElement('section');
+  chapterSevenTrading.className = 'hud__chapter-seven-trading';
+  chapterSevenTrading.dataset.active = 'false';
+
+  const chapterSevenTradingTitle = document.createElement('h2');
+  chapterSevenTradingTitle.className = 'hud__chapter-seven-cookie-picker-title';
+  chapterSevenTradingTitle.textContent = 'Trading';
+
+  const chapterSevenTradingCookies = document.createElement('p');
+  chapterSevenTradingCookies.className = 'hud__chapter-seven-trading-cookies';
+  chapterSevenTradingCookies.textContent = 'Cookies: 0';
+
+  const chapterSevenTradingOptions = document.createElement('div');
+  chapterSevenTradingOptions.className = 'hud__chapter-seven-trading-options';
+
+  chapterSevenTrading.append(chapterSevenTradingTitle, chapterSevenTradingCookies, chapterSevenTradingOptions);
 
   const statusPanel = document.createElement('section');
   statusPanel.className = 'hud__panel hud__panel--right';
@@ -1909,6 +1940,7 @@ export function createHud(host: HTMLElement): HudController {
     chapterSevenCookieCounter,
     chapterSevenPhaseTimer,
     chapterSevenCookiePicker,
+    chapterSevenTrading,
     crosshair,
     meterPanel,
     statusPanel,
@@ -2537,6 +2569,9 @@ export function createHud(host: HTMLElement): HudController {
     onChapterSevenCookieTargetSelect(handler): void {
       chapterSevenCookieTargetSelectHandler = handler;
     },
+    onChapterSevenGrandpaTrade(handler): void {
+      chapterSevenGrandpaTradeHandler = handler;
+    },
     onCuratorSave(handler): void {
       curatorSaveHandler = handler;
     },
@@ -2594,6 +2629,30 @@ export function createHud(host: HTMLElement): HudController {
       chapterSevenCookieTargetButtons.forEach((button) => {
         button.dataset.selected = String(Number(button.dataset.target) === Math.floor(currentTarget));
       });
+    },
+    setChapterSevenTrading(active, cookies, trades): void {
+      chapterSevenTrading.dataset.active = String(active);
+      chapterSevenTradingCookies.textContent = `Cookies: ${Math.max(0, Math.floor(cookies))}`;
+      chapterSevenTradingOptions.replaceChildren(...trades.map((trade) => {
+        const button = document.createElement('button');
+        button.className = 'hud__chapter-seven-trade';
+        button.type = 'button';
+        button.disabled = !trade.enabled;
+        button.dataset.trade = trade.id;
+        const title = document.createElement('span');
+        title.className = 'hud__chapter-seven-trade-title';
+        title.textContent = `${trade.cost} cookies for ${trade.label}`;
+        const description = document.createElement('span');
+        description.className = 'hud__chapter-seven-trade-description';
+        description.textContent = trade.ownedLabel ?? trade.description;
+        button.append(title, description);
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          chapterSevenGrandpaTradeHandler?.(trade.id);
+        });
+        return button;
+      }));
     },
     setChapterSevenPhaseTimer(active, phase, secondsLeft, urgent): void {
       const safeSeconds = Math.max(0, Math.ceil(secondsLeft));
