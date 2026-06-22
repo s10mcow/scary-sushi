@@ -551,8 +551,19 @@ export function createChapterNine(): ChapterNineData {
   const plainInteriorWallMaterial = new MeshStandardMaterial({ color: 0x6f7376, roughness: 0.84, metalness: 0.01 });
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
+  const wallCheckerBandTopY = 1.45;
   const createGrayMaterialFor = (runLength: number, height = WALL_HEIGHT, offsetX = 0): MeshStandardMaterial => (
     createGrayWallBandMaterial(Math.max(0.05, runLength / height), offsetX)
+  );
+  const createInteriorWallMaterialFor = (
+    runLength: number,
+    height = WALL_HEIGHT,
+    bottomY = 0,
+    offsetX = 0,
+  ): MeshStandardMaterial => (
+    bottomY >= wallCheckerBandTopY
+      ? plainInteriorWallMaterial
+      : createGrayMaterialFor(runLength, height, offsetX)
   );
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
   const roofMaterial = new MeshStandardMaterial({ color: 0x191715, roughness: 0.86, metalness: 0.12 });
@@ -597,7 +608,7 @@ export function createChapterNine(): ChapterNineData {
   };
 
   const addWall = (x: number, z: number, width: number, depth: number, material?: MeshStandardMaterial): void => {
-    const wallMaterial = material ?? createGrayMaterialFor(Math.max(width, depth));
+    const wallMaterial = material ?? createInteriorWallMaterialFor(Math.max(width, depth));
     addBox(root, width, WALL_HEIGHT, depth, x, WALL_HEIGHT / 2, z, wallMaterial);
     addCollider(colliders, x, z, width, depth);
   };
@@ -629,7 +640,7 @@ export function createChapterNine(): ChapterNineData {
     const extendedEndX = endX + unitX * joinExtension;
     const extendedEndZ = endZ + unitZ * joinExtension;
     const extendedLength = length + joinExtension * 2;
-    const wallMaterial = material ?? createGrayMaterialFor(extendedLength, WALL_HEIGHT, textureOffset - joinExtension / WALL_HEIGHT);
+    const wallMaterial = material ?? createInteriorWallMaterialFor(extendedLength, WALL_HEIGHT, 0, textureOffset - joinExtension / WALL_HEIGHT);
     const wall = new Mesh(new BoxGeometry(extendedLength, WALL_HEIGHT, WALL_THICKNESS), wallMaterial);
     wall.position.set((extendedStartX + extendedEndX) / 2, WALL_HEIGHT / 2, (extendedStartZ + extendedEndZ) / 2);
     wall.rotation.y = Math.atan2(-dz, dx);
@@ -1088,7 +1099,10 @@ export function createChapterNine(): ChapterNineData {
     const dz = openingRightZ - openingLeftZ;
     const headerWidth = Math.hypot(dx, dz) + WALL_THICKNESS * 0.18;
     const headerHeight = Math.max(0.1, WALL_HEIGHT - openingTopY);
-    const header = new Mesh(new BoxGeometry(headerWidth, headerHeight, WALL_THICKNESS), plainInteriorWallMaterial);
+    const header = new Mesh(
+      new BoxGeometry(headerWidth, headerHeight, WALL_THICKNESS),
+      createInteriorWallMaterialFor(headerWidth, headerHeight, openingTopY),
+    );
     header.position.set((openingLeftX + openingRightX) / 2, openingTopY + headerHeight / 2, (openingLeftZ + openingRightZ) / 2);
     header.rotation.y = Math.atan2(-dz, dx);
     root.add(header);
@@ -1225,7 +1239,7 @@ export function createChapterNine(): ChapterNineData {
     const headerHeight = Math.max(0.1, WALL_HEIGHT - headerBottomY);
     const wallHeader = new Mesh(
       new BoxGeometry(width + 0.64, headerHeight, WALL_THICKNESS),
-      plainInteriorWallMaterial,
+      createInteriorWallMaterialFor(width + 0.64, headerHeight, headerBottomY),
     );
     wallHeader.position.set(centerX, headerBottomY + headerHeight / 2, centerZ);
     wallHeader.rotation.y = rotationY;
