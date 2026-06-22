@@ -1,6 +1,7 @@
 import {
   BoxGeometry,
   CanvasTexture,
+  CatmullRomCurve3,
   ConeGeometry,
   CylinderGeometry,
   DoubleSide,
@@ -12,6 +13,7 @@ import {
   RepeatWrapping,
   SphereGeometry,
   TorusGeometry,
+  TubeGeometry,
   Vector3,
 } from 'three';
 
@@ -938,6 +940,12 @@ export function createChapterNine(): ChapterNineData {
   let rockWallClimbX = 0;
   let rockWallClimbY = 0;
   let rockWallHarnessRoot: Group | null = null;
+  let rockWallRope: Mesh | null = null;
+  const rockWallRopeAnchor = new Vector3(
+    rockWallCenterX + rockWallNormalX * rockWallFrontOffset,
+    rockWallHeight + 0.34,
+    rockWallCenterZ + rockWallNormalZ * rockWallFrontOffset,
+  );
 
   const getRockWallClimbPosition = (): Vector3 => new Vector3(
     rockWallCenterX + rockWallAxisX * rockWallClimbX + rockWallNormalX * rockWallFrontOffset,
@@ -945,11 +953,46 @@ export function createChapterNine(): ChapterNineData {
     rockWallCenterZ + rockWallAxisZ * rockWallClimbX + rockWallNormalZ * rockWallFrontOffset,
   );
 
+  const getRockWallHarnessAttachmentPosition = (): Vector3 => {
+    const climbPosition = getRockWallClimbPosition();
+    climbPosition.y += 0.34;
+    return climbPosition;
+  };
+
   const getRockWallLookTarget = (): Vector3 => new Vector3(
     rockWallCenterX + rockWallAxisX * rockWallClimbX,
     GAME_CONFIG.player.height + rockWallClimbY,
     rockWallCenterZ + rockWallAxisZ * rockWallClimbX,
   );
+
+  const updateRockWallRope = (endPoint?: Vector3): void => {
+    if (!rockWallRope) {
+      return;
+    }
+
+    const end = endPoint ?? rockWallHarnessInteractPosition.clone().setY(1.28);
+    const distance = rockWallRopeAnchor.distanceTo(end);
+    const slack = Math.max(0.18, 1.05 - distance * 0.11);
+    const sideSway = Math.sin(phaseTime * 1.7 + distance) * slack * 0.08;
+    const middle = rockWallRopeAnchor.clone().lerp(end, 0.52);
+    middle.y -= slack;
+    middle.x += rockWallAxisX * sideSway;
+    middle.z += rockWallAxisZ * sideSway;
+    const lowerMiddle = rockWallRopeAnchor.clone().lerp(end, 0.78);
+    lowerMiddle.y -= slack * 0.56;
+    lowerMiddle.x -= rockWallAxisX * sideSway * 0.7;
+    lowerMiddle.z -= rockWallAxisZ * sideSway * 0.7;
+
+    const curve = new CatmullRomCurve3([
+      rockWallRopeAnchor,
+      middle,
+      lowerMiddle,
+      end,
+    ]);
+    const oldGeometry = rockWallRope.geometry;
+    rockWallRope.geometry = new TubeGeometry(curve, 22, 0.032, 10, false);
+    oldGeometry.dispose();
+  };
 
   const addRockClimbingWall = (): void => {
     const wallRoot = new Group();
@@ -988,9 +1031,12 @@ export function createChapterNine(): ChapterNineData {
     topButton.position.set(0, rockWallHeight - 0.42, rockWallThickness / 2 + 0.12);
     wallRoot.add(topButton);
 
-    const rope = new Mesh(new CylinderGeometry(0.035, 0.035, rockWallHeight - 0.7, 12), ropeMaterial);
-    rope.position.set(0, rockWallHeight / 2 + 0.12, rockWallThickness / 2 + 0.42);
-    wallRoot.add(rope);
+    rockWallRope = new Mesh(new TubeGeometry(new CatmullRomCurve3([
+      rockWallRopeAnchor,
+      rockWallHarnessInteractPosition.clone().setY(1.28),
+    ]), 8, 0.032, 10, false), ropeMaterial);
+    root.add(rockWallRope);
+    updateRockWallRope();
 
     const harness = new Group();
     harness.position.set(0, 0.86, rockWallThickness / 2 + 0.58);
@@ -2477,6 +2523,7 @@ export function createChapterNine(): ChapterNineData {
     if (rockWallHarnessRoot) {
       rockWallHarnessRoot.visible = true;
     }
+    updateRockWallRope();
   };
 
   reset();
@@ -2514,6 +2561,7 @@ export function createChapterNine(): ChapterNineData {
           object.position.y = object.userData.baseY + Math.sin(phaseTime * 0.7 + object.userData.dustPhase) * 0.025;
         }
       });
+      updateRockWallRope(rockWallHarnessed ? getRockWallHarnessAttachmentPosition() : undefined);
     },
     updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null {
       if (!rockWallHarnessed) {
@@ -2533,8 +2581,26 @@ export function createChapterNine(): ChapterNineData {
         );
       }
 
+      const position = getRockWallClimbPosition();
+      updateRockWallRope(getRockWallHarnessAttachmentPosition());
+
+      if (rockWallLowering && rockWallClimbY <= 0.08) {
+        rockWallHarnessed = false;
+        rockWallLowering = false;
+        rockWallClimbX = 0;
+        rockWallClimbY = 0;
+        if (rockWallHarnessRoot) {
+          rockWallHarnessRoot.visible = true;
+        }
+        updateRockWallRope();
+        return {
+          position: rockWallHarnessInteractPosition.clone(),
+          lookTarget: getRockWallLookTarget(),
+        };
+      }
+
       return {
-        position: getRockWallClimbPosition(),
+        position,
         lookTarget: getRockWallLookTarget(),
       };
     },
@@ -2543,26 +2609,13 @@ export function createChapterNine(): ChapterNineData {
         if (!rockWallLowering && rockWallClimbY >= rockWallHeight - 0.62) {
           rockWallLowering = true;
           return {
-            message: 'You press the top button. The winch catches the rope and slowly lowers you down.',
-          };
-        }
-
-        if (rockWallLowering && rockWallClimbY <= 0.08) {
-          rockWallHarnessed = false;
-          rockWallLowering = false;
-          if (rockWallHarnessRoot) {
-            rockWallHarnessRoot.visible = true;
-          }
-          return {
-            message: 'You unclip from the harness. The winch gear hangs loose in front of the rock wall.',
-            teleport: rockWallHarnessInteractPosition.clone(),
-            lookTarget: getRockWallLookTarget(),
+            message: 'You press the top button. The winch catches the rope, lowers you down, and will unclip you at the bottom.',
           };
         }
 
         return {
           message: rockWallLowering
-            ? 'The winch is lowering you. Wait until you reach the bottom, then press E to unclip.'
+            ? 'The winch is lowering you. It will unclip you when you reach the bottom.'
             : 'Hold W to climb up, S to climb down, A to move left, and D to move right. Reach the top button and press E.',
         };
       }
@@ -2575,6 +2628,7 @@ export function createChapterNine(): ChapterNineData {
         if (rockWallHarnessRoot) {
           rockWallHarnessRoot.visible = false;
         }
+        updateRockWallRope(getRockWallHarnessAttachmentPosition());
         return {
           message: 'You clip into the winch harness. Hold W to climb up the rock wall, S to climb down, A left, and D right.',
           teleport: getRockWallClimbPosition(),
