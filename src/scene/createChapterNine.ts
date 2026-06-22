@@ -534,6 +534,32 @@ function createGrayWallBandMaterial(repeatX = 1, offsetX = 0): MeshStandardMater
   });
 }
 
+function createPlainGrayWallMaterial(repeatX = 1, offsetX = 0): MeshStandardMaterial {
+  if (typeof document === 'undefined') {
+    return new MeshStandardMaterial({ color: 0x6f7376, roughness: 0.84, metalness: 0.01 });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const context = canvas.getContext('2d');
+  if (context) {
+    context.fillStyle = '#6f7376';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(Math.max(0.05, repeatX), 1);
+  texture.offset.set(offsetX, 0);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.84,
+    metalness: 0.01,
+  });
+}
+
 export function createChapterNine(): ChapterNineData {
   const root = new Group();
   root.name = 'Chapter 9: Freddy Pizza Complex';
@@ -548,7 +574,6 @@ export function createChapterNine(): ChapterNineData {
   const treeTrunkMaterial = new MeshStandardMaterial({ color: 0x5b3821, roughness: 0.86 });
   const treeLeafMaterial = new MeshStandardMaterial({ color: 0x1f5f2d, roughness: 0.9 });
   const dirtyConcreteMaterial = new MeshStandardMaterial({ color: 0x6c6860, roughness: 0.94, metalness: 0.01 });
-  const plainInteriorWallMaterial = new MeshStandardMaterial({ color: 0x6f7376, roughness: 0.84, metalness: 0.01 });
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const wallCheckerBandTopY = 1.45;
@@ -562,7 +587,7 @@ export function createChapterNine(): ChapterNineData {
     offsetX = 0,
   ): MeshStandardMaterial => (
     bottomY >= wallCheckerBandTopY
-      ? plainInteriorWallMaterial
+      ? createPlainGrayWallMaterial(Math.max(0.05, runLength / height), offsetX)
       : createGrayMaterialFor(runLength, height, offsetX)
   );
   const ceilingMaterial = new MeshStandardMaterial({ color: 0x2a2927, roughness: 0.92, metalness: 0.04 });
