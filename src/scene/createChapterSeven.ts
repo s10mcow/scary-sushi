@@ -3836,15 +3836,6 @@ export function createChapterSeven(): ChapterSevenData {
       opacity: 0.62,
       depthWrite: false,
     });
-    const cageRoofMaterial = new MeshStandardMaterial({
-      color: 0x1d1a18,
-      transparent: true,
-      opacity: 0.24,
-      roughness: 0.46,
-      metalness: 0.48,
-      side: DoubleSide,
-      depthWrite: false,
-    });
     const talonMaterial = new MeshStandardMaterial({
       color: 0x1a1612,
       roughness: 0.42,
@@ -3863,8 +3854,6 @@ export function createChapterSeven(): ChapterSevenData {
     const topRing = new Mesh(new TorusGeometry(0.34, 0.018, 8, 36), cageMetalMaterial);
     topRing.position.y = 1.22;
     topRing.rotation.x = Math.PI / 2;
-    const pointedRoof = new Mesh(new ConeGeometry(0.36, 0.3, 28, 1, true), cageRoofMaterial);
-    pointedRoof.position.y = 1.36;
     const roofPeakRing = new Mesh(new TorusGeometry(0.08, 0.015, 8, 24), cageMetalMaterial);
     roofPeakRing.position.y = 1.5;
     roofPeakRing.rotation.x = Math.PI / 2;
@@ -3885,11 +3874,25 @@ export function createChapterSeven(): ChapterSevenData {
       const ribGroup = new Group();
       ribGroup.rotation.y = angle;
       const rib = new Mesh(new CylinderGeometry(0.009, 0.009, 0.39, 8), cageMetalMaterial);
-      rib.position.set(0.21, 1.36, 0);
-      rib.rotation.z = -0.75;
+      rib.position.set(0.17, 1.34, 0);
+      rib.rotation.z = 0.64;
       ribGroup.add(rib);
       return ribGroup;
     });
+    const sideDoor = new Group();
+    sideDoor.position.set(0.505, 0.64, 0);
+    sideDoor.rotation.z = Math.PI / 2;
+    const sideDoorFrame = new Mesh(new TorusGeometry(0.18, 0.008, 8, 4), cageMetalMaterial);
+    sideDoorFrame.scale.set(0.72, 1.12, 1);
+    sideDoorFrame.rotation.x = Math.PI / 2;
+    const sideDoorCrossbar = new Mesh(new CylinderGeometry(0.006, 0.006, 0.32, 8), cageMetalMaterial);
+    sideDoorCrossbar.rotation.x = Math.PI / 2;
+    const sideDoorHandle = new Mesh(new SphereGeometry(0.018, 8, 6), cageMetalMaterial);
+    sideDoorHandle.position.set(0.11, 0, -0.03);
+    const keyhole = new Mesh(new CylinderGeometry(0.012, 0.012, 0.012, 10), cageMetalMaterial);
+    keyhole.position.set(0.07, -0.055, -0.035);
+    keyhole.rotation.x = Math.PI / 2;
+    sideDoor.add(sideDoorFrame, sideDoorCrossbar, sideDoorHandle, keyhole);
 
     const perch = new Mesh(new CylinderGeometry(0.025, 0.025, 0.82, 12), perchMaterial);
     perch.position.y = 0.48;
@@ -3996,12 +3999,12 @@ export function createChapterSeven(): ChapterSevenData {
       bottomRing,
       middleRing,
       topRing,
-      pointedRoof,
       roofPeakRing,
       topCap,
       hook,
       ...verticalBars,
       ...roofRibs,
+      sideDoor,
       perch,
       foodBowl,
       waterBottle,
