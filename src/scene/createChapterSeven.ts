@@ -3881,18 +3881,42 @@ export function createChapterSeven(): ChapterSevenData {
     });
     const sideDoor = new Group();
     sideDoor.position.set(0.505, 0.64, 0);
-    sideDoor.rotation.z = Math.PI / 2;
-    const sideDoorFrame = new Mesh(new TorusGeometry(0.18, 0.008, 8, 4), cageMetalMaterial);
-    sideDoorFrame.scale.set(0.72, 1.12, 1);
-    sideDoorFrame.rotation.x = Math.PI / 2;
-    const sideDoorCrossbar = new Mesh(new CylinderGeometry(0.006, 0.006, 0.32, 8), cageMetalMaterial);
-    sideDoorCrossbar.rotation.x = Math.PI / 2;
-    const sideDoorHandle = new Mesh(new SphereGeometry(0.018, 8, 6), cageMetalMaterial);
-    sideDoorHandle.position.set(0.11, 0, -0.03);
-    const keyhole = new Mesh(new CylinderGeometry(0.012, 0.012, 0.012, 10), cageMetalMaterial);
-    keyhole.position.set(0.07, -0.055, -0.035);
-    keyhole.rotation.x = Math.PI / 2;
-    sideDoor.add(sideDoorFrame, sideDoorCrossbar, sideDoorHandle, keyhole);
+    const sideDoorGlass = new Mesh(new PlaneGeometry(0.34, 0.5), waterBottleMaterial);
+    sideDoorGlass.rotation.y = Math.PI / 2;
+    sideDoorGlass.position.x = 0.004;
+    const sideDoorLeft = new Mesh(new BoxGeometry(0.018, 0.52, 0.018), cageMetalMaterial);
+    sideDoorLeft.position.z = -0.18;
+    const sideDoorRight = sideDoorLeft.clone();
+    sideDoorRight.position.z = 0.18;
+    const sideDoorTop = new Mesh(new BoxGeometry(0.018, 0.018, 0.38), cageMetalMaterial);
+    sideDoorTop.position.y = 0.26;
+    const sideDoorBottom = sideDoorTop.clone();
+    sideDoorBottom.position.y = -0.26;
+    const sideDoorCrossbar = new Mesh(new BoxGeometry(0.014, 0.014, 0.32), cageMetalMaterial);
+    const sideDoorHandle = new Mesh(new SphereGeometry(0.026, 10, 8), cageMetalMaterial);
+    sideDoorHandle.position.set(0.014, 0.02, -0.12);
+    const keyholeTop = new Mesh(new CylinderGeometry(0.018, 0.018, 0.012, 12), talonMaterial);
+    keyholeTop.position.set(0.02, -0.075, -0.12);
+    keyholeTop.rotation.z = Math.PI / 2;
+    const keyholeSlot = new Mesh(new BoxGeometry(0.014, 0.052, 0.012), talonMaterial);
+    keyholeSlot.position.set(0.02, -0.115, -0.12);
+    const hingeTop = new Mesh(new BoxGeometry(0.026, 0.07, 0.018), cageMetalMaterial);
+    hingeTop.position.set(0.006, 0.16, 0.195);
+    const hingeBottom = hingeTop.clone();
+    hingeBottom.position.y = -0.16;
+    sideDoor.add(
+      sideDoorGlass,
+      sideDoorLeft,
+      sideDoorRight,
+      sideDoorTop,
+      sideDoorBottom,
+      sideDoorCrossbar,
+      sideDoorHandle,
+      keyholeTop,
+      keyholeSlot,
+      hingeTop,
+      hingeBottom,
+    );
 
     const perch = new Mesh(new CylinderGeometry(0.025, 0.025, 0.82, 12), perchMaterial);
     perch.position.y = 0.48;
