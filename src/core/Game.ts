@@ -1248,8 +1248,6 @@ export class Game {
   private chapterSevenCookieCount = 0;
   private chapterSevenCookieTarget = 25;
   private chapterSevenCookiePickerOpen = false;
-  private chapterSevenGrandpaGreetingCooldown = 0;
-  private chapterSevenGrandpaWasNearby = false;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -3559,7 +3557,6 @@ export class Game {
       if (this.chapterSeven.consumeBirdPeep()) {
         this.gameplaySfxAudio.playStuffiePeep();
       }
-      this.updateChapterSevenGrandpaGreeting(deltaSeconds);
       this.updateChapterSevenHoseWaterAudio(deltaSeconds);
       if (this.chapterSevenSwingSeated) {
         this.player.teleport(this.chapterSeven.swingSet.sitPosition);
@@ -12498,56 +12495,6 @@ export class Game {
 
     this.gameplaySfxAudio.playChapterSevenCricketChirp();
     this.chapterSevenCricketCooldown = 0.18 + Math.random() * 0.34;
-  }
-
-  private updateChapterSevenGrandpaGreeting(deltaSeconds: number): void {
-    if (!this.chapterSevenActive) {
-      this.chapterSevenGrandpaGreetingCooldown = 0;
-      this.chapterSevenGrandpaWasNearby = false;
-      return;
-    }
-
-    this.chapterSevenGrandpaGreetingCooldown = Math.max(0, this.chapterSevenGrandpaGreetingCooldown - deltaSeconds);
-    const playerPosition = this.player.getPosition();
-    const distance = Math.hypot(
-      playerPosition.x - this.chapterSeven.grandpaPosition.x,
-      playerPosition.z - this.chapterSeven.grandpaPosition.z,
-    );
-    const nearby = distance <= 3.25;
-    if (nearby && !this.chapterSevenGrandpaWasNearby && this.chapterSevenGrandpaGreetingCooldown <= 0) {
-      this.speakChapterSevenGrandpaLine('What you doing?');
-      this.pushStatus('Grandpa says: "What you doing?"', 2.4);
-      this.chapterSevenGrandpaGreetingCooldown = 10;
-    }
-
-    if (distance >= 4.75) {
-      this.chapterSevenGrandpaWasNearby = false;
-    } else if (nearby) {
-      this.chapterSevenGrandpaWasNearby = true;
-    }
-  }
-
-  private speakChapterSevenGrandpaLine(line: string): void {
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(line);
-    const voices = window.speechSynthesis.getVoices();
-    const oldManVoice = voices.find((voice) => (
-      /^en/i.test(voice.lang)
-      && /(male|daniel|fred|ralph|george|arthur|alex)/i.test(voice.name)
-    ));
-    if (oldManVoice) {
-      utterance.voice = oldManVoice;
-      utterance.lang = oldManVoice.lang;
-    } else {
-      utterance.lang = 'en-US';
-    }
-    utterance.rate = 0.68;
-    utterance.pitch = 0.48;
-    utterance.volume = 0.95;
-    window.speechSynthesis.speak(utterance);
   }
 
   private updateAtmosphere(): void {
@@ -25327,8 +25274,6 @@ export class Game {
     this.chapterSevenCookieCount = 0;
     this.chapterSevenCookiePickerOpen = false;
     this.chapterSevenCricketCooldown = 0;
-    this.chapterSevenGrandpaGreetingCooldown = 0;
-    this.chapterSevenGrandpaWasNearby = false;
     this.chapterSeven.setDay(this.chapterSevenDayCount);
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
