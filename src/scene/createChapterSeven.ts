@@ -3118,29 +3118,31 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
-  const stairDoorMarkerLocalX = 1232.64 - CENTER_X;
   const stairDoorMarkerLocalZ = 62.10 - HOUSE_CENTER_Z;
   const stairDoorWidth = 3.15;
   const stairDoorDepth = HOUSE_INTERIOR_WALL_THICKNESS;
-  const stairDoorLocalZ = stairDoorMarkerLocalZ + 5.18;
+  const stairWallLength = 5;
+  const stairWallLocalX = HOUSE_WIDTH / 2 - stairWallLength / 2;
+  const stairDoorLocalX = HOUSE_WIDTH / 2 - stairWallLength - HOUSE_INTERIOR_WALL_THICKNESS / 2;
+  const stairDoorLocalZ = stairDoorMarkerLocalZ;
   const stairBasement = {
-    centerX: stairDoorMarkerLocalX,
-    stairStartZ: stairDoorLocalZ + 0.65,
-    stairEndZ: stairDoorLocalZ + 11.15,
-    halfWidth: 1.62,
+    centerZ: stairDoorMarkerLocalZ,
+    stairStartX: stairDoorLocalX - 0.65,
+    stairEndX: stairDoorLocalX - 11.15,
+    halfDepth: 1.62,
     lowerFloorY: -4.0,
-    roomCenterX: stairDoorMarkerLocalX - 3.6,
-    roomCenterZ: stairDoorLocalZ + 18.15,
-    roomHalfWidth: 7.0,
-    roomHalfDepth: 9.0,
+    roomCenterX: stairDoorLocalX - 18.15,
+    roomCenterZ: stairDoorMarkerLocalZ + 6.7,
+    roomHalfWidth: 9.0,
+    roomHalfDepth: 7.5,
   };
 
   const getStairBasementFloorY = (position: Vector3): number | null => {
     const localX = position.x - CENTER_X;
     const localZ = position.z - HOUSE_CENTER_Z;
-    const insideStairWidth = Math.abs(localX - stairBasement.centerX) <= stairBasement.halfWidth;
-    if (insideStairWidth && localZ >= stairBasement.stairStartZ && localZ <= stairBasement.stairEndZ) {
-      const progress = (localZ - stairBasement.stairStartZ) / (stairBasement.stairEndZ - stairBasement.stairStartZ);
+    const insideStairDepth = Math.abs(localZ - stairBasement.centerZ) <= stairBasement.halfDepth;
+    if (insideStairDepth && localX <= stairBasement.stairStartX && localX >= stairBasement.stairEndX) {
+      const progress = (stairBasement.stairStartX - localX) / (stairBasement.stairStartX - stairBasement.stairEndX);
       return stairBasement.lowerFloorY * progress;
     }
 
@@ -3151,46 +3153,46 @@ export function createChapterSeven(): ChapterSevenData {
 
   const addLockedStairBasement = (): ChapterSevenHouseDoor => {
     addHouseWall(
-      stairDoorMarkerLocalX,
-      stairDoorMarkerLocalZ + 2.5,
+      stairWallLocalX,
+      stairDoorMarkerLocalZ,
+      stairWallLength,
       HOUSE_INTERIOR_WALL_THICKNESS,
-      5,
     );
 
     const doorHeaderHeight = HOUSE_HEIGHT - HOUSE_ROOM_DOOR_HEIGHT;
     const doorHeader = new Mesh(
-      new BoxGeometry(stairDoorWidth + 0.36, doorHeaderHeight, stairDoorDepth),
+      new BoxGeometry(stairDoorDepth, doorHeaderHeight, stairDoorWidth + 0.36),
       houseWallMaterial,
     );
     doorHeader.position.set(
-      stairDoorMarkerLocalX,
+      stairDoorLocalX,
       HOUSE_ROOM_DOOR_HEIGHT + doorHeaderHeight / 2,
       stairDoorLocalZ,
     );
     house.add(doorHeader);
 
-    const doorTrimTop = new Mesh(new BoxGeometry(stairDoorWidth + 0.42, 0.15, 0.16), houseTrimMaterial);
-    doorTrimTop.position.set(stairDoorMarkerLocalX, HOUSE_ROOM_DOOR_HEIGHT + 0.06, stairDoorLocalZ - 0.14);
-    const doorTrimLeft = new Mesh(new BoxGeometry(0.14, HOUSE_ROOM_DOOR_HEIGHT + 0.08, 0.16), houseTrimMaterial);
-    doorTrimLeft.position.set(stairDoorMarkerLocalX - stairDoorWidth / 2 - 0.08, HOUSE_ROOM_DOOR_HEIGHT / 2, stairDoorLocalZ - 0.14);
+    const doorTrimTop = new Mesh(new BoxGeometry(0.16, 0.15, stairDoorWidth + 0.42), houseTrimMaterial);
+    doorTrimTop.position.set(stairDoorLocalX + 0.14, HOUSE_ROOM_DOOR_HEIGHT + 0.06, stairDoorLocalZ);
+    const doorTrimLeft = new Mesh(new BoxGeometry(0.16, HOUSE_ROOM_DOOR_HEIGHT + 0.08, 0.14), houseTrimMaterial);
+    doorTrimLeft.position.set(stairDoorLocalX + 0.14, HOUSE_ROOM_DOOR_HEIGHT / 2, stairDoorLocalZ - stairDoorWidth / 2 - 0.08);
     const doorTrimRight = doorTrimLeft.clone();
-    doorTrimRight.position.x = stairDoorMarkerLocalX + stairDoorWidth / 2 + 0.08;
+    doorTrimRight.position.z = stairDoorLocalZ + stairDoorWidth / 2 + 0.08;
     house.add(doorTrimTop, doorTrimLeft, doorTrimRight);
 
     const stairDoor = createHouseDoor(
       'Locked Stair Door',
-      'front',
-      stairDoorMarkerLocalX - stairDoorWidth / 2,
-      stairDoorLocalZ,
+      'side',
+      stairDoorLocalX,
+      stairDoorLocalZ - stairDoorWidth / 2,
       stairDoorWidth,
       HOUSE_ROOM_DOOR_HEIGHT,
-      stairDoorMarkerLocalX,
+      stairDoorLocalX,
       stairDoorLocalZ,
-      stairDoorWidth,
       stairDoorDepth,
-      stairDoorMarkerLocalX,
-      stairDoorLocalZ - 1.35,
-      1,
+      stairDoorWidth,
+      stairDoorLocalX + 1.35,
+      stairDoorLocalZ,
+      -1,
     );
     stairDoor.interactionMode = 'manual';
     stairDoor.locked = true;
@@ -3199,14 +3201,16 @@ export function createChapterSeven(): ChapterSevenData {
     stairDoor.pushRadius = 2.4;
 
     const lockPlate = new Mesh(new BoxGeometry(0.22, 0.34, 0.05), houseTrimMaterial);
-    lockPlate.position.set(stairDoorMarkerLocalX + 1.02, 1.8, stairDoorLocalZ - 0.14);
+    lockPlate.rotation.y = Math.PI / 2;
+    lockPlate.position.set(stairDoorLocalX + 0.14, 1.8, stairDoorLocalZ + 1.02);
     const keyhole = new Mesh(new CylinderGeometry(0.035, 0.035, 0.06, 12), houseDoorMaterial);
-    keyhole.rotation.x = Math.PI / 2;
-    keyhole.position.set(stairDoorMarkerLocalX + 1.02, 1.79, stairDoorLocalZ - 0.18);
+    keyhole.rotation.z = Math.PI / 2;
+    keyhole.position.set(stairDoorLocalX + 0.18, 1.79, stairDoorLocalZ + 1.02);
     house.add(lockPlate, keyhole);
 
     const stairGroup = new Group();
-    stairGroup.position.set(stairDoorMarkerLocalX, 0, stairDoorLocalZ + 0.24);
+    stairGroup.position.set(stairDoorLocalX - 0.24, 0, stairDoorLocalZ);
+    stairGroup.rotation.y = -Math.PI / 2;
     const stairwellDarkMaterial = new MeshStandardMaterial({
       color: 0x16130f,
       roughness: 0.88,
@@ -3249,23 +3253,25 @@ export function createChapterSeven(): ChapterSevenData {
     const lowerWallHeight = 3.82;
     const lowerBackWall = new Mesh(new BoxGeometry(stairBasement.roomHalfWidth * 2, lowerWallHeight, 0.38), houseWallMaterial);
     lowerBackWall.position.set(0, lowerWallHeight / 2, stairBasement.roomHalfDepth);
+    const lowerFrontWall = lowerBackWall.clone();
+    lowerFrontWall.position.z = -stairBasement.roomHalfDepth;
     const lowerLeftWall = new Mesh(new BoxGeometry(0.38, lowerWallHeight, stairBasement.roomHalfDepth * 2), houseWallMaterial);
     lowerLeftWall.position.set(-stairBasement.roomHalfWidth, lowerWallHeight / 2, 0);
-    const lowerRightWall = lowerLeftWall.clone();
-    lowerRightWall.position.x = stairBasement.roomHalfWidth;
-    const lowerFrontWallLeftWidth = Math.max(0.2, stairBasement.roomHalfWidth + (stairDoorMarkerLocalX - stairBasement.roomCenterX) - stairBasement.halfWidth);
-    const lowerFrontWallRightWidth = Math.max(0.2, stairBasement.roomHalfWidth - (stairDoorMarkerLocalX - stairBasement.roomCenterX) - stairBasement.halfWidth);
-    const lowerFrontWallLeft = new Mesh(new BoxGeometry(lowerFrontWallLeftWidth, lowerWallHeight, 0.38), houseWallMaterial);
-    lowerFrontWallLeft.position.set(
-      -stairBasement.roomHalfWidth + lowerFrontWallLeftWidth / 2,
+    const rightWallGapCenterZ = stairBasement.centerZ - stairBasement.roomCenterZ;
+    const rightWallGapHalfDepth = stairBasement.halfDepth + 0.32;
+    const lowerRightFrontDepth = Math.max(0.2, rightWallGapCenterZ - rightWallGapHalfDepth + stairBasement.roomHalfDepth);
+    const lowerRightBackDepth = Math.max(0.2, stairBasement.roomHalfDepth - (rightWallGapCenterZ + rightWallGapHalfDepth));
+    const lowerRightWallFront = new Mesh(new BoxGeometry(0.38, lowerWallHeight, lowerRightFrontDepth), houseWallMaterial);
+    lowerRightWallFront.position.set(
+      stairBasement.roomHalfWidth,
       lowerWallHeight / 2,
-      -stairBasement.roomHalfDepth,
+      -stairBasement.roomHalfDepth + lowerRightFrontDepth / 2,
     );
-    const lowerFrontWallRight = new Mesh(new BoxGeometry(lowerFrontWallRightWidth, lowerWallHeight, 0.38), houseWallMaterial);
-    lowerFrontWallRight.position.set(
-      stairBasement.roomHalfWidth - lowerFrontWallRightWidth / 2,
+    const lowerRightWallBack = new Mesh(new BoxGeometry(0.38, lowerWallHeight, lowerRightBackDepth), houseWallMaterial);
+    lowerRightWallBack.position.set(
+      stairBasement.roomHalfWidth,
       lowerWallHeight / 2,
-      -stairBasement.roomHalfDepth,
+      stairBasement.roomHalfDepth - lowerRightBackDepth / 2,
     );
     const lowerCeiling = new Mesh(new BoxGeometry(stairBasement.roomHalfWidth * 2, 0.18, stairBasement.roomHalfDepth * 2), houseTrimMaterial);
     lowerCeiling.position.set(0, lowerWallHeight + 0.03, 0);
@@ -3276,10 +3282,10 @@ export function createChapterSeven(): ChapterSevenData {
     lowerRoom.add(
       lowerFloor,
       lowerBackWall,
+      lowerFrontWall,
       lowerLeftWall,
-      lowerRightWall,
-      lowerFrontWallLeft,
-      lowerFrontWallRight,
+      lowerRightWallFront,
+      lowerRightWallBack,
       lowerCeiling,
       lowerLamp,
       lowerLight,
@@ -7471,7 +7477,7 @@ export function createChapterSeven(): ChapterSevenData {
     addToilet(HOUSE_REAR_ROOM_DOOR_X + 4.2, rearRoomBackFixtureZ),
     addBathroomSinkFixture(HOUSE_REAR_ROOM_DOOR_X + 0.4, rearRoomBackFixtureZ),
     addBathtubFixture(HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 57.30 - HOUSE_CENTER_Z),
-    addTrashCanFixture(1231.64 - CENTER_X, 62.83 - HOUSE_CENTER_Z, -Math.PI / 2),
+    addTrashCanFixture(1230.45 - CENTER_X, 62.72 - HOUSE_CENTER_Z, -Math.PI / 2),
     addHoseFaucetFixture(1236.31 - CENTER_X, 1.16, 68.92 - HOUSE_CENTER_Z),
     addMiniLampTableFixture(1203.97 - CENTER_X, 63.15 - HOUSE_CENTER_Z),
     addMiniLampTableFixture(1199.83 - CENTER_X, 73.86 - HOUSE_CENTER_Z),
