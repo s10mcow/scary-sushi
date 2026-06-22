@@ -59,6 +59,7 @@ export interface ChapterNineData {
   getPuzzleTarget(): number;
   isNight(): boolean;
   isEscapeUnlocked(): boolean;
+  isOnTrampoline(position: Vector3): boolean;
   reset(): void;
 }
 
@@ -84,6 +85,13 @@ interface ChapterNineSeat {
   interactPosition: Vector3;
   sitPosition: Vector3;
   lookTarget: Vector3;
+}
+
+interface ChapterNineTrampolinePad {
+  centerX: number;
+  centerZ: number;
+  halfWidth: number;
+  halfDepth: number;
 }
 
 interface ChapterNineAnimatronic {
@@ -596,6 +604,10 @@ export function createChapterNine(): ChapterNineData {
   const darkWoodMaterial = new MeshStandardMaterial({ color: 0x3f2615, roughness: 0.86 });
   const metalMaterial = new MeshStandardMaterial({ color: 0x777b7b, roughness: 0.46, metalness: 0.36 });
   const blackMetalMaterial = new MeshStandardMaterial({ color: 0x111214, roughness: 0.5, metalness: 0.45 });
+  const trampolineMatMaterial = new MeshStandardMaterial({ color: 0x111418, roughness: 0.7, metalness: 0.02 });
+  const trampolinePadMaterial = new MeshStandardMaterial({ color: 0x2f68c7, roughness: 0.68, metalness: 0.03 });
+  const trampolineEdgeMaterial = new MeshStandardMaterial({ color: 0xd63333, roughness: 0.7, metalness: 0.02 });
+  const trampolineSpringMaterial = new MeshStandardMaterial({ color: 0xc6cbd0, roughness: 0.32, metalness: 0.62 });
   const paintedLineMaterial = new MeshStandardMaterial({ color: 0xd7d0bb, roughness: 0.78 });
   const neonMaterial = new MeshBasicMaterial({ color: 0xffd45a });
   const glassMaterial = new MeshStandardMaterial({
@@ -731,6 +743,74 @@ export function createChapterNine(): ChapterNineData {
       rotationY,
     });
   };
+
+  const trampolinePads: ChapterNineTrampolinePad[] = [];
+  const addTrampolinePark = (
+    minX: number,
+    maxX: number,
+    minZ: number,
+    maxZ: number,
+    columns: number,
+    rows: number,
+  ): void => {
+    const margin = 0.9;
+    const gap = 0.45;
+    const width = maxX - minX;
+    const depth = maxZ - minZ;
+    const cellWidth = (width - margin * 2 - gap * (columns - 1)) / columns;
+    const cellDepth = (depth - margin * 2 - gap * (rows - 1)) / rows;
+    const parkCenterX = (minX + maxX) / 2;
+    const parkCenterZ = (minZ + maxZ) / 2;
+    const floor = new Mesh(new BoxGeometry(width, 0.05, depth), trampolinePadMaterial);
+    floor.position.set(parkCenterX, 0.025, parkCenterZ);
+    root.add(floor);
+
+    const railHeight = 0.26;
+    const railY = 0.16;
+    addBox(root, width, railHeight, 0.18, parkCenterX, railY, minZ + 0.09, trampolineEdgeMaterial);
+    addBox(root, width, railHeight, 0.18, parkCenterX, railY, maxZ - 0.09, trampolineEdgeMaterial);
+    addBox(root, 0.18, railHeight, depth, minX + 0.09, railY, parkCenterZ, trampolineEdgeMaterial);
+    addBox(root, 0.18, railHeight, depth, maxX - 0.09, railY, parkCenterZ, trampolineEdgeMaterial);
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        const centerX = minX + margin + cellWidth / 2 + column * (cellWidth + gap);
+        const centerZ = minZ + margin + cellDepth / 2 + row * (cellDepth + gap);
+        const mat = new Mesh(new BoxGeometry(cellWidth, 0.08, cellDepth), trampolineMatMaterial);
+        mat.position.set(centerX, 0.12, centerZ);
+        root.add(mat);
+
+        const padThickness = 0.16;
+        addBox(root, cellWidth + padThickness * 2, 0.12, padThickness, centerX, 0.2, centerZ - cellDepth / 2 - padThickness / 2, trampolinePadMaterial);
+        addBox(root, cellWidth + padThickness * 2, 0.12, padThickness, centerX, 0.2, centerZ + cellDepth / 2 + padThickness / 2, trampolinePadMaterial);
+        addBox(root, padThickness, 0.12, cellDepth, centerX - cellWidth / 2 - padThickness / 2, 0.2, centerZ, trampolinePadMaterial);
+        addBox(root, padThickness, 0.12, cellDepth, centerX + cellWidth / 2 + padThickness / 2, 0.2, centerZ, trampolinePadMaterial);
+
+        for (let springIndex = 0; springIndex < 4; springIndex += 1) {
+          const offsetX = -cellWidth / 2 + (springIndex + 0.5) * (cellWidth / 4);
+          const frontSpring = new Mesh(new BoxGeometry(0.1, 0.06, 0.24), trampolineSpringMaterial);
+          frontSpring.position.set(centerX + offsetX, 0.24, centerZ - cellDepth / 2 - 0.08);
+          const backSpring = frontSpring.clone();
+          backSpring.position.z = centerZ + cellDepth / 2 + 0.08;
+          root.add(frontSpring, backSpring);
+        }
+
+        trampolinePads.push({
+          centerX,
+          centerZ,
+          halfWidth: cellWidth / 2,
+          halfDepth: cellDepth / 2,
+        });
+      }
+    }
+  };
+
+  const isOnTrampolinePad = (position: Vector3): boolean => (
+    trampolinePads.some((pad) => (
+      Math.abs(position.x - pad.centerX) <= pad.halfWidth
+      && Math.abs(position.z - pad.centerZ) <= pad.halfDepth
+    ))
+  );
 
   const addCashRegister = (x: number, surfaceY: number, z: number, rotationY = 0): void => {
     const register = new Group();
@@ -1125,6 +1205,7 @@ export function createChapterNine(): ChapterNineData {
   addWall(-32.15, -41.035, WALL_THICKNESS, 12.03);
   addWall(-27.33, -47.035, 9.72, WALL_THICKNESS);
   addWall(-22.445, -56.255, WALL_THICKNESS, 18.47);
+  addTrampolinePark(-64.57, -22.83, -65.36, -47.47, 5, 2);
   {
     const openingLeftX = -29.07;
     const openingLeftZ = -18.89;
@@ -2385,10 +2466,16 @@ export function createChapterNine(): ChapterNineData {
       ) {
         return collapsedAnimatronicLanding.floorY;
       }
+      if (isOnTrampolinePad(position)) {
+        return GAME_CONFIG.player.height + 0.12;
+      }
       if (Math.abs(position.x) <= 92 && position.z >= -84 && position.z <= 126) {
         return GAME_CONFIG.player.height;
       }
       return null;
+    },
+    isOnTrampoline(position: Vector3): boolean {
+      return isOnTrampolinePad(position);
     },
     getPhaseLabel(): string {
       if (night) {

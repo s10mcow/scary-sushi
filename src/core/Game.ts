@@ -3330,7 +3330,7 @@ export class Game {
         !officeVentActive && !officeScriptedMoving && !this.officeEmployeeElevatorBasementActive,
         movementSpeedScale,
         true,
-        this.chapterSixActive ? 1.34 : 1,
+        this.chapterNineActive && this.chapterNine.isOnTrampoline(this.player.getPosition()) ? 1.8 : this.chapterSixActive ? 1.34 : 1,
         playerMovementOptions,
       );
     }
