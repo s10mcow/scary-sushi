@@ -1412,7 +1412,7 @@ export function createChapterNine(): ChapterNineData {
     const staticFoxy = new Group();
     staticFoxy.name = 'Static Foxy on Chapter 9 marker stage';
     staticFoxy.position.set(centerX, stageHeight + 0.1, centerZ - 0.8);
-    staticFoxy.rotation.y = 0;
+    staticFoxy.rotation.y = Math.PI / 2;
     const foxyMaterial = new MeshStandardMaterial({ color: 0x9a3128, roughness: 0.48, metalness: 0.22 });
     const foxyDarkMaterial = new MeshStandardMaterial({ color: 0x151313, roughness: 0.62, metalness: 0.28 });
     const foxyBellyMaterial = new MeshStandardMaterial({ color: 0xcaa578, roughness: 0.62, metalness: 0.08 });
