@@ -213,6 +213,30 @@ function createKeycardGateLabelMaterial(label: string): MeshStandardMaterial {
   });
 }
 
+function createTrampolineNetSignMaterial(): MeshStandardMaterial {
+  return makeCanvasMaterial((context, canvas) => {
+    context.fillStyle = '#f2f0df';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#2a67a2';
+    context.lineWidth = 10;
+    context.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
+    context.fillStyle = '#173a5c';
+    context.font = 'bold 38px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('The trampolines', canvas.width / 2, 72);
+    context.font = 'bold 34px Arial';
+    context.fillText('have fun and fly safe.', canvas.width / 2, 138);
+    context.fillStyle = '#d63c3c';
+    context.beginPath();
+    context.arc(58, 58, 12, 0, Math.PI * 2);
+    context.arc(canvas.width - 58, 58, 12, 0, Math.PI * 2);
+    context.arc(58, canvas.height - 58, 12, 0, Math.PI * 2);
+    context.arc(canvas.width - 58, canvas.height - 58, 12, 0, Math.PI * 2);
+    context.fill();
+  });
+}
+
 function createComplexSignMaterial(): MeshStandardMaterial {
   return makeCanvasMaterial((context, canvas) => {
     context.fillStyle = '#0e0b09';
@@ -610,6 +634,15 @@ export function createChapterNine(): ChapterNineData {
   const trampolinePadMaterial = new MeshStandardMaterial({ color: 0x2f68c7, roughness: 0.68, metalness: 0.03 });
   const trampolineEdgeMaterial = new MeshStandardMaterial({ color: 0xd63333, roughness: 0.7, metalness: 0.02 });
   const trampolineSpringMaterial = new MeshStandardMaterial({ color: 0xc6cbd0, roughness: 0.32, metalness: 0.62 });
+  const trampolineNetMaterial = new MeshStandardMaterial({
+    color: 0xc8d4dd,
+    transparent: true,
+    opacity: 0.34,
+    roughness: 0.68,
+    metalness: 0.02,
+    side: DoubleSide,
+  });
+  const trampolineNetCordMaterial = new MeshStandardMaterial({ color: 0xd7e2e9, roughness: 0.72, metalness: 0.02 });
   const rockWallMaterial = new MeshStandardMaterial({ color: 0x5f5d58, roughness: 0.96, metalness: 0.01 });
   const rockWallDarkMaterial = new MeshStandardMaterial({ color: 0x3d3b38, roughness: 0.98, metalness: 0.01 });
   const climbingHoldMaterial = new MeshStandardMaterial({ color: 0xd08b2f, roughness: 0.62, metalness: 0.02 });
@@ -811,6 +844,71 @@ export function createChapterNine(): ChapterNineData {
         });
       }
     }
+  };
+
+  const addTrampolineSafetyNet = (startX: number, startZ: number, endX: number, endZ: number): void => {
+    const dx = endX - startX;
+    const dz = endZ - startZ;
+    const length = Math.hypot(dx, dz);
+    const centerX = (startX + endX) / 2;
+    const centerZ = (startZ + endZ) / 2;
+    const rotationY = Math.atan2(-dz, dx);
+    const netHeight = 4.1;
+    const netY = netHeight / 2;
+    const group = new Group();
+    group.position.set(centerX, 0, centerZ);
+    group.rotation.y = rotationY;
+
+    const netPanel = new Mesh(new PlaneGeometry(length - 0.5, netHeight - 0.62), trampolineNetMaterial);
+    netPanel.position.set(0, netY, 0.012);
+    group.add(netPanel);
+
+    const addLocalBox = (
+      width: number,
+      height: number,
+      depth: number,
+      x: number,
+      y: number,
+      z: number,
+      material: MeshStandardMaterial | MeshBasicMaterial,
+    ): void => {
+      const mesh = new Mesh(new BoxGeometry(width, height, depth), material);
+      mesh.position.set(x, y, z);
+      group.add(mesh);
+    };
+
+    addLocalBox(length + 0.28, 0.16, 0.16, 0, netHeight + 0.08, 0, metalMaterial);
+    addLocalBox(length + 0.08, 0.1, 0.1, 0, 0.42, 0, trampolineNetCordMaterial);
+
+    const postCount = 7;
+    for (let index = 0; index < postCount; index += 1) {
+      const t = index / (postCount - 1);
+      const x = -length / 2 + t * length;
+      addLocalBox(0.18, netHeight + 0.34, 0.22, x, (netHeight + 0.34) / 2, 0, metalMaterial);
+      const cap = new Mesh(new SphereGeometry(0.16, 12, 8), metalMaterial);
+      cap.position.set(x, netHeight + 0.28, 0);
+      group.add(cap);
+    }
+
+    const verticalCordCount = 13;
+    for (let index = 1; index < verticalCordCount - 1; index += 1) {
+      const t = index / (verticalCordCount - 1);
+      const x = -length / 2 + t * length;
+      addLocalBox(0.035, netHeight - 0.8, 0.035, x, netY, 0.03, trampolineNetCordMaterial);
+    }
+
+    for (let index = 0; index < 5; index += 1) {
+      const y = 0.86 + index * 0.62;
+      addLocalBox(length - 0.42, 0.035, 0.035, 0, y, 0.04, trampolineNetCordMaterial);
+    }
+
+    const sign = new Mesh(new PlaneGeometry(10.2, 2.15), createTrampolineNetSignMaterial());
+    sign.position.set(0, 2.34, 0.075);
+    group.add(sign);
+
+    root.add(group);
+    const collider = addCollider(colliders, centerX, centerZ, length, 0.42);
+    collider.rotationY = rotationY;
   };
 
   const isOnTrampolinePad = (position: Vector3): boolean => (
@@ -1317,6 +1415,7 @@ export function createChapterNine(): ChapterNineData {
   addWall(-27.33, -47.035, 9.72, WALL_THICKNESS);
   addWall(-22.445, -56.255, WALL_THICKNESS, 18.47);
   addTrampolinePark(-64.57, -22.83, -65.36, -47.47, 5, 2);
+  addTrampolineSafetyNet(-32.93, -47.27, -58.62, -47.08);
   addRockClimbingWall();
   {
     const openingLeftX = -29.07;
