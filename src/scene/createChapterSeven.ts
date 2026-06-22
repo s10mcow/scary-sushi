@@ -49,6 +49,7 @@ export interface ChapterSevenData {
   remoteButtons: ChapterSevenRemoteButton[];
   swingSet: ChapterSevenSwingSet;
   grandpa: ChapterSevenGrandpa;
+  birdCage: ChapterSevenBirdCage;
   refreshCookiesForDay(day: number, forceReroll?: boolean): void;
   setDay(day: number): void;
   setTelevisionPowered(powered: boolean): void;
@@ -61,6 +62,7 @@ export interface ChapterSevenData {
   setSwingInput(input: number): void;
   startGrandfatherClockChime(): void;
   consumeBirdPeep(): boolean;
+  unlockBirdCage(): boolean;
   update(deltaSeconds: number, playerPosition?: Vector3, nightBlend?: number): void;
   reset(): void;
 }
@@ -124,6 +126,13 @@ export interface ChapterSevenGrandpa {
   root: Group;
   interactPosition: Vector3;
   aimPosition: Vector3;
+}
+
+export interface ChapterSevenBirdCage {
+  root: Group;
+  interactPosition: Vector3;
+  aimPosition: Vector3;
+  unlocked: boolean;
 }
 
 interface ChapterSevenCounterSurface {
@@ -3760,18 +3769,24 @@ export function createChapterSeven(): ChapterSevenData {
     waterFill: Mesh;
     waterDrop: Mesh;
     seedPile: Mesh;
+    cageDoor: Group;
+    key: Group;
+    cageRoot: Group;
     baseY: number;
     phase: number;
     nextPeep: number;
     nextAction: number;
-    action: 'idle' | 'to-water' | 'drink-water' | 'to-food' | 'eat-food' | 'return-water' | 'return-food';
+    action: 'idle' | 'to-water' | 'drink-water' | 'to-food' | 'eat-food' | 'return-water' | 'return-food' | 'unlock' | 'released';
     actionTimer: number;
     waterLevel: number;
     foodLevel: number;
+    released: boolean;
+    releaseTimer: number;
   }> = [];
+  let birdCageInteractable: ChapterSevenBirdCage | null = null;
   let birdPeepQueued = false;
 
-  const addBirdCageTable = (localX: number, localZ: number): void => {
+  const addBirdCageTable = (localX: number, localZ: number): ChapterSevenBirdCage => {
     const table = new Group();
     table.position.set(localX, 0, localZ);
 
@@ -3859,6 +3874,13 @@ export function createChapterSeven(): ChapterSevenData {
       color: 0x1a1612,
       roughness: 0.42,
       metalness: 0.16,
+    });
+    const cageKeyMaterial = new MeshStandardMaterial({
+      color: 0xd0a33f,
+      emissive: 0x1c1203,
+      emissiveIntensity: 0.08,
+      roughness: 0.34,
+      metalness: 0.58,
     });
 
     const cage = new Group();
@@ -3950,6 +3972,21 @@ export function createChapterSeven(): ChapterSevenData {
       hingeTop,
       hingeBottom,
     );
+
+    const cageKey = new Group();
+    cageKey.visible = false;
+    cageKey.position.set(0.82, 0.54, -0.16);
+    cageKey.rotation.set(0, 0, Math.PI / 2);
+    const keyShaft = new Mesh(new CylinderGeometry(0.012, 0.012, 0.27, 10), cageKeyMaterial);
+    keyShaft.rotation.z = Math.PI / 2;
+    const keyHead = new Mesh(new TorusGeometry(0.055, 0.01, 8, 18), cageKeyMaterial);
+    keyHead.position.x = -0.16;
+    keyHead.rotation.y = Math.PI / 2;
+    const keyToothOne = new Mesh(new BoxGeometry(0.05, 0.028, 0.018), cageKeyMaterial);
+    keyToothOne.position.set(0.12, -0.035, 0);
+    const keyToothTwo = keyToothOne.clone();
+    keyToothTwo.position.set(0.18, -0.02, 0);
+    cageKey.add(keyShaft, keyHead, keyToothOne, keyToothTwo);
 
     const perch = new Mesh(new CylinderGeometry(0.025, 0.025, 0.82, 12), perchMaterial);
     perch.position.y = 0.48;
@@ -4049,6 +4086,9 @@ export function createChapterSeven(): ChapterSevenData {
       waterFill,
       waterDrop,
       seedPile,
+      cageDoor: sideDoor,
+      key: cageKey,
+      cageRoot: cage,
       baseY: parrot.position.y,
       phase: Math.random() * Math.PI * 2,
       nextPeep: 2.4 + Math.random() * 3.4,
@@ -4057,6 +4097,8 @@ export function createChapterSeven(): ChapterSevenData {
       actionTimer: 0,
       waterLevel: 1,
       foodLevel: 1,
+      released: false,
+      releaseTimer: 0,
     });
 
     cage.add(
@@ -4070,6 +4112,7 @@ export function createChapterSeven(): ChapterSevenData {
       ...verticalBars,
       ...roofRibs,
       sideDoor,
+      cageKey,
       perch,
       foodBowl,
       waterBottle,
@@ -4080,6 +4123,14 @@ export function createChapterSeven(): ChapterSevenData {
 
     const tableCollider = addCollider(colliders, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.68, 1.68);
     addCrawlUnderCollider(tableCollider, CENTER_X + localX, HOUSE_CENTER_Z + localZ, 1.68, 1.68, 0.14);
+    const cageInteractable: ChapterSevenBirdCage = {
+      root: table,
+      interactPosition: new Vector3(CENTER_X + localX, GAME_CONFIG.player.height, HOUSE_CENTER_Z + localZ),
+      aimPosition: new Vector3(CENTER_X + localX, 1.95, HOUSE_CENTER_Z + localZ),
+      unlocked: false,
+    };
+    birdCageInteractable = cageInteractable;
+    return cageInteractable;
   };
 
   const addSideGrandfatherClock = (wallLocalX: number, localZ: number, normalX: 1 | -1): void => {
@@ -7464,7 +7515,7 @@ export function createChapterSeven(): ChapterSevenData {
   addRoundRoseTable(1216.60 - CENTER_X, 97.27 - HOUSE_CENTER_Z);
   addSmallPlantTable(1225.65 - CENTER_X, 97.78 - HOUSE_CENTER_Z);
   addFishTankTable(1199.97 - CENTER_X, 85.39 - HOUSE_CENTER_Z);
-  addBirdCageTable(1228.25 - CENTER_X, 78.63 - HOUSE_CENTER_Z);
+  const birdCage = addBirdCageTable(1228.25 - CENTER_X, 78.63 - HOUSE_CENTER_Z);
   const remoteButtons = addTableRemote(1226.18 - CENTER_X, 1.08, 97.15 - HOUSE_CENTER_Z, -0.18);
   addSideGrandfatherClock(1217.94 - CENTER_X, 87.41 - HOUSE_CENTER_Z, -1);
   addBookshelf(1220.53 - CENTER_X, 98.69 - HOUSE_CENTER_Z - 0.64, Math.PI, 0.84, 0.96);
@@ -8130,6 +8181,7 @@ export function createChapterSeven(): ChapterSevenData {
     remoteButtons,
     swingSet,
     grandpa: grandpaInteractable,
+    birdCage,
     refreshCookiesForDay,
     setDay(day: number): void {
       daySixGrandpa.visible = day >= 1;
@@ -8216,7 +8268,7 @@ export function createChapterSeven(): ChapterSevenData {
         && nearOven
       );
       const currentStandingFloorY = Math.max(0, position.y - GAME_CONFIG.player.height);
-      const surfaceJumpReach = 3.0;
+      const surfaceJumpReach = 3.65;
 
       for (const surface of counterSurfaces) {
         const surfaceReachable = surface.floorY <= currentStandingFloorY + surfaceJumpReach;
@@ -8316,6 +8368,20 @@ export function createChapterSeven(): ChapterSevenData {
       birdPeepQueued = false;
       return peep;
     },
+    unlockBirdCage(): boolean {
+      if (!birdCageInteractable || birdCageInteractable.unlocked) {
+        return false;
+      }
+      birdCageInteractable.unlocked = true;
+      birdCageBirds.forEach((bird) => {
+        bird.action = 'unlock';
+        bird.actionTimer = 0;
+        bird.nextAction = 9999;
+        bird.nextPeep = 0.4;
+      });
+      birdPeepQueued = true;
+      return true;
+    },
     update(deltaSeconds: number, playerPosition?: Vector3, nightBlend = 0): void {
       forestTime += deltaSeconds;
       tvNewsScreen.update(forestTime, wallTelevision.isPowered());
@@ -8332,6 +8398,69 @@ export function createChapterSeven(): ChapterSevenData {
       birdCageBirds.forEach((bird) => {
         bird.nextPeep -= deltaSeconds;
         bird.nextAction -= deltaSeconds;
+        if (bird.action === 'unlock') {
+          bird.actionTimer += deltaSeconds;
+          const insertT = MathUtils.clamp(bird.actionTimer / 0.85, 0, 1);
+          const turnT = MathUtils.clamp((bird.actionTimer - 0.75) / 0.72, 0, 1);
+          const doorT = MathUtils.clamp((bird.actionTimer - 1.15) / 1.05, 0, 1);
+          const easedInsert = insertT * insertT * (3 - 2 * insertT);
+          const easedDoor = doorT * doorT * (3 - 2 * doorT);
+          bird.key.visible = true;
+          bird.key.position.set(
+            MathUtils.lerp(0.82, 0.54, easedInsert),
+            MathUtils.lerp(0.54, 0.545, easedInsert),
+            MathUtils.lerp(-0.16, -0.12, easedInsert),
+          );
+          bird.key.rotation.set(0, turnT * Math.PI * 0.92, Math.PI / 2);
+          bird.cageDoor.rotation.y = -easedDoor * Math.PI * 0.62;
+          const keyFlap = Math.abs(Math.sin(forestTime * 24 + bird.phase));
+          bird.leftWingPivot.rotation.z = -0.18 - keyFlap * 0.24;
+          bird.rightWingPivot.rotation.z = 0.18 + keyFlap * 0.24;
+          if (bird.actionTimer >= 2.35) {
+            house.attach(bird.parrot);
+            const releaseStart = new Vector3(1228.25 - CENTER_X, 2.35, 78.63 - HOUSE_CENTER_Z);
+            bird.parrot.position.copy(releaseStart);
+            bird.parrot.rotation.set(0, -Math.PI * 0.42, 0);
+            bird.action = 'released';
+            bird.released = true;
+            bird.releaseTimer = 0;
+            bird.nextPeep = 1.1;
+          }
+          return;
+        }
+
+        if (bird.action === 'released') {
+          bird.releaseTimer += deltaSeconds;
+          const path = [
+            new Vector3(1228.25 - CENTER_X, 2.45, 78.63 - HOUSE_CENTER_Z),
+            new Vector3(1227.2 - CENTER_X, 3.05, 63.2 - HOUSE_CENTER_Z),
+            new Vector3(1209.6 - CENTER_X, 3.35, 62.8 - HOUSE_CENTER_Z),
+            new Vector3(1198.5 - CENTER_X, 2.85, 85.2 - HOUSE_CENTER_Z),
+            new Vector3(1218.4 - CENTER_X, 3.35, 97.6 - HOUSE_CENTER_Z),
+            new Vector3(1231.1 - CENTER_X, 2.72, 89.3 - HOUSE_CENTER_Z),
+          ];
+          const segment = Math.floor((bird.releaseTimer * 0.32 + bird.phase) % path.length);
+          const nextSegment = (segment + 1) % path.length;
+          const t = (bird.releaseTimer * 0.32 + bird.phase) % 1;
+          const eased = t * t * (3 - 2 * t);
+          const from = path[segment];
+          const to = path[nextSegment];
+          bird.parrot.position.lerpVectors(from, to, eased);
+          bird.parrot.position.y += Math.sin(forestTime * 3.8 + bird.phase) * 0.12;
+          bird.parrot.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+          bird.parrot.rotation.x = Math.sin(forestTime * 2.3 + bird.phase) * 0.12;
+          const freeFlap = Math.abs(Math.sin(forestTime * 22 + bird.phase));
+          bird.leftWingPivot.rotation.z = -0.18 - freeFlap * 0.92;
+          bird.rightWingPivot.rotation.z = 0.18 + freeFlap * 0.92;
+          bird.leftWingPivot.rotation.x = Math.sin(forestTime * 17.5 + bird.phase) * 0.16;
+          bird.rightWingPivot.rotation.x = -Math.sin(forestTime * 17.5 + bird.phase) * 0.16;
+          if (bird.nextPeep <= 0) {
+            birdPeepQueued = true;
+            bird.nextPeep = 2.2 + Math.random() * 2.6;
+          }
+          return;
+        }
+
         if (bird.action === 'idle' && bird.nextAction <= 0) {
           bird.action = Math.random() < 0.55 ? 'to-water' : 'to-food';
           bird.actionTimer = 0;
@@ -8755,15 +8884,22 @@ export function createChapterSeven(): ChapterSevenData {
       swingSet.pivot.rotation.x = 0;
       birdPeepQueued = false;
       birdCageBirds.forEach((bird) => {
-        bird.parrot.position.y = bird.baseY;
+        bird.cageRoot.attach(bird.parrot);
+        bird.parrot.position.set(-0.08, bird.baseY, 0.02);
         bird.parrot.rotation.y = Math.PI;
         bird.parrot.rotation.x = 0;
         bird.leftWingPivot.rotation.set(0, 0, 0);
         bird.rightWingPivot.rotation.set(0, 0, 0);
+        bird.cageDoor.rotation.set(0, 0, 0);
+        bird.key.visible = false;
+        bird.key.position.set(0.82, 0.54, -0.16);
+        bird.key.rotation.set(0, 0, Math.PI / 2);
         bird.nextPeep = 2.4 + Math.random() * 3.4;
         bird.nextAction = 30 + Math.random() * 55;
         bird.action = 'idle';
         bird.actionTimer = 0;
+        bird.released = false;
+        bird.releaseTimer = 0;
         bird.waterLevel = 1;
         bird.foodLevel = 1;
         bird.waterFill.scale.y = 1;
@@ -8772,6 +8908,9 @@ export function createChapterSeven(): ChapterSevenData {
         bird.seedPile.scale.set(1.15, 0.38, 1.0);
         bird.seedPile.position.y = 0.17;
       });
+      if (birdCageInteractable) {
+        birdCageInteractable.unlocked = false;
+      }
       daySixGrandpa.visible = true;
       grandfatherClockChimeTimer = 0;
       grandfatherClockMotionParts.forEach((part) => {

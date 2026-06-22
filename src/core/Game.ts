@@ -963,6 +963,7 @@ type ChapterSevenInteractable =
   | { kind: 'remote-button'; item: ChapterSevenData['remoteButtons'][number]; score: number }
   | { kind: 'swing'; item: ChapterSevenData['swingSet']; score: number }
   | { kind: 'grandpa'; item: ChapterSevenData['grandpa']; score: number }
+  | { kind: 'bird-cage'; item: ChapterSevenData['birdCage']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
 type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'torch' | 'empty';
@@ -1255,6 +1256,9 @@ export class Game {
   private chapterSevenHasBirdCageKey = false;
   private chapterSevenLongerNightUses = 0;
   private chapterSevenLongerNightDuration = 0;
+  private chapterSevenBirdCageFreed = false;
+  private chapterSevenBirdCageFreedDay = 0;
+  private chapterSevenBirdCageBonusClaims = 0;
   private chapterFourPurpleJumpscareTimer = 0;
   private chapterFourPurpleJumpscareCooldown = 0;
   private chapterFourBlueJumpscareTimer = 0;
@@ -2759,8 +2763,12 @@ export class Game {
         label: 'the bird cage key',
         cost: 25,
         description: 'A little metal key for the bird cage.',
-        ownedLabel: this.chapterSevenHasBirdCageKey ? 'Already bought. The bird cage key is yours.' : undefined,
-        enabled: !this.chapterSevenHasBirdCageKey && this.chapterSevenCookieCount >= 25,
+        ownedLabel: this.chapterSevenBirdCageFreed
+          ? 'The bird cage is already open.'
+          : this.chapterSevenHasBirdCageKey
+            ? 'Already bought. The bird cage key is yours.'
+            : undefined,
+        enabled: !this.chapterSevenBirdCageFreed && !this.chapterSevenHasBirdCageKey && this.chapterSevenCookieCount >= 25,
       },
       {
         id: 'longer-night-watch',
@@ -12562,6 +12570,16 @@ export class Game {
         this.chapterSeven.refreshCookiesForDay(this.chapterSevenDayCount);
         this.pushStatus('Five days passed, so the remaining cookies scattered into new spots.', 2.8);
       }
+      if (this.chapterSevenBirdCageFreed) {
+        const earnedBirdClaims = Math.floor((this.chapterSevenDayCount - this.chapterSevenBirdCageFreedDay) / 3);
+        const newBirdClaims = Math.max(0, earnedBirdClaims - this.chapterSevenBirdCageBonusClaims);
+        if (newBirdClaims > 0) {
+          const bonusCookies = newBirdClaims * 5;
+          this.chapterSevenBirdCageBonusClaims += newBirdClaims;
+          this.chapterSevenCookieCount += bonusCookies;
+          this.pushStatus(`The freed parrot brings you ${bonusCookies} cookies for helping it.`, 3);
+        }
+      }
     }
 
     this.gameplaySfxAudio.playGrandfatherClockChime();
@@ -13584,6 +13602,29 @@ export class Game {
         this.setChapterSevenGrandpaTradingOpen(true);
         this.pushStatus('Grandpa opens his trading menu.', 2.2);
         return;
+      }
+
+      if (interactable?.kind === 'bird-cage') {
+        if (this.chapterSevenBirdCageFreed || interactable.item.unlocked) {
+          this.pushStatus('The bird cage door is open. The parrot is flying around the house.', 2.6);
+          return;
+        }
+
+        if (!this.chapterSevenHasBirdCageKey) {
+          this.pushStatus('The bird cage is locked. You need the bird cage key from Grandpa.', 2.6);
+          return;
+        }
+
+        if (this.chapterSeven.unlockBirdCage()) {
+          this.chapterSevenHasBirdCageKey = false;
+          this.chapterSevenBirdCageFreed = true;
+          this.chapterSevenBirdCageFreedDay = this.chapterSevenDayCount;
+          this.chapterSevenBirdCageBonusClaims = 0;
+          this.chapterSevenCookieCount += 15;
+          this.pushStatus('The key turns in the bird cage door. The parrot flies out, and you gain 15 cookies.', 3.6);
+          this.syncHud();
+          return;
+        }
       }
 
       const manualDoor = this.getNearestChapterSevenManualDoor();
@@ -18169,6 +18210,15 @@ export class Game {
           return 'Press E near Grandpa to open trading.';
         }
 
+        if (interactable.kind === 'bird-cage') {
+          if (this.chapterSevenBirdCageFreed || interactable.item.unlocked) {
+            return 'The bird cage is open, and the parrot is flying around the house.';
+          }
+          return this.chapterSevenHasBirdCageKey
+            ? 'Press E to unlock the bird cage with the bird cage key.'
+            : 'The bird cage is locked. Trade with Grandpa for the key.';
+        }
+
         if (interactable.kind === 'cardboard-box') {
           return interactable.item.open
             ? 'Hold Space for 2 seconds to crawl, then press Space to jump inside the open box. Press E inside it to close the flaps.'
@@ -19060,6 +19110,15 @@ export class Game {
 
         if (interactable.kind === 'grandpa') {
           return 'Grandpa is ready to trade. Press E to open the trading menu.';
+        }
+
+        if (interactable.kind === 'bird-cage') {
+          if (this.chapterSevenBirdCageFreed || interactable.item.unlocked) {
+            return 'The cage door is open. The parrot is flying around the house.';
+          }
+          return this.chapterSevenHasBirdCageKey
+            ? 'Bird cage key ready. Press E to unlock the cage and release the parrot.'
+            : 'The bird cage is locked. Grandpa has the key.';
         }
 
         if (interactable.kind === 'cardboard-box') {
@@ -22655,6 +22714,11 @@ export class Game {
       keepBest({ kind: 'grandpa', item: this.chapterSeven.grandpa, score: grandpaScore });
     }
 
+    const birdCageScore = this.getChapterSevenLookScore(this.chapterSeven.birdCage, 0.62, 0.65);
+    if (birdCageScore !== null) {
+      keepBest({ kind: 'bird-cage', item: this.chapterSeven.birdCage, score: birdCageScore });
+    }
+
     const swingScore = this.getChapterSevenLookScore(this.chapterSeven.swingSet, 1.0, 1.25);
     if (swingScore !== null) {
       keepBest({ kind: 'swing', item: this.chapterSeven.swingSet, score: swingScore });
@@ -25439,6 +25503,9 @@ export class Game {
     this.chapterSevenHasBirdCageKey = false;
     this.chapterSevenLongerNightUses = 0;
     this.chapterSevenLongerNightDuration = 0;
+    this.chapterSevenBirdCageFreed = false;
+    this.chapterSevenBirdCageFreedDay = 0;
+    this.chapterSevenBirdCageBonusClaims = 0;
     this.chapterSevenCricketCooldown = 0;
     this.chapterSeven.setDay(this.chapterSevenDayCount);
     this.chapterFourBoxHeldAnchor.visible = false;
