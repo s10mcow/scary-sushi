@@ -952,6 +952,10 @@ export function createChapterNine(): ChapterNineData {
   let rockWallClimbY = 0;
   let rockWallHarnessRoot: Group | null = null;
   let rockWallRope: Mesh | null = null;
+  let rockWallTopButton: Mesh | null = null;
+  let rockWallButtonPressTime = 0;
+  const rockWallTopButtonLocalZ = rockWallThickness / 2 + 0.12;
+  const rockWallTopButtonY = rockWallHeight - 0.42;
   const rockWallRopeAnchor = new Vector3(
     rockWallCenterX + rockWallNormalX * rockWallFrontOffset,
     rockWallHeight + 0.34,
@@ -975,6 +979,36 @@ export function createChapterNine(): ChapterNineData {
     GAME_CONFIG.player.height + rockWallClimbY,
     rockWallCenterZ + rockWallAxisZ * rockWallClimbX,
   );
+  const updateRockWallTopButton = (deltaSeconds: number): void => {
+    if (!rockWallTopButton) {
+      return;
+    }
+    rockWallButtonPressTime = Math.max(0, rockWallButtonPressTime - deltaSeconds);
+    const pressProgress = rockWallButtonPressTime > 0
+      ? Math.sin((rockWallButtonPressTime / 0.42) * Math.PI)
+      : 0;
+    rockWallTopButton.position.z = rockWallTopButtonLocalZ - pressProgress * 0.075;
+  };
+  const pressRockWallTopButton = (message: string): ChapterNineInteractionResult | null => {
+    if (!rockWallHarnessed) {
+      return null;
+    }
+
+    if (rockWallLowering) {
+      return {
+        message: 'The winch is already lowering you. It will unclip you at the bottom.',
+      };
+    }
+
+    if (rockWallClimbY < rockWallHeight - 1.08) {
+      return null;
+    }
+
+    rockWallButtonPressTime = 0.42;
+    rockWallLowering = true;
+    updateRockWallTopButton(0);
+    return { message };
+  };
 
   const updateRockWallRope = (endPoint?: Vector3): void => {
     if (!rockWallRope) {
@@ -1039,7 +1073,8 @@ export function createChapterNine(): ChapterNineData {
 
     const topButton = new Mesh(new CylinderGeometry(0.24, 0.24, 0.12, 18), topButtonMaterial);
     topButton.rotation.x = Math.PI / 2;
-    topButton.position.set(0, rockWallHeight - 0.42, rockWallThickness / 2 + 0.12);
+    topButton.position.set(0, rockWallTopButtonY, rockWallTopButtonLocalZ);
+    rockWallTopButton = topButton;
     wallRoot.add(topButton);
 
     rockWallRope = new Mesh(new TubeGeometry(new CatmullRomCurve3([
@@ -2685,6 +2720,8 @@ export function createChapterNine(): ChapterNineData {
     rockWallLowering = false;
     rockWallClimbX = 0;
     rockWallClimbY = 0;
+    rockWallButtonPressTime = 0;
+    updateRockWallTopButton(0);
     if (rockWallHarnessRoot) {
       rockWallHarnessRoot.visible = true;
     }
@@ -2726,6 +2763,7 @@ export function createChapterNine(): ChapterNineData {
           object.position.y = object.userData.baseY + Math.sin(phaseTime * 0.7 + object.userData.dustPhase) * 0.025;
         }
       });
+      updateRockWallTopButton(deltaSeconds);
       updateRockWallRope(rockWallHarnessed ? getRockWallHarnessAttachmentPosition() : undefined);
     },
     updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null {
@@ -2770,38 +2808,19 @@ export function createChapterNine(): ChapterNineData {
       };
     },
     clickRockWallButton(): ChapterNineInteractionResult | null {
-      if (!rockWallHarnessed) {
-        return null;
-      }
-
-      if (rockWallLowering) {
-        return {
-          message: 'The winch is already lowering you. It will unclip you at the bottom.',
-        };
-      }
-
-      if (rockWallClimbY < rockWallHeight - 0.62) {
-        return null;
-      }
-
-      rockWallLowering = true;
-      return {
-        message: 'You click the top button. The winch slowly lowers you to the floor, then unbuckles the harness.',
-      };
+      return pressRockWallTopButton('Click. The top button pushes in and the winch slowly lowers you to the floor, then unbuckles the harness.');
     },
     interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult {
       if (rockWallHarnessed) {
-        if (!rockWallLowering && rockWallClimbY >= rockWallHeight - 0.62) {
-          rockWallLowering = true;
-          return {
-            message: 'You press the top button. The winch slowly lowers you to the floor, then unbuckles the harness.',
-          };
+        const topButtonPress = pressRockWallTopButton('Click. The top button slowly pushes in and the winch lowers you to the floor, then unbuckles the harness.');
+        if (topButtonPress) {
+          return topButtonPress;
         }
 
         return {
           message: rockWallLowering
             ? 'The winch is lowering you. It will unclip you when you reach the bottom.'
-            : 'Hold W to climb up, S to climb down, A to move left, and D to move right. Reach the top button and press E.',
+            : 'Hold W to climb up, S to climb down, A to move left, and D to move right. Get close to the top button and press E.',
         };
       }
 
