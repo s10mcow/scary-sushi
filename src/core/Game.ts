@@ -3294,7 +3294,6 @@ export class Game {
       const climbState = this.chapterNine.updateRockWallHarness(deltaSeconds, movementState);
       if (climbState) {
         this.player.teleport(climbState.position);
-        this.player.lookToward(climbState.lookTarget, 0.18);
       }
     } else if (this.chapterFiveActive && !this.chapterFive.isInteriorMode() && !this.chapterFive.isSurfaceMode()) {
       this.player.update(

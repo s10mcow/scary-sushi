@@ -918,11 +918,11 @@ export function createChapterNine(): ChapterNineData {
     ))
   );
 
-  const rockWallStartX = -22.83;
-  const rockWallStartZ = -65.36;
+  const rockWallStartX = -32.38;
+  const rockWallStartZ = -47.05;
   const rockWallEndX = -32.38;
-  const rockWallEndZ = -41.67;
-  const rockWallHeight = 6.75;
+  const rockWallEndZ = -35.02;
+  const rockWallHeight = 3.76;
   const rockWallThickness = 0.46;
   const rockWallDx = rockWallEndX - rockWallStartX;
   const rockWallDz = rockWallEndZ - rockWallStartZ;
@@ -968,8 +968,8 @@ export function createChapterNine(): ChapterNineData {
     wallRoot.add(wall);
 
     const roughSpots = [
-      [-0.42, 1.2, 0.34], [-0.31, 2.8, 0.22], [-0.18, 4.4, 0.3], [-0.04, 1.9, 0.24],
-      [0.12, 3.5, 0.28], [0.25, 5.4, 0.2], [0.38, 2.2, 0.26], [0.46, 4.8, 0.24],
+      [-0.42, 0.92, 0.28], [-0.31, 2.08, 0.2], [-0.16, 3.02, 0.24], [0.02, 1.46, 0.22],
+      [0.18, 2.54, 0.24], [0.34, 1.12, 0.2], [0.42, 3.18, 0.22],
     ];
     roughSpots.forEach(([xRatio, y, scale], index) => {
       const rock = new Mesh(new SphereGeometry(scale, 8, 6), index % 2 === 0 ? rockWallDarkMaterial : rockWallMaterial);
@@ -979,10 +979,9 @@ export function createChapterNine(): ChapterNineData {
     });
 
     const holds = [
-      [-0.42, 0.9], [-0.28, 1.55], [-0.12, 1.1], [0.04, 1.85], [0.22, 1.38],
-      [0.4, 2.05], [0.32, 2.82], [0.12, 2.55], [-0.08, 3.18], [-0.3, 2.96],
-      [-0.43, 3.72], [-0.2, 4.25], [0.02, 3.92], [0.21, 4.55], [0.39, 4.18],
-      [0.3, 5.35], [0.07, 5.72], [-0.14, 5.22], [-0.34, 5.92], [0.0, 6.32],
+      [-0.42, 0.72], [-0.28, 1.18], [-0.12, 0.9], [0.04, 1.42], [0.22, 1.06],
+      [0.4, 1.72], [0.32, 2.28], [0.12, 2.04], [-0.08, 2.56], [-0.3, 2.32],
+      [-0.42, 2.94], [-0.2, 3.28], [0.02, 3.04], [0.22, 3.42], [0.38, 3.08],
     ];
     holds.forEach(([xRatio, y], index) => {
       const hold = new Mesh(new SphereGeometry(0.18 + (index % 3) * 0.025, 10, 6), climbingHoldMaterial);
