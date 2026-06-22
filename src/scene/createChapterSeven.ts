@@ -49,6 +49,7 @@ export interface ChapterSevenData {
   remoteButtons: ChapterSevenRemoteButton[];
   swingSet: ChapterSevenSwingSet;
   refreshCookiesForDay(day: number, forceReroll?: boolean): void;
+  setDay(day: number): void;
   setTelevisionPowered(powered: boolean): void;
   isTelevisionPowered(): boolean;
   getSupportedFloorY(position: Vector3, crawling?: boolean): number | null;
@@ -3749,9 +3750,17 @@ export function createChapterSeven(): ChapterSevenData {
     parrot: Group;
     leftWingPivot: Group;
     rightWingPivot: Group;
+    waterFill: Mesh;
+    waterDrop: Mesh;
+    seedPile: Mesh;
     baseY: number;
     phase: number;
     nextPeep: number;
+    nextAction: number;
+    action: 'idle' | 'to-water' | 'drink-water' | 'to-food' | 'eat-food' | 'return-water' | 'return-food';
+    actionTimer: number;
+    waterLevel: number;
+    foodLevel: number;
   }> = [];
   let birdPeepQueued = false;
 
@@ -3969,17 +3978,17 @@ export function createChapterSeven(): ChapterSevenData {
     foodBowl.add(bowlBase, bowl, seedPile, bowlRim, ...seeds);
 
     const waterBottle = new Group();
-    waterBottle.position.set(-0.4, 0.56, -0.12);
+    waterBottle.position.set(-0.37, 0.64, 0.1);
     const bottle = new Mesh(new CylinderGeometry(0.06, 0.07, 0.44, 18), waterBottleMaterial);
     const waterFill = new Mesh(new CylinderGeometry(0.053, 0.06, 0.24, 18), waterFillMaterial);
     waterFill.position.y = -0.08;
     const cap = new Mesh(new CylinderGeometry(0.065, 0.065, 0.04, 16), cageMetalMaterial);
     cap.position.y = 0.24;
     const nozzle = new Mesh(new CylinderGeometry(0.016, 0.018, 0.22, 10), cageMetalMaterial);
-    nozzle.position.set(0.075, -0.18, -0.02);
+    nozzle.position.set(0.075, -0.18, -0.01);
     nozzle.rotation.z = -Math.PI / 2.8;
     const waterDrop = new Mesh(new SphereGeometry(0.018, 8, 6), waterFillMaterial);
-    waterDrop.position.set(0.16, -0.23, -0.02);
+    waterDrop.position.set(0.16, -0.23, -0.01);
     waterBottle.add(bottle, waterFill, cap, nozzle, waterDrop);
 
     const parrot = new Group();
@@ -4030,9 +4039,17 @@ export function createChapterSeven(): ChapterSevenData {
       parrot,
       leftWingPivot,
       rightWingPivot,
+      waterFill,
+      waterDrop,
+      seedPile,
       baseY: parrot.position.y,
       phase: Math.random() * Math.PI * 2,
       nextPeep: 2.4 + Math.random() * 3.4,
+      nextAction: 30 + Math.random() * 55,
+      action: 'idle',
+      actionTimer: 0,
+      waterLevel: 1,
+      foodLevel: 1,
     });
 
     cage.add(
@@ -4730,6 +4747,158 @@ export function createChapterSeven(): ChapterSevenData {
     const chairCollider = addRotatedFurnitureCollider(localX, localZ, 1.58, 1.86, rotationY);
     const chairBounds = getRotatedBounds(1.58, 1.86, rotationY);
     addCrawlUnderCollider(chairCollider, CENTER_X + localX, HOUSE_CENTER_Z + localZ, chairBounds.width, chairBounds.depth, 0.12);
+  };
+
+  const addSeatedGrandpa = (localX: number, localZ: number, rotationY = 0): Group => {
+    const grandpa = new Group();
+    grandpa.name = 'Day 6 balcony grandpa placeholder';
+    grandpa.position.set(localX, 0, localZ);
+    grandpa.rotation.y = rotationY;
+    grandpa.visible = false;
+
+    const skinMaterial = new MeshStandardMaterial({
+      color: 0xd3aa82,
+      emissive: 0x0d0502,
+      emissiveIntensity: 0.035,
+      roughness: 0.68,
+      metalness: 0.01,
+    });
+    const wrinkleMaterial = new MeshStandardMaterial({
+      color: 0x8a5f48,
+      roughness: 0.78,
+      metalness: 0.01,
+    });
+    const hairMaterial = new MeshStandardMaterial({
+      color: 0xc6c3b8,
+      emissive: 0x080806,
+      emissiveIntensity: 0.035,
+      roughness: 0.72,
+      metalness: 0.02,
+    });
+    const cardiganMaterial = new MeshStandardMaterial({
+      color: 0x4d5f66,
+      emissive: 0x030607,
+      emissiveIntensity: 0.04,
+      roughness: 0.82,
+      metalness: 0.02,
+    });
+    const shirtMaterial = new MeshStandardMaterial({
+      color: 0xd7c9ac,
+      roughness: 0.76,
+      metalness: 0.01,
+    });
+    const pantsMaterial = new MeshStandardMaterial({
+      color: 0x3c3a35,
+      roughness: 0.78,
+      metalness: 0.02,
+    });
+    const shoeMaterial = new MeshStandardMaterial({
+      color: 0x1f1712,
+      roughness: 0.58,
+      metalness: 0.06,
+    });
+    const glassesMaterial = new MeshStandardMaterial({
+      color: 0x33302a,
+      roughness: 0.36,
+      metalness: 0.42,
+    });
+
+    const hips = new Mesh(new BoxGeometry(0.58, 0.28, 0.48), pantsMaterial);
+    hips.position.set(0, 0.95, 0.02);
+    const torso = new Mesh(new BoxGeometry(0.72, 0.88, 0.38), cardiganMaterial);
+    torso.position.set(0, 1.38, -0.08);
+    torso.rotation.x = -0.12;
+    const shirt = new Mesh(new BoxGeometry(0.34, 0.74, 0.05), shirtMaterial);
+    shirt.position.set(0, 1.38, 0.13);
+    shirt.rotation.x = -0.12;
+
+    const neck = new Mesh(new CylinderGeometry(0.11, 0.13, 0.18, 14), skinMaterial);
+    neck.position.set(0, 1.86, -0.05);
+    const head = new Mesh(new SphereGeometry(0.24, 24, 16), skinMaterial);
+    head.position.set(0, 2.1, -0.03);
+    head.scale.set(0.86, 1.08, 0.82);
+    const nose = new Mesh(new SphereGeometry(0.055, 12, 8), skinMaterial);
+    nose.position.set(0, 2.1, 0.17);
+    nose.scale.set(0.78, 1.0, 1.25);
+    const leftEar = new Mesh(new SphereGeometry(0.055, 10, 8), skinMaterial);
+    leftEar.position.set(-0.22, 2.1, -0.02);
+    leftEar.scale.set(0.55, 1.1, 0.38);
+    const rightEar = leftEar.clone();
+    rightEar.position.x = 0.22;
+    const hairCap = new Mesh(new SphereGeometry(0.25, 20, 10), hairMaterial);
+    hairCap.position.set(0, 2.2, -0.055);
+    hairCap.scale.set(0.9, 0.38, 0.84);
+    const mustacheLeft = new Mesh(new BoxGeometry(0.13, 0.025, 0.035), hairMaterial);
+    mustacheLeft.position.set(-0.055, 2.02, 0.188);
+    mustacheLeft.rotation.z = 0.1;
+    const mustacheRight = mustacheLeft.clone();
+    mustacheRight.position.x = 0.055;
+    mustacheRight.rotation.z = -0.1;
+    const smile = new Mesh(new BoxGeometry(0.12, 0.018, 0.024), wrinkleMaterial);
+    smile.position.set(0, 1.965, 0.19);
+    const leftLens = new Mesh(new TorusGeometry(0.075, 0.006, 6, 18), glassesMaterial);
+    leftLens.position.set(-0.075, 2.13, 0.185);
+    const rightLens = leftLens.clone();
+    rightLens.position.x = 0.075;
+    const glassesBridge = new Mesh(new BoxGeometry(0.05, 0.01, 0.012), glassesMaterial);
+    glassesBridge.position.set(0, 2.13, 0.185);
+
+    const makeArm = (side: -1 | 1): Group => {
+      const arm = new Group();
+      arm.position.set(side * 0.45, 1.58, -0.01);
+      const upper = new Mesh(new BoxGeometry(0.16, 0.48, 0.16), cardiganMaterial);
+      upper.position.set(0, -0.18, 0.0);
+      upper.rotation.z = side * 0.2;
+      const forearm = new Mesh(new BoxGeometry(0.14, 0.44, 0.14), skinMaterial);
+      forearm.position.set(side * 0.05, -0.5, 0.23);
+      forearm.rotation.x = -0.72;
+      forearm.rotation.z = side * 0.08;
+      const hand = new Mesh(new SphereGeometry(0.075, 12, 8), skinMaterial);
+      hand.position.set(side * 0.075, -0.66, 0.42);
+      hand.scale.set(1.05, 0.72, 0.92);
+      arm.add(upper, forearm, hand);
+      return arm;
+    };
+
+    const makeLeg = (side: -1 | 1): Group => {
+      const leg = new Group();
+      leg.position.set(side * 0.22, 0.88, 0.16);
+      const thigh = new Mesh(new BoxGeometry(0.2, 0.5, 0.18), pantsMaterial);
+      thigh.position.set(0, -0.12, 0.12);
+      thigh.rotation.x = -0.92;
+      const shin = new Mesh(new BoxGeometry(0.18, 0.56, 0.16), pantsMaterial);
+      shin.position.set(0, -0.46, 0.48);
+      shin.rotation.x = -0.16;
+      const shoe = new Mesh(new BoxGeometry(0.2, 0.1, 0.34), shoeMaterial);
+      shoe.position.set(0, -0.76, 0.62);
+      shoe.rotation.x = 0.04;
+      leg.add(thigh, shin, shoe);
+      return leg;
+    };
+
+    grandpa.add(
+      hips,
+      torso,
+      shirt,
+      neck,
+      head,
+      nose,
+      leftEar,
+      rightEar,
+      hairCap,
+      mustacheLeft,
+      mustacheRight,
+      smile,
+      leftLens,
+      rightLens,
+      glassesBridge,
+      makeArm(-1),
+      makeArm(1),
+      makeLeg(-1),
+      makeLeg(1),
+    );
+    house.add(grandpa);
+    return grandpa;
   };
 
   const addYardFenceRun = (startLocalX: number, localZ: number, length = 20, axis: 'x' | 'z' = 'x'): void => {
@@ -7583,8 +7752,10 @@ export function createChapterSeven(): ChapterSevenData {
   const leftPorchChairZ = 106.23 - HOUSE_CENTER_Z;
   const rightPorchChairX = 1219.47 - CENTER_X;
   const rightPorchChairZ = 101.48 - HOUSE_CENTER_Z;
-  addRockingChair(leftPorchChairX, leftPorchChairZ, getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ));
+  const leftPorchChairRotation = getChairRotationTowardPorchCenter(leftPorchChairX, leftPorchChairZ);
+  addRockingChair(leftPorchChairX, leftPorchChairZ, leftPorchChairRotation);
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
+  const daySixGrandpa = addSeatedGrandpa(leftPorchChairX, leftPorchChairZ, leftPorchChairRotation);
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
   addCookie(house, leftPorchChairX + 0.05, getCookieRestY(0.9, 0.82), leftPorchChairZ + 0.02, 0.82, 'Porch rocking chair easy cookie');
   addCookie(house, rightPorchChairX - 0.02, getCookieRestY(0.9, 0.82), rightPorchChairZ + 0.02, 0.82, 'Porch rocking chair second easy cookie');
@@ -7887,6 +8058,9 @@ export function createChapterSeven(): ChapterSevenData {
     remoteButtons,
     swingSet,
     refreshCookiesForDay,
+    setDay(day: number): void {
+      daySixGrandpa.visible = day >= 6;
+    },
     setTelevisionPowered: wallTelevision.setPowered,
     isTelevisionPowered: wallTelevision.isPowered,
     getSupportedFloorY(position: Vector3, crawling = false): number | null {
@@ -8084,14 +8258,90 @@ export function createChapterSeven(): ChapterSevenData {
       });
       birdCageBirds.forEach((bird) => {
         bird.nextPeep -= deltaSeconds;
+        bird.nextAction -= deltaSeconds;
+        if (bird.action === 'idle' && bird.nextAction <= 0) {
+          bird.action = Math.random() < 0.55 ? 'to-water' : 'to-food';
+          bird.actionTimer = 0;
+          bird.nextAction = 42 + Math.random() * 72;
+        }
+
+        bird.actionTimer += deltaSeconds;
+        const perchPosition = new Vector3(-0.08, bird.baseY, 0.02);
+        const waterPosition = new Vector3(-0.19, 0.33, 0.09);
+        const foodPosition = new Vector3(-0.28, 0.33, -0.21);
+        const moveBird = (from: Vector3, to: Vector3, duration: number): number => {
+          const t = MathUtils.clamp(bird.actionTimer / duration, 0, 1);
+          const eased = t * t * (3 - 2 * t);
+          bird.parrot.position.lerpVectors(from, to, eased);
+          const dx = to.x - from.x;
+          const dz = to.z - from.z;
+          if (Math.abs(dx) + Math.abs(dz) > 0.001) {
+            bird.parrot.rotation.y = Math.atan2(dx, dz);
+          }
+          return t;
+        };
+
+        let actionFlap = false;
+        if (bird.action === 'to-water') {
+          actionFlap = true;
+          if (moveBird(perchPosition, waterPosition, 2.2) >= 1) {
+            bird.action = 'drink-water';
+            bird.actionTimer = 0;
+            bird.waterLevel = Math.max(0.42, bird.waterLevel - 0.09);
+          }
+        } else if (bird.action === 'drink-water') {
+          bird.parrot.position.copy(waterPosition);
+          bird.parrot.rotation.y = Math.PI * 0.62;
+          bird.parrot.rotation.x = Math.sin(forestTime * 8.0) * 0.09 - 0.12;
+          if (bird.actionTimer >= 2.6) {
+            bird.action = 'return-water';
+            bird.actionTimer = 0;
+          }
+        } else if (bird.action === 'to-food') {
+          actionFlap = true;
+          if (moveBird(perchPosition, foodPosition, 2.0) >= 1) {
+            bird.action = 'eat-food';
+            bird.actionTimer = 0;
+            bird.foodLevel = Math.max(0.48, bird.foodLevel - 0.08);
+          }
+        } else if (bird.action === 'eat-food') {
+          bird.parrot.position.copy(foodPosition);
+          bird.parrot.rotation.y = Math.PI;
+          bird.parrot.rotation.x = Math.sin(forestTime * 9.0) * 0.08 - 0.1;
+          if (bird.actionTimer >= 2.4) {
+            bird.action = 'return-food';
+            bird.actionTimer = 0;
+          }
+        } else if (bird.action === 'return-water' || bird.action === 'return-food') {
+          actionFlap = true;
+          const returnFrom = bird.action === 'return-water' ? waterPosition : foodPosition;
+          if (moveBird(returnFrom, perchPosition, 2.1) >= 1) {
+            bird.action = 'idle';
+            bird.actionTimer = 0;
+            bird.parrot.rotation.y = Math.PI;
+            bird.parrot.rotation.x = 0;
+          }
+        }
+
+        bird.waterFill.scale.y = bird.waterLevel;
+        bird.waterFill.position.y = -0.08 - (1 - bird.waterLevel) * 0.055;
+        bird.waterDrop.scale.setScalar(0.72 + bird.waterLevel * 0.28);
+        bird.seedPile.scale.set(1.15, 0.38 * bird.foodLevel, 1.0);
+        bird.seedPile.position.y = 0.17 - (1 - bird.foodLevel) * 0.035;
+
         const flapCycle = (forestTime * 0.52 + bird.phase) % 5.4;
-        const flapping = flapCycle < 0.82 || bird.nextPeep <= 0;
+        const flapping = actionFlap || flapCycle < 0.82 || bird.nextPeep <= 0;
         const flap = flapping ? Math.abs(Math.sin(forestTime * 19.5 + bird.phase)) : 0;
         bird.leftWingPivot.rotation.z = -0.18 - flap * 0.62;
         bird.rightWingPivot.rotation.z = 0.18 + flap * 0.62;
         bird.leftWingPivot.rotation.x = flapping ? Math.sin(forestTime * 15.5 + bird.phase) * 0.12 : 0;
         bird.rightWingPivot.rotation.x = flapping ? -Math.sin(forestTime * 15.5 + bird.phase) * 0.12 : 0;
-        bird.parrot.position.y = bird.baseY + (flapping ? Math.sin(forestTime * 18.0 + bird.phase) * 0.018 : 0);
+        if (bird.action === 'idle') {
+          bird.parrot.position.copy(perchPosition);
+          bird.parrot.rotation.y = Math.PI;
+          bird.parrot.rotation.x = 0;
+          bird.parrot.position.y = bird.baseY + (flapping ? Math.sin(forestTime * 18.0 + bird.phase) * 0.018 : 0);
+        }
         if (bird.nextPeep <= 0) {
           birdPeepQueued = true;
           bird.nextPeep = 5.4 + Math.random() * 5.2;
@@ -8433,10 +8683,23 @@ export function createChapterSeven(): ChapterSevenData {
       birdPeepQueued = false;
       birdCageBirds.forEach((bird) => {
         bird.parrot.position.y = bird.baseY;
+        bird.parrot.rotation.y = Math.PI;
+        bird.parrot.rotation.x = 0;
         bird.leftWingPivot.rotation.set(0, 0, 0);
         bird.rightWingPivot.rotation.set(0, 0, 0);
         bird.nextPeep = 2.4 + Math.random() * 3.4;
+        bird.nextAction = 30 + Math.random() * 55;
+        bird.action = 'idle';
+        bird.actionTimer = 0;
+        bird.waterLevel = 1;
+        bird.foodLevel = 1;
+        bird.waterFill.scale.y = 1;
+        bird.waterFill.position.y = -0.08;
+        bird.waterDrop.scale.setScalar(1);
+        bird.seedPile.scale.set(1.15, 0.38, 1.0);
+        bird.seedPile.position.y = 0.17;
       });
+      daySixGrandpa.visible = false;
       grandfatherClockChimeTimer = 0;
       grandfatherClockMotionParts.forEach((part) => {
         part.rod.rotation.z = part.rodBaseRotationZ;

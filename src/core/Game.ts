@@ -12456,6 +12456,7 @@ export class Game {
     if (passedIntoDay > 0) {
       const previousCookieCycle = Math.floor((this.chapterSevenDayCount - 1) / 5);
       this.chapterSevenDayCount += passedIntoDay;
+      this.chapterSeven.setDay(this.chapterSevenDayCount);
       const currentCookieCycle = Math.floor((this.chapterSevenDayCount - 1) / 5);
       if (currentCookieCycle > previousCookieCycle) {
         this.chapterSeven.refreshCookiesForDay(this.chapterSevenDayCount);
@@ -25273,6 +25274,7 @@ export class Game {
     this.chapterSevenCookieCount = 0;
     this.chapterSevenCookiePickerOpen = false;
     this.chapterSevenCricketCooldown = 0;
+    this.chapterSeven.setDay(this.chapterSevenDayCount);
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
     this.chapterFourBoxWideAnchor.visible = false;
