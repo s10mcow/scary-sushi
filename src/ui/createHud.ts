@@ -3004,8 +3004,8 @@ export function createHud(host: HTMLElement): HudController {
         slot.root.dataset.image = String(Boolean(imageUrl));
         slot.image.hidden = !imageUrl;
         slot.image.src = imageUrl ?? '';
-        slot.valueText.textContent = value?.filled ? value.label : 'Empty';
-        slot.countText.textContent = value?.filled ? `x${value.count}` : 'x0';
+        slot.valueText.textContent = value?.label ?? 'Empty';
+        slot.countText.textContent = `x${value?.filled ? value.count : 0}`;
       });
     },
     setJumpscare(variant, intensity): void {

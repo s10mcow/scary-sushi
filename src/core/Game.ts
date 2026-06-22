@@ -17822,7 +17822,19 @@ export class Game {
     if (this.chapterSevenActive) {
       return [
         coordinateToolSlot,
-        ...Array.from({ length: 8 }, () => ({
+        {
+          label: 'Birdcage Key',
+          count: this.chapterSevenHasBirdCageKey ? 1 : 0,
+          filled: this.chapterSevenHasBirdCageKey,
+          type: 'birdcage-key',
+        },
+        {
+          label: 'Night Watch',
+          count: this.chapterSevenLongerNightUses,
+          filled: this.chapterSevenLongerNightUses > 0,
+          type: 'night-watch',
+        },
+        ...Array.from({ length: 6 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
