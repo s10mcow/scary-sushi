@@ -1199,6 +1199,15 @@ export function createChapterNine(): ChapterNineData {
     const doorMaterial = new MeshStandardMaterial({ color: 0x4c3322, roughness: 0.78, metalness: 0.04 });
     const trimMaterial = new MeshStandardMaterial({ color: 0x251911, roughness: 0.84, metalness: 0.08 });
     const handleMaterial = new MeshStandardMaterial({ color: 0xa48a4c, roughness: 0.42, metalness: 0.36 });
+    const headerBottomY = height + 0.18;
+    const headerHeight = Math.max(0.1, WALL_HEIGHT - headerBottomY);
+    const wallHeader = new Mesh(
+      new BoxGeometry(width + 0.64, headerHeight, WALL_THICKNESS),
+      createGrayMaterialFor(width + 0.64, headerHeight),
+    );
+    wallHeader.position.set(centerX, headerBottomY + headerHeight / 2, centerZ);
+    wallHeader.rotation.y = rotationY;
+    root.add(wallHeader);
 
     const frame = new Group();
     frame.position.set(centerX, 0, centerZ);
