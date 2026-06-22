@@ -1398,13 +1398,15 @@ export function createChapterNine(): ChapterNineData {
       const foldX = minX + 0.32 + index * ((width - 0.64) / 9);
       addCurtainPanel(foldX, curtainY, minZ + 0.34, 0.18, curtainHeight, 0.18, index % 2 === 0 ? curtainFoldMaterial : curtainMaterial);
     }
-    addCurtainPanel(minX + 0.16, curtainY, centerZ, 0.3, curtainHeight, depth - 0.34, curtainMaterial);
+    addCurtainPanel(centerX, curtainY, maxZ - 0.28, width + 0.44, curtainHeight, 0.24, curtainMaterial);
+    for (let index = 0; index < 10; index += 1) {
+      const foldX = minX + 0.32 + index * ((width - 0.64) / 9);
+      addCurtainPanel(foldX, curtainY, maxZ - 0.44, 0.18, curtainHeight, 0.18, index % 2 === 0 ? curtainFoldMaterial : curtainMaterial);
+    }
     addCurtainPanel(maxX - 0.16, curtainY, centerZ, 0.3, curtainHeight, depth - 0.34, curtainMaterial);
-    [minX + 0.34, maxX - 0.34].forEach((sideX) => {
-      for (let index = 0; index < 6; index += 1) {
-        addCurtainPanel(sideX, curtainY, minZ + 1.0 + index * ((depth - 2.0) / 5), 0.18, curtainHeight, 0.2, curtainFoldMaterial);
-      }
-    });
+    for (let index = 0; index < 6; index += 1) {
+      addCurtainPanel(maxX - 0.34, curtainY, minZ + 1.0 + index * ((depth - 2.0) / 5), 0.18, curtainHeight, 0.2, curtainFoldMaterial);
+    }
 
     const staticFoxy = new Group();
     staticFoxy.name = 'Static Foxy on Chapter 9 marker stage';
