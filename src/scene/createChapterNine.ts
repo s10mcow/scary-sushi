@@ -940,6 +940,7 @@ export function createChapterNine(): ChapterNineData {
   const rockWallCenterZ = (rockWallStartZ + rockWallEndZ) / 2;
   const rockWallRotationY = Math.atan2(-rockWallDz, rockWallDx);
   const rockWallFrontOffset = rockWallThickness / 2 + 0.78;
+  const rockWallLoweringSpeed = 0.92;
   const rockWallHarnessInteractPosition = new Vector3(
     rockWallCenterX + rockWallNormalX * (rockWallFrontOffset + 0.12),
     GAME_CONFIG.player.height,
@@ -2733,7 +2734,7 @@ export function createChapterNine(): ChapterNineData {
       }
 
       if (rockWallLowering) {
-        rockWallClimbY = Math.max(0, rockWallClimbY - deltaSeconds * 2.15);
+        rockWallClimbY = Math.max(0, rockWallClimbY - deltaSeconds * rockWallLoweringSpeed);
       } else {
         rockWallClimbX = Math.max(
           -rockWallLength * 0.43,
@@ -2785,7 +2786,7 @@ export function createChapterNine(): ChapterNineData {
 
       rockWallLowering = true;
       return {
-        message: 'You click the top button. The winch catches the rope, lowers you down, and unbuckles you at the bottom.',
+        message: 'You click the top button. The winch slowly lowers you to the floor, then unbuckles the harness.',
       };
     },
     interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult {
@@ -2793,7 +2794,7 @@ export function createChapterNine(): ChapterNineData {
         if (!rockWallLowering && rockWallClimbY >= rockWallHeight - 0.62) {
           rockWallLowering = true;
           return {
-            message: 'You press the top button. The winch catches the rope, lowers you down, and will unclip you at the bottom.',
+            message: 'You press the top button. The winch slowly lowers you to the floor, then unbuckles the harness.',
           };
         }
 
