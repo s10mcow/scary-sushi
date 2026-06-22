@@ -27,6 +27,7 @@ export class GameplaySfxAudio {
   private footstepCooldown = 0;
   private footstepSide = 0;
   private ballPitRustleCooldown = 0;
+  private trampolineBoingCooldown = 0;
 
   constructor() {
     const AudioContextCtor = (
@@ -79,6 +80,27 @@ export class GameplaySfxAudio {
     this.footstepCooldown = sprinting ? 0.31 : 0.44;
   }
 
+  updateTrampolineBoings(deltaSeconds: number, active: boolean, moving: boolean, sprinting: boolean, jumpRequested: boolean): void {
+    if (!active) {
+      this.trampolineBoingCooldown = 0;
+      return;
+    }
+
+    this.trampolineBoingCooldown -= deltaSeconds;
+    if (jumpRequested) {
+      this.playTrampolineBoing(1.2);
+      this.trampolineBoingCooldown = 0.18;
+      return;
+    }
+
+    if (!moving || this.trampolineBoingCooldown > 0) {
+      return;
+    }
+
+    this.playTrampolineBoing(sprinting ? 0.78 : 0.48);
+    this.trampolineBoingCooldown = sprinting ? 0.23 : 0.36;
+  }
+
   updateBallPitRustle(deltaSeconds: number, active: boolean): void {
     if (!active) {
       this.ballPitRustleCooldown = 0;
@@ -96,6 +118,42 @@ export class GameplaySfxAudio {
 
   playBallPitDive(): void {
     this.playBallPitRustle(true);
+  }
+
+  playTrampolineBoing(intensity = 0.8): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const clampedIntensity = Math.max(0.25, Math.min(1.35, intensity));
+    const now = this.context.currentTime + 0.006;
+    const gain = this.context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12 * clampedIntensity, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.055 * clampedIntensity, now + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+    gain.connect(this.masterGain);
+
+    const boing = this.context.createOscillator();
+    boing.type = 'sine';
+    boing.frequency.setValueAtTime(155 + clampedIntensity * 34, now);
+    boing.frequency.exponentialRampToValueAtTime(410 + clampedIntensity * 170, now + 0.07);
+    boing.frequency.exponentialRampToValueAtTime(180 + clampedIntensity * 28, now + 0.32);
+    boing.connect(gain);
+    this.startSource(boing, now, now + 0.44);
+
+    const springGain = this.context.createGain();
+    springGain.gain.setValueAtTime(0.0001, now + 0.03);
+    springGain.gain.exponentialRampToValueAtTime(0.035 * clampedIntensity, now + 0.07);
+    springGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+    springGain.connect(this.masterGain);
+
+    const spring = this.context.createOscillator();
+    spring.type = 'triangle';
+    spring.frequency.setValueAtTime(620 + clampedIntensity * 180, now + 0.03);
+    spring.frequency.exponentialRampToValueAtTime(360 + clampedIntensity * 70, now + 0.22);
+    spring.connect(springGain);
+    this.startSource(spring, now + 0.03, now + 0.28);
   }
 
   playBlueStomp(): void {

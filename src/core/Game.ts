@@ -3278,6 +3278,7 @@ export class Game {
     const officePrizeSpeedScale = this.officeChapterActive && this.officeLollipopBoostRemaining > 0
       ? OFFICE_LOLLIPOP_SPEED_MULTIPLIER
       : 1;
+    const chapterNineTrampolineBeforeMove = this.chapterNineActive && this.chapterNine.isOnTrampoline(this.player.getPosition());
     const movementSpeedScale = (officeVentActive ? 0.42 : 1)
       * officePrizeSpeedScale
       * (this.chapterSevenCrawling ? CHAPTER_SEVEN_CRAWL_SPEED_MULTIPLIER : 1);
@@ -3346,7 +3347,7 @@ export class Game {
         !officeVentActive && !officeScriptedMoving && !this.officeEmployeeElevatorBasementActive,
         movementSpeedScale,
         true,
-        this.chapterNineActive && this.chapterNine.isOnTrampoline(this.player.getPosition()) ? 1.8 : this.chapterSixActive ? 1.34 : 1,
+        chapterNineTrampolineBeforeMove ? 1.8 : this.chapterSixActive ? 1.34 : 1,
         playerMovementOptions,
       );
     }
@@ -3389,6 +3390,7 @@ export class Game {
       playerPositionAfterMove.z - playerPositionBeforeMove.z,
     );
     const playerInOfficeBallPit = this.isPlayerInOfficeBallPit(playerPositionAfterMove);
+    const playerOnChapterNineTrampoline = this.chapterNineActive && this.chapterNine.isOnTrampoline(playerPositionAfterMove);
     this.updateOfficePlayerNoise(
       deltaSeconds,
       horizontalMoveDistance,
@@ -3414,8 +3416,16 @@ export class Game {
         && !this.chapterMenuOpen
         && !this.chapterFiveActive
         && !playerInOfficeBallPit
+        && !playerOnChapterNineTrampoline
         && horizontalMoveDistance > 0.001,
       effectiveMovement.sprint,
+    );
+    this.gameplaySfxAudio.updateTrampolineBoings(
+      deltaSeconds,
+      playerOnChapterNineTrampoline || chapterNineTrampolineBeforeMove,
+      horizontalMoveDistance > 0.001,
+      effectiveMovement.sprint,
+      jumpRequested && chapterNineTrampolineBeforeMove,
     );
     this.updateStamina(deltaSeconds, sprinting && !this.chapterFiveActive && !this.officeChapterActive);
     this.updateChapterTwoClimb(deltaSeconds);
@@ -3544,6 +3554,9 @@ export class Game {
       }
     } else if (this.chapterSevenActive) {
       this.chapterSeven.update(deltaSeconds, this.player.getPosition(), this.getChapterSevenNightBlend());
+      if (this.chapterSeven.consumeBirdPeep()) {
+        this.gameplaySfxAudio.playStuffiePeep();
+      }
       this.updateChapterSevenHoseWaterAudio(deltaSeconds);
       if (this.chapterSevenSwingSeated) {
         this.player.teleport(this.chapterSeven.swingSet.sitPosition);

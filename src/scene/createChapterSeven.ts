@@ -58,6 +58,7 @@ export interface ChapterSevenData {
   setSwingOccupied(occupied: boolean): void;
   setSwingInput(input: number): void;
   startGrandfatherClockChime(): void;
+  consumeBirdPeep(): boolean;
   update(deltaSeconds: number, playerPosition?: Vector3, nightBlend?: number): void;
   reset(): void;
 }
@@ -3741,6 +3742,16 @@ export function createChapterSeven(): ChapterSevenData {
     });
   };
 
+  const birdCageBirds: Array<{
+    parrot: Group;
+    leftWingPivot: Group;
+    rightWingPivot: Group;
+    baseY: number;
+    phase: number;
+    nextPeep: number;
+  }> = [];
+  let birdPeepQueued = false;
+
   const addBirdCageTable = (localX: number, localZ: number): void => {
     const table = new Group();
     table.position.set(localX, 0, localZ);
@@ -3825,6 +3836,20 @@ export function createChapterSeven(): ChapterSevenData {
       opacity: 0.62,
       depthWrite: false,
     });
+    const cageRoofMaterial = new MeshStandardMaterial({
+      color: 0x1d1a18,
+      transparent: true,
+      opacity: 0.24,
+      roughness: 0.46,
+      metalness: 0.48,
+      side: DoubleSide,
+      depthWrite: false,
+    });
+    const talonMaterial = new MeshStandardMaterial({
+      color: 0x1a1612,
+      roughness: 0.42,
+      metalness: 0.16,
+    });
 
     const cage = new Group();
     cage.position.y = 0.9;
@@ -3838,6 +3863,8 @@ export function createChapterSeven(): ChapterSevenData {
     const topRing = new Mesh(new TorusGeometry(0.34, 0.018, 8, 36), cageMetalMaterial);
     topRing.position.y = 1.22;
     topRing.rotation.x = Math.PI / 2;
+    const pointedRoof = new Mesh(new ConeGeometry(0.36, 0.3, 28, 1, true), cageRoofMaterial);
+    pointedRoof.position.y = 1.36;
     const roofPeakRing = new Mesh(new TorusGeometry(0.08, 0.015, 8, 24), cageMetalMaterial);
     roofPeakRing.position.y = 1.5;
     roofPeakRing.rotation.x = Math.PI / 2;
@@ -3869,18 +3896,25 @@ export function createChapterSeven(): ChapterSevenData {
     perch.rotation.z = Math.PI / 2;
 
     const foodBowl = new Group();
-    foodBowl.position.set(-0.26, 0.22, -0.24);
-    const bowl = new Mesh(new CylinderGeometry(0.13, 0.16, 0.08, 18, 1, true), cageTrayMaterial);
-    bowl.position.y = 0.04;
-    const bowlRim = new Mesh(new TorusGeometry(0.13, 0.012, 8, 20), cageMetalMaterial);
-    bowlRim.position.y = 0.085;
+    foodBowl.position.set(-0.28, 0.18, -0.22);
+    const bowlBase = new Mesh(new CylinderGeometry(0.11, 0.15, 0.06, 18), cageTrayMaterial);
+    bowlBase.position.y = 0.03;
+    const bowl = new Mesh(new CylinderGeometry(0.15, 0.12, 0.12, 18), cageTrayMaterial);
+    bowl.position.y = 0.09;
+    const seedPile = new Mesh(new SphereGeometry(0.105, 14, 8), seedMaterial);
+    seedPile.position.y = 0.17;
+    seedPile.scale.set(1.15, 0.38, 1.0);
+    const bowlRim = new Mesh(new TorusGeometry(0.15, 0.014, 8, 22), cageMetalMaterial);
+    bowlRim.position.y = 0.155;
     bowlRim.rotation.x = Math.PI / 2;
     const seeds = [
-      [-0.04, 0.105, 0.02],
-      [0.02, 0.112, -0.03],
-      [0.045, 0.106, 0.025],
-      [-0.015, 0.118, 0.05],
-      [0.0, 0.11, 0.0],
+      [-0.05, 0.205, 0.02],
+      [0.02, 0.218, -0.035],
+      [0.055, 0.208, 0.03],
+      [-0.018, 0.224, 0.055],
+      [0.0, 0.212, 0.0],
+      [0.04, 0.226, 0.068],
+      [-0.06, 0.216, -0.035],
     ].map(([seedX, seedY, seedZ], index) => {
       const seed = new Mesh(new SphereGeometry(0.018, 8, 6), seedMaterial);
       seed.scale.set(1.25, 0.46, 0.72);
@@ -3888,7 +3922,7 @@ export function createChapterSeven(): ChapterSevenData {
       seed.rotation.y = index * 0.7;
       return seed;
     });
-    foodBowl.add(bowl, bowlRim, ...seeds);
+    foodBowl.add(bowlBase, bowl, seedPile, bowlRim, ...seeds);
 
     const waterBottle = new Group();
     waterBottle.position.set(0.38, 0.66, -0.2);
@@ -3914,11 +3948,18 @@ export function createChapterSeven(): ChapterSevenData {
     belly.scale.set(0.72, 0.9, 0.35);
     const head = new Mesh(new SphereGeometry(0.082, 16, 10), parrotGreenMaterial);
     head.position.set(0.02, 0.15, 0.01);
+    const leftWingPivot = new Group();
+    leftWingPivot.position.set(-0.065, 0.03, 0.0);
     const leftWing = new Mesh(new SphereGeometry(0.07, 12, 8), parrotBlueMaterial);
-    leftWing.position.set(-0.08, 0.01, 0.005);
+    leftWing.position.set(-0.028, -0.02, 0.005);
     leftWing.scale.set(0.5, 1.18, 0.28);
-    const rightWing = leftWing.clone();
-    rightWing.position.x = 0.08;
+    leftWingPivot.add(leftWing);
+    const rightWingPivot = new Group();
+    rightWingPivot.position.set(0.085, 0.03, 0.0);
+    const rightWing = new Mesh(new SphereGeometry(0.07, 12, 8), parrotBlueMaterial);
+    rightWing.position.set(0.028, -0.02, 0.005);
+    rightWing.scale.set(0.5, 1.18, 0.28);
+    rightWingPivot.add(rightWing);
     const tail = new Mesh(new ConeGeometry(0.055, 0.24, 8), parrotBlueMaterial);
     tail.position.set(0, -0.15, -0.02);
     tail.rotation.x = Math.PI;
@@ -3930,13 +3971,32 @@ export function createChapterSeven(): ChapterSevenData {
     leftEye.position.set(-0.03, 0.18, 0.075);
     const rightEye = leftEye.clone();
     rightEye.position.x = 0.06;
-    parrot.add(body, belly, head, leftWing, rightWing, tail, beak, leftEye, rightEye);
+    const talons: Mesh[] = [];
+    [-0.042, 0.042].forEach((footX) => {
+      [-0.025, 0, 0.025].forEach((toeZ) => {
+        const toe = new Mesh(new ConeGeometry(0.007, 0.052, 6), talonMaterial);
+        toe.position.set(footX, -0.102, toeZ + 0.015);
+        toe.rotation.x = Math.PI / 2.2;
+        toe.rotation.z = footX < 0 ? -0.18 : 0.18;
+        talons.push(toe);
+      });
+    });
+    parrot.add(body, belly, head, leftWingPivot, rightWingPivot, tail, beak, leftEye, rightEye, ...talons);
+    birdCageBirds.push({
+      parrot,
+      leftWingPivot,
+      rightWingPivot,
+      baseY: parrot.position.y,
+      phase: Math.random() * Math.PI * 2,
+      nextPeep: 2.4 + Math.random() * 3.4,
+    });
 
     cage.add(
       tray,
       bottomRing,
       middleRing,
       topRing,
+      pointedRoof,
       roofPeakRing,
       topCap,
       hook,
@@ -7960,6 +8020,11 @@ export function createChapterSeven(): ChapterSevenData {
     startGrandfatherClockChime(): void {
       grandfatherClockChimeTimer = 3.0;
     },
+    consumeBirdPeep(): boolean {
+      const peep = birdPeepQueued;
+      birdPeepQueued = false;
+      return peep;
+    },
     update(deltaSeconds: number, playerPosition?: Vector3, nightBlend = 0): void {
       forestTime += deltaSeconds;
       tvNewsScreen.update(forestTime, wallTelevision.isPowered());
@@ -7972,6 +8037,21 @@ export function createChapterSeven(): ChapterSevenData {
         fishMotion.fish.position.set(x, y, z);
         fishMotion.fish.rotation.y = dx >= 0 ? 0 : Math.PI;
         fishMotion.fish.rotation.z = Math.sin(swimTime * 2.4) * 0.08;
+      });
+      birdCageBirds.forEach((bird) => {
+        bird.nextPeep -= deltaSeconds;
+        const flapCycle = (forestTime * 0.52 + bird.phase) % 5.4;
+        const flapping = flapCycle < 0.82 || bird.nextPeep <= 0;
+        const flap = flapping ? Math.abs(Math.sin(forestTime * 19.5 + bird.phase)) : 0;
+        bird.leftWingPivot.rotation.z = -0.18 - flap * 0.62;
+        bird.rightWingPivot.rotation.z = 0.18 + flap * 0.62;
+        bird.leftWingPivot.rotation.x = flapping ? Math.sin(forestTime * 15.5 + bird.phase) * 0.12 : 0;
+        bird.rightWingPivot.rotation.x = flapping ? -Math.sin(forestTime * 15.5 + bird.phase) * 0.12 : 0;
+        bird.parrot.position.y = bird.baseY + (flapping ? Math.sin(forestTime * 18.0 + bird.phase) * 0.018 : 0);
+        if (bird.nextPeep <= 0) {
+          birdPeepQueued = true;
+          bird.nextPeep = 5.4 + Math.random() * 5.2;
+        }
       });
       grandfatherClockChimeTimer = Math.max(0, grandfatherClockChimeTimer - deltaSeconds);
       grandfatherClockMotionParts.forEach((part, partIndex) => {
@@ -8306,6 +8386,13 @@ export function createChapterSeven(): ChapterSevenData {
       swingSet.swingPhase = 0;
       swingSet.swingPower = 0;
       swingSet.pivot.rotation.x = 0;
+      birdPeepQueued = false;
+      birdCageBirds.forEach((bird) => {
+        bird.parrot.position.y = bird.baseY;
+        bird.leftWingPivot.rotation.set(0, 0, 0);
+        bird.rightWingPivot.rotation.set(0, 0, 0);
+        bird.nextPeep = 2.4 + Math.random() * 3.4;
+      });
       grandfatherClockChimeTimer = 0;
       grandfatherClockMotionParts.forEach((part) => {
         part.rod.rotation.z = part.rodBaseRotationZ;

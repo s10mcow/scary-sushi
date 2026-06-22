@@ -227,13 +227,6 @@ function createTrampolineNetSignMaterial(): MeshStandardMaterial {
     context.fillText('The trampolines', canvas.width / 2, 72);
     context.font = 'bold 34px Arial';
     context.fillText('have fun and fly safe.', canvas.width / 2, 138);
-    context.fillStyle = '#d63c3c';
-    context.beginPath();
-    context.arc(58, 58, 12, 0, Math.PI * 2);
-    context.arc(canvas.width - 58, 58, 12, 0, Math.PI * 2);
-    context.arc(58, canvas.height - 58, 12, 0, Math.PI * 2);
-    context.arc(canvas.width - 58, canvas.height - 58, 12, 0, Math.PI * 2);
-    context.fill();
   });
 }
 
