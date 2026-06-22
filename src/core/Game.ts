@@ -2894,6 +2894,7 @@ export class Game {
     const officeScriptedMoving = officeVentDropping || officeEmployeeElevatorRiding;
     const chapterFourBoxHiding = this.chapterFourActive && this.chapterFourBoxActive;
     const chapterFourLockerHiding = this.chapterFourActive && this.chapterFourLockerId !== null;
+    const chapterNineRockWallHarnessed = this.chapterNineActive && this.chapterNine.isRockWallHarnessed();
     this.zombieFireCooldown = Math.max(0, this.zombieFireCooldown - deltaSeconds);
     this.zombieWeaponKick = Math.max(0, this.zombieWeaponKick - deltaSeconds * 6.8);
     this.officePhotoCameraFlashTimer = Math.max(0, this.officePhotoCameraFlashTimer - deltaSeconds);
@@ -3153,6 +3154,8 @@ export class Game {
         ? { forward: 0, strafe: 0, sprint: false }
       : this.chapterSevenSwingSeated
         ? { forward: 0, strafe: 0, sprint: false }
+      : chapterNineRockWallHarnessed
+        ? { forward: 0, strafe: 0, sprint: false }
       : this.chapterSevenCrawling
         ? { ...movementState, sprint: false }
       : this.chapterFiveActive && !this.chapterFive.isInteriorMode() && !this.chapterFive.isSurfaceMode()
@@ -3279,7 +3282,21 @@ export class Game {
       * officePrizeSpeedScale
       * (this.chapterSevenCrawling ? CHAPTER_SEVEN_CRAWL_SPEED_MULTIPLIER : 1);
     const playerMovementOptions = this.getOfficePlayerMovementOptions(effectiveMovement);
-    if (this.chapterFiveActive && !this.chapterFive.isInteriorMode() && !this.chapterFive.isSurfaceMode()) {
+    if (chapterNineRockWallHarnessed) {
+      this.player.update(
+        deltaSeconds,
+        { forward: 0, strafe: 0, sprint: false },
+        false,
+        false,
+        0,
+        true,
+      );
+      const climbState = this.chapterNine.updateRockWallHarness(deltaSeconds, movementState);
+      if (climbState) {
+        this.player.teleport(climbState.position);
+        this.player.lookToward(climbState.lookTarget, 0.18);
+      }
+    } else if (this.chapterFiveActive && !this.chapterFive.isInteriorMode() && !this.chapterFive.isSurfaceMode()) {
       this.player.update(
         deltaSeconds,
         { forward: 0, strafe: 0, sprint: false },

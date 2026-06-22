@@ -43,6 +43,7 @@ export interface ChapterNineData {
   shoulderCamera: Group;
   cameraScreenMaterial: MeshStandardMaterial;
   update(deltaSeconds: number, playerPosition: Vector3): void;
+  updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null;
   interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult;
   record(playerPosition: Vector3): string;
   cycleHeldItem(step: number): void;
@@ -60,6 +61,7 @@ export interface ChapterNineData {
   isNight(): boolean;
   isEscapeUnlocked(): boolean;
   isOnTrampoline(position: Vector3): boolean;
+  isRockWallHarnessed(): boolean;
   reset(): void;
 }
 
@@ -608,6 +610,12 @@ export function createChapterNine(): ChapterNineData {
   const trampolinePadMaterial = new MeshStandardMaterial({ color: 0x2f68c7, roughness: 0.68, metalness: 0.03 });
   const trampolineEdgeMaterial = new MeshStandardMaterial({ color: 0xd63333, roughness: 0.7, metalness: 0.02 });
   const trampolineSpringMaterial = new MeshStandardMaterial({ color: 0xc6cbd0, roughness: 0.32, metalness: 0.62 });
+  const rockWallMaterial = new MeshStandardMaterial({ color: 0x5f5d58, roughness: 0.96, metalness: 0.01 });
+  const rockWallDarkMaterial = new MeshStandardMaterial({ color: 0x3d3b38, roughness: 0.98, metalness: 0.01 });
+  const climbingHoldMaterial = new MeshStandardMaterial({ color: 0xd08b2f, roughness: 0.62, metalness: 0.02 });
+  const harnessMaterial = new MeshStandardMaterial({ color: 0x202225, roughness: 0.56, metalness: 0.18 });
+  const ropeMaterial = new MeshStandardMaterial({ color: 0xd8c27a, roughness: 0.8, metalness: 0.02 });
+  const topButtonMaterial = new MeshStandardMaterial({ color: 0xd92929, emissive: 0x4b0505, emissiveIntensity: 0.35, roughness: 0.4 });
   const paintedLineMaterial = new MeshStandardMaterial({ color: 0xd7d0bb, roughness: 0.78 });
   const neonMaterial = new MeshBasicMaterial({ color: 0xffd45a });
   const glassMaterial = new MeshStandardMaterial({
@@ -811,6 +819,109 @@ export function createChapterNine(): ChapterNineData {
       && Math.abs(position.z - pad.centerZ) <= pad.halfDepth
     ))
   );
+
+  const rockWallStartX = -22.83;
+  const rockWallStartZ = -65.36;
+  const rockWallEndX = -32.38;
+  const rockWallEndZ = -41.67;
+  const rockWallHeight = 6.75;
+  const rockWallThickness = 0.46;
+  const rockWallDx = rockWallEndX - rockWallStartX;
+  const rockWallDz = rockWallEndZ - rockWallStartZ;
+  const rockWallLength = Math.hypot(rockWallDx, rockWallDz);
+  const rockWallAxisX = rockWallDx / rockWallLength;
+  const rockWallAxisZ = rockWallDz / rockWallLength;
+  const rockWallNormalX = -rockWallAxisZ;
+  const rockWallNormalZ = rockWallAxisX;
+  const rockWallCenterX = (rockWallStartX + rockWallEndX) / 2;
+  const rockWallCenterZ = (rockWallStartZ + rockWallEndZ) / 2;
+  const rockWallRotationY = Math.atan2(-rockWallDz, rockWallDx);
+  const rockWallFrontOffset = rockWallThickness / 2 + 0.78;
+  const rockWallHarnessInteractPosition = new Vector3(
+    rockWallCenterX + rockWallNormalX * (rockWallFrontOffset + 0.12),
+    GAME_CONFIG.player.height,
+    rockWallCenterZ + rockWallNormalZ * (rockWallFrontOffset + 0.12),
+  );
+  let rockWallHarnessed = false;
+  let rockWallLowering = false;
+  let rockWallClimbX = 0;
+  let rockWallClimbY = 0;
+  let rockWallHarnessRoot: Group | null = null;
+
+  const getRockWallClimbPosition = (): Vector3 => new Vector3(
+    rockWallCenterX + rockWallAxisX * rockWallClimbX + rockWallNormalX * rockWallFrontOffset,
+    GAME_CONFIG.player.height + rockWallClimbY,
+    rockWallCenterZ + rockWallAxisZ * rockWallClimbX + rockWallNormalZ * rockWallFrontOffset,
+  );
+
+  const getRockWallLookTarget = (): Vector3 => new Vector3(
+    rockWallCenterX + rockWallAxisX * rockWallClimbX,
+    GAME_CONFIG.player.height + rockWallClimbY,
+    rockWallCenterZ + rockWallAxisZ * rockWallClimbX,
+  );
+
+  const addRockClimbingWall = (): void => {
+    const wallRoot = new Group();
+    wallRoot.position.set(rockWallCenterX, 0, rockWallCenterZ);
+    wallRoot.rotation.y = rockWallRotationY;
+
+    const wall = new Mesh(new BoxGeometry(rockWallLength, rockWallHeight, rockWallThickness), rockWallMaterial);
+    wall.position.y = rockWallHeight / 2;
+    wallRoot.add(wall);
+
+    const roughSpots = [
+      [-0.42, 1.2, 0.34], [-0.31, 2.8, 0.22], [-0.18, 4.4, 0.3], [-0.04, 1.9, 0.24],
+      [0.12, 3.5, 0.28], [0.25, 5.4, 0.2], [0.38, 2.2, 0.26], [0.46, 4.8, 0.24],
+    ];
+    roughSpots.forEach(([xRatio, y, scale], index) => {
+      const rock = new Mesh(new SphereGeometry(scale, 8, 6), index % 2 === 0 ? rockWallDarkMaterial : rockWallMaterial);
+      rock.scale.set(1.35, 0.72, 0.34);
+      rock.position.set(xRatio * rockWallLength, y, rockWallThickness / 2 + 0.025);
+      wallRoot.add(rock);
+    });
+
+    const holds = [
+      [-0.42, 0.9], [-0.28, 1.55], [-0.12, 1.1], [0.04, 1.85], [0.22, 1.38],
+      [0.4, 2.05], [0.32, 2.82], [0.12, 2.55], [-0.08, 3.18], [-0.3, 2.96],
+      [-0.43, 3.72], [-0.2, 4.25], [0.02, 3.92], [0.21, 4.55], [0.39, 4.18],
+      [0.3, 5.35], [0.07, 5.72], [-0.14, 5.22], [-0.34, 5.92], [0.0, 6.32],
+    ];
+    holds.forEach(([xRatio, y], index) => {
+      const hold = new Mesh(new SphereGeometry(0.18 + (index % 3) * 0.025, 10, 6), climbingHoldMaterial);
+      hold.scale.set(1.25, 0.62, 0.5);
+      hold.position.set(xRatio * rockWallLength, y, rockWallThickness / 2 + 0.16);
+      wallRoot.add(hold);
+    });
+
+    const topButton = new Mesh(new CylinderGeometry(0.24, 0.24, 0.12, 18), topButtonMaterial);
+    topButton.rotation.x = Math.PI / 2;
+    topButton.position.set(0, rockWallHeight - 0.42, rockWallThickness / 2 + 0.12);
+    wallRoot.add(topButton);
+
+    const rope = new Mesh(new CylinderGeometry(0.035, 0.035, rockWallHeight - 0.7, 12), ropeMaterial);
+    rope.position.set(0, rockWallHeight / 2 + 0.12, rockWallThickness / 2 + 0.42);
+    wallRoot.add(rope);
+
+    const harness = new Group();
+    harness.position.set(0, 0.86, rockWallThickness / 2 + 0.58);
+    const belt = new Mesh(new TorusGeometry(0.34, 0.035, 8, 24), harnessMaterial);
+    belt.rotation.x = Math.PI / 2;
+    const leftLoop = new Mesh(new TorusGeometry(0.18, 0.026, 8, 18), harnessMaterial);
+    leftLoop.position.set(-0.17, -0.26, 0);
+    leftLoop.rotation.x = Math.PI / 2;
+    const rightLoop = leftLoop.clone();
+    rightLoop.position.x = 0.17;
+    const clip = new Mesh(new BoxGeometry(0.16, 0.22, 0.08), metalMaterial);
+    clip.position.set(0, 0.12, 0.03);
+    harness.add(belt, leftLoop, rightLoop, clip);
+    wallRoot.add(harness);
+    rockWallHarnessRoot = harness;
+
+    root.add(wallRoot);
+
+    const collider = addCollider(colliders, rockWallCenterX, rockWallCenterZ, rockWallLength, rockWallThickness);
+    collider.rotationY = rockWallRotationY;
+  };
 
   const addCashRegister = (x: number, surfaceY: number, z: number, rotationY = 0): void => {
     const register = new Group();
@@ -1206,6 +1317,7 @@ export function createChapterNine(): ChapterNineData {
   addWall(-27.33, -47.035, 9.72, WALL_THICKNESS);
   addWall(-22.445, -56.255, WALL_THICKNESS, 18.47);
   addTrampolinePark(-64.57, -22.83, -65.36, -47.47, 5, 2);
+  addRockClimbingWall();
   {
     const openingLeftX = -29.07;
     const openingLeftZ = -18.89;
@@ -2267,6 +2379,13 @@ export function createChapterNine(): ChapterNineData {
     shoulderCamera.visible = true;
     redDot.visible = false;
     screenRecLight.visible = false;
+    rockWallHarnessed = false;
+    rockWallLowering = false;
+    rockWallClimbX = 0;
+    rockWallClimbY = 0;
+    if (rockWallHarnessRoot) {
+      rockWallHarnessRoot.visible = true;
+    }
   };
 
   reset();
@@ -2305,7 +2424,73 @@ export function createChapterNine(): ChapterNineData {
         }
       });
     },
+    updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null {
+      if (!rockWallHarnessed) {
+        return null;
+      }
+
+      if (rockWallLowering) {
+        rockWallClimbY = Math.max(0, rockWallClimbY - deltaSeconds * 2.15);
+      } else {
+        rockWallClimbX = Math.max(
+          -rockWallLength * 0.43,
+          Math.min(rockWallLength * 0.43, rockWallClimbX + movement.strafe * deltaSeconds * 3.15),
+        );
+        rockWallClimbY = Math.max(
+          0,
+          Math.min(rockWallHeight - 0.28, rockWallClimbY + movement.forward * deltaSeconds * 2.35),
+        );
+      }
+
+      return {
+        position: getRockWallClimbPosition(),
+        lookTarget: getRockWallLookTarget(),
+      };
+    },
     interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult {
+      if (rockWallHarnessed) {
+        if (!rockWallLowering && rockWallClimbY >= rockWallHeight - 0.62) {
+          rockWallLowering = true;
+          return {
+            message: 'You press the top button. The winch catches the rope and slowly lowers you down.',
+          };
+        }
+
+        if (rockWallLowering && rockWallClimbY <= 0.08) {
+          rockWallHarnessed = false;
+          rockWallLowering = false;
+          if (rockWallHarnessRoot) {
+            rockWallHarnessRoot.visible = true;
+          }
+          return {
+            message: 'You unclip from the harness. The winch gear hangs loose in front of the rock wall.',
+            teleport: rockWallHarnessInteractPosition.clone(),
+            lookTarget: getRockWallLookTarget(),
+          };
+        }
+
+        return {
+          message: rockWallLowering
+            ? 'The winch is lowering you. Wait until you reach the bottom, then press E to unclip.'
+            : 'Hold W to climb up, S to climb down, A to move left, and D to move right. Reach the top button and press E.',
+        };
+      }
+
+      if (playerPosition.distanceTo(rockWallHarnessInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.95) {
+        rockWallHarnessed = true;
+        rockWallLowering = false;
+        rockWallClimbX = 0;
+        rockWallClimbY = 0;
+        if (rockWallHarnessRoot) {
+          rockWallHarnessRoot.visible = false;
+        }
+        return {
+          message: 'You clip into the winch harness. Hold W to climb up the rock wall, S to climb down, A left, and D right.',
+          teleport: getRockWallClimbPosition(),
+          lookTarget: getRockWallLookTarget(),
+        };
+      }
+
       if (playerPosition.distanceTo(voiceTapeInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.55) {
         return {
           message: 'The voice tape clicks softly. It holds scratchy animatronic speech tests and old rehearsal lines.',
@@ -2477,6 +2662,7 @@ export function createChapterNine(): ChapterNineData {
     isOnTrampoline(position: Vector3): boolean {
       return isOnTrampolinePad(position);
     },
+    isRockWallHarnessed: () => rockWallHarnessed,
     getPhaseLabel(): string {
       if (night) {
         return insideDuringNight ? 'Night: Locked In' : 'Night';
