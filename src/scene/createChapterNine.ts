@@ -652,6 +652,7 @@ export function createChapterNine(): ChapterNineData {
   const harnessMaterial = new MeshStandardMaterial({ color: 0x202225, roughness: 0.56, metalness: 0.18 });
   const ropeMaterial = new MeshStandardMaterial({ color: 0xd8c27a, roughness: 0.8, metalness: 0.02 });
   const topButtonMaterial = new MeshStandardMaterial({ color: 0xd92929, emissive: 0x4b0505, emissiveIntensity: 0.35, roughness: 0.4 });
+  let phaseTime = 0;
   const paintedLineMaterial = new MeshStandardMaterial({ color: 0xd7d0bb, roughness: 0.78 });
   const neonMaterial = new MeshBasicMaterial({ color: 0xffd45a });
   const glassMaterial = new MeshStandardMaterial({
@@ -2288,7 +2289,6 @@ export function createChapterNine(): ChapterNineData {
   shoulderCamera.add(cameraBody, cameraLens, cameraScreen, redDot, screenRecLight);
   shoulderCamera.position.set(0.55, -0.34, -0.74);
 
-  let phaseTime = 0;
   let night = false;
   let insideDuringNight = false;
   let escapeUnlocked = false;
