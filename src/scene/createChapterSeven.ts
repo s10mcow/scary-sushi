@@ -3985,10 +3985,10 @@ export function createChapterSeven(): ChapterSevenData {
     const cap = new Mesh(new CylinderGeometry(0.065, 0.065, 0.04, 16), cageMetalMaterial);
     cap.position.y = 0.24;
     const nozzle = new Mesh(new CylinderGeometry(0.016, 0.018, 0.22, 10), cageMetalMaterial);
-    nozzle.position.set(0.075, -0.18, -0.01);
-    nozzle.rotation.z = -Math.PI / 2.8;
+    nozzle.position.set(-0.075, -0.18, -0.01);
+    nozzle.rotation.z = Math.PI / 2.8;
     const waterDrop = new Mesh(new SphereGeometry(0.018, 8, 6), waterFillMaterial);
-    waterDrop.position.set(0.16, -0.23, -0.01);
+    waterDrop.position.set(-0.16, -0.23, -0.01);
     waterBottle.add(bottle, waterFill, cap, nozzle, waterDrop);
 
     const parrot = new Group();
@@ -8308,7 +8308,7 @@ export function createChapterSeven(): ChapterSevenData {
 
         bird.actionTimer += deltaSeconds;
         const perchPosition = new Vector3(-0.08, bird.baseY, 0.02);
-        const waterPosition = new Vector3(0.23, 0.37, -0.08);
+        const waterPosition = new Vector3(0.22, 0.37, -0.18);
         const foodPosition = new Vector3(-0.12, 0.35, -0.08);
         const moveBird = (from: Vector3, to: Vector3, duration: number): number => {
           const t = MathUtils.clamp(bird.actionTimer / duration, 0, 1);
