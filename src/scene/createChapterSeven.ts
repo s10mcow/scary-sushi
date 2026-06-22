@@ -3978,7 +3978,7 @@ export function createChapterSeven(): ChapterSevenData {
     foodBowl.add(bowlBase, bowl, seedPile, bowlRim, ...seeds);
 
     const waterBottle = new Group();
-    waterBottle.position.set(-0.37, 0.64, 0.1);
+    waterBottle.position.set(0.41, 0.66, -0.2);
     const bottle = new Mesh(new CylinderGeometry(0.06, 0.07, 0.44, 18), waterBottleMaterial);
     const waterFill = new Mesh(new CylinderGeometry(0.053, 0.06, 0.24, 18), waterFillMaterial);
     waterFill.position.y = -0.08;
@@ -8267,7 +8267,7 @@ export function createChapterSeven(): ChapterSevenData {
 
         bird.actionTimer += deltaSeconds;
         const perchPosition = new Vector3(-0.08, bird.baseY, 0.02);
-        const waterPosition = new Vector3(-0.19, 0.33, 0.09);
+        const waterPosition = new Vector3(0.27, 0.33, -0.2);
         const foodPosition = new Vector3(-0.28, 0.33, -0.21);
         const moveBird = (from: Vector3, to: Vector3, duration: number): number => {
           const t = MathUtils.clamp(bird.actionTimer / duration, 0, 1);
