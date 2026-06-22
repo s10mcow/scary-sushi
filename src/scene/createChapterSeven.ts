@@ -7222,7 +7222,7 @@ export function createChapterSeven(): ChapterSevenData {
   addSidePictureFrame(1215.49 - CENTER_X, 2.3, 66.62 - HOUSE_CENTER_Z, -1, chickenCoopPortraitMaterial);
   addSidePictureFrame(1235.69 - CENTER_X, 1.95, 94.79 - HOUSE_CENTER_Z, -1, birdNestPortraitMaterial);
   addPictureFrame(1221.50 - CENTER_X, 2.92, 61.31 - HOUSE_CENTER_Z, 1, swingPortraitMaterial);
-  const wallTelevision = addWallTelevision(1230.33 - CENTER_X, 2.11, 80.19 - HOUSE_CENTER_Z, 1);
+  const wallTelevision = addWallTelevision(1230.33 - CENTER_X, 2.72, 80.19 - HOUSE_CENTER_Z, 1);
   addWallLamp(1236.31 - CENTER_X, 3.5, 90.01 - HOUSE_CENTER_Z);
   addWallLamp(1236.31 - CENTER_X, 3.67, 66.14 - HOUSE_CENTER_Z);
   const houseDrawer = addDrawer(-25.05, 2.4, Math.PI / 2, 'Table Drawer');
