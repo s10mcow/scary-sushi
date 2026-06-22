@@ -1139,24 +1139,28 @@ export function createChapterNine(): ChapterNineData {
       return post;
     };
 
-    const leftPost = addScannerPost(-0.58, 'IN');
-    const rightPost = addScannerPost(0.58, 'OUT');
+    const gateWidth = 1.98;
+    const postX = 0.86;
+    const armPivotX = 0.72;
+    const armLength = 1.38;
+    const leftPost = addScannerPost(-postX, 'IN');
+    const rightPost = addScannerPost(postX, 'OUT');
     const leftArmPivot = new Group();
-    leftArmPivot.position.set(-0.45, 1.02, 0.03);
+    leftArmPivot.position.set(-armPivotX, 1.02, 0.03);
     const rightArmPivot = new Group();
-    rightArmPivot.position.set(0.45, 1.02, 0.03);
-    const leftArm = new Mesh(new BoxGeometry(0.9, 0.075, 0.075), armMaterial);
-    leftArm.position.x = 0.45;
-    const rightArm = new Mesh(new BoxGeometry(0.9, 0.075, 0.075), armMaterial);
-    rightArm.position.x = -0.45;
+    rightArmPivot.position.set(armPivotX, 1.02, 0.03);
+    const leftArm = new Mesh(new BoxGeometry(armLength, 0.075, 0.075), armMaterial);
+    leftArm.position.x = armLength / 2;
+    const rightArm = new Mesh(new BoxGeometry(armLength, 0.075, 0.075), armMaterial);
+    rightArm.position.x = -armLength / 2;
     leftArmPivot.add(leftArm);
     rightArmPivot.add(rightArm);
-    const topBar = new Mesh(new BoxGeometry(1.46, 0.07, 0.07), blackMetalMaterial);
+    const topBar = new Mesh(new BoxGeometry(gateWidth + 0.14, 0.07, 0.07), blackMetalMaterial);
     topBar.position.set(0, 1.67, 0.14);
     gate.add(leftPost, rightPost, leftArmPivot, rightArmPivot, topBar);
     root.add(gate);
 
-    const collider = addCollider(colliders, centerX, centerZ, 1.35, 0.38);
+    const collider = addCollider(colliders, centerX, centerZ, gateWidth, 0.38);
     collider.rotationY = rotationY;
     return {
       collider,
