@@ -4026,15 +4026,15 @@ export function createChapterSeven(): ChapterSevenData {
     const middleRing = bottomRing.clone();
     middleRing.position.y = 0.84;
     const topRing = new Mesh(new TorusGeometry(0.5, 0.018, 8, 40), cageMetalMaterial);
-    topRing.position.y = 1.16;
+    topRing.position.y = 0.9;
     topRing.rotation.x = Math.PI / 2;
     const roofPeakRing = new Mesh(new TorusGeometry(0.095, 0.015, 8, 24), cageMetalMaterial);
-    roofPeakRing.position.y = 1.56;
+    roofPeakRing.position.y = 1.36;
     roofPeakRing.rotation.x = Math.PI / 2;
     const topCap = new Mesh(new SphereGeometry(0.07, 14, 8), cageMetalMaterial);
-    topCap.position.y = 1.63;
+    topCap.position.y = 1.43;
     const hook = new Mesh(new TorusGeometry(0.12, 0.014, 8, 22, Math.PI * 1.45), cageMetalMaterial);
-    hook.position.y = 1.78;
+    hook.position.y = 1.58;
     hook.rotation.z = Math.PI / 2;
 
     const verticalBars = Array.from({ length: 14 }, (_, index) => {
@@ -4047,9 +4047,9 @@ export function createChapterSeven(): ChapterSevenData {
       const angle = (index / 14) * Math.PI * 2;
       const ribGroup = new Group();
       ribGroup.rotation.y = angle;
-      const rib = new Mesh(new CylinderGeometry(0.01, 0.01, 0.66, 8), cageMetalMaterial);
-      rib.position.set(0.255, 1.36, 0);
-      rib.rotation.z = -0.92;
+      const rib = new Mesh(new CylinderGeometry(0.01, 0.01, 0.6, 8), cageMetalMaterial);
+      rib.position.set(0.288, 1.13, 0);
+      rib.rotation.z = 0.7;
       ribGroup.add(rib);
       return ribGroup;
     });
