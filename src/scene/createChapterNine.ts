@@ -1075,6 +1075,7 @@ export function createChapterNine(): ChapterNineData {
   addAngledWall(-28.71, 12.36, -44.48, 2.60, WALL_THICKNESS * 0.08);
   addAngledWall(-44.17, 2.38, -41.37, -10.17, WALL_THICKNESS * 0.08);
   addAngledWall(-41.29, -10.33, -31.43, -18.10, WALL_THICKNESS * 0.08);
+  addCurvedWall(-31.43, -18.10, -31.28, -18.2, -31.12, -18.28, 3);
   addAngledWall(-31.12, -18.28, -19.97, -22.98, WALL_THICKNESS * 0.08);
   addCurvedWall(-14.16, 23.96, -14.59, 23.5, -14.59, 23.03, 6, customAngledWallLength / WALL_HEIGHT);
   addAngledWall(4.33, 29.67, 4.39, 14.98);
