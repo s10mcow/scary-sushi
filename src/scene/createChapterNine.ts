@@ -1120,6 +1120,11 @@ export function createChapterNine(): ChapterNineData {
   addAngledWall(-39.16, -25.67, -46.42, -18.79, WALL_THICKNESS * 0.08);
   addCurvedWall(-46.42, -18.79, -46.62, -18.65, -46.85, -18.54, 3);
   addAngledWall(-46.85, -18.54, -52.60, -13.63, WALL_THICKNESS * 0.08);
+  addWall(-52.545, -24.525, WALL_THICKNESS, 20.95);
+  addWall(-42.31, -35.01, 20.4, WALL_THICKNESS);
+  addWall(-32.15, -41.035, WALL_THICKNESS, 12.03);
+  addWall(-27.33, -47.035, 9.72, WALL_THICKNESS);
+  addWall(-22.445, -56.255, WALL_THICKNESS, 18.47);
   {
     const openingLeftX = -29.07;
     const openingLeftZ = -18.89;
