@@ -3969,17 +3969,17 @@ export function createChapterSeven(): ChapterSevenData {
     foodBowl.add(bowlBase, bowl, seedPile, bowlRim, ...seeds);
 
     const waterBottle = new Group();
-    waterBottle.position.set(-0.38, 0.66, 0.2);
+    waterBottle.position.set(-0.4, 0.56, -0.12);
     const bottle = new Mesh(new CylinderGeometry(0.06, 0.07, 0.44, 18), waterBottleMaterial);
     const waterFill = new Mesh(new CylinderGeometry(0.053, 0.06, 0.24, 18), waterFillMaterial);
     waterFill.position.y = -0.08;
     const cap = new Mesh(new CylinderGeometry(0.065, 0.065, 0.04, 16), cageMetalMaterial);
     cap.position.y = 0.24;
     const nozzle = new Mesh(new CylinderGeometry(0.016, 0.018, 0.22, 10), cageMetalMaterial);
-    nozzle.position.set(0.075, -0.18, 0);
+    nozzle.position.set(0.075, -0.18, -0.02);
     nozzle.rotation.z = -Math.PI / 2.8;
     const waterDrop = new Mesh(new SphereGeometry(0.018, 8, 6), waterFillMaterial);
-    waterDrop.position.set(0.16, -0.23, 0);
+    waterDrop.position.set(0.16, -0.23, -0.02);
     waterBottle.add(bottle, waterFill, cap, nozzle, waterDrop);
 
     const parrot = new Group();
