@@ -1098,7 +1098,7 @@ export function createChapterNine(): ChapterNineData {
   root.add(keycardPickup);
   const keycardPickupPosition = new Vector3(-10.72, GAME_CONFIG.player.height, 18.98);
 
-  const createKeycardGate = (centerX: number, centerZ: number, rotationY: number) => {
+  const createKeycardGate = (centerX: number, centerZ: number, rotationY: number, label: string, openDirection: 1 | -1) => {
     const gate = new Group();
     gate.position.set(centerX, 0, centerZ);
     gate.rotation.y = rotationY;
@@ -1133,10 +1133,14 @@ export function createChapterNine(): ChapterNineData {
       const glass = new Mesh(new BoxGeometry(0.16, 0.018, 0.15), scannerGlassMaterial);
       glass.position.set(0, 1.555, -0.15);
       glass.rotation.x = -0.16;
-      const labelPlate = new Mesh(new PlaneGeometry(0.28, 0.16), createKeycardGateLabelMaterial(label));
+      const labelMaterial = createKeycardGateLabelMaterial(label);
+      const labelPlate = new Mesh(new PlaneGeometry(0.28, 0.16), labelMaterial);
       labelPlate.position.set(0, 1.14, -0.185);
       labelPlate.rotation.x = -0.1;
-      post.add(base, body, scanner, glass, labelPlate);
+      const backLabelPlate = new Mesh(new PlaneGeometry(0.28, 0.16), labelMaterial);
+      backLabelPlate.position.set(0, 1.14, 0.185);
+      backLabelPlate.rotation.set(-0.1, Math.PI, 0);
+      post.add(base, body, scanner, glass, labelPlate, backLabelPlate);
       return post;
     };
 
@@ -1144,8 +1148,8 @@ export function createChapterNine(): ChapterNineData {
     const postX = 0.86;
     const armPivotX = 0.72;
     const armLength = 1.38;
-    const leftPost = addScannerPost(-postX, 'IN');
-    const rightPost = addScannerPost(postX, 'OUT');
+    const leftPost = addScannerPost(-postX, label);
+    const rightPost = addScannerPost(postX, label);
     const leftArmPivot = new Group();
     leftArmPivot.position.set(-armPivotX, 1.02, 0.03);
     const rightArmPivot = new Group();
@@ -1168,14 +1172,15 @@ export function createChapterNine(): ChapterNineData {
       rightArmPivot,
       scannerMaterial,
       scannerGlassMaterial,
+      openDirection,
       open: false,
       timer: 0,
       progress: 0,
     };
   };
   const keycardGates = [
-    createKeycardGate(1.26, 15.05, 0),
-    createKeycardGate(3.42, 15.05, 0),
+    createKeycardGate(1.26, 15.05, 0, 'In', 1),
+    createKeycardGate(3.42, 15.05, 0, 'Out', -1),
   ];
 
   const sideDoor = (() => {
@@ -1902,8 +1907,8 @@ export function createChapterNine(): ChapterNineData {
   const setKeycardGateProgress = (gate: (typeof keycardGates)[number], progress: number): void => {
     const clamped = Math.max(0, Math.min(1, progress));
     const eased = clamped * clamped * (3 - 2 * clamped);
-    gate.leftArmPivot.rotation.y = -eased * Math.PI / 2;
-    gate.rightArmPivot.rotation.y = eased * Math.PI / 2;
+    gate.leftArmPivot.rotation.y = gate.openDirection * -eased * Math.PI / 2;
+    gate.rightArmPivot.rotation.y = gate.openDirection * eased * Math.PI / 2;
     gate.collider.enabled = clamped < 0.72;
     gate.progress = clamped;
   };
