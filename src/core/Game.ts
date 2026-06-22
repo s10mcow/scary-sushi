@@ -12515,8 +12515,8 @@ export class Game {
     );
     const nearby = distance <= 3.25;
     if (nearby && !this.chapterSevenGrandpaWasNearby && this.chapterSevenGrandpaGreetingCooldown <= 0) {
-      this.speakChapterSevenGrandpaLine('Whatcha doing?');
-      this.pushStatus('Grandpa says: "Whatcha doing?"', 2.4);
+      this.speakChapterSevenGrandpaLine('What you doing?');
+      this.pushStatus('Grandpa says: "What you doing?"', 2.4);
       this.chapterSevenGrandpaGreetingCooldown = 10;
     }
 
@@ -12533,8 +12533,19 @@ export class Game {
     }
 
     const utterance = new SpeechSynthesisUtterance(line);
-    utterance.rate = 0.84;
-    utterance.pitch = 0.72;
+    const voices = window.speechSynthesis.getVoices();
+    const oldManVoice = voices.find((voice) => (
+      /^en/i.test(voice.lang)
+      && /(male|daniel|fred|ralph|george|arthur|alex)/i.test(voice.name)
+    ));
+    if (oldManVoice) {
+      utterance.voice = oldManVoice;
+      utterance.lang = oldManVoice.lang;
+    } else {
+      utterance.lang = 'en-US';
+    }
+    utterance.rate = 0.68;
+    utterance.pitch = 0.48;
     utterance.volume = 0.95;
     window.speechSynthesis.speak(utterance);
   }

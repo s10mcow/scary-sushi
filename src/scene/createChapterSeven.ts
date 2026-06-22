@@ -4755,7 +4755,7 @@ export function createChapterSeven(): ChapterSevenData {
     grandpa.name = 'Front porch Grandpa';
     grandpa.position.set(localX, 0, localZ);
     grandpa.rotation.y = rotationY;
-    grandpa.scale.setScalar(1.12);
+    grandpa.scale.setScalar(0.9);
     grandpa.visible = true;
 
     const skinMaterial = new MeshStandardMaterial({
@@ -4804,6 +4804,11 @@ export function createChapterSeven(): ChapterSevenData {
       roughness: 0.36,
       metalness: 0.42,
     });
+    const eyeMaterial = new MeshStandardMaterial({
+      color: 0x11100e,
+      roughness: 0.42,
+      metalness: 0.02,
+    });
     const caneMaterial = new MeshStandardMaterial({
       color: 0x5b3922,
       emissive: 0x070301,
@@ -4818,58 +4823,63 @@ export function createChapterSeven(): ChapterSevenData {
     });
 
     const hips = new Mesh(new BoxGeometry(0.58, 0.28, 0.48), pantsMaterial);
-    hips.position.set(0, 0.98, 0.02);
+    hips.position.set(0, 0.84, -0.08);
     const torso = new Mesh(new BoxGeometry(0.72, 0.88, 0.38), cardiganMaterial);
-    torso.position.set(0, 1.43, -0.08);
-    torso.rotation.x = -0.12;
+    torso.position.set(0, 1.28, -0.16);
+    torso.rotation.x = -0.18;
     const shirt = new Mesh(new BoxGeometry(0.34, 0.74, 0.05), shirtMaterial);
-    shirt.position.set(0, 1.43, 0.13);
-    shirt.rotation.x = -0.12;
+    shirt.position.set(0, 1.28, 0.05);
+    shirt.rotation.x = -0.18;
 
     const neck = new Mesh(new CylinderGeometry(0.11, 0.13, 0.18, 14), skinMaterial);
-    neck.position.set(0, 1.91, -0.05);
+    neck.position.set(0, 1.74, -0.13);
     const head = new Mesh(new SphereGeometry(0.24, 24, 16), skinMaterial);
-    head.position.set(0, 2.15, -0.03);
+    head.position.set(0, 1.98, -0.1);
     head.scale.set(0.86, 1.08, 0.82);
     const nose = new Mesh(new SphereGeometry(0.055, 12, 8), skinMaterial);
-    nose.position.set(0, 2.15, 0.17);
+    nose.position.set(0, 1.98, 0.1);
     nose.scale.set(0.78, 1.0, 1.25);
     const leftEar = new Mesh(new SphereGeometry(0.055, 10, 8), skinMaterial);
-    leftEar.position.set(-0.22, 2.15, -0.02);
+    leftEar.position.set(-0.22, 1.98, -0.09);
     leftEar.scale.set(0.55, 1.1, 0.38);
     const rightEar = leftEar.clone();
     rightEar.position.x = 0.22;
     const hairCap = new Mesh(new SphereGeometry(0.25, 20, 10), hairMaterial);
-    hairCap.position.set(0, 2.25, -0.055);
+    hairCap.position.set(0, 2.08, -0.125);
     hairCap.scale.set(0.9, 0.38, 0.84);
+    const leftEye = new Mesh(new SphereGeometry(0.028, 10, 8), eyeMaterial);
+    leftEye.position.set(-0.075, 2.0, 0.102);
+    leftEye.scale.set(1, 0.72, 0.34);
+    const rightEye = leftEye.clone();
+    rightEye.position.x = 0.075;
     const leftEyebrow = new Mesh(new BoxGeometry(0.11, 0.018, 0.02), hairMaterial);
-    leftEyebrow.position.set(-0.075, 2.205, 0.19);
+    leftEyebrow.position.set(-0.075, 2.035, 0.118);
     leftEyebrow.rotation.z = 0.08;
     const rightEyebrow = leftEyebrow.clone();
     rightEyebrow.position.x = 0.075;
     rightEyebrow.rotation.z = -0.08;
     const foreheadWrinkleOne = new Mesh(new BoxGeometry(0.21, 0.012, 0.018), wrinkleMaterial);
-    foreheadWrinkleOne.position.set(0, 2.245, 0.185);
+    foreheadWrinkleOne.position.set(0, 2.075, 0.115);
     const foreheadWrinkleTwo = foreheadWrinkleOne.clone();
-    foreheadWrinkleTwo.position.y = 2.21;
+    foreheadWrinkleTwo.position.y = 2.04;
     const mustacheLeft = new Mesh(new BoxGeometry(0.13, 0.025, 0.035), hairMaterial);
-    mustacheLeft.position.set(-0.055, 2.07, 0.188);
+    mustacheLeft.position.set(-0.055, 1.9, 0.118);
     mustacheLeft.rotation.z = 0.1;
     const mustacheRight = mustacheLeft.clone();
     mustacheRight.position.x = 0.055;
     mustacheRight.rotation.z = -0.1;
     const smile = new Mesh(new BoxGeometry(0.12, 0.018, 0.024), wrinkleMaterial);
-    smile.position.set(0, 2.015, 0.19);
+    smile.position.set(0, 1.845, 0.12);
     const leftLens = new Mesh(new TorusGeometry(0.075, 0.006, 6, 18), glassesMaterial);
-    leftLens.position.set(-0.075, 2.18, 0.185);
+    leftLens.position.set(-0.075, 2.0, 0.126);
     const rightLens = leftLens.clone();
     rightLens.position.x = 0.075;
     const glassesBridge = new Mesh(new BoxGeometry(0.05, 0.01, 0.012), glassesMaterial);
-    glassesBridge.position.set(0, 2.18, 0.185);
+    glassesBridge.position.set(0, 2.0, 0.126);
 
     const makeArm = (side: -1 | 1): Group => {
       const arm = new Group();
-      arm.position.set(side * 0.45, 1.58, -0.01);
+      arm.position.set(side * 0.45, 1.4, -0.08);
       const upper = new Mesh(new BoxGeometry(0.16, 0.48, 0.16), cardiganMaterial);
       upper.position.set(0, -0.18, 0.0);
       upper.rotation.z = side * 0.2;
@@ -4886,22 +4896,22 @@ export function createChapterSeven(): ChapterSevenData {
 
     const makeLeg = (side: -1 | 1): Group => {
       const leg = new Group();
-      leg.position.set(side * 0.22, 0.88, 0.16);
+      leg.position.set(side * 0.22, 0.75, 0.18);
       const thigh = new Mesh(new BoxGeometry(0.2, 0.5, 0.18), pantsMaterial);
-      thigh.position.set(0, -0.12, 0.12);
-      thigh.rotation.x = -0.92;
+      thigh.position.set(0, -0.08, 0.18);
+      thigh.rotation.x = -1.28;
       const shin = new Mesh(new BoxGeometry(0.18, 0.56, 0.16), pantsMaterial);
-      shin.position.set(0, -0.46, 0.48);
-      shin.rotation.x = -0.16;
+      shin.position.set(0, -0.42, 0.54);
+      shin.rotation.x = -0.08;
       const shoe = new Mesh(new BoxGeometry(0.2, 0.1, 0.34), shoeMaterial);
-      shoe.position.set(0, -0.76, 0.62);
+      shoe.position.set(0, -0.7, 0.7);
       shoe.rotation.x = 0.04;
       leg.add(thigh, shin, shoe);
       return leg;
     };
 
     const cane = new Group();
-    cane.position.set(0.56, 0.75, 0.45);
+    cane.position.set(0.5, 0.62, 0.48);
     cane.rotation.z = -0.16;
     cane.rotation.x = 0.12;
     const caneShaft = new Mesh(new CylinderGeometry(0.025, 0.03, 1.24, 14), caneMaterial);
@@ -4923,6 +4933,8 @@ export function createChapterSeven(): ChapterSevenData {
       leftEar,
       rightEar,
       hairCap,
+      leftEye,
+      rightEye,
       leftEyebrow,
       rightEyebrow,
       foreheadWrinkleOne,
