@@ -13900,6 +13900,18 @@ export class Game {
     }
 
     if (this.chapterNineActive) {
+      const rockWallButtonClick = this.chapterNine.clickRockWallButton();
+      if (rockWallButtonClick) {
+        this.pushStatus(rockWallButtonClick.message, 2.4);
+        if (rockWallButtonClick.teleport) {
+          this.player.teleport(rockWallButtonClick.teleport);
+        }
+        if (rockWallButtonClick.lookTarget) {
+          this.player.lookToward(rockWallButtonClick.lookTarget, 0.35);
+        }
+        return;
+      }
+
       this.pushStatus(this.chapterNine.record(this.player.getPosition()), 2.4);
       return;
     }

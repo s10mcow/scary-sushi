@@ -46,6 +46,7 @@ export interface ChapterNineData {
   cameraScreenMaterial: MeshStandardMaterial;
   update(deltaSeconds: number, playerPosition: Vector3): void;
   updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null;
+  clickRockWallButton(): ChapterNineInteractionResult | null;
   interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult;
   record(playerPosition: Vector3): string;
   cycleHeldItem(step: number): void;
@@ -2763,6 +2764,26 @@ export function createChapterNine(): ChapterNineData {
       return {
         position,
         lookTarget: getRockWallLookTarget(),
+      };
+    },
+    clickRockWallButton(): ChapterNineInteractionResult | null {
+      if (!rockWallHarnessed) {
+        return null;
+      }
+
+      if (rockWallLowering) {
+        return {
+          message: 'The winch is already lowering you. It will unclip you at the bottom.',
+        };
+      }
+
+      if (rockWallClimbY < rockWallHeight - 0.62) {
+        return null;
+      }
+
+      rockWallLowering = true;
+      return {
+        message: 'You click the top button. The winch catches the rope, lowers you down, and unbuckles you at the bottom.',
       };
     },
     interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult {
