@@ -1204,7 +1204,7 @@ export function createChapterNine(): ChapterNineData {
     const headerHeight = Math.max(0.1, WALL_HEIGHT - headerBottomY);
     const wallHeader = new Mesh(
       new BoxGeometry(width + 0.64, headerHeight, WALL_THICKNESS),
-      createGrayMaterialFor(width + 0.64, headerHeight),
+      dirtyConcreteMaterial,
     );
     wallHeader.position.set(centerX, headerBottomY + headerHeight / 2, centerZ);
     wallHeader.rotation.y = rotationY;
@@ -1229,11 +1229,14 @@ export function createChapterNine(): ChapterNineData {
     slab.position.set(-width / 2, height / 2, 0);
     const inset = new Mesh(new BoxGeometry(width - 0.28, height - 0.52, 0.035), new MeshStandardMaterial({ color: 0x66472f, roughness: 0.82 }));
     inset.position.set(-width / 2, height / 2, -thickness / 2 - 0.02);
+    const employeesOnlySign = new Mesh(new PlaneGeometry(0.92, 0.42), createSignMaterial('EMPLOYEES', 'ONLY', '#f2d9a2'));
+    employeesOnlySign.position.set(-width / 2, height * 0.68, -thickness / 2 - 0.09);
+    employeesOnlySign.rotation.y = Math.PI;
     const handle = new Mesh(new SphereGeometry(0.085, 12, 8), handleMaterial);
     handle.position.set(-width * 0.78, height * 0.5, -thickness / 2 - 0.08);
     const backHandle = handle.clone();
     backHandle.position.z = thickness / 2 + 0.08;
-    swing.add(slab, inset, handle, backHandle);
+    swing.add(slab, inset, employeesOnlySign, handle, backHandle);
     root.add(swing);
 
     const collider = addCollider(colliders, centerX, centerZ, width + 0.1, thickness + 0.08);
