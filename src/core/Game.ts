@@ -13703,12 +13703,12 @@ export class Game {
           cookie.drawer.cookieCount = Math.max(0, cookie.drawer.cookieCount - 1);
         }
         this.chapterSevenCookieCount += 1;
-        const allMapCookiesCollected = this.chapterSeven.cookies.every((candidate) => (
-          !candidate.active || candidate.collected
-        ));
-        if (allMapCookiesCollected) {
+        const remainingMapCookies = this.chapterSeven.cookies.filter((candidate) => (
+          candidate.active && !candidate.collected
+        )).length;
+        if (remainingMapCookies <= 2) {
           this.chapterSeven.refreshCookiesForDay(this.chapterSevenDayCount, true);
-          this.pushStatus(`You found every cookie on the map, so a fresh batch was hidden. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 3);
+          this.pushStatus(`Only ${remainingMapCookies} ${remainingMapCookies === 1 ? 'cookie was' : 'cookies were'} left, so a fresh batch was hidden. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 3);
         } else {
           this.pushStatus(`You picked up a cookie. Cookies: ${this.chapterSevenCookieCount} / ${this.chapterSevenCookieTarget}.`, 2.2);
         }

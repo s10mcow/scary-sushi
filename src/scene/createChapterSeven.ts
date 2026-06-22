@@ -318,7 +318,7 @@ const HOUSE_ROOF_OVERHANG = 2.2;
 const HOUSE_ROOF_THICKNESS = 0.55;
 const KITCHEN_COUNTER_BASE_HEIGHT = 1.08;
 const KITCHEN_COUNTER_SURFACE_Y = KITCHEN_COUNTER_BASE_HEIGHT + 0.23;
-const COOKIE_SURFACE_OFFSET = 0.03;
+const COOKIE_SURFACE_OFFSET = 0.0215;
 const TREE_COUNT = 160;
 const GRASS_PATCH_COUNT = 280;
 const ROCK_COUNT = 13;
@@ -5346,7 +5346,7 @@ export function createChapterSeven(): ChapterSevenData {
     const value = Math.sin(localX * 19.919 + label.length * 31.713) * 24634.6345;
     return 1 + Math.floor((value - Math.floor(value)) * 3);
   };
-  const getCookieRestY = (surfaceY: number, scale: number): number => surfaceY + 0.026 * scale;
+  const getCookieRestY = (surfaceY: number, scale: number): number => surfaceY + 0.0215 * scale;
   const HOUSE_RUG_COOKIE_SURFACE_Y = 0.285;
   const OUTDOOR_GROUND_COOKIE_SURFACE_Y = 0;
   const FLOOR_COOKIE_SPAWN_CHANCE = 0.16;
