@@ -548,6 +548,7 @@ export function createChapterNine(): ChapterNineData {
   const treeTrunkMaterial = new MeshStandardMaterial({ color: 0x5b3821, roughness: 0.86 });
   const treeLeafMaterial = new MeshStandardMaterial({ color: 0x1f5f2d, roughness: 0.9 });
   const dirtyConcreteMaterial = new MeshStandardMaterial({ color: 0x6c6860, roughness: 0.94, metalness: 0.01 });
+  const plainInteriorWallMaterial = new MeshStandardMaterial({ color: 0x6f7376, roughness: 0.84, metalness: 0.01 });
   const checkeredFloorMaterial = createCheckeredFloorMaterial();
   const carpetMaterial = new MeshStandardMaterial({ color: 0x371019, roughness: 0.9 });
   const createGrayMaterialFor = (runLength: number, height = WALL_HEIGHT, offsetX = 0): MeshStandardMaterial => (
@@ -1207,7 +1208,7 @@ export function createChapterNine(): ChapterNineData {
     const headerHeight = Math.max(0.1, WALL_HEIGHT - headerBottomY);
     const wallHeader = new Mesh(
       new BoxGeometry(width + 0.64, headerHeight, WALL_THICKNESS),
-      dirtyConcreteMaterial,
+      plainInteriorWallMaterial,
     );
     wallHeader.position.set(centerX, headerBottomY + headerHeight / 2, centerZ);
     wallHeader.rotation.y = rotationY;
