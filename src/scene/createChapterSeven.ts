@@ -3126,13 +3126,13 @@ export function createChapterSeven(): ChapterSevenData {
   const stairBasement = {
     centerX: stairDoorMarkerLocalX,
     stairStartZ: stairDoorLocalZ + 0.65,
-    stairEndZ: stairDoorLocalZ + 10.65,
+    stairEndZ: stairDoorLocalZ + 11.15,
     halfWidth: 1.62,
     lowerFloorY: -4.0,
-    roomCenterX: stairDoorMarkerLocalX - 2.0,
-    roomCenterZ: stairDoorLocalZ + 17.2,
-    roomHalfWidth: 4.8,
-    roomHalfDepth: 6.6,
+    roomCenterX: stairDoorMarkerLocalX - 3.6,
+    roomCenterZ: stairDoorLocalZ + 18.15,
+    roomHalfWidth: 7.0,
+    roomHalfDepth: 9.0,
   };
 
   const getStairBasementFloorY = (position: Vector3): number | null => {
@@ -3206,19 +3206,28 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(lockPlate, keyhole);
 
     const stairGroup = new Group();
-    stairGroup.position.set(stairDoorMarkerLocalX, 0, stairDoorLocalZ + 0.72);
-    const opening = new Mesh(new BoxGeometry(3.8, 0.05, 2.35), new MeshStandardMaterial({
+    stairGroup.position.set(stairDoorMarkerLocalX, 0, stairDoorLocalZ + 0.24);
+    const stairwellDarkMaterial = new MeshStandardMaterial({
       color: 0x16130f,
       roughness: 0.88,
       metalness: 0.02,
-    }));
-    opening.position.set(0, 0.245, 0.74);
-    stairGroup.add(opening);
+    });
+    const openingLeftRim = new Mesh(new BoxGeometry(0.28, 0.08, 2.85), houseTrimMaterial);
+    openingLeftRim.position.set(-1.78, 0.25, 1.24);
+    const openingRightRim = openingLeftRim.clone();
+    openingRightRim.position.x = 1.78;
+    const openingFrontRim = new Mesh(new BoxGeometry(3.84, 0.08, 0.22), houseTrimMaterial);
+    openingFrontRim.position.set(0, 0.25, -0.08);
+    const openingBackRim = openingFrontRim.clone();
+    openingBackRim.position.z = 2.62;
+    const stairwellShadow = new Mesh(new BoxGeometry(3.14, 0.05, 0.42), stairwellDarkMaterial);
+    stairwellShadow.position.set(0, 0.22, 0.08);
+    stairGroup.add(openingLeftRim, openingRightRim, openingFrontRim, openingBackRim, stairwellShadow);
 
     for (let index = 0; index < 10; index += 1) {
       const progress = index / 9;
       const step = new Mesh(new BoxGeometry(3.05, 0.16, 0.86), houseFloorBoardMaterials[index % houseFloorBoardMaterials.length]);
-      step.position.set(0, -progress * 4.0 + 0.08, 1.15 + index * 0.94);
+      step.position.set(0, -progress * 4.0 + 0.08, 0.46 + index * 1.02);
       stairGroup.add(step);
       const riser = new Mesh(new BoxGeometry(3.05, 0.34, 0.08), houseTrimMaterial);
       riser.position.set(0, step.position.y - 0.17, step.position.z - 0.43);
@@ -3244,13 +3253,37 @@ export function createChapterSeven(): ChapterSevenData {
     lowerLeftWall.position.set(-stairBasement.roomHalfWidth, lowerWallHeight / 2, 0);
     const lowerRightWall = lowerLeftWall.clone();
     lowerRightWall.position.x = stairBasement.roomHalfWidth;
+    const lowerFrontWallLeftWidth = Math.max(0.2, stairBasement.roomHalfWidth + (stairDoorMarkerLocalX - stairBasement.roomCenterX) - stairBasement.halfWidth);
+    const lowerFrontWallRightWidth = Math.max(0.2, stairBasement.roomHalfWidth - (stairDoorMarkerLocalX - stairBasement.roomCenterX) - stairBasement.halfWidth);
+    const lowerFrontWallLeft = new Mesh(new BoxGeometry(lowerFrontWallLeftWidth, lowerWallHeight, 0.38), houseWallMaterial);
+    lowerFrontWallLeft.position.set(
+      -stairBasement.roomHalfWidth + lowerFrontWallLeftWidth / 2,
+      lowerWallHeight / 2,
+      -stairBasement.roomHalfDepth,
+    );
+    const lowerFrontWallRight = new Mesh(new BoxGeometry(lowerFrontWallRightWidth, lowerWallHeight, 0.38), houseWallMaterial);
+    lowerFrontWallRight.position.set(
+      stairBasement.roomHalfWidth - lowerFrontWallRightWidth / 2,
+      lowerWallHeight / 2,
+      -stairBasement.roomHalfDepth,
+    );
     const lowerCeiling = new Mesh(new BoxGeometry(stairBasement.roomHalfWidth * 2, 0.18, stairBasement.roomHalfDepth * 2), houseTrimMaterial);
     lowerCeiling.position.set(0, lowerWallHeight + 0.03, 0);
     const lowerLamp = new Mesh(new CylinderGeometry(0.32, 0.48, 0.34, 18), houseTrimMaterial);
     lowerLamp.position.set(0, lowerWallHeight - 0.22, -1.1);
     const lowerLight = new PointLight(0xffdfad, 0.65, 11, 1.8);
     lowerLight.position.set(0, lowerWallHeight - 0.48, -1.1);
-    lowerRoom.add(lowerFloor, lowerBackWall, lowerLeftWall, lowerRightWall, lowerCeiling, lowerLamp, lowerLight);
+    lowerRoom.add(
+      lowerFloor,
+      lowerBackWall,
+      lowerLeftWall,
+      lowerRightWall,
+      lowerFrontWallLeft,
+      lowerFrontWallRight,
+      lowerCeiling,
+      lowerLamp,
+      lowerLight,
+    );
     house.add(lowerRoom);
 
     return stairDoor;
