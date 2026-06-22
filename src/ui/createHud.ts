@@ -2632,7 +2632,8 @@ export function createHud(host: HTMLElement): HudController {
     },
     setChapterSevenTrading(active, cookies, trades): void {
       chapterSevenTrading.dataset.active = String(active);
-      chapterSevenTradingCookies.textContent = `Cookies: ${Math.max(0, Math.floor(cookies))}`;
+      const safeCookies = Math.max(0, Math.floor(cookies));
+      chapterSevenTradingCookies.textContent = `Cookies: ${safeCookies}`;
       chapterSevenTradingOptions.replaceChildren(...trades.map((trade) => {
         const button = document.createElement('button');
         button.className = 'hud__chapter-seven-trade';
@@ -2644,7 +2645,11 @@ export function createHud(host: HTMLElement): HudController {
         title.textContent = `${trade.cost} cookies for ${trade.label}`;
         const description = document.createElement('span');
         description.className = 'hud__chapter-seven-trade-description';
-        description.textContent = trade.ownedLabel ?? trade.description;
+        const missingCookies = Math.max(0, trade.cost - safeCookies);
+        description.textContent = trade.ownedLabel
+          ?? (trade.enabled
+            ? `Available - ${trade.description}`
+            : `Need ${missingCookies} more ${missingCookies === 1 ? 'cookie' : 'cookies'} - ${trade.description}`);
         button.append(title, description);
         button.addEventListener('click', (event) => {
           event.preventDefault();

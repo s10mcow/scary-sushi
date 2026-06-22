@@ -2760,21 +2760,21 @@ export class Game {
     return [
       {
         id: 'bird-cage-key',
-        label: 'the bird cage key',
+        label: 'Birdcage Key',
         cost: 25,
-        description: 'A little metal key for the bird cage.',
+        description: 'Unlocks the birdcage so the parrot can fly out.',
         ownedLabel: this.chapterSevenBirdCageFreed
-          ? 'The bird cage is already open.'
+          ? 'Owned: the birdcage is already open.'
           : this.chapterSevenHasBirdCageKey
-            ? 'Already bought. The bird cage key is yours.'
+            ? 'Owned: Birdcage Key is in your inventory.'
             : undefined,
         enabled: !this.chapterSevenBirdCageFreed && !this.chapterSevenHasBirdCageKey && this.chapterSevenCookieCount >= 25,
       },
       {
         id: 'longer-night-watch',
-        label: 'the longer night item',
+        label: 'Longer Night Watch',
         cost: 15,
-        description: 'A watch item with 2 uses. Right click it to make night last 2:30.',
+        description: 'A watch with 2 uses. Right click it at night to make night last 2:30.',
         ownedLabel: this.chapterSevenLongerNightUses > 0
           ? `Owned. Uses left: ${this.chapterSevenLongerNightUses}.`
           : undefined,
@@ -2816,7 +2816,7 @@ export class Game {
     this.chapterSevenCookieCount = Math.max(0, this.chapterSevenCookieCount - trade.cost);
     if (tradeId === 'bird-cage-key') {
       this.chapterSevenHasBirdCageKey = true;
-      this.pushStatus('You traded 25 cookies for the bird cage key.', 2.8);
+      this.pushStatus('You traded 25 cookies for the Birdcage Key. It is in your inventory.', 2.8);
     } else {
       this.chapterSevenLongerNightUses = 2;
       this.pushStatus('You traded 15 cookies for the longer night watch. It has 2 uses.', 2.8);
@@ -13606,12 +13606,12 @@ export class Game {
 
       if (interactable?.kind === 'bird-cage') {
         if (this.chapterSevenBirdCageFreed || interactable.item.unlocked) {
-          this.pushStatus('The bird cage door is open. The parrot is flying around the house.', 2.6);
+          this.pushStatus('The birdcage door is open. The parrot is flying around the house.', 2.6);
           return;
         }
 
         if (!this.chapterSevenHasBirdCageKey) {
-          this.pushStatus('The bird cage is locked. You need the bird cage key from Grandpa.', 2.6);
+          this.pushStatus('The birdcage is locked. You need the Birdcage Key from Grandpa.', 2.6);
           return;
         }
 
@@ -13621,7 +13621,7 @@ export class Game {
           this.chapterSevenBirdCageFreedDay = this.chapterSevenDayCount;
           this.chapterSevenBirdCageBonusClaims = 0;
           this.chapterSevenCookieCount += 15;
-          this.pushStatus('The key turns in the bird cage door. The parrot flies out, and you gain 15 cookies.', 3.6);
+          this.pushStatus('The key turns in the birdcage door. The parrot flies out, and you gain 15 cookies.', 3.6);
           this.syncHud();
           return;
         }
@@ -17437,7 +17437,7 @@ export class Game {
     if (this.chapterSevenActive) {
       const chapterSevenItems = [
         'Coordinate Tool',
-        this.chapterSevenHasBirdCageKey ? 'Bird Cage Key' : null,
+        this.chapterSevenHasBirdCageKey ? 'Birdcage Key' : null,
         this.chapterSevenLongerNightUses > 0 ? `Longer Night Watch x${this.chapterSevenLongerNightUses}` : null,
       ].filter((item): item is string => Boolean(item));
       return [
@@ -18212,11 +18212,11 @@ export class Game {
 
         if (interactable.kind === 'bird-cage') {
           if (this.chapterSevenBirdCageFreed || interactable.item.unlocked) {
-            return 'The bird cage is open, and the parrot is flying around the house.';
+            return 'The birdcage is open, and the parrot is flying around the house.';
           }
           return this.chapterSevenHasBirdCageKey
-            ? 'Press E to unlock the bird cage with the bird cage key.'
-            : 'The bird cage is locked. Trade with Grandpa for the key.';
+            ? 'Press E to unlock the birdcage with the Birdcage Key.'
+            : 'The birdcage is locked. Trade with Grandpa for the key.';
         }
 
         if (interactable.kind === 'cardboard-box') {
@@ -19114,11 +19114,11 @@ export class Game {
 
         if (interactable.kind === 'bird-cage') {
           if (this.chapterSevenBirdCageFreed || interactable.item.unlocked) {
-            return 'The cage door is open. The parrot is flying around the house.';
+          return 'The cage door is open. The parrot is flying around the house.';
           }
           return this.chapterSevenHasBirdCageKey
-            ? 'Bird cage key ready. Press E to unlock the cage and release the parrot.'
-            : 'The bird cage is locked. Grandpa has the key.';
+            ? 'Birdcage Key ready. Press E to unlock the cage and release the parrot.'
+            : 'The birdcage is locked. Grandpa has the key.';
         }
 
         if (interactable.kind === 'cardboard-box') {
