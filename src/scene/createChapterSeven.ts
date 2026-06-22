@@ -8267,8 +8267,8 @@ export function createChapterSeven(): ChapterSevenData {
 
         bird.actionTimer += deltaSeconds;
         const perchPosition = new Vector3(-0.08, bird.baseY, 0.02);
-        const waterPosition = new Vector3(0.27, 0.33, -0.2);
-        const foodPosition = new Vector3(-0.28, 0.33, -0.21);
+        const waterPosition = new Vector3(0.23, 0.37, -0.08);
+        const foodPosition = new Vector3(-0.12, 0.35, -0.08);
         const moveBird = (from: Vector3, to: Vector3, duration: number): number => {
           const t = MathUtils.clamp(bird.actionTimer / duration, 0, 1);
           const eased = t * t * (3 - 2 * t);
@@ -8291,8 +8291,8 @@ export function createChapterSeven(): ChapterSevenData {
           }
         } else if (bird.action === 'drink-water') {
           bird.parrot.position.copy(waterPosition);
-          bird.parrot.rotation.y = Math.PI * 0.62;
-          bird.parrot.rotation.x = Math.sin(forestTime * 8.0) * 0.09 - 0.12;
+          bird.parrot.rotation.y = Math.PI * 0.34;
+          bird.parrot.rotation.x = Math.sin(forestTime * 8.0) * 0.08 - 0.2;
           if (bird.actionTimer >= 2.6) {
             bird.action = 'return-water';
             bird.actionTimer = 0;
@@ -8306,8 +8306,8 @@ export function createChapterSeven(): ChapterSevenData {
           }
         } else if (bird.action === 'eat-food') {
           bird.parrot.position.copy(foodPosition);
-          bird.parrot.rotation.y = Math.PI;
-          bird.parrot.rotation.x = Math.sin(forestTime * 9.0) * 0.08 - 0.1;
+          bird.parrot.rotation.y = -Math.PI * 0.68;
+          bird.parrot.rotation.x = Math.sin(forestTime * 9.0) * 0.08 - 0.18;
           if (bird.actionTimer >= 2.4) {
             bird.action = 'return-food';
             bird.actionTimer = 0;
