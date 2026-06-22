@@ -1156,9 +1156,7 @@ export function createChapterNine(): ChapterNineData {
     rightArm.position.x = -armLength / 2;
     leftArmPivot.add(leftArm);
     rightArmPivot.add(rightArm);
-    const topBar = new Mesh(new BoxGeometry(gateWidth + 0.14, 0.07, 0.07), blackMetalMaterial);
-    topBar.position.set(0, 1.67, 0.14);
-    gate.add(leftPost, rightPost, leftArmPivot, rightArmPivot, topBar);
+    gate.add(leftPost, rightPost, leftArmPivot, rightArmPivot);
     root.add(gate);
 
     const collider = addCollider(colliders, centerX, centerZ, gateWidth, 0.38);
