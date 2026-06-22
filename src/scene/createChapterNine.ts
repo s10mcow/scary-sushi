@@ -1076,7 +1076,23 @@ export function createChapterNine(): ChapterNineData {
   addAngledWall(-44.17, 2.38, -41.37, -10.17, WALL_THICKNESS * 0.08);
   addAngledWall(-41.29, -10.33, -31.43, -18.10, WALL_THICKNESS * 0.08);
   addCurvedWall(-31.43, -18.10, -31.28, -18.2, -31.12, -18.28, 3);
-  addAngledWall(-31.12, -18.28, -19.97, -22.98, WALL_THICKNESS * 0.08);
+  addAngledWall(-31.12, -18.28, -28.96, -18.94, WALL_THICKNESS * 0.08);
+  addAngledWall(-23.55, -21.22, -19.97, -22.98, WALL_THICKNESS * 0.08);
+  {
+    const openingLeftX = -29.07;
+    const openingLeftZ = -18.89;
+    const openingRightX = -23.72;
+    const openingRightZ = -21.15;
+    const openingTopY = 4.03;
+    const dx = openingRightX - openingLeftX;
+    const dz = openingRightZ - openingLeftZ;
+    const headerWidth = Math.hypot(dx, dz) + WALL_THICKNESS * 0.18;
+    const headerHeight = Math.max(0.1, WALL_HEIGHT - openingTopY);
+    const header = new Mesh(new BoxGeometry(headerWidth, headerHeight, WALL_THICKNESS), plainInteriorWallMaterial);
+    header.position.set((openingLeftX + openingRightX) / 2, openingTopY + headerHeight / 2, (openingLeftZ + openingRightZ) / 2);
+    header.rotation.y = Math.atan2(-dz, dx);
+    root.add(header);
+  }
   addCurvedWall(-14.16, 23.96, -14.59, 23.5, -14.59, 23.03, 6, customAngledWallLength / WALL_HEIGHT);
   addAngledWall(4.33, 29.67, 4.39, 14.98);
   addAngledWall(-5.55, 14.98, 0.27, 15.09);
