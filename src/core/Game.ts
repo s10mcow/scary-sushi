@@ -13455,13 +13455,21 @@ export class Game {
 
       const manualDoor = this.getNearestChapterSevenManualDoor();
       if (manualDoor && !interactable) {
+        if (manualDoor.locked && !manualDoor.hasKey) {
+          this.pushStatus(manualDoor.lockedMessage ?? 'Locked. Need key to open.', 2.4);
+          return;
+        }
+
         manualDoor.targetOpenAmount = manualDoor.targetOpenAmount > 0.5 ? 0 : 1;
         manualDoor.open = manualDoor.targetOpenAmount > 0.5;
         this.gameplaySfxAudio.playClosetDoor(manualDoor.open);
+        const openText = manualDoor.slidePanes ? 'slides open' : 'opens';
+        const closeText = manualDoor.slidePanes ? 'slides closed' : 'closes';
+        const keyText = manualDoor.locked && manualDoor.hasKey && manualDoor.open ? ' The key turns first.' : '';
         this.pushStatus(
           manualDoor.open
-            ? `${manualDoor.label} slides open.`
-            : `${manualDoor.label} slides closed.`,
+            ? `${manualDoor.label} ${openText}.${keyText}`
+            : `${manualDoor.label} ${closeText}.`,
           2.4,
         );
         return;
@@ -18073,6 +18081,14 @@ export class Game {
 
       const manualDoor = this.getNearestChapterSevenManualDoor();
       if (manualDoor && locked) {
+        if (manualDoor.locked && !manualDoor.hasKey) {
+          return manualDoor.lockedMessage ?? 'Locked. Need key to open.';
+        }
+
+        if (manualDoor.locked && manualDoor.hasKey && !manualDoor.open) {
+          return `Press E to unlock and open ${manualDoor.label} with the key.`;
+        }
+
         return manualDoor.open
           ? `Press E to close ${manualDoor.label}.`
           : `Press E to open ${manualDoor.label}.`;
