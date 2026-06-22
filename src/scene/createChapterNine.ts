@@ -1370,6 +1370,129 @@ export function createChapterNine(): ChapterNineData {
     addBox(root, width + 0.14, 0.22, 0.18, centerX, stageHeight + 0.11, maxZ - 0.09, woodMaterial);
     addBox(root, 0.18, 0.22, depth + 0.14, minX + 0.09, stageHeight + 0.11, centerZ, woodMaterial);
     addBox(root, 0.18, 0.22, depth + 0.14, maxX - 0.09, stageHeight + 0.11, centerZ, woodMaterial);
+    const curtainMaterial = new MeshStandardMaterial({
+      color: 0x68121d,
+      emissive: 0x100104,
+      emissiveIntensity: 0.08,
+      roughness: 0.92,
+      metalness: 0.01,
+    });
+    const curtainFoldMaterial = new MeshStandardMaterial({
+      color: 0x3d0810,
+      emissive: 0x090002,
+      emissiveIntensity: 0.06,
+      roughness: 0.96,
+      metalness: 0.01,
+    });
+    const addCurtainPanel = (x: number, y: number, z: number, panelWidth: number, panelHeight: number, panelDepth: number, material: MeshStandardMaterial): void => {
+      const panel = new Mesh(new BoxGeometry(panelWidth, panelHeight, panelDepth), material);
+      panel.position.set(x, y, z);
+      panel.name = 'Chapter 9 Foxy stage curtain';
+      root.add(panel);
+    };
+    const curtainHeight = 4.7;
+    const curtainY = stageHeight + curtainHeight / 2;
+    addCurtainPanel(centerX, curtainY, minZ + 0.18, width + 0.44, curtainHeight, 0.24, curtainMaterial);
+    for (let index = 0; index < 10; index += 1) {
+      const foldX = minX + 0.32 + index * ((width - 0.64) / 9);
+      addCurtainPanel(foldX, curtainY, minZ + 0.34, 0.18, curtainHeight, 0.18, index % 2 === 0 ? curtainFoldMaterial : curtainMaterial);
+    }
+    addCurtainPanel(minX + 0.16, curtainY, centerZ, 0.3, curtainHeight, depth - 0.34, curtainMaterial);
+    addCurtainPanel(maxX - 0.16, curtainY, centerZ, 0.3, curtainHeight, depth - 0.34, curtainMaterial);
+    [minX + 0.34, maxX - 0.34].forEach((sideX) => {
+      for (let index = 0; index < 6; index += 1) {
+        addCurtainPanel(sideX, curtainY, minZ + 1.0 + index * ((depth - 2.0) / 5), 0.18, curtainHeight, 0.2, curtainFoldMaterial);
+      }
+    });
+
+    const staticFoxy = new Group();
+    staticFoxy.name = 'Static Foxy on Chapter 9 marker stage';
+    staticFoxy.position.set(centerX, stageHeight + 0.1, centerZ - 0.8);
+    staticFoxy.rotation.y = 0;
+    const foxyMaterial = new MeshStandardMaterial({ color: 0x9a3128, roughness: 0.48, metalness: 0.22 });
+    const foxyDarkMaterial = new MeshStandardMaterial({ color: 0x151313, roughness: 0.62, metalness: 0.28 });
+    const foxyBellyMaterial = new MeshStandardMaterial({ color: 0xcaa578, roughness: 0.62, metalness: 0.08 });
+    const foxyEyeMaterial = new MeshBasicMaterial({ color: 0xfff3ce });
+    const foxyToothMaterial = new MeshStandardMaterial({ color: 0xf2ead0, roughness: 0.42 });
+
+    const body = new Mesh(new SphereGeometry(0.74, 28, 18), foxyMaterial);
+    body.scale.set(0.66, 1.18, 0.5);
+    body.position.y = 1.48;
+    const belly = new Mesh(new SphereGeometry(0.42, 20, 14), foxyBellyMaterial);
+    belly.scale.set(0.78, 1.0, 0.22);
+    belly.position.set(0, 1.34, 0.43);
+    const head = new Group();
+    head.position.y = 2.64;
+    const skull = new Mesh(new SphereGeometry(0.62, 28, 18), foxyMaterial);
+    skull.scale.set(0.86, 0.96, 0.78);
+    const muzzle = new Mesh(new SphereGeometry(0.28, 18, 12), foxyBellyMaterial);
+    muzzle.scale.set(1.5, 0.58, 1.16);
+    muzzle.position.set(0, -0.13, 0.5);
+    const snout = new Mesh(new ConeGeometry(0.26, 0.62, 12), foxyMaterial);
+    snout.position.set(0, -0.08, 0.78);
+    snout.rotation.x = Math.PI / 2;
+    const nose = new Mesh(new SphereGeometry(0.075, 12, 8), foxyDarkMaterial);
+    nose.scale.set(1.22, 0.7, 0.72);
+    nose.position.set(0, -0.04, 0.92);
+    const jaw = new Mesh(new SphereGeometry(0.28, 16, 10), foxyMaterial);
+    jaw.scale.set(1.22, 0.36, 0.68);
+    jaw.position.set(0, -0.38, 0.42);
+    const leftEye = new Mesh(new SphereGeometry(0.078, 12, 8), foxyEyeMaterial);
+    leftEye.position.set(-0.22, 0.1, 0.54);
+    const rightEye = leftEye.clone();
+    rightEye.position.x = 0.22;
+    const eyePatch = new Mesh(new BoxGeometry(0.28, 0.16, 0.04), foxyDarkMaterial);
+    eyePatch.position.set(-0.22, 0.1, 0.58);
+    const leftEar = new Mesh(new ConeGeometry(0.18, 0.58, 8), foxyMaterial);
+    leftEar.position.set(-0.34, 0.52, -0.04);
+    leftEar.rotation.z = 0.22;
+    const rightEar = leftEar.clone();
+    rightEar.position.x = 0.34;
+    rightEar.rotation.z = -0.22;
+    [-0.18, -0.06, 0.06, 0.18].forEach((toothX) => {
+      const tooth = new Mesh(new BoxGeometry(0.045, 0.13, 0.045), foxyToothMaterial);
+      tooth.position.set(toothX, -0.22, 0.68);
+      head.add(tooth);
+    });
+    head.add(skull, muzzle, snout, nose, jaw, leftEye, rightEye, eyePatch, leftEar, rightEar);
+
+    const makeArm = (side: -1 | 1): Group => {
+      const arm = new Group();
+      arm.position.set(side * 0.64, 1.82, 0);
+      arm.rotation.z = side * 0.1;
+      const upper = new Mesh(new CylinderGeometry(0.13, 0.16, 0.62, 14), foxyMaterial);
+      upper.position.y = -0.3;
+      const elbow = new Mesh(new SphereGeometry(0.16, 14, 10), metalMaterial);
+      elbow.position.y = -0.62;
+      const lower = new Mesh(new CylinderGeometry(0.12, 0.14, 0.58, 14), foxyMaterial);
+      lower.position.y = -0.94;
+      const hand = side > 0
+        ? new Mesh(new TorusGeometry(0.17, 0.035, 8, 16, Math.PI * 1.35), metalMaterial)
+        : new Mesh(new SphereGeometry(0.17, 14, 10), foxyMaterial);
+      hand.position.y = -1.25;
+      if (side > 0) {
+        hand.rotation.z = Math.PI;
+      }
+      arm.add(upper, elbow, lower, hand);
+      return arm;
+    };
+    const makeLeg = (side: -1 | 1): Group => {
+      const leg = new Group();
+      leg.position.set(side * 0.26, 0.74, 0);
+      const upper = new Mesh(new CylinderGeometry(0.14, 0.16, 0.58, 14), foxyMaterial);
+      upper.position.y = -0.26;
+      const knee = new Mesh(new SphereGeometry(0.16, 14, 10), metalMaterial);
+      knee.position.y = -0.56;
+      const lower = new Mesh(new CylinderGeometry(0.13, 0.15, 0.56, 14), foxyMaterial);
+      lower.position.y = -0.86;
+      const foot = new Mesh(new SphereGeometry(0.23, 14, 10), foxyMaterial);
+      foot.scale.set(1.0, 0.38, 1.42);
+      foot.position.set(0, -1.18, 0.16);
+      leg.add(upper, knee, lower, foot);
+      return leg;
+    };
+    staticFoxy.add(body, belly, head, makeArm(-1), makeArm(1), makeLeg(-1), makeLeg(1));
+    root.add(staticFoxy);
     raisedSurfaces.push({
       centerX,
       centerZ,
