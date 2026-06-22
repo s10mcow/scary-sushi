@@ -3118,183 +3118,6 @@ export function createChapterSeven(): ChapterSevenData {
     };
   };
 
-  const stairDoorMarkerLocalZ = 62.10 - HOUSE_CENTER_Z;
-  const stairDoorWidth = 3.15;
-  const stairDoorDepth = HOUSE_INTERIOR_WALL_THICKNESS;
-  const stairWallLength = 5;
-  const stairWallLocalX = HOUSE_WIDTH / 2 - stairWallLength / 2;
-  const stairDoorLocalX = HOUSE_WIDTH / 2 - stairWallLength - HOUSE_INTERIOR_WALL_THICKNESS / 2;
-  const stairDoorLocalZ = stairDoorMarkerLocalZ;
-  const stairBasement = {
-    centerZ: stairDoorMarkerLocalZ,
-    stairStartX: stairDoorLocalX + 0.65,
-    stairEndX: stairDoorLocalX + 10.65,
-    halfDepth: 1.62,
-    lowerFloorY: -4.0,
-    roomCenterX: stairDoorLocalX + 17.15,
-    roomCenterZ: stairDoorMarkerLocalZ + 6.7,
-    roomHalfWidth: 9.0,
-    roomHalfDepth: 7.5,
-  };
-
-  const getStairBasementFloorY = (position: Vector3): number | null => {
-    const localX = position.x - CENTER_X;
-    const localZ = position.z - HOUSE_CENTER_Z;
-    const insideStairDepth = Math.abs(localZ - stairBasement.centerZ) <= stairBasement.halfDepth;
-    if (insideStairDepth && localX >= stairBasement.stairStartX && localX <= stairBasement.stairEndX) {
-      const progress = (localX - stairBasement.stairStartX) / (stairBasement.stairEndX - stairBasement.stairStartX);
-      return stairBasement.lowerFloorY * progress;
-    }
-
-    const inLowerRoom = Math.abs(localX - stairBasement.roomCenterX) <= stairBasement.roomHalfWidth
-      && Math.abs(localZ - stairBasement.roomCenterZ) <= stairBasement.roomHalfDepth;
-    return inLowerRoom && position.y < GAME_CONFIG.player.height - 0.75 ? stairBasement.lowerFloorY : null;
-  };
-
-  const addLockedStairBasement = (): ChapterSevenHouseDoor => {
-    addHouseWall(
-      stairWallLocalX,
-      stairDoorMarkerLocalZ,
-      stairWallLength,
-      HOUSE_INTERIOR_WALL_THICKNESS,
-    );
-
-    const doorHeaderHeight = HOUSE_HEIGHT - HOUSE_ROOM_DOOR_HEIGHT;
-    const doorHeader = new Mesh(
-      new BoxGeometry(stairDoorDepth, doorHeaderHeight, stairDoorWidth + 0.36),
-      houseWallMaterial,
-    );
-    doorHeader.position.set(
-      stairDoorLocalX,
-      HOUSE_ROOM_DOOR_HEIGHT + doorHeaderHeight / 2,
-      stairDoorLocalZ,
-    );
-    house.add(doorHeader);
-
-    const doorTrimTop = new Mesh(new BoxGeometry(0.16, 0.15, stairDoorWidth + 0.42), houseTrimMaterial);
-    doorTrimTop.position.set(stairDoorLocalX + 0.14, HOUSE_ROOM_DOOR_HEIGHT + 0.06, stairDoorLocalZ);
-    const doorTrimLeft = new Mesh(new BoxGeometry(0.16, HOUSE_ROOM_DOOR_HEIGHT + 0.08, 0.14), houseTrimMaterial);
-    doorTrimLeft.position.set(stairDoorLocalX + 0.14, HOUSE_ROOM_DOOR_HEIGHT / 2, stairDoorLocalZ - stairDoorWidth / 2 - 0.08);
-    const doorTrimRight = doorTrimLeft.clone();
-    doorTrimRight.position.z = stairDoorLocalZ + stairDoorWidth / 2 + 0.08;
-    house.add(doorTrimTop, doorTrimLeft, doorTrimRight);
-
-    const stairDoor = createHouseDoor(
-      'Locked Stair Door',
-      'side',
-      stairDoorLocalX,
-      stairDoorLocalZ - stairDoorWidth / 2,
-      stairDoorWidth,
-      HOUSE_ROOM_DOOR_HEIGHT,
-      stairDoorLocalX,
-      stairDoorLocalZ,
-      stairDoorDepth,
-      stairDoorWidth,
-      stairDoorLocalX + 1.35,
-      stairDoorLocalZ,
-      -1,
-    );
-    stairDoor.interactionMode = 'manual';
-    stairDoor.locked = true;
-    stairDoor.hasKey = true;
-    stairDoor.lockedMessage = 'Locked. Need key to open.';
-    stairDoor.pushRadius = 2.4;
-
-    const lockPlate = new Mesh(new BoxGeometry(0.22, 0.34, 0.05), houseTrimMaterial);
-    lockPlate.rotation.y = Math.PI / 2;
-    lockPlate.position.set(stairDoorLocalX + 0.14, 1.8, stairDoorLocalZ + 1.02);
-    const keyhole = new Mesh(new CylinderGeometry(0.035, 0.035, 0.06, 12), houseDoorMaterial);
-    keyhole.rotation.z = Math.PI / 2;
-    keyhole.position.set(stairDoorLocalX + 0.18, 1.79, stairDoorLocalZ + 1.02);
-    house.add(lockPlate, keyhole);
-
-    const stairGroup = new Group();
-    stairGroup.position.set(stairDoorLocalX - 0.24, 0, stairDoorLocalZ);
-    stairGroup.rotation.y = Math.PI / 2;
-    const stairwellDarkMaterial = new MeshStandardMaterial({
-      color: 0x16130f,
-      roughness: 0.88,
-      metalness: 0.02,
-    });
-    const openingLeftRim = new Mesh(new BoxGeometry(0.28, 0.08, 2.85), houseTrimMaterial);
-    openingLeftRim.position.set(-1.78, 0.25, 1.24);
-    const openingRightRim = openingLeftRim.clone();
-    openingRightRim.position.x = 1.78;
-    const openingFrontRim = new Mesh(new BoxGeometry(3.84, 0.08, 0.22), houseTrimMaterial);
-    openingFrontRim.position.set(0, 0.25, -0.08);
-    const openingBackRim = openingFrontRim.clone();
-    openingBackRim.position.z = 2.62;
-    const stairwellShadow = new Mesh(new BoxGeometry(3.14, 0.05, 0.42), stairwellDarkMaterial);
-    stairwellShadow.position.set(0, 0.22, 0.08);
-    stairGroup.add(openingLeftRim, openingRightRim, openingFrontRim, openingBackRim, stairwellShadow);
-
-    for (let index = 0; index < 10; index += 1) {
-      const progress = index / 9;
-      const step = new Mesh(new BoxGeometry(3.05, 0.16, 0.86), houseFloorBoardMaterials[index % houseFloorBoardMaterials.length]);
-      step.position.set(0, -progress * 4.0 + 0.08, 0.46 + index * 1.02);
-      stairGroup.add(step);
-      const riser = new Mesh(new BoxGeometry(3.05, 0.34, 0.08), houseTrimMaterial);
-      riser.position.set(0, step.position.y - 0.17, step.position.z - 0.43);
-      stairGroup.add(riser);
-    }
-
-    const sideWallMaterial = houseWallMaterial;
-    const leftStairWall = new Mesh(new BoxGeometry(0.18, 4.3, 10.9), sideWallMaterial);
-    leftStairWall.position.set(-1.72, -1.86, 5.52);
-    const rightStairWall = leftStairWall.clone();
-    rightStairWall.position.x = 1.72;
-    stairGroup.add(leftStairWall, rightStairWall);
-    house.add(stairGroup);
-
-    const lowerRoom = new Group();
-    lowerRoom.position.set(stairBasement.roomCenterX, stairBasement.lowerFloorY, stairBasement.roomCenterZ);
-    const lowerFloor = createHousePlankFloor(stairBasement.roomHalfWidth * 2, stairBasement.roomHalfDepth * 2, 0, 0);
-    lowerFloor.position.y = -0.03;
-    const lowerWallHeight = 3.82;
-    const lowerBackWall = new Mesh(new BoxGeometry(stairBasement.roomHalfWidth * 2, lowerWallHeight, 0.38), houseWallMaterial);
-    lowerBackWall.position.set(0, lowerWallHeight / 2, stairBasement.roomHalfDepth);
-    const lowerFrontWall = lowerBackWall.clone();
-    lowerFrontWall.position.z = -stairBasement.roomHalfDepth;
-    const lowerRightWall = new Mesh(new BoxGeometry(0.38, lowerWallHeight, stairBasement.roomHalfDepth * 2), houseWallMaterial);
-    lowerRightWall.position.set(stairBasement.roomHalfWidth, lowerWallHeight / 2, 0);
-    const leftWallGapCenterZ = stairBasement.centerZ - stairBasement.roomCenterZ;
-    const leftWallGapHalfDepth = stairBasement.halfDepth + 0.32;
-    const lowerLeftFrontDepth = Math.max(0.2, leftWallGapCenterZ - leftWallGapHalfDepth + stairBasement.roomHalfDepth);
-    const lowerLeftBackDepth = Math.max(0.2, stairBasement.roomHalfDepth - (leftWallGapCenterZ + leftWallGapHalfDepth));
-    const lowerLeftWallFront = new Mesh(new BoxGeometry(0.38, lowerWallHeight, lowerLeftFrontDepth), houseWallMaterial);
-    lowerLeftWallFront.position.set(
-      -stairBasement.roomHalfWidth,
-      lowerWallHeight / 2,
-      -stairBasement.roomHalfDepth + lowerLeftFrontDepth / 2,
-    );
-    const lowerLeftWallBack = new Mesh(new BoxGeometry(0.38, lowerWallHeight, lowerLeftBackDepth), houseWallMaterial);
-    lowerLeftWallBack.position.set(
-      -stairBasement.roomHalfWidth,
-      lowerWallHeight / 2,
-      stairBasement.roomHalfDepth - lowerLeftBackDepth / 2,
-    );
-    const lowerCeiling = new Mesh(new BoxGeometry(stairBasement.roomHalfWidth * 2, 0.18, stairBasement.roomHalfDepth * 2), houseTrimMaterial);
-    lowerCeiling.position.set(0, lowerWallHeight + 0.03, 0);
-    const lowerLamp = new Mesh(new CylinderGeometry(0.32, 0.48, 0.34, 18), houseTrimMaterial);
-    lowerLamp.position.set(0, lowerWallHeight - 0.22, -1.1);
-    const lowerLight = new PointLight(0xffdfad, 0.65, 11, 1.8);
-    lowerLight.position.set(0, lowerWallHeight - 0.48, -1.1);
-    lowerRoom.add(
-      lowerFloor,
-      lowerBackWall,
-      lowerFrontWall,
-      lowerRightWall,
-      lowerLeftWallFront,
-      lowerLeftWallBack,
-      lowerCeiling,
-      lowerLamp,
-      lowerLight,
-    );
-    house.add(lowerRoom);
-
-    return stairDoor;
-  };
-
   const addBed = (localX: number, localZ: number, headDirection: 1 | -1, label: string): void => {
     const bed = new Group();
     bed.position.set(localX, 0, localZ);
@@ -7325,7 +7148,6 @@ export function createChapterSeven(): ChapterSevenData {
     house.add(roomDoorHeader);
   });
 
-  const lockedStairDoor = addLockedStairBasement();
   roomDoors.push(
     createHouseDoor(
       'Front Left Bedroom Door',
@@ -7372,7 +7194,6 @@ export function createChapterSeven(): ChapterSevenData {
       HOUSE_REAR_ROOM_DOOR_Z - 2.1,
       1,
     ),
-    lockedStairDoor,
   );
   addBed(-23.55, 10.6, 1, 'Front bedroom bed');
   addBed(-23.55, -10.6, -1, 'Back bedroom bed');
@@ -7477,7 +7298,7 @@ export function createChapterSeven(): ChapterSevenData {
     addToilet(HOUSE_REAR_ROOM_DOOR_X + 4.2, rearRoomBackFixtureZ),
     addBathroomSinkFixture(HOUSE_REAR_ROOM_DOOR_X + 0.4, rearRoomBackFixtureZ),
     addBathtubFixture(HOUSE_REAR_ROOM_DOOR_X + HOUSE_REAR_ROOM_WIDTH / 2 - 1.48, 57.30 - HOUSE_CENTER_Z),
-    addTrashCanFixture(1230.45 - CENTER_X, 62.72 - HOUSE_CENTER_Z, -Math.PI / 2),
+    addTrashCanFixture(1231.64 - CENTER_X, 62.83 - HOUSE_CENTER_Z, -Math.PI / 2),
     addHoseFaucetFixture(1236.31 - CENTER_X, 1.16, 68.92 - HOUSE_CENTER_Z),
     addMiniLampTableFixture(1203.97 - CENTER_X, 63.15 - HOUSE_CENTER_Z),
     addMiniLampTableFixture(1199.83 - CENTER_X, 73.86 - HOUSE_CENTER_Z),
@@ -8184,11 +8005,6 @@ export function createChapterSeven(): ChapterSevenData {
 
       if (bedFloorY !== null) {
         return bedFloorY;
-      }
-
-      const stairFloorY = getStairBasementFloorY(position);
-      if (stairFloorY !== null) {
-        return GAME_CONFIG.player.height + stairFloorY;
       }
 
       return GAME_CONFIG.player.height + getForestFloorY();
