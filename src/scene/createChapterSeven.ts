@@ -3992,16 +3992,16 @@ export function createChapterSeven(): ChapterSevenData {
     bottomRing.rotation.x = Math.PI / 2;
     const middleRing = bottomRing.clone();
     middleRing.position.y = 0.84;
-    const topRing = new Mesh(new TorusGeometry(0.34, 0.018, 8, 36), cageMetalMaterial);
-    topRing.position.y = 1.22;
+    const topRing = new Mesh(new TorusGeometry(0.5, 0.018, 8, 40), cageMetalMaterial);
+    topRing.position.y = 1.16;
     topRing.rotation.x = Math.PI / 2;
-    const roofPeakRing = new Mesh(new TorusGeometry(0.08, 0.015, 8, 24), cageMetalMaterial);
-    roofPeakRing.position.y = 1.5;
+    const roofPeakRing = new Mesh(new TorusGeometry(0.095, 0.015, 8, 24), cageMetalMaterial);
+    roofPeakRing.position.y = 1.56;
     roofPeakRing.rotation.x = Math.PI / 2;
     const topCap = new Mesh(new SphereGeometry(0.07, 14, 8), cageMetalMaterial);
-    topCap.position.y = 1.57;
+    topCap.position.y = 1.63;
     const hook = new Mesh(new TorusGeometry(0.12, 0.014, 8, 22, Math.PI * 1.45), cageMetalMaterial);
-    hook.position.y = 1.72;
+    hook.position.y = 1.78;
     hook.rotation.z = Math.PI / 2;
 
     const verticalBars = Array.from({ length: 14 }, (_, index) => {
@@ -4010,21 +4010,18 @@ export function createChapterSeven(): ChapterSevenData {
       bar.position.set(Math.sin(angle) * 0.48, 0.52, Math.cos(angle) * 0.48);
       return bar;
     });
-    const roofRibs = Array.from({ length: 12 }, (_, index) => {
-      const angle = (index / 12) * Math.PI * 2;
+    const roofRibs = Array.from({ length: 14 }, (_, index) => {
+      const angle = (index / 14) * Math.PI * 2;
       const ribGroup = new Group();
       ribGroup.rotation.y = angle;
-      const rib = new Mesh(new CylinderGeometry(0.009, 0.009, 0.39, 8), cageMetalMaterial);
-      rib.position.set(0.17, 1.34, 0);
-      rib.rotation.z = 0.64;
+      const rib = new Mesh(new CylinderGeometry(0.01, 0.01, 0.66, 8), cageMetalMaterial);
+      rib.position.set(0.255, 1.36, 0);
+      rib.rotation.z = -0.92;
       ribGroup.add(rib);
       return ribGroup;
     });
     const sideDoor = new Group();
     sideDoor.position.set(0.505, 0.64, 0);
-    const sideDoorGlass = new Mesh(new PlaneGeometry(0.34, 0.5), waterBottleMaterial);
-    sideDoorGlass.rotation.y = Math.PI / 2;
-    sideDoorGlass.position.x = 0.004;
     const sideDoorLeft = new Mesh(new BoxGeometry(0.018, 0.52, 0.018), cageMetalMaterial);
     sideDoorLeft.position.z = -0.18;
     const sideDoorRight = sideDoorLeft.clone();
@@ -4034,25 +4031,42 @@ export function createChapterSeven(): ChapterSevenData {
     const sideDoorBottom = sideDoorTop.clone();
     sideDoorBottom.position.y = -0.26;
     const sideDoorCrossbar = new Mesh(new BoxGeometry(0.014, 0.014, 0.32), cageMetalMaterial);
+    const sideDoorCenterBar = new Mesh(new BoxGeometry(0.014, 0.46, 0.014), cageMetalMaterial);
+    sideDoorCenterBar.position.z = 0;
+    const sideDoorBarLeft = sideDoorCenterBar.clone();
+    sideDoorBarLeft.position.z = -0.09;
+    const sideDoorBarRight = sideDoorCenterBar.clone();
+    sideDoorBarRight.position.z = 0.09;
+    const sideDoorLowerRail = sideDoorCrossbar.clone();
+    sideDoorLowerRail.position.y = -0.12;
+    const sideDoorUpperRail = sideDoorCrossbar.clone();
+    sideDoorUpperRail.position.y = 0.12;
     const sideDoorHandle = new Mesh(new SphereGeometry(0.026, 10, 8), cageMetalMaterial);
     sideDoorHandle.position.set(0.014, 0.02, -0.12);
+    const keyholePlate = new Mesh(new BoxGeometry(0.018, 0.12, 0.085), cageMetalMaterial);
+    keyholePlate.position.set(0.012, -0.095, -0.12);
     const keyholeTop = new Mesh(new CylinderGeometry(0.018, 0.018, 0.012, 12), talonMaterial);
-    keyholeTop.position.set(0.02, -0.075, -0.12);
+    keyholeTop.position.set(0.024, -0.075, -0.12);
     keyholeTop.rotation.z = Math.PI / 2;
     const keyholeSlot = new Mesh(new BoxGeometry(0.014, 0.052, 0.012), talonMaterial);
-    keyholeSlot.position.set(0.02, -0.115, -0.12);
+    keyholeSlot.position.set(0.024, -0.115, -0.12);
     const hingeTop = new Mesh(new BoxGeometry(0.026, 0.07, 0.018), cageMetalMaterial);
     hingeTop.position.set(0.006, 0.16, 0.195);
     const hingeBottom = hingeTop.clone();
     hingeBottom.position.y = -0.16;
     sideDoor.add(
-      sideDoorGlass,
       sideDoorLeft,
       sideDoorRight,
       sideDoorTop,
       sideDoorBottom,
       sideDoorCrossbar,
+      sideDoorCenterBar,
+      sideDoorBarLeft,
+      sideDoorBarRight,
+      sideDoorLowerRail,
+      sideDoorUpperRail,
       sideDoorHandle,
+      keyholePlate,
       keyholeTop,
       keyholeSlot,
       hingeTop,
@@ -4093,17 +4107,17 @@ export function createChapterSeven(): ChapterSevenData {
     foodBowl.add(bowlBase, bowl, seedPile, bowlRim, ...seeds);
 
     const waterBottle = new Group();
-    waterBottle.position.set(0.38, 0.66, -0.2);
+    waterBottle.position.set(-0.38, 0.66, 0.2);
     const bottle = new Mesh(new CylinderGeometry(0.06, 0.07, 0.44, 18), waterBottleMaterial);
     const waterFill = new Mesh(new CylinderGeometry(0.053, 0.06, 0.24, 18), waterFillMaterial);
     waterFill.position.y = -0.08;
     const cap = new Mesh(new CylinderGeometry(0.065, 0.065, 0.04, 16), cageMetalMaterial);
     cap.position.y = 0.24;
     const nozzle = new Mesh(new CylinderGeometry(0.016, 0.018, 0.22, 10), cageMetalMaterial);
-    nozzle.position.set(-0.075, -0.18, 0);
-    nozzle.rotation.z = Math.PI / 2.8;
+    nozzle.position.set(0.075, -0.18, 0);
+    nozzle.rotation.z = -Math.PI / 2.8;
     const waterDrop = new Mesh(new SphereGeometry(0.018, 8, 6), waterFillMaterial);
-    waterDrop.position.set(-0.16, -0.23, 0);
+    waterDrop.position.set(0.16, -0.23, 0);
     waterBottle.add(bottle, waterFill, cap, nozzle, waterDrop);
 
     const parrot = new Group();
