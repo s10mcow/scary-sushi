@@ -4754,6 +4754,7 @@ export function createChapterSeven(): ChapterSevenData {
     grandpa.name = 'Day 6 balcony grandpa placeholder';
     grandpa.position.set(localX, 0, localZ);
     grandpa.rotation.y = rotationY;
+    grandpa.scale.setScalar(1.12);
     grandpa.visible = false;
 
     const skinMaterial = new MeshStandardMaterial({
@@ -4802,46 +4803,68 @@ export function createChapterSeven(): ChapterSevenData {
       roughness: 0.36,
       metalness: 0.42,
     });
+    const caneMaterial = new MeshStandardMaterial({
+      color: 0x5b3922,
+      emissive: 0x070301,
+      emissiveIntensity: 0.04,
+      roughness: 0.54,
+      metalness: 0.04,
+    });
+    const caneTipMaterial = new MeshStandardMaterial({
+      color: 0x2b2722,
+      roughness: 0.46,
+      metalness: 0.2,
+    });
 
     const hips = new Mesh(new BoxGeometry(0.58, 0.28, 0.48), pantsMaterial);
-    hips.position.set(0, 0.95, 0.02);
+    hips.position.set(0, 0.98, 0.02);
     const torso = new Mesh(new BoxGeometry(0.72, 0.88, 0.38), cardiganMaterial);
-    torso.position.set(0, 1.38, -0.08);
+    torso.position.set(0, 1.43, -0.08);
     torso.rotation.x = -0.12;
     const shirt = new Mesh(new BoxGeometry(0.34, 0.74, 0.05), shirtMaterial);
-    shirt.position.set(0, 1.38, 0.13);
+    shirt.position.set(0, 1.43, 0.13);
     shirt.rotation.x = -0.12;
 
     const neck = new Mesh(new CylinderGeometry(0.11, 0.13, 0.18, 14), skinMaterial);
-    neck.position.set(0, 1.86, -0.05);
+    neck.position.set(0, 1.91, -0.05);
     const head = new Mesh(new SphereGeometry(0.24, 24, 16), skinMaterial);
-    head.position.set(0, 2.1, -0.03);
+    head.position.set(0, 2.15, -0.03);
     head.scale.set(0.86, 1.08, 0.82);
     const nose = new Mesh(new SphereGeometry(0.055, 12, 8), skinMaterial);
-    nose.position.set(0, 2.1, 0.17);
+    nose.position.set(0, 2.15, 0.17);
     nose.scale.set(0.78, 1.0, 1.25);
     const leftEar = new Mesh(new SphereGeometry(0.055, 10, 8), skinMaterial);
-    leftEar.position.set(-0.22, 2.1, -0.02);
+    leftEar.position.set(-0.22, 2.15, -0.02);
     leftEar.scale.set(0.55, 1.1, 0.38);
     const rightEar = leftEar.clone();
     rightEar.position.x = 0.22;
     const hairCap = new Mesh(new SphereGeometry(0.25, 20, 10), hairMaterial);
-    hairCap.position.set(0, 2.2, -0.055);
+    hairCap.position.set(0, 2.25, -0.055);
     hairCap.scale.set(0.9, 0.38, 0.84);
+    const leftEyebrow = new Mesh(new BoxGeometry(0.11, 0.018, 0.02), hairMaterial);
+    leftEyebrow.position.set(-0.075, 2.205, 0.19);
+    leftEyebrow.rotation.z = 0.08;
+    const rightEyebrow = leftEyebrow.clone();
+    rightEyebrow.position.x = 0.075;
+    rightEyebrow.rotation.z = -0.08;
+    const foreheadWrinkleOne = new Mesh(new BoxGeometry(0.21, 0.012, 0.018), wrinkleMaterial);
+    foreheadWrinkleOne.position.set(0, 2.245, 0.185);
+    const foreheadWrinkleTwo = foreheadWrinkleOne.clone();
+    foreheadWrinkleTwo.position.y = 2.21;
     const mustacheLeft = new Mesh(new BoxGeometry(0.13, 0.025, 0.035), hairMaterial);
-    mustacheLeft.position.set(-0.055, 2.02, 0.188);
+    mustacheLeft.position.set(-0.055, 2.07, 0.188);
     mustacheLeft.rotation.z = 0.1;
     const mustacheRight = mustacheLeft.clone();
     mustacheRight.position.x = 0.055;
     mustacheRight.rotation.z = -0.1;
     const smile = new Mesh(new BoxGeometry(0.12, 0.018, 0.024), wrinkleMaterial);
-    smile.position.set(0, 1.965, 0.19);
+    smile.position.set(0, 2.015, 0.19);
     const leftLens = new Mesh(new TorusGeometry(0.075, 0.006, 6, 18), glassesMaterial);
-    leftLens.position.set(-0.075, 2.13, 0.185);
+    leftLens.position.set(-0.075, 2.18, 0.185);
     const rightLens = leftLens.clone();
     rightLens.position.x = 0.075;
     const glassesBridge = new Mesh(new BoxGeometry(0.05, 0.01, 0.012), glassesMaterial);
-    glassesBridge.position.set(0, 2.13, 0.185);
+    glassesBridge.position.set(0, 2.18, 0.185);
 
     const makeArm = (side: -1 | 1): Group => {
       const arm = new Group();
@@ -4876,6 +4899,19 @@ export function createChapterSeven(): ChapterSevenData {
       return leg;
     };
 
+    const cane = new Group();
+    cane.position.set(0.56, 0.75, 0.45);
+    cane.rotation.z = -0.16;
+    cane.rotation.x = 0.12;
+    const caneShaft = new Mesh(new CylinderGeometry(0.025, 0.03, 1.24, 14), caneMaterial);
+    caneShaft.position.y = -0.02;
+    const caneHandle = new Mesh(new TorusGeometry(0.105, 0.021, 8, 18, Math.PI * 1.18), caneMaterial);
+    caneHandle.position.set(0.02, 0.63, 0);
+    caneHandle.rotation.z = Math.PI * 0.54;
+    const caneTip = new Mesh(new CylinderGeometry(0.034, 0.04, 0.08, 12), caneTipMaterial);
+    caneTip.position.y = -0.66;
+    cane.add(caneShaft, caneHandle, caneTip);
+
     grandpa.add(
       hips,
       torso,
@@ -4886,6 +4922,10 @@ export function createChapterSeven(): ChapterSevenData {
       leftEar,
       rightEar,
       hairCap,
+      leftEyebrow,
+      rightEyebrow,
+      foreheadWrinkleOne,
+      foreheadWrinkleTwo,
       mustacheLeft,
       mustacheRight,
       smile,
@@ -4896,6 +4936,7 @@ export function createChapterSeven(): ChapterSevenData {
       makeArm(1),
       makeLeg(-1),
       makeLeg(1),
+      cane,
     );
     house.add(grandpa);
     return grandpa;
