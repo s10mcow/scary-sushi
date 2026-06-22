@@ -1142,6 +1142,21 @@ export function createChapterNine(): ChapterNineData {
     header.position.set((openingLeftX + openingRightX) / 2, openingTopY + headerHeight / 2, (openingLeftZ + openingRightZ) / 2);
     header.rotation.y = Math.atan2(-dz, dx);
     root.add(header);
+
+    const fillerStartX = openingRightX;
+    const fillerStartZ = openingRightZ;
+    const fillerEndX = -23.55;
+    const fillerEndZ = -21.22;
+    const fillerDx = fillerEndX - fillerStartX;
+    const fillerDz = fillerEndZ - fillerStartZ;
+    const fillerWidth = Math.hypot(fillerDx, fillerDz) + WALL_THICKNESS * 0.18;
+    const filler = new Mesh(
+      new BoxGeometry(fillerWidth, headerHeight, WALL_THICKNESS),
+      createInteriorWallMaterialFor(fillerWidth, headerHeight, openingTopY, headerWidth / WALL_HEIGHT),
+    );
+    filler.position.set((fillerStartX + fillerEndX) / 2, openingTopY + headerHeight / 2, (fillerStartZ + fillerEndZ) / 2);
+    filler.rotation.y = Math.atan2(-fillerDz, fillerDx);
+    root.add(filler);
   }
   addCurvedWall(-14.16, 23.96, -14.59, 23.5, -14.59, 23.03, 6, customAngledWallLength / WALL_HEIGHT);
   addAngledWall(4.33, 29.67, 4.39, 14.98);
