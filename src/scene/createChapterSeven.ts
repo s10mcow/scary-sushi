@@ -48,6 +48,7 @@ export interface ChapterSevenData {
   rearFixtures: ChapterSevenRearFixture[];
   remoteButtons: ChapterSevenRemoteButton[];
   swingSet: ChapterSevenSwingSet;
+  grandpaPosition: Vector3;
   refreshCookiesForDay(day: number, forceReroll?: boolean): void;
   setDay(day: number): void;
   setTelevisionPowered(powered: boolean): void;
@@ -4751,11 +4752,11 @@ export function createChapterSeven(): ChapterSevenData {
 
   const addSeatedGrandpa = (localX: number, localZ: number, rotationY = 0): Group => {
     const grandpa = new Group();
-    grandpa.name = 'Day 6 balcony grandpa placeholder';
+    grandpa.name = 'Front porch Grandpa';
     grandpa.position.set(localX, 0, localZ);
     grandpa.rotation.y = rotationY;
     grandpa.scale.setScalar(1.12);
-    grandpa.visible = false;
+    grandpa.visible = true;
 
     const skinMaterial = new MeshStandardMaterial({
       color: 0xd3aa82,
@@ -7797,6 +7798,7 @@ export function createChapterSeven(): ChapterSevenData {
   addRockingChair(leftPorchChairX, leftPorchChairZ, leftPorchChairRotation);
   addRockingChair(rightPorchChairX, rightPorchChairZ, getChairRotationTowardPorchCenter(rightPorchChairX, rightPorchChairZ));
   const daySixGrandpa = addSeatedGrandpa(leftPorchChairX, leftPorchChairZ, leftPorchChairRotation);
+  const grandpaPosition = new Vector3(CENTER_X + leftPorchChairX, 0, HOUSE_CENTER_Z + leftPorchChairZ);
   const cardboardBox = addCardboardBox(1199.92 - CENTER_X, 100.53 - HOUSE_CENTER_Z);
   addCookie(house, leftPorchChairX + 0.05, getCookieRestY(0.9, 0.82), leftPorchChairZ + 0.02, 0.82, 'Porch rocking chair easy cookie');
   addCookie(house, rightPorchChairX - 0.02, getCookieRestY(0.9, 0.82), rightPorchChairZ + 0.02, 0.82, 'Porch rocking chair second easy cookie');
@@ -8098,9 +8100,10 @@ export function createChapterSeven(): ChapterSevenData {
     rearFixtures,
     remoteButtons,
     swingSet,
+    grandpaPosition,
     refreshCookiesForDay,
     setDay(day: number): void {
-      daySixGrandpa.visible = day >= 6;
+      daySixGrandpa.visible = day >= 1;
     },
     setTelevisionPowered: wallTelevision.setPowered,
     isTelevisionPowered: wallTelevision.isPowered,
@@ -8740,7 +8743,7 @@ export function createChapterSeven(): ChapterSevenData {
         bird.seedPile.scale.set(1.15, 0.38, 1.0);
         bird.seedPile.position.y = 0.17;
       });
-      daySixGrandpa.visible = false;
+      daySixGrandpa.visible = true;
       grandfatherClockChimeTimer = 0;
       grandfatherClockMotionParts.forEach((part) => {
         part.rod.rotation.z = part.rodBaseRotationZ;
