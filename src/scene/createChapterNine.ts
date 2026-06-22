@@ -98,6 +98,14 @@ interface ChapterNineTrampolinePad {
   halfDepth: number;
 }
 
+interface ChapterNineRaisedSurface {
+  centerX: number;
+  centerZ: number;
+  halfWidth: number;
+  halfDepth: number;
+  floorY: number;
+}
+
 interface ChapterNineAnimatronic {
   id: ChapterNineAnimatronicId;
   name: string;
@@ -1341,6 +1349,35 @@ export function createChapterNine(): ChapterNineData {
     addBox(root, width, 0.08, depth, x, -0.035, z, checkeredFloorMaterial);
   };
 
+  const raisedSurfaces: ChapterNineRaisedSurface[] = [];
+
+  const addMarkerStage = (): void => {
+    const minX = -24.11;
+    const maxX = -15.08;
+    const minZ = 12.96;
+    const maxZ = 29.01;
+    const width = maxX - minX;
+    const depth = maxZ - minZ;
+    const centerX = (minX + maxX) / 2;
+    const centerZ = (minZ + maxZ) / 2;
+    const stageHeight = 0.72;
+    const platform = addBox(root, width, stageHeight, depth, centerX, stageHeight / 2, centerZ, darkWoodMaterial);
+    platform.name = 'Chapter 9 marker corner stage';
+    const top = addBox(root, width - 0.24, 0.08, depth - 0.24, centerX, stageHeight + 0.04, centerZ, carpetMaterial);
+    top.name = 'Chapter 9 marker corner stage top';
+    addBox(root, width + 0.14, 0.22, 0.18, centerX, stageHeight + 0.11, minZ + 0.09, woodMaterial);
+    addBox(root, width + 0.14, 0.22, 0.18, centerX, stageHeight + 0.11, maxZ - 0.09, woodMaterial);
+    addBox(root, 0.18, 0.22, depth + 0.14, minX + 0.09, stageHeight + 0.11, centerZ, woodMaterial);
+    addBox(root, 0.18, 0.22, depth + 0.14, maxX - 0.09, stageHeight + 0.11, centerZ, woodMaterial);
+    raisedSurfaces.push({
+      centerX,
+      centerZ,
+      halfWidth: width / 2,
+      halfDepth: depth / 2,
+      floorY: GAME_CONFIG.player.height + stageHeight + 0.08,
+    });
+  };
+
   const preservedExteriorObjects: object[] = [];
   const emptyGround = addBox(root, 220, 0.12, 180, 0, -0.06, 8, grassMaterial);
   emptyGround.name = 'Chapter 9 empty ground';
@@ -1416,6 +1453,7 @@ export function createChapterNine(): ChapterNineData {
 
   const shellStartChildIndex = root.children.length;
   addCheckeredFloor(0, BUILDING_CENTER_Z, BUILDING_WIDTH, BUILDING_DEPTH);
+  addMarkerStage();
   const wallJoinOverlap = 0;
   addBrickWall(0, BUILDING_CENTER_Z - BUILDING_DEPTH / 2, BUILDING_WIDTH + wallJoinOverlap, WALL_THICKNESS, BUILDING_WIDTH + wallJoinOverlap);
   addBrickWall(-BUILDING_WIDTH / 2, BUILDING_CENTER_Z, WALL_THICKNESS, BUILDING_DEPTH + wallJoinOverlap, BUILDING_DEPTH + wallJoinOverlap);
@@ -2798,6 +2836,13 @@ export function createChapterNine(): ChapterNineData {
       }
       if (isOnTrampolinePad(position)) {
         return GAME_CONFIG.player.height + 0.12;
+      }
+      const raisedSurface = raisedSurfaces.find((surface) => (
+        Math.abs(position.x - surface.centerX) <= surface.halfWidth
+        && Math.abs(position.z - surface.centerZ) <= surface.halfDepth
+      ));
+      if (raisedSurface) {
+        return raisedSurface.floorY;
       }
       if (Math.abs(position.x) <= 92 && position.z >= -84 && position.z <= 126) {
         return GAME_CONFIG.player.height;
