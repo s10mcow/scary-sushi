@@ -21,6 +21,8 @@ export interface ChapterTenData {
   colliders: CollisionBox[];
   spawn: Vector3;
   lookTarget: Vector3;
+  toggleLamp(position: Vector3): { message: string; on: boolean } | null;
+  getLampPrompt(position: Vector3): string | null;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number): void;
   reset(): void;
@@ -84,6 +86,17 @@ const drawerInsideMaterial = new MeshStandardMaterial({ color: 0x3d2416, roughne
 const metalMaterial = new MeshStandardMaterial({ color: 0xb9bdc2, metalness: 0.45, roughness: 0.38 });
 const lighterMaterial = new MeshStandardMaterial({ color: 0xcc2323, roughness: 0.42 });
 const brassMaterial = new MeshStandardMaterial({ color: 0xc8952d, metalness: 0.42, roughness: 0.34 });
+const porcelainMaterial = new MeshStandardMaterial({ color: 0xe8e2d7, roughness: 0.48 });
+const applianceMaterial = new MeshStandardMaterial({ color: 0xd5d9dc, metalness: 0.1, roughness: 0.42 });
+const darkGlassMaterial = new MeshStandardMaterial({ color: 0x1b1a18, metalness: 0.05, roughness: 0.35 });
+
+interface ChapterTenLamp {
+  interactPosition: Vector3;
+  light: PointLight;
+  bulbMaterial: MeshStandardMaterial;
+  shadeMaterial: MeshStandardMaterial;
+  on: boolean;
+}
 
 function addCollider(
   colliders: CollisionBox[],
@@ -164,7 +177,7 @@ function addGableWall(root: Group, name: string, z: number, rotationY: number): 
   const shape = new Shape();
   shape.moveTo(-HOUSE_WIDTH / 2, 0);
   shape.lineTo(HOUSE_WIDTH / 2, 0);
-  shape.lineTo(0, 1.65);
+  shape.lineTo(0, 1.95);
   shape.lineTo(-HOUSE_WIDTH / 2, 0);
 
   const mesh = new Mesh(new ShapeGeometry(shape), wallMaterial);
@@ -307,18 +320,124 @@ function addBed(root: Group, colliders: CollisionBox[]): void {
 }
 
 function addTableAndChair(root: Group, colliders: CollisionBox[]): void {
-  addBox(root, 'Chapter 10 left small table top', [2.7, 0.24, 1.75], [-5.65, 1.02, 0.15], tableMaterial);
-  addBox(root, 'Chapter 10 left small table leg front left', [0.18, 0.92, 0.18], [-6.78, 0.48, 0.84], tableMaterial);
-  addBox(root, 'Chapter 10 left small table leg front right', [0.18, 0.92, 0.18], [-4.52, 0.48, 0.84], tableMaterial);
-  addBox(root, 'Chapter 10 left small table leg back left', [0.18, 0.92, 0.18], [-6.78, 0.48, -0.54], tableMaterial);
-  addBox(root, 'Chapter 10 left small table leg back right', [0.18, 0.92, 0.18], [-4.52, 0.48, -0.54], tableMaterial);
-  addCollider(colliders, -5.65, 0.15, 1.45, 0.95);
+  addBox(root, 'Chapter 10 moved left wall table top', [1.16, 0.24, 3.24], [-7.62, 1.02, -1.25], tableMaterial);
+  addBox(root, 'Chapter 10 moved table front left leg', [0.16, 0.92, 0.16], [-8.05, 0.48, 0.16], tableMaterial);
+  addBox(root, 'Chapter 10 moved table front right leg', [0.16, 0.92, 0.16], [-7.19, 0.48, 0.16], tableMaterial);
+  addBox(root, 'Chapter 10 moved table back left leg', [0.16, 0.92, 0.16], [-8.05, 0.48, -2.66], tableMaterial);
+  addBox(root, 'Chapter 10 moved table back right leg', [0.16, 0.92, 0.16], [-7.19, 0.48, -2.66], tableMaterial);
+  addCollider(colliders, -7.62, -1.25, 0.68, 1.72);
 
-  addBox(root, 'Chapter 10 left chair seat', [1.18, 0.22, 1.12], [-5.65, 0.66, 2.25], chairMaterial);
-  addBox(root, 'Chapter 10 left chair back', [1.18, 1.42, 0.2], [-5.65, 1.24, 2.83], chairMaterial);
-  addBox(root, 'Chapter 10 left chair left legs', [0.16, 0.68, 0.16], [-6.13, 0.34, 1.85], chairMaterial);
-  addBox(root, 'Chapter 10 left chair right legs', [0.16, 0.68, 0.16], [-5.17, 0.34, 1.85], chairMaterial);
-  addCollider(colliders, -5.65, 2.28, 0.68, 0.72);
+  addBox(root, 'Chapter 10 left table chair seat', [1.08, 0.22, 1.08], [-6.12, 0.66, -1.25], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair back', [0.2, 1.42, 1.08], [-5.56, 1.24, -1.25], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair front left leg', [0.14, 0.68, 0.14], [-6.48, 0.34, -0.84], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair front right leg', [0.14, 0.68, 0.14], [-6.48, 0.34, -1.66], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair back left leg', [0.14, 0.68, 0.14], [-5.76, 0.34, -0.84], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair back right leg', [0.14, 0.68, 0.14], [-5.76, 0.34, -1.66], chairMaterial);
+  addCollider(colliders, -6.12, -1.25, 0.68, 0.68);
+}
+
+function addCounterSinkOvenAndWasher(root: Group, colliders: CollisionBox[]): void {
+  const sinkCounter = new Group();
+  sinkCounter.name = 'Chapter 10 left wall sink countertop';
+  sinkCounter.position.set(-8.18, 0, -5.41);
+  addBox(sinkCounter, 'Chapter 10 sink counter base', [1.18, 1.08, 1.88], [0, 0.54, 0], drawerMaterial);
+  addBox(sinkCounter, 'Chapter 10 sink counter top slab', [1.26, 0.16, 1.98], [0, 1.16, 0], tableMaterial);
+  addBox(sinkCounter, 'Chapter 10 inset sink bowl', [0.72, 0.16, 0.82], [0.06, 1.27, -0.1], porcelainMaterial);
+  const faucet = new Mesh(new TorusGeometry(0.22, 0.035, 8, 18), metalMaterial);
+  faucet.name = 'Chapter 10 curved sink faucet';
+  faucet.position.set(0.2, 1.48, -0.48);
+  faucet.rotation.x = Math.PI / 2;
+  faucet.rotation.z = Math.PI / 2;
+  faucet.scale.y = 0.65;
+  faucet.castShadow = true;
+  sinkCounter.add(faucet);
+  root.add(sinkCounter);
+  addCollider(colliders, -8.18, -5.41, 0.7, 1.06);
+
+  const oven = new Group();
+  oven.name = 'Chapter 10 left wall oven';
+  oven.position.set(-8.18, 0, -2.98);
+  addBox(oven, 'Chapter 10 oven body', [1.18, 1.32, 1.5], [0, 0.66, 0], applianceMaterial);
+  addBox(oven, 'Chapter 10 oven black glass door', [0.08, 0.7, 0.98], [0.62, 0.66, 0], darkGlassMaterial);
+  addBox(oven, 'Chapter 10 oven handle', [0.08, 0.08, 1.1], [0.68, 1.08, 0], metalMaterial);
+  addBox(oven, 'Chapter 10 oven top burners left', [0.06, 0.06, 0.42], [0, 1.36, -0.36], fireboxMaterial);
+  addBox(oven, 'Chapter 10 oven top burners right', [0.06, 0.06, 0.42], [0, 1.36, 0.36], fireboxMaterial);
+  root.add(oven);
+  addCollider(colliders, -8.18, -2.98, 0.7, 0.85);
+
+  const washer = new Group();
+  washer.name = 'Chapter 10 front right washing machine';
+  washer.position.set(6.8, 0, 5.92);
+  addBox(washer, 'Chapter 10 washing machine body', [1.52, 1.42, 1.18], [0, 0.71, 0], applianceMaterial);
+  const washerDoor = new Mesh(new CylinderGeometry(0.36, 0.36, 0.08, 24), darkGlassMaterial);
+  washerDoor.name = 'Chapter 10 washing machine round door';
+  washerDoor.position.set(0, 0.78, -0.62);
+  washerDoor.rotation.x = Math.PI / 2;
+  washerDoor.castShadow = true;
+  washer.add(washerDoor);
+  addBox(washer, 'Chapter 10 washing machine top controls', [1.18, 0.16, 0.16], [0, 1.28, -0.64], metalMaterial);
+  root.add(washer);
+  addCollider(colliders, 6.8, 5.92, 0.86, 0.7);
+}
+
+function setLampState(lamp: ChapterTenLamp, on: boolean): void {
+  lamp.on = on;
+  lamp.light.visible = on;
+  lamp.bulbMaterial.emissiveIntensity = on ? 1.9 : 0.08;
+  lamp.shadeMaterial.emissiveIntensity = on ? 0.35 : 0;
+}
+
+function addLampTable(root: Group, colliders: CollisionBox[]): ChapterTenLamp {
+  const group = new Group();
+  group.name = 'Chapter 10 bottom left lamp table';
+  group.position.set(-7.28, 0, 5.15);
+
+  addBox(group, 'Chapter 10 bottom left lamp table top', [1.48, 0.2, 1.2], [0, 0.78, 0], tableMaterial);
+  addBox(group, 'Chapter 10 bottom left lamp table leg front left', [0.14, 0.72, 0.14], [-0.52, 0.36, 0.42], tableMaterial);
+  addBox(group, 'Chapter 10 bottom left lamp table leg front right', [0.14, 0.72, 0.14], [0.52, 0.36, 0.42], tableMaterial);
+  addBox(group, 'Chapter 10 bottom left lamp table leg back left', [0.14, 0.72, 0.14], [-0.52, 0.36, -0.42], tableMaterial);
+  addBox(group, 'Chapter 10 bottom left lamp table leg back right', [0.14, 0.72, 0.14], [0.52, 0.36, -0.42], tableMaterial);
+
+  const shadeMaterial = new MeshStandardMaterial({
+    color: 0xd7c28d,
+    emissive: 0xffc86b,
+    emissiveIntensity: 0,
+    roughness: 0.55,
+  });
+  const bulbMaterial = new MeshStandardMaterial({
+    color: 0xfff4cf,
+    emissive: 0xffd37a,
+    emissiveIntensity: 0.08,
+    roughness: 0.3,
+  });
+  addBox(group, 'Chapter 10 lamp base', [0.36, 0.12, 0.36], [0, 0.96, 0], brassMaterial);
+  addBox(group, 'Chapter 10 lamp stem', [0.1, 0.62, 0.1], [0, 1.25, 0], brassMaterial);
+  const bulb = new Mesh(new CylinderGeometry(0.12, 0.14, 0.2, 16), bulbMaterial);
+  bulb.name = 'Chapter 10 lamp glowing bulb';
+  bulb.position.set(0, 1.55, 0);
+  bulb.castShadow = false;
+  group.add(bulb);
+  const shade = new Mesh(new ConeGeometry(0.48, 0.52, 20, 1, true), shadeMaterial);
+  shade.name = 'Chapter 10 lamp shade';
+  shade.position.set(0, 1.66, 0);
+  shade.rotation.x = Math.PI;
+  shade.castShadow = true;
+  group.add(shade);
+  const light = new PointLight(0xffc36b, 1.9, 9, 1.6);
+  light.name = 'Chapter 10 lamp light';
+  light.position.set(0, 1.56, 0);
+  light.visible = false;
+  group.add(light);
+
+  root.add(group);
+  addCollider(colliders, -7.28, 5.15, 0.86, 0.74);
+  return {
+    interactPosition: new Vector3(-7.28, 0.9, 5.15),
+    light,
+    bulbMaterial,
+    shadeMaterial,
+    on: false,
+  };
 }
 
 export function createChapterTen(): ChapterTenData {
@@ -361,16 +480,18 @@ export function createChapterTen(): ChapterTenData {
   addWindowFrame(root, halfWidth + 0.02, 1.6, -Math.PI / 2);
   addWindowFrame(root, -3.2, -halfDepth - 0.02, 0);
 
-  const leftRoof = addBox(root, 'Chapter 10 left gable roof slab', [10.7, 0.34, HOUSE_DEPTH + 1.8], [-4.22, 4.16, 0], roofMaterial);
-  leftRoof.rotation.z = 0.48;
-  const rightRoof = addBox(root, 'Chapter 10 right gable roof slab', [10.7, 0.34, HOUSE_DEPTH + 1.8], [4.22, 4.16, 0], roofMaterial);
-  rightRoof.rotation.z = -0.48;
-  addBox(root, 'Chapter 10 roof ridge cap', [0.5, 0.38, HOUSE_DEPTH + 2], [0, 5.35, 0], roofMaterial);
+  const leftRoof = addBox(root, 'Chapter 10 left gable roof slab', [10.1, 0.34, HOUSE_DEPTH + 1.8], [-4.5, 4.45, 0], roofMaterial);
+  leftRoof.rotation.z = 0.2;
+  const rightRoof = addBox(root, 'Chapter 10 right gable roof slab', [10.1, 0.34, HOUSE_DEPTH + 1.8], [4.5, 4.45, 0], roofMaterial);
+  rightRoof.rotation.z = -0.2;
+  addBox(root, 'Chapter 10 roof ridge cap', [0.5, 0.38, HOUSE_DEPTH + 2], [0, 5.37, 0], roofMaterial);
 
   addFireplace(root, colliders, -halfDepth + 0.48);
   addBed(root, colliders);
   addTableAndChair(root, colliders);
   addCornerDrawer(root, colliders);
+  addCounterSinkOvenAndWasher(root, colliders);
+  const lamp = addLampTable(root, colliders);
 
   addBox(root, 'Chapter 10 front porch step', [5.6, 0.35, 2.2], [0, 0.17, halfDepth + 1.45], porchMaterial);
   addBox(root, 'Chapter 10 porch left post', [0.24, 2.6, 0.24], [-2.5, 1.47, halfDepth + 2.25], trimMaterial);
@@ -402,6 +523,23 @@ export function createChapterTen(): ChapterTenData {
     colliders,
     spawn,
     lookTarget,
+    toggleLamp(position: Vector3): { message: string; on: boolean } | null {
+      if (position.distanceTo(lamp.interactPosition) > GAME_CONFIG.player.interactionRange + 0.7) {
+        return null;
+      }
+
+      setLampState(lamp, !lamp.on);
+      return {
+        message: lamp.on ? 'You turn on the little table lamp.' : 'You turn off the little table lamp.',
+        on: lamp.on,
+      };
+    },
+    getLampPrompt(position: Vector3): string | null {
+      if (position.distanceTo(lamp.interactPosition) > GAME_CONFIG.player.interactionRange + 0.7) {
+        return null;
+      }
+      return lamp.on ? 'The little table lamp is on. Press E to turn it off.' : 'The little table lamp is off. Press E to turn it on.';
+    },
     getSupportedFloorY(position: Vector3): number | null {
       if (
         position.x < -GROUND_SIZE_X / 2
@@ -418,6 +556,7 @@ export function createChapterTen(): ChapterTenData {
       // The first Chapter 10 pass is a static build shell for later map work.
     },
     reset(): void {
+      setLampState(lamp, false);
       root.visible = false;
     },
   };

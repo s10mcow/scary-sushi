@@ -13928,6 +13928,17 @@ export class Game {
       return;
     }
 
+    if (this.chapterTenActive) {
+      const result = this.chapterTen.toggleLamp(this.player.getPosition());
+      if (result) {
+        this.gameplaySfxAudio.playSmallPanel(result.on);
+        this.pushStatus(result.message, 2.2);
+      } else {
+        this.pushStatus('Move closer to the little table lamp, then press E to turn it on or off.', 2.2);
+      }
+      return;
+    }
+
     if (this.chapterTwoActive) {
       this.handleChapterTwoInteract();
       return;
@@ -19074,6 +19085,13 @@ export class Game {
 
     if (this.transientStatusTime > 0) {
       return this.transientStatus;
+    }
+
+    if (this.chapterTenActive) {
+      const lampPrompt = this.chapterTen.getLampPrompt(this.player.getPosition());
+      if (lampPrompt) {
+        return lampPrompt;
+      }
     }
 
     if (this.placementToolActive) {
