@@ -63,6 +63,7 @@ import { createChapterSeven, type ChapterSevenData } from '../scene/createChapte
 import { createChapterEight, type ChapterEightData } from '../scene/createChapterEight';
 import { createChapterNine, type ChapterNineData, type ChapterNineJumpscareEvent } from '../scene/createChapterNine';
 import { createChapterTen, type ChapterTenData } from '../scene/createChapterTen';
+import { createChapterEleven, type ChapterElevenData } from '../scene/createChapterEleven';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -204,6 +205,7 @@ const START_IN_CHAPTER_SIX = false;
 const START_IN_CHAPTER_SEVEN = false;
 const START_IN_CHAPTER_NINE = false;
 const START_IN_CHAPTER_TEN = true;
+const START_IN_CHAPTER_ELEVEN = false;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -1005,6 +1007,7 @@ export class Game {
   private readonly chapterEight: ChapterEightData;
   private readonly chapterNine: ChapterNineData;
   private readonly chapterTen: ChapterTenData;
+  private readonly chapterEleven: ChapterElevenData;
   private readonly chapterNineCameraRenderTarget = new WebGLRenderTarget(256, 144);
   private readonly zombieMode: ZombieModeData;
   private readonly doomMode: DoomModeData;
@@ -1158,6 +1161,7 @@ export class Game {
   private chapterEightActive = false;
   private chapterNineActive = false;
   private chapterTenActive = false;
+  private chapterElevenActive = false;
   private zombieModeActive = false;
   private doomModeActive = false;
   private chapterMenuOpen = false;
@@ -1442,6 +1446,8 @@ export class Game {
     this.chapterNine.root.visible = false;
     this.chapterTen = createChapterTen();
     this.chapterTen.root.visible = false;
+    this.chapterEleven = createChapterEleven();
+    this.chapterEleven.root.visible = false;
     this.zombieMode = createZombieMode();
     this.zombieMode.root.visible = false;
     this.doomMode = createDoomMode();
@@ -1463,6 +1469,7 @@ export class Game {
         ...this.chapterEight.colliders,
         ...this.chapterNine.colliders,
         ...this.chapterTen.colliders,
+        ...this.chapterEleven.colliders,
         ...this.zombieMode.colliders,
         ...this.doomMode.colliders,
       ],
@@ -1508,6 +1515,7 @@ export class Game {
     this.scene.add(this.chapterEight.root);
     this.scene.add(this.chapterNine.root);
     this.scene.add(this.chapterTen.root);
+    this.scene.add(this.chapterEleven.root);
     this.scene.add(this.zombieMode.root);
     this.scene.add(this.doomMode.root);
     this.scene.add(this.camera);
@@ -1648,7 +1656,9 @@ export class Game {
     this.resizeObserver.observe(this.shell.viewport);
     this.resize();
 
-    if (START_IN_CHAPTER_TEN) {
+    if (START_IN_CHAPTER_ELEVEN) {
+      this.beginChapterEleven();
+    } else if (START_IN_CHAPTER_TEN) {
       this.beginChapterTen();
     } else if (START_IN_CHAPTER_NINE) {
       this.beginChapterNine();
@@ -1726,7 +1736,7 @@ export class Game {
               ? 0.9
               : this.chapterSevenActive
                 ? 0.9
-                : this.chapterEightActive || this.chapterNineActive || this.chapterTenActive
+                : this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive
                   ? 0.9
                 : 1;
     const renderWidth = Math.max(1, Math.round(width * renderScale));
@@ -1741,7 +1751,7 @@ export class Game {
     this.renderer.toneMapping = this.doomModeActive ? NoToneMapping : ACESFilmicToneMapping;
     this.renderer.setPixelRatio(
       this.doomModeActive || this.officeChapterActive || this.chapterFourActive
-        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive
+        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive
         ? PERFORMANCE_RENDER_PIXEL_RATIO
         : Math.min(window.devicePixelRatio, DEFAULT_RENDER_PIXEL_RATIO),
     );
@@ -1990,6 +2000,8 @@ export class Game {
   }
 
   private readonly handleChapterSelection = (chapterId: HudChapterId): void => {
+    this.chapterElevenActive = false;
+    this.chapterEleven.root.visible = false;
     if (chapterId === 'chapter-1') {
       this.beginChapterOne();
     } else if (chapterId === 'chapter-2') {
@@ -2012,6 +2024,8 @@ export class Game {
       this.beginChapterNine();
     } else if (chapterId === 'chapter-10') {
       this.beginChapterTen();
+    } else if (chapterId === 'chapter-11') {
+      this.beginChapterEleven();
     } else if (chapterId === 'doom-fps') {
       this.beginDoomMode();
     } else {
@@ -3621,7 +3635,7 @@ export class Game {
       this.updateZombieMode(deltaSeconds);
     } else if (this.doomModeActive) {
       this.updateDoomMode(deltaSeconds);
-    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive) {
+    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive) {
       this.monsterState = this.unlockedMonsterState;
       this.touchingMonster = null;
     } else {
@@ -3632,7 +3646,7 @@ export class Game {
     this.updateChapterSevenDayNightCycle(deltaSeconds);
     this.updateChapterSevenAmbientAudio(deltaSeconds);
     this.updateAtmosphere();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
     }
     this.updateOfficeGlassThrows(deltaSeconds);
@@ -3640,7 +3654,7 @@ export class Game {
     this.updateOfficeVentBoyJumpscare(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateMachineJobs(deltaSeconds);
     }
 
@@ -3755,7 +3769,9 @@ export class Game {
       this.handleChapterNineJumpscareEvents(deltaSeconds);
     } else if (this.chapterTenActive) {
       this.chapterTen.update(deltaSeconds);
-    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive) {
+    } else if (this.chapterElevenActive) {
+      this.chapterEleven.update(deltaSeconds);
+    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
       this.chapterTwo.update(deltaSeconds, this.player.getPosition());
@@ -3834,7 +3850,7 @@ export class Game {
     this.updateChapterFourGreenJumpscareModel();
     this.updateOfficeGlassDisplay();
     this.updateOfficePrizeItemDisplay();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateStoveLight();
     }
     if (this.shouldSyncHudThisFrame(deltaSeconds, jumpscareLocked)) {
@@ -5971,6 +5987,9 @@ export class Game {
   private getMicrophoneSoundLibraryScope(): string {
     if (this.chapterTenActive) {
       return 'chapter-10-house-shell';
+    }
+    if (this.chapterElevenActive) {
+      return 'chapter-11-grow-a-garden';
     }
     if (this.chapterNineActive) {
       return 'chapter-9-freddys-pizza-complex';
@@ -11844,6 +11863,10 @@ export class Game {
       return [this.chapterTen.root];
     }
 
+    if (this.chapterElevenActive) {
+      return [this.chapterEleven.root];
+    }
+
     if (this.chapterTwoActive) {
       return [this.chapterTwo.root];
     }
@@ -12576,6 +12599,8 @@ export class Game {
         return "Chapter 9: Freddy's Pizza Complex";
       case 'chapter-10':
         return 'Chapter 10: House Shell';
+      case 'chapter-11':
+        return 'Chapter 11: Grow a garden';
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
@@ -12844,7 +12869,7 @@ export class Game {
   private updateAtmosphere(): void {
     this.lighting.flashlight.angle = GAME_CONFIG.flashlight.angle;
     this.lighting.flashlight.penumbra = GAME_CONFIG.flashlight.penumbra;
-    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive ? 980 : GAME_CONFIG.camera.far;
+    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive ? 980 : GAME_CONFIG.camera.far;
     if (Math.abs(this.camera.far - targetCameraFar) > 0.01) {
       this.camera.far = targetCameraFar;
       this.camera.updateProjectionMatrix();
@@ -13106,6 +13131,25 @@ export class Game {
       return;
     }
 
+    if (this.chapterElevenActive) {
+      this.lighting.ambient.intensity = 0.78;
+      this.lighting.hemisphere.intensity = 0.98;
+      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.65;
+      this.lighting.flashlight.distance = 26;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0x9fc8df);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0xc1d6b8);
+        this.scene.fog.near = 92;
+        this.scene.fog.far = 300;
+      }
+
+      return;
+    }
+
     const playerZ = this.player.getPosition().z;
     const threshold = this.level.pantryEntrancePosition.z + 10;
     const mazeBlend = MathUtils.clamp((threshold - playerZ) / 18, 0, 1);
@@ -13170,6 +13214,10 @@ export class Game {
 
     if (this.chapterTenActive) {
       return this.chapterTen.colliders;
+    }
+
+    if (this.chapterElevenActive) {
+      return this.chapterEleven.colliders;
     }
 
     if (this.zombieModeActive) {
@@ -13352,6 +13400,10 @@ export class Game {
       return 'chapter-10';
     }
 
+    if (this.chapterElevenActive) {
+      return 'chapter-11';
+    }
+
     return this.chapterTwoActive ? 'chapter-2' : 'chapter-1';
   }
 
@@ -13388,6 +13440,15 @@ export class Game {
   }
 
   private getIntroHudState(): { eyebrow: string; title: string; summary: string; buttonText: string } {
+    if (this.chapterElevenActive) {
+      return {
+        eyebrow: 'Chapter Eleven',
+        title: 'Grow a garden',
+        summary: 'Walk around a big open grassy field with no trees, logs, tall grass, or props yet.',
+        buttonText: 'Enter The Field',
+      };
+    }
+
     if (this.chapterTenActive) {
       return {
         eyebrow: 'Chapter Ten',
@@ -17480,6 +17541,16 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterElevenActive) {
+      return [
+        'Chapter 11: Grow a garden',
+        '',
+        'A big open grass field.',
+        'No trees, logs, tall grass, props, or garden objects have been added yet.',
+        'Use the Coordinate Tool to mark where garden features should go next.',
+      ].join('\n');
+    }
+
     if (this.chapterEightActive) {
       return [
         'Chapter 8: The Woods',
@@ -17755,6 +17826,15 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterElevenActive) {
+      return [
+        'Inventory: Coordinate Tool',
+        this.getCoordinateToolInventoryLine(),
+        'Chapter 11: Grow a garden',
+        'A clean open grassy field. No props have been added yet.',
+      ].join('\n');
+    }
+
     if (this.chapterTwoActive) {
       const cards = CHAPTER_TWO_KEYCARD_ORDER
         .filter((color) => this.chapterTwoKeycards.has(color))
@@ -17950,7 +18030,7 @@ export class Game {
 
     return {
       text: this.getChapterExitNoticeText(),
-      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.zombieModeActive && !this.doomModeActive,
+      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.zombieModeActive && !this.doomModeActive,
       label: 'Chapter Shift',
     };
   }
@@ -18215,6 +18295,17 @@ export class Game {
           selected: Boolean(heldItemLabel),
         },
         ...Array.from({ length: 7 }, () => ({
+          label: 'Empty',
+          count: 0,
+          filled: false,
+        })),
+      ];
+    }
+
+    if (this.chapterElevenActive) {
+      return [
+        coordinateToolSlot,
+        ...Array.from({ length: 8 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -19544,6 +19635,10 @@ export class Game {
       return 'Chapter 10: House Shell loaded. Press E for the front door, top-wall drawers, or either table lamp.';
     }
 
+    if (this.chapterElevenActive) {
+      return 'Chapter 11: Grow a garden loaded. A big open grass field is ready for garden building.';
+    }
+
     if (this.chapterEightActive) {
       const fireplaceState = this.chapterEight.isFireLit() ? 'lit' : 'unlit';
       return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. The cabin fireplace is ${fireplaceState}.`;
@@ -20335,6 +20430,10 @@ export class Game {
 
     if (this.chapterTenActive) {
       return this.chapterTen.getSupportedFloorY(this.player.getPosition());
+    }
+
+    if (this.chapterElevenActive) {
+      return this.chapterEleven.getSupportedFloorY(this.player.getPosition());
     }
 
     return null;
@@ -26385,6 +26484,117 @@ export class Game {
       'Chapter 10 loaded. The fireplace is unlit. Find the lighter in the drawers to light it.',
       3.2,
     );
+    this.resize();
+  }
+
+  private beginChapterEleven(): void {
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
+    this.chapterEightActive = false;
+    this.chapterNineActive = false;
+    this.chapterTenActive = false;
+    this.chapterElevenActive = true;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = 'Chapter 11: Grow a garden';
+    this.chapterCardBody = 'A big open grassy field with no trees, logs, tall grass, or props yet.';
+    this.activeJumpscare = null;
+    this.chapterNineJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.clearPaintbrushState();
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
+    this.chapterEleven.reset();
+    this.chapterEleven.root.visible = true;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
+    this.chapterEight.reset();
+    this.chapterNine.reset();
+    this.chapterTen.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
+    this.chapterSevenBoxHidden = false;
+    this.chapterSevenOvenHidden = false;
+    this.chapterSevenSwingSeated = false;
+    this.chapterSeven.setSwingOccupied(false);
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
+    this.chapterEightHeldItemAnchor.visible = false;
+    this.chapterNine.shoulderCamera.visible = false;
+    this.resetOfficeTabletState();
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.setPlacementToolActive(true);
+    this.player.teleport(this.chapterEleven.spawn);
+    this.player.lookToward(this.chapterEleven.lookTarget, 1);
+    this.pushStatus('Chapter 11 loaded. The grow-a-garden field is empty grass for now.', 3.2);
     this.resize();
   }
 

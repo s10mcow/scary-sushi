@@ -12,6 +12,7 @@ export type HudChapterId =
   | 'chapter-8'
   | 'chapter-9'
   | 'chapter-10'
+  | 'chapter-11'
   | 'zombie-fps'
   | 'doom-fps';
 export type HudJumpScareVariant = MonsterVariant | 'bear' | 'quacky' | 'fluffle' | 'bori' | 'foxy' | 'purple' | 'blue' | 'green';
@@ -1446,6 +1447,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-10' as const,
       label: 'Chapter 10: House Shell',
       body: 'A small grass map with a simple house shell, doorway, porch step, roof, and exposed wall framing.',
+    },
+    {
+      id: 'chapter-11' as const,
+      label: 'Chapter 11: Grow a garden',
+      body: 'A big open grass field with no trees, logs, tall grass, or props yet.',
     },
     {
       id: 'zombie-fps' as const,
