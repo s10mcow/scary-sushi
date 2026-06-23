@@ -2341,6 +2341,9 @@ export function createChapterNine(): ChapterNineData {
     });
 
     table.add(base, top, centerLine, centerCircle, leftGoal, rightGoal, puck, redPaddle, bluePaddle);
+    const label = new Mesh(new PlaneGeometry(1.9, 0.36), createSignMaterial('AIR HOCKEY', '', '#bfe9ff'));
+    label.position.set(0, 1.34, -1.18);
+    table.add(label);
     root.add(table);
     colliders.push({
       centerX: x,
@@ -2408,6 +2411,32 @@ export function createChapterNine(): ChapterNineData {
     });
   };
 
+  const addArcadeLocalCollider = (
+    x: number,
+    z: number,
+    rotationY: number,
+    localX: number,
+    localZ: number,
+    halfWidth: number,
+    halfDepth: number,
+  ): void => {
+    const cos = Math.cos(rotationY);
+    const sin = Math.sin(rotationY);
+    colliders.push({
+      centerX: x + localX * cos + localZ * sin,
+      centerZ: z - localX * sin + localZ * cos,
+      halfWidth,
+      halfDepth,
+      rotationY,
+    });
+  };
+
+  const photoBoothEntries: {
+    interactPosition: Vector3;
+    sitPosition: Vector3;
+    lookTarget: Vector3;
+  }[] = [];
+
   const addClawMachine = (x: number, z: number, rotationY = 0): void => {
     const machine = new Group();
     machine.position.set(x, 0, z);
@@ -2471,6 +2500,8 @@ export function createChapterNine(): ChapterNineData {
     const bag = new Mesh(new SphereGeometry(0.35, 18, 12), new MeshStandardMaterial({ color: 0xa3242f, roughness: 0.74 }));
     bag.scale.set(0.82, 1.08, 0.82);
     bag.position.set(0, 2.55, 0.58);
+    const label = new Mesh(new PlaneGeometry(1.2, 0.34), createSignMaterial('PUNCH', 'TEST', '#ff7d7d'));
+    label.position.set(0, 3.18, 0.34);
     const score = new Mesh(new PlaneGeometry(1.1, 0.48), createSignMaterial('POWER', '000', '#ff5a5a'));
     score.position.set(0, 2.1, 0.58);
     [-0.46, 0.46].forEach((lightX) => {
@@ -2480,7 +2511,7 @@ export function createChapterNine(): ChapterNineData {
     });
     const coinSlot = new Mesh(new BoxGeometry(0.28, 0.18, 0.05), metalMaterial);
     coinSlot.position.set(0, 0.86, 0.7);
-    game.add(base, frontPanel, footPlate, post, topHousing, hingeArm, bag, score, coinSlot);
+    game.add(base, frontPanel, footPlate, post, topHousing, hingeArm, bag, label, score, coinSlot);
     root.add(game);
     addArcadeAttractionCollider(x, z, 0.92, 0.72, rotationY);
   };
@@ -2495,6 +2526,8 @@ export function createChapterNine(): ChapterNineData {
     ramp.rotation.x = -0.15;
     const backboard = new Mesh(new BoxGeometry(1.7, 1.1, 0.12), new MeshStandardMaterial({ color: 0xe8edf0, roughness: 0.5 }));
     backboard.position.set(0, 2.35, -1.12);
+    const label = new Mesh(new PlaneGeometry(1.42, 0.34), createSignMaterial('HOOP', 'SHOT', '#ffb04d'));
+    label.position.set(0, 3.04, -1.0);
     const rim = new Mesh(new TorusGeometry(0.28, 0.025, 8, 26), new MeshStandardMaterial({ color: 0xd85824, roughness: 0.4 }));
     rim.position.set(0, 1.86, -0.82);
     rim.rotation.x = Math.PI / 2;
@@ -2508,7 +2541,7 @@ export function createChapterNine(): ChapterNineData {
       ball.position.set(ballX, 0.84, 1.22 - index * 0.34);
       game.add(ball);
     });
-    game.add(ramp, backboard, rim);
+    game.add(ramp, backboard, label, rim);
     root.add(game);
     addArcadeAttractionCollider(x, z, 1.04, 1.58, rotationY);
   };
@@ -2523,6 +2556,8 @@ export function createChapterNine(): ChapterNineData {
     ramp.rotation.x = -0.12;
     const targetBoard = new Mesh(new BoxGeometry(1.68, 1.45, 0.22), new MeshStandardMaterial({ color: 0x26415e, roughness: 0.58 }));
     targetBoard.position.set(0, 1.28, -1.62);
+    const label = new Mesh(new PlaneGeometry(1.32, 0.34), createSignMaterial('SKEE', 'BALL', '#f5d35f'));
+    label.position.set(0, 2.24, -1.5);
     [0.18, 0.32, 0.46].forEach((radius, index) => {
       const ring = new Mesh(new TorusGeometry(radius, 0.02, 8, 28), new MeshStandardMaterial({ color: [0xf5d35f, 0xf07b3f, 0xf7f7f7][index], roughness: 0.5 }));
       ring.position.set(0, 1.46 - index * 0.34, -1.48);
@@ -2533,7 +2568,7 @@ export function createChapterNine(): ChapterNineData {
       ball.position.set(ballX, 0.72, 1.42);
       lane.add(ball);
     });
-    lane.add(ramp, targetBoard);
+    lane.add(ramp, targetBoard, label);
     root.add(lane);
     addArcadeAttractionCollider(x, z, 0.86, 1.78, rotationY);
   };
@@ -2542,10 +2577,12 @@ export function createChapterNine(): ChapterNineData {
     const table = new Group();
     table.position.set(x, 0, z);
     table.rotation.y = rotationY;
-    const body = new Mesh(new BoxGeometry(2.4, 0.9, 1.55), new MeshStandardMaterial({ color: 0x315c45, roughness: 0.66 }));
+    const body = new Mesh(new BoxGeometry(2.4, 0.9, 1.55), new MeshStandardMaterial({ color: 0x5a321e, roughness: 0.72 }));
     body.position.y = 0.48;
-    const top = new Mesh(new BoxGeometry(2.5, 0.12, 1.65), new MeshStandardMaterial({ color: 0x3f7a55, roughness: 0.58 }));
+    const top = new Mesh(new BoxGeometry(2.5, 0.12, 1.65), new MeshStandardMaterial({ color: 0x7b4a28, roughness: 0.64 }));
     top.position.y = 0.98;
+    const label = new Mesh(new PlaneGeometry(2.0, 0.42), createSignMaterial('WHACK-A', 'PIRATE!', '#f4c45f'));
+    label.position.set(0, 1.46, 0.86);
     const mallet = new Group();
     mallet.position.set(0.78, 1.16, 0.45);
     mallet.rotation.z = -0.55;
@@ -2558,12 +2595,21 @@ export function createChapterNine(): ChapterNineData {
       [-0.32, 0.38].forEach((holeZ, column) => {
         const hole = new Mesh(new CylinderGeometry(0.18, 0.18, 0.045, 18), blackMetalMaterial);
         hole.position.set(holeX, 1.07, holeZ);
-        const mole = new Mesh(new SphereGeometry(0.13, 12, 8), new MeshStandardMaterial({ color: 0x6d412a, roughness: 0.72 }));
-        mole.position.set(holeX, 1.18 + ((row + column) % 2) * 0.08, holeZ);
-        table.add(hole, mole);
+        const pirateHead = new Group();
+        pirateHead.position.set(holeX, 1.17 + ((row + column) % 2) * 0.1, holeZ);
+        const face = new Mesh(new SphereGeometry(0.13, 14, 10), new MeshStandardMaterial({ color: 0xc08a5a, roughness: 0.62 }));
+        const bandana = new Mesh(new BoxGeometry(0.28, 0.08, 0.08), new MeshStandardMaterial({ color: row % 2 === 0 ? 0xb42d2f : 0x1e4f8a, roughness: 0.6 }));
+        bandana.position.set(0, 0.08, 0.08);
+        const eyePatch = new Mesh(new BoxGeometry(0.08, 0.045, 0.025), blackMetalMaterial);
+        eyePatch.position.set(column === 0 ? -0.04 : 0.04, 0.02, 0.12);
+        const beard = new Mesh(new SphereGeometry(0.09, 10, 6), new MeshStandardMaterial({ color: 0x332016, roughness: 0.76 }));
+        beard.scale.set(1.15, 0.5, 0.4);
+        beard.position.set(0, -0.08, 0.08);
+        pirateHead.add(face, bandana, eyePatch, beard);
+        table.add(hole, pirateHead);
       });
     });
-    table.add(body, top, mallet);
+    table.add(body, top, label, mallet);
     root.add(table);
     addArcadeAttractionCollider(x, z, 1.24, 0.82, rotationY);
   };
@@ -2573,6 +2619,8 @@ export function createChapterNine(): ChapterNineData {
     game.position.set(x, 0, z);
     game.rotation.y = rotationY;
     const shellMaterial = new MeshStandardMaterial({ color: 0x1f3f7f, roughness: 0.52, metalness: 0.08 });
+    const trimMaterial = new MeshStandardMaterial({ color: 0xd93628, roughness: 0.48, metalness: 0.12 });
+    const rubberMaterial = new MeshStandardMaterial({ color: 0x08090a, roughness: 0.7, metalness: 0.04 });
     const seat = new Mesh(new BoxGeometry(1.25, 0.46, 1.05), shellMaterial);
     seat.position.set(0, 0.42, 0.72);
     seat.rotation.x = -0.2;
@@ -2581,14 +2629,65 @@ export function createChapterNine(): ChapterNineData {
     seatBack.rotation.x = -0.34;
     const dash = new Mesh(new BoxGeometry(1.55, 0.62, 0.58), blackMetalMaterial);
     dash.position.set(0, 1.0, -0.22);
-    const screen = new Mesh(new PlaneGeometry(1.55, 0.9), createSignMaterial('RACE', 'READY', '#77c9ff'));
-    screen.position.set(0, 1.85, -0.54);
+    const screenFrame = new Mesh(new BoxGeometry(1.86, 1.1, 0.16), blackMetalMaterial);
+    screenFrame.position.set(0, 1.85, -0.6);
+    const screen = new Mesh(new PlaneGeometry(1.62, 0.88), makeCanvasMaterial((context, canvas) => {
+      const sky = context.createLinearGradient(0, 0, 0, canvas.height * 0.48);
+      sky.addColorStop(0, '#2f89d8');
+      sky.addColorStop(1, '#b9e5ff');
+      context.fillStyle = sky;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#1b6f30';
+      context.fillRect(0, 108, canvas.width, 52);
+      context.fillStyle = '#2d3035';
+      context.beginPath();
+      context.moveTo(214, 106);
+      context.lineTo(300, 106);
+      context.lineTo(430, canvas.height);
+      context.lineTo(86, canvas.height);
+      context.closePath();
+      context.fill();
+      context.strokeStyle = '#f0d65a';
+      context.lineWidth = 8;
+      context.setLineDash([22, 18]);
+      context.beginPath();
+      context.moveTo(canvas.width / 2, 118);
+      context.lineTo(canvas.width / 2, canvas.height);
+      context.stroke();
+      context.setLineDash([]);
+      context.fillStyle = '#f7f7f2';
+      context.font = 'bold 30px Arial';
+      context.textAlign = 'center';
+      context.fillText('RACE READY', canvas.width / 2, 38);
+    }));
+    screen.position.set(0, 1.85, -0.51);
     const wheel = new Mesh(new TorusGeometry(0.28, 0.035, 10, 28), blackMetalMaterial);
     wheel.position.set(0, 1.2, 0.18);
     wheel.rotation.x = Math.PI / 2.4;
     const pedal = new Mesh(new BoxGeometry(0.52, 0.06, 0.22), metalMaterial);
     pedal.position.set(0, 0.12, -0.08);
-    game.add(seat, seatBack, dash, screen, wheel, pedal);
+    const base = new Mesh(new BoxGeometry(1.64, 0.22, 2.25), shellMaterial);
+    base.position.set(0, 0.16, 0.42);
+    const leftPanel = new Mesh(new BoxGeometry(0.14, 0.48, 1.45), trimMaterial);
+    leftPanel.position.set(-0.78, 0.55, 0.42);
+    leftPanel.rotation.z = -0.1;
+    const rightPanel = leftPanel.clone();
+    rightPanel.position.x = 0.78;
+    rightPanel.rotation.z = 0.1;
+    [-0.62, 0.62].forEach((wheelX) => {
+      [-0.18, 0.86].forEach((wheelZ) => {
+        const wheelPod = new Mesh(new CylinderGeometry(0.18, 0.18, 0.14, 18), rubberMaterial);
+        wheelPod.position.set(wheelX, 0.22, wheelZ);
+        wheelPod.rotation.z = Math.PI / 2;
+        game.add(wheelPod);
+      });
+    });
+    const shifter = new Mesh(new CylinderGeometry(0.035, 0.035, 0.34, 10), metalMaterial);
+    shifter.position.set(0.56, 0.88, 0.22);
+    shifter.rotation.z = -0.28;
+    const shifterKnob = new Mesh(new SphereGeometry(0.08, 12, 8), blackMetalMaterial);
+    shifterKnob.position.set(0.62, 1.04, 0.22);
+    game.add(base, seat, seatBack, dash, screenFrame, screen, wheel, pedal, leftPanel, rightPanel, shifter, shifterKnob);
     root.add(game);
     addArcadeAttractionCollider(x, z, 0.9, 1.18, rotationY);
   };
@@ -2632,18 +2731,123 @@ export function createChapterNine(): ChapterNineData {
     booth.position.set(x, 0, z);
     booth.rotation.y = rotationY;
     const boothMaterial = new MeshStandardMaterial({ color: 0x5b2246, roughness: 0.68 });
-    const body = new Mesh(new BoxGeometry(2.0, 2.8, 1.35), boothMaterial);
-    body.position.y = 1.4;
-    const curtain = new Mesh(new BoxGeometry(1.28, 1.82, 0.08), new MeshStandardMaterial({ color: 0x2b1025, roughness: 0.86 }));
-    curtain.position.set(0, 1.26, 0.72);
+    const curtainMaterial = new MeshStandardMaterial({ color: 0x2b1025, roughness: 0.86 });
+    const leftWall = new Mesh(new BoxGeometry(0.14, 2.72, 1.34), boothMaterial);
+    leftWall.position.set(-0.96, 1.36, 0);
+    const rightWall = leftWall.clone();
+    rightWall.position.x = 0.96;
+    const backWall = new Mesh(new BoxGeometry(1.92, 2.72, 0.14), boothMaterial);
+    backWall.position.set(0, 1.36, -0.62);
+    const roof = new Mesh(new BoxGeometry(2.04, 0.18, 1.42), boothMaterial);
+    roof.position.set(0, 2.78, 0);
+    const bench = new Mesh(new BoxGeometry(1.42, 0.28, 0.46), new MeshStandardMaterial({ color: 0x2f1727, roughness: 0.74 }));
+    bench.position.set(0, 0.55, -0.18);
+    const curtainLeft = new Mesh(new BoxGeometry(0.52, 1.86, 0.08), curtainMaterial);
+    curtainLeft.position.set(-0.46, 1.24, 0.72);
+    curtainLeft.rotation.z = -0.12;
+    const curtainRight = curtainLeft.clone();
+    curtainRight.position.x = 0.46;
+    curtainRight.rotation.z = 0.12;
     const camera = new Mesh(new CylinderGeometry(0.14, 0.18, 0.16, 16), blackMetalMaterial);
     camera.position.set(0, 2.15, 0.78);
     camera.rotation.x = Math.PI / 2;
     const sign = new Mesh(new PlaneGeometry(1.55, 0.42), createSignMaterial('PHOTO', 'BOOTH', '#ffb8df'));
     sign.position.set(0, 2.72, 0.75);
-    booth.add(body, curtain, camera, sign);
+    booth.add(leftWall, rightWall, backWall, roof, bench, curtainLeft, curtainRight, camera, sign);
     root.add(booth);
-    addArcadeAttractionCollider(x, z, 1.02, 0.7, rotationY);
+    addArcadeLocalCollider(x, z, rotationY, -0.96, 0, 0.08, 0.7);
+    addArcadeLocalCollider(x, z, rotationY, 0.96, 0, 0.08, 0.7);
+    addArcadeLocalCollider(x, z, rotationY, 0, -0.62, 1.02, 0.08);
+    const toWorld = (localX: number, localY: number, localZ: number): Vector3 => (
+      new Vector3(localX, localY, localZ)
+        .applyAxisAngle(new Vector3(0, 1, 0), rotationY)
+        .add(new Vector3(x, 0, z))
+    );
+    photoBoothEntries.push({
+      interactPosition: toWorld(0, GAME_CONFIG.player.height, 1.05),
+      sitPosition: toWorld(0, GAME_CONFIG.player.height, 0.12),
+      lookTarget: toWorld(0, 1.5, 1.24),
+    });
+  };
+
+  const addPirateCannonGame = (x: number, z: number, rotationY = 0): void => {
+    const game = new Group();
+    game.position.set(x, 0, z);
+    game.rotation.y = rotationY;
+    const deckMaterial = new MeshStandardMaterial({ color: 0x6b3d21, roughness: 0.78 });
+    const cannonMaterial = new MeshStandardMaterial({ color: 0x202327, roughness: 0.48, metalness: 0.42 });
+    const platform = new Mesh(new BoxGeometry(2.25, 0.18, 1.45), deckMaterial);
+    platform.position.y = 0.14;
+    const backboard = new Mesh(new BoxGeometry(2.1, 1.38, 0.16), new MeshStandardMaterial({ color: 0x173955, roughness: 0.66 }));
+    backboard.position.set(0, 1.28, -0.62);
+    const label = new Mesh(new PlaneGeometry(1.7, 0.36), createSignMaterial('CANNON', 'BLAST', '#ffd36b'));
+    label.position.set(0, 2.18, -0.51);
+    [-0.58, 0, 0.58].forEach((targetX, index) => {
+      const target = new Mesh(new CylinderGeometry(0.16, 0.16, 0.045, 20), new MeshStandardMaterial({ color: [0xf04a37, 0xf3d24f, 0x4fb4f3][index], roughness: 0.44 }));
+      target.position.set(targetX, 1.24 + index * 0.18, -0.52);
+      target.rotation.x = Math.PI / 2;
+      backboard.add(target);
+    });
+    const cannon = new Group();
+    cannon.position.set(0, 0.68, 0.34);
+    cannon.rotation.x = -0.18;
+    const barrel = new Mesh(new CylinderGeometry(0.18, 0.28, 0.92, 24), cannonMaterial);
+    barrel.rotation.x = Math.PI / 2;
+    const muzzle = new Mesh(new TorusGeometry(0.2, 0.035, 8, 24), cannonMaterial);
+    muzzle.position.set(0, 0, -0.46);
+    const fuse = new Mesh(new CylinderGeometry(0.025, 0.025, 0.28, 8), ropeMaterial);
+    fuse.position.set(0.12, 0.2, 0.18);
+    fuse.rotation.z = -0.35;
+    cannon.add(barrel, muzzle, fuse);
+    [-0.42, 0.42].forEach((wheelX) => {
+      const wheel = new Mesh(new CylinderGeometry(0.16, 0.16, 0.08, 18), darkWoodMaterial);
+      wheel.position.set(wheelX, 0.46, 0.46);
+      wheel.rotation.z = Math.PI / 2;
+      game.add(wheel);
+    });
+    const cannonBall = new Mesh(new SphereGeometry(0.14, 14, 10), blackMetalMaterial);
+    cannonBall.position.set(0.64, 0.42, 0.18);
+    game.add(platform, backboard, label, cannon, cannonBall);
+    root.add(game);
+    addArcadeAttractionCollider(x, z, 1.14, 0.74, rotationY);
+  };
+
+  const addTreasureDropGame = (x: number, z: number, rotationY = 0): void => {
+    const game = new Group();
+    game.position.set(x, 0, z);
+    game.rotation.y = rotationY;
+    const cabinetMaterial = new MeshStandardMaterial({ color: 0x254e5c, roughness: 0.58, metalness: 0.08 });
+    const base = new Mesh(new BoxGeometry(2.05, 1.02, 1.2), cabinetMaterial);
+    base.position.y = 0.52;
+    const glassFront = new Mesh(new BoxGeometry(1.78, 1.32, 0.08), glassMaterial);
+    glassFront.position.set(0, 1.52, 0.58);
+    const backPanel = new Mesh(new BoxGeometry(1.9, 1.52, 0.12), new MeshStandardMaterial({ color: 0x103047, roughness: 0.62 }));
+    backPanel.position.set(0, 1.52, -0.46);
+    const label = new Mesh(new PlaneGeometry(1.62, 0.36), createSignMaterial('TREASURE', 'DROP', '#ffe07a'));
+    label.position.set(0, 2.42, 0.64);
+    const chest = new Group();
+    chest.position.set(0, 0.98, 0.02);
+    const chestBody = new Mesh(new BoxGeometry(0.82, 0.34, 0.42), darkWoodMaterial);
+    const chestLid = new Mesh(new CylinderGeometry(0.21, 0.21, 0.84, 18, 1, false, 0, Math.PI), darkWoodMaterial);
+    chestLid.rotation.z = Math.PI / 2;
+    chestLid.position.y = 0.2;
+    const lock = new Mesh(new BoxGeometry(0.12, 0.16, 0.04), metalMaterial);
+    lock.position.set(0, 0.02, 0.24);
+    chest.add(chestBody, chestLid, lock);
+    [-0.58, -0.22, 0.18, 0.52].forEach((coinX, index) => {
+      const coin = new Mesh(new CylinderGeometry(0.08, 0.08, 0.025, 18), neonMaterial);
+      coin.position.set(coinX, 1.42 + index * 0.16, 0.54);
+      coin.rotation.x = Math.PI / 2;
+      game.add(coin);
+    });
+    const lever = new Mesh(new CylinderGeometry(0.035, 0.035, 0.42, 10), metalMaterial);
+    lever.position.set(0.76, 0.9, 0.7);
+    lever.rotation.z = -0.4;
+    const knob = new Mesh(new SphereGeometry(0.1, 12, 8), topButtonMaterial);
+    knob.position.set(0.84, 1.08, 0.7);
+    game.add(base, glassFront, backPanel, label, chest, lever, knob);
+    root.add(game);
+    addArcadeAttractionCollider(x, z, 1.04, 0.66, rotationY);
   };
   const stage = addBox(root, 30, 1.1, 11, 0, 0.55, -36, new MeshStandardMaterial({ color: 0x2f1720, roughness: 0.82 }));
   stage.name = 'Chapter 9 preserved stage';
@@ -2990,6 +3194,8 @@ export function createChapterNine(): ChapterNineData {
   addPhotoBooth(-63.62, -2.9, Math.PI / 2);
   addRacingSimulator(-63.5, 3.0, Math.PI / 2);
   addDancePadGame(-56.55, 28.82, Math.PI);
+  addPirateCannonGame(-60.7, 28.75, Math.PI);
+  addTreasureDropGame(-52.6, 24.05, -Math.PI / 2);
 
   const seatedChairs: ChapterNineSeat[] = [];
   const addSitChair = (id: string, label: string, x: number, z: number, rotationY: number): void => {
@@ -3609,6 +3815,16 @@ export function createChapterNine(): ChapterNineData {
         updateStrengthTesterRope(playerPosition);
         return {
           message: 'You pick up the hammer. The rope is tied to the back, so you can only walk a few steps away.',
+        };
+      }
+      const photoBooth = photoBoothEntries
+        .filter((entry) => entry.interactPosition.distanceTo(playerPosition) <= GAME_CONFIG.player.interactionRange + 0.75)
+        .sort((a, b) => a.interactPosition.distanceTo(playerPosition) - b.interactPosition.distanceTo(playerPosition))[0];
+      if (photoBooth) {
+        return {
+          message: 'You step into the photo booth.',
+          teleport: photoBooth.sitPosition.clone(),
+          lookTarget: photoBooth.lookTarget.clone(),
         };
       }
       const chair = seatedChairs
