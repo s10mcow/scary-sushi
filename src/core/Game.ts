@@ -14383,7 +14383,9 @@ export class Game {
     }
 
     if (this.chapterNineActive) {
-      const rockWallButtonClick = this.chapterNine.clickRockWallButton();
+      const cameraPosition = this.camera.getWorldPosition(new Vector3());
+      const cameraForward = this.camera.getWorldDirection(new Vector3()).normalize();
+      const rockWallButtonClick = this.chapterNine.clickRockWallButton(cameraPosition, cameraForward);
       if (rockWallButtonClick) {
         this.pushStatus(rockWallButtonClick.message, 2.4);
         if (rockWallButtonClick.teleport) {

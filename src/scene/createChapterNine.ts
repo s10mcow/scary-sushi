@@ -47,7 +47,7 @@ export interface ChapterNineData {
   cameraScreenMaterial: MeshStandardMaterial;
   update(deltaSeconds: number, playerPosition: Vector3): void;
   updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null;
-  clickRockWallButton(): ChapterNineInteractionResult | null;
+  clickRockWallButton(aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult | null;
   swingStrengthTesterHammer(playerPosition: Vector3): ChapterNineInteractionResult | null;
   canPlayerOccupy(nextX: number, nextZ: number): boolean;
   interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult;
@@ -1005,6 +1005,27 @@ export function createChapterNine(): ChapterNineData {
     GAME_CONFIG.player.height + rockWallClimbY,
     rockWallCenterZ + rockWallAxisZ * rockWallClimbX,
   );
+  const getRockWallTopButtonWorldPosition = (): Vector3 => (
+    new Vector3(0, rockWallTopButtonY, rockWallTopButtonLocalZ)
+      .applyAxisAngle(new Vector3(0, 1, 0), rockWallRotationY)
+      .add(new Vector3(rockWallCenterX, 0, rockWallCenterZ))
+  );
+  const isAimingAtRockWallTopButton = (aimOrigin?: Vector3, aimDirection?: Vector3): boolean => {
+    if (!aimOrigin || !aimDirection || aimDirection.lengthSq() < 0.0001) {
+      return true;
+    }
+
+    const buttonPosition = getRockWallTopButtonWorldPosition();
+    const forward = aimDirection.clone().normalize();
+    const toButton = buttonPosition.sub(aimOrigin);
+    const along = toButton.dot(forward);
+    if (along <= 0.15) {
+      return false;
+    }
+
+    const closestPoint = aimOrigin.clone().addScaledVector(forward, along);
+    return closestPoint.distanceTo(buttonPosition) <= 0.46;
+  };
   const updateRockWallTopButton = (deltaSeconds: number): void => {
     if (!rockWallTopButton) {
       return;
@@ -1015,7 +1036,11 @@ export function createChapterNine(): ChapterNineData {
       : 0;
     rockWallTopButton.position.z = rockWallTopButtonLocalZ - pressProgress * 0.075;
   };
-  const pressRockWallTopButton = (message: string): ChapterNineInteractionResult | null => {
+  const pressRockWallTopButton = (
+    message: string,
+    aimOrigin?: Vector3,
+    aimDirection?: Vector3,
+  ): ChapterNineInteractionResult | null => {
     if (!rockWallHarnessed) {
       return null;
     }
@@ -1028,6 +1053,12 @@ export function createChapterNine(): ChapterNineData {
 
     if (rockWallClimbY < rockWallHeight - 1.08) {
       return null;
+    }
+
+    if (!isAimingAtRockWallTopButton(aimOrigin, aimDirection)) {
+      return {
+        message: 'Aim the center of your screen right at the red rock-wall button, then press E or click.',
+      };
     }
 
     rockWallButtonPressTime = 0.42;
@@ -3905,8 +3936,12 @@ export function createChapterNine(): ChapterNineData {
         lookTarget: getRockWallLookTarget(),
       };
     },
-    clickRockWallButton(): ChapterNineInteractionResult | null {
-      return pressRockWallTopButton('Click. The top button pushes in and the winch slowly lowers you to the floor, then unbuckles the harness.');
+    clickRockWallButton(aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult | null {
+      return pressRockWallTopButton(
+        'Click. The top button pushes in and the winch slowly lowers you to the floor, then unbuckles the harness.',
+        aimOrigin,
+        aimDirection,
+      );
     },
     swingStrengthTesterHammer(playerPosition: Vector3): ChapterNineInteractionResult | null {
       return startStrengthTesterStrike(playerPosition);
@@ -3922,7 +3957,11 @@ export function createChapterNine(): ChapterNineData {
     },
     interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult {
       if (rockWallHarnessed) {
-        const topButtonPress = pressRockWallTopButton('Click. The top button slowly pushes in and the winch lowers you to the floor, then unbuckles the harness.');
+        const topButtonPress = pressRockWallTopButton(
+          'Click. The top button slowly pushes in and the winch lowers you to the floor, then unbuckles the harness.',
+          aimOrigin,
+          aimDirection,
+        );
         if (topButtonPress) {
           return topButtonPress;
         }
@@ -3931,6 +3970,29 @@ export function createChapterNine(): ChapterNineData {
           message: rockWallLowering
             ? 'The winch is lowering you. It will unclip you when you reach the bottom.'
             : 'Hold W to climb up, S to climb down, A to move left, and D to move right. Get close to the top button and press E.',
+        };
+      }
+
+      if (strengthTesterHammerPickedUp) {
+        strengthTesterHammerPickedUp = false;
+        strengthTesterTimer = 0;
+        if (strengthTesterHammer) {
+          strengthTesterHammer.position.set(0.82, 0.29, 0.56);
+          strengthTesterHammer.rotation.set(0, -0.35, 0);
+        }
+        if (strengthTesterPad) {
+          strengthTesterPad.position.y = 0.16;
+        }
+        if (strengthTesterMarker) {
+          strengthTesterMarker.position.y = 0.74;
+        }
+        if (strengthTesterBell) {
+          strengthTesterBell.rotation.z = 0;
+        }
+        strengthTesterHammerView.visible = false;
+        updateStrengthTesterRope();
+        return {
+          message: 'You put the hammer back on the high striker.',
         };
       }
 
