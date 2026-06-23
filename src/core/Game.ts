@@ -13733,6 +13733,24 @@ export class Game {
         return;
       }
 
+      const nearbyBirdCage = this.getNearestChapterSevenBirdCage();
+      if (nearbyBirdCage && !this.chapterSevenBirdCageFreed && !nearbyBirdCage.unlocked) {
+        if (!this.chapterSevenHasBirdCageKey) {
+          this.pushStatus('The birdcage is locked. You need the Birdcage Key from Grandpa.', 2.6);
+          return;
+        }
+
+        if (this.chapterSeven.unlockBirdCage()) {
+          this.chapterSevenBirdCageFreed = true;
+          this.chapterSevenBirdCageFreedDay = this.chapterSevenDayCount;
+          this.chapterSevenBirdCageBonusClaims = 0;
+          this.chapterSevenCookieCount += 10;
+          this.pushStatus('The key slides into the birdcage lock, turns, and the door opens. The parrot flies out, and you gain 10 cookies.', 3.8);
+          this.syncHud();
+          return;
+        }
+      }
+
       const interactable = this.getLookedAtChapterSevenInteractable();
       const nearestSwing = interactable?.kind === 'swing'
         ? interactable.item
@@ -22691,7 +22709,7 @@ export class Game {
       playerPosition.z - this.chapterSeven.birdCage.interactPosition.z,
     );
 
-    return distance <= GAME_CONFIG.player.interactionRange + 1.05 ? this.chapterSeven.birdCage : null;
+    return distance <= GAME_CONFIG.player.interactionRange + 2.0 ? this.chapterSeven.birdCage : null;
   }
 
   private isPlayerInsideChapterSevenCardboardBox(): boolean {
