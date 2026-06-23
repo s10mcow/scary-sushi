@@ -19,8 +19,8 @@ export interface ChapterElevenData {
   reset(): void;
 }
 
-const FIELD_WIDTH = 50000;
-const FIELD_DEPTH = 50000;
+const FIELD_WIDTH = 5000;
+const FIELD_DEPTH = 5000;
 const FLOOR_Y = 0;
 
 const grassMaterial = new MeshStandardMaterial({
