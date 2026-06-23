@@ -3195,7 +3195,7 @@ export function createChapterNine(): ChapterNineData {
   addRacingSimulator(-63.5, 3.0, Math.PI / 2);
   addDancePadGame(-56.55, 28.82, Math.PI);
   addPirateCannonGame(-60.7, 28.75, Math.PI);
-  addTreasureDropGame(-52.6, 24.05, -Math.PI / 2);
+  addTreasureDropGame(-52.6, 29.02, Math.PI);
 
   const seatedChairs: ChapterNineSeat[] = [];
   const addSitChair = (id: string, label: string, x: number, z: number, rotationY: number): void => {
