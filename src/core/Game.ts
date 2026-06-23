@@ -2893,6 +2893,8 @@ export class Game {
       this.pushStatus('You traded 15 cookies for the longer night watch. It is now in your hand and has 2 uses.', 2.8);
     }
     this.saveChapterSevenTradeInventory();
+    this.chapterSevenGrandpaTradingOpen = false;
+    this.player.lock();
     this.syncHud();
   };
 
