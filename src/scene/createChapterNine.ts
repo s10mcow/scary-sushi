@@ -1477,19 +1477,29 @@ export function createChapterNine(): ChapterNineData {
     const head = new Group();
     head.position.y = 2.64;
     const skull = new Mesh(new SphereGeometry(0.62, 28, 18), foxyMaterial);
-    skull.scale.set(0.86, 0.96, 0.78);
+    skull.scale.set(0.82, 0.94, 0.74);
+    const brow = new Mesh(new BoxGeometry(0.62, 0.12, 0.1), foxyDarkMaterial);
+    brow.position.set(0, 0.22, 0.54);
+    brow.rotation.x = -0.12;
     const muzzle = new Mesh(new SphereGeometry(0.28, 18, 12), foxyBellyMaterial);
-    muzzle.scale.set(1.5, 0.58, 1.16);
-    muzzle.position.set(0, -0.13, 0.5);
+    muzzle.scale.set(1.58, 0.54, 1.24);
+    muzzle.position.set(0, -0.14, 0.52);
     const snout = new Mesh(new ConeGeometry(0.26, 0.62, 12), foxyMaterial);
     snout.position.set(0, -0.08, 0.78);
     snout.rotation.x = Math.PI / 2;
+    const leftCheek = new Mesh(new SphereGeometry(0.15, 14, 8), foxyBellyMaterial);
+    leftCheek.scale.set(1.25, 0.68, 0.45);
+    leftCheek.position.set(-0.24, -0.15, 0.58);
+    const rightCheek = leftCheek.clone();
+    rightCheek.position.x = 0.24;
     const nose = new Mesh(new SphereGeometry(0.075, 12, 8), foxyDarkMaterial);
     nose.scale.set(1.22, 0.7, 0.72);
     nose.position.set(0, -0.04, 0.92);
     const jaw = new Mesh(new SphereGeometry(0.28, 16, 10), foxyMaterial);
-    jaw.scale.set(1.22, 0.36, 0.68);
+    jaw.scale.set(1.28, 0.34, 0.7);
     jaw.position.set(0, -0.38, 0.42);
+    const lowerJawPlate = new Mesh(new BoxGeometry(0.52, 0.08, 0.3), foxyBellyMaterial);
+    lowerJawPlate.position.set(0, -0.31, 0.64);
     const leftEye = new Mesh(new SphereGeometry(0.078, 12, 8), foxyEyeMaterial);
     leftEye.position.set(-0.22, 0.1, 0.54);
     const rightEye = leftEye.clone();
@@ -1507,26 +1517,46 @@ export function createChapterNine(): ChapterNineData {
       tooth.position.set(toothX, -0.22, 0.68);
       head.add(tooth);
     });
-    head.add(skull, muzzle, snout, nose, jaw, leftEye, rightEye, eyePatch, leftEar, rightEar);
+    head.add(skull, brow, muzzle, snout, leftCheek, rightCheek, nose, jaw, lowerJawPlate, leftEye, rightEye, eyePatch, leftEar, rightEar);
 
     const makeArm = (side: -1 | 1): Group => {
       const arm = new Group();
       arm.position.set(side * 0.64, 1.82, 0);
       arm.rotation.z = side * 0.1;
+      const shoulderSocket = new Mesh(new SphereGeometry(0.19, 16, 10), metalMaterial);
+      shoulderSocket.position.set(0, 0.04, 0);
+      const shoulderCurve = new Mesh(new CylinderGeometry(0.11, 0.15, 0.44, 14), foxyMaterial);
+      shoulderCurve.position.set(-side * 0.18, -0.02, 0);
+      shoulderCurve.rotation.z = Math.PI / 2;
       const upper = new Mesh(new CylinderGeometry(0.13, 0.16, 0.62, 14), foxyMaterial);
       upper.position.y = -0.3;
       const elbow = new Mesh(new SphereGeometry(0.16, 14, 10), metalMaterial);
       elbow.position.y = -0.62;
       const lower = new Mesh(new CylinderGeometry(0.12, 0.14, 0.58, 14), foxyMaterial);
       lower.position.y = -0.94;
-      const hand = side > 0
-        ? new Mesh(new TorusGeometry(0.17, 0.035, 8, 16, Math.PI * 1.35), metalMaterial)
-        : new Mesh(new SphereGeometry(0.17, 14, 10), foxyMaterial);
-      hand.position.y = -1.25;
+      const wrist = new Mesh(new SphereGeometry(0.12, 12, 8), metalMaterial);
+      wrist.position.y = -1.18;
+      const hand = new Group();
+      hand.position.y = -1.32;
       if (side > 0) {
-        hand.rotation.z = Math.PI;
+        const palm = new Mesh(new SphereGeometry(0.16, 14, 10), foxyMaterial);
+        palm.scale.set(1.0, 0.8, 0.72);
+        hand.add(palm);
+        [-0.12, 0, 0.12].forEach((fingerX) => {
+          const finger = new Mesh(new CylinderGeometry(0.035, 0.045, 0.24, 8), foxyMaterial);
+          finger.position.set(fingerX, -0.15, 0.03);
+          finger.rotation.z = fingerX * -1.8;
+          hand.add(finger);
+        });
+      } else {
+        const hook = new Mesh(new TorusGeometry(0.17, 0.035, 8, 18, Math.PI * 1.35), metalMaterial);
+        hook.rotation.z = Math.PI * 1.05;
+        hook.rotation.x = 0.25;
+        const hookBase = new Mesh(new CylinderGeometry(0.08, 0.1, 0.22, 12), metalMaterial);
+        hookBase.position.y = 0.08;
+        hand.add(hookBase, hook);
       }
-      arm.add(upper, elbow, lower, hand);
+      arm.add(shoulderCurve, shoulderSocket, upper, elbow, lower, wrist, hand);
       return arm;
     };
     const makeLeg = (side: -1 | 1): Group => {
@@ -1541,6 +1571,12 @@ export function createChapterNine(): ChapterNineData {
       const foot = new Mesh(new SphereGeometry(0.23, 14, 10), foxyMaterial);
       foot.scale.set(1.0, 0.38, 1.42);
       foot.position.set(0, -1.18, 0.16);
+      [-0.12, 0, 0.12].forEach((toeX) => {
+        const toe = new Mesh(new ConeGeometry(0.045, 0.18, 8), foxyToothMaterial);
+        toe.position.set(toeX, -1.2, 0.48);
+        toe.rotation.x = Math.PI / 2;
+        leg.add(toe);
+      });
       leg.add(upper, knee, lower, foot);
       return leg;
     };
@@ -2145,7 +2181,13 @@ export function createChapterNine(): ChapterNineData {
     );
     root.add(game);
     root.add(rope);
-    addCollider(colliders, x, z, 2.9, 2.2);
+    colliders.push({
+      centerX: x,
+      centerZ: z,
+      halfWidth: 1.35,
+      halfDepth: 1.0,
+      rotationY,
+    });
   };
   const addShooterGame = (x: number, z: number, rotationY = 0): void => {
     const game = new Group();
@@ -2229,7 +2271,13 @@ export function createChapterNine(): ChapterNineData {
 
     game.add(tvBody, tvScreen, counter, counterTop, coinSlot, title);
     root.add(game);
-    addCollider(colliders, x, z, 4.8, 2.15);
+    colliders.push({
+      centerX: x,
+      centerZ: z,
+      halfWidth: 2.27,
+      halfDepth: 1.02,
+      rotationY,
+    });
   };
 
   const addAirHockeyTable = (x: number, z: number, rotationY = 0): void => {
@@ -2272,7 +2320,13 @@ export function createChapterNine(): ChapterNineData {
 
     table.add(base, top, centerLine, centerCircle, leftGoal, rightGoal, puck, redPaddle, bluePaddle);
     root.add(table);
-    addCollider(colliders, x, z, 5.7, 3.05);
+    colliders.push({
+      centerX: x,
+      centerZ: z,
+      halfWidth: 2.66,
+      halfDepth: 1.36,
+      rotationY,
+    });
   };
 
   const addDualSpeaker = (x: number, y: number, z: number, rotationY = 0): void => {
@@ -2283,13 +2337,21 @@ export function createChapterNine(): ChapterNineData {
     const coneMaterial = new MeshStandardMaterial({ color: 0x30343a, roughness: 0.5, metalness: 0.2 });
     const rimMaterial = new MeshStandardMaterial({ color: 0x050607, roughness: 0.5, metalness: 0.24 });
 
-    const bracket = new Mesh(new BoxGeometry(1.45, 0.18, 0.16), metalMaterial);
-    bracket.position.set(0, 0.62, -0.32);
-    speaker.add(bracket);
+    const wallPlate = new Mesh(new BoxGeometry(1.7, 1.0, 0.08), metalMaterial);
+    wallPlate.position.set(0, 0.12, 0.04);
+    speaker.add(wallPlate);
+
+    [-0.34, 0.34].forEach((offsetX, index) => {
+      const bar = new Mesh(new CylinderGeometry(0.045, 0.045, 0.95, 10), metalMaterial);
+      bar.position.set(offsetX, 0.12, 0.44);
+      bar.rotation.x = Math.PI / 2;
+      bar.rotation.z = index === 0 ? 0.22 : -0.22;
+      speaker.add(bar);
+    });
 
     [-0.38, 0.38].forEach((offsetX, index) => {
       const cabinet = new Group();
-      cabinet.position.set(offsetX, 0, 0);
+      cabinet.position.set(offsetX, 0, 0.84);
       cabinet.rotation.y = index === 0 ? -0.24 : 0.24;
       const body = new Mesh(new BoxGeometry(0.72, 1.34, 0.42), speakerMaterial);
       const upperCone = new Mesh(new CylinderGeometry(0.2, 0.28, 0.08, 24), coneMaterial);
