@@ -54,8 +54,9 @@ const pantsMaterial = new MeshStandardMaterial({ color: 0x2d3558, roughness: 0.7
 const hairMaterial = new MeshStandardMaterial({ color: 0x3d2417, roughness: 0.8 });
 const faceMaterial = new MeshStandardMaterial({ color: 0x1b140f, roughness: 0.55 });
 const lipMaterial = new MeshStandardMaterial({ color: 0x7d322d, roughness: 0.68 });
-const pathStoneMaterial = new MeshStandardMaterial({ color: 0x8a7d6a, roughness: 0.96 });
-const pathStoneDarkMaterial = new MeshStandardMaterial({ color: 0x655d52, roughness: 0.98 });
+const pathStoneMaterial = new MeshStandardMaterial({ color: 0x8f9290, roughness: 0.96 });
+const pathStoneLightMaterial = new MeshStandardMaterial({ color: 0xd8d6cd, roughness: 0.94 });
+const pathDirtBaseMaterial = new MeshStandardMaterial({ color: 0xb8945f, roughness: 0.98 });
 
 function addCollider(
   colliders: CollisionBox[],
@@ -218,8 +219,8 @@ export function createChapterEleven(): ChapterElevenData {
   root.add(stand);
   addCollider(colliders, -53.1, 11.34, 2.2, 3.15);
 
-  const pathStart = new Vector3(-25.09, 0.004, -40.86);
-  const pathEnd = new Vector3(-57.21, 0.004, -42.25);
+  const pathStart = new Vector3(-25.09, 0.034, -40.86);
+  const pathEnd = new Vector3(-57.21, 0.034, -42.25);
   const pathVector = pathEnd.clone().sub(pathStart);
   const pathLength = Math.hypot(pathVector.x, pathVector.z);
   const pathAngle = Math.atan2(pathVector.x, pathVector.z);
@@ -231,16 +232,16 @@ export function createChapterEleven(): ChapterElevenData {
     const center = pathStart.clone().lerp(pathEnd, t);
     const sideOffset = pathSide.clone().multiplyScalar(i % 2 === 0 ? -0.38 : 0.38);
     center.add(sideOffset);
-    const stone = new Mesh(new BoxGeometry(2.05, 0.022, 2.45), i % 3 === 0 ? pathStoneDarkMaterial : pathStoneMaterial);
-    stone.name = 'Chapter 11 embedded rock brick path stone';
-    stone.position.set(center.x, 0.004, center.z);
+    const stone = new Mesh(new BoxGeometry(2.05, 0.012, 2.45), i % 2 === 0 ? pathStoneMaterial : pathStoneLightMaterial);
+    stone.name = 'Chapter 11 visible gray white brick path stone';
+    stone.position.set(center.x, 0.04, center.z);
     stone.rotation.y = pathAngle + (i % 2 === 0 ? 0.04 : -0.035);
     stone.receiveShadow = true;
     root.add(stone);
   }
-  const pathBase = new Mesh(new BoxGeometry(3.55, 0.012, pathLength + 1.4), pathStoneMaterial);
-  pathBase.name = 'Chapter 11 flat embedded rock path base';
-  pathBase.position.set((pathStart.x + pathEnd.x) / 2, 0.001, (pathStart.z + pathEnd.z) / 2);
+  const pathBase = new Mesh(new BoxGeometry(3.55, 0.01, pathLength + 1.4), pathDirtBaseMaterial);
+  pathBase.name = 'Chapter 11 tan dirt trail under gray white bricks';
+  pathBase.position.set((pathStart.x + pathEnd.x) / 2, 0.029, (pathStart.z + pathEnd.z) / 2);
   pathBase.rotation.y = pathAngle;
   pathBase.receiveShadow = true;
   root.add(pathBase);
