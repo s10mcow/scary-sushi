@@ -48,6 +48,13 @@ const wallMaterial = new MeshStandardMaterial({ color: 0xd8c8aa, roughness: 0.78
 const trimMaterial = new MeshStandardMaterial({ color: 0x6e4a28, roughness: 0.68 });
 const roofMaterial = new MeshStandardMaterial({ color: 0x4f2d25, roughness: 0.88 });
 const studMaterial = new MeshStandardMaterial({ color: 0xb68b5d, roughness: 0.74 });
+const windowGlassMaterial = new MeshStandardMaterial({
+  color: 0x8fd0ef,
+  transparent: true,
+  opacity: 0.48,
+  roughness: 0.18,
+  metalness: 0.04,
+});
 const stoneMaterial = new MeshStandardMaterial({ color: 0x69615a, roughness: 0.9 });
 const fireboxMaterial = new MeshStandardMaterial({ color: 0x080706, roughness: 0.96 });
 const emberMaterial = new MeshStandardMaterial({ color: 0xff7a22, emissive: 0xff4a10, emissiveIntensity: 0.8, roughness: 0.45 });
@@ -220,12 +227,13 @@ function addStuds(root: Group): void {
   });
 }
 
-function addWindowFrame(root: Group, x: number, z: number, rotationY: number): void {
+function addWindowFrame(root: Group, x: number, z: number, rotationY: number, y = 2.35): void {
   const frame = new Group();
   frame.name = 'Chapter 10 house shell window frame';
-  frame.position.set(x, 2.35, z);
+  frame.position.set(x, y, z);
   frame.rotation.y = rotationY;
 
+  addBox(frame, 'Chapter 10 window pale glass pane', [1.86, 1.46, 0.04], [0, 0, -0.02], windowGlassMaterial);
   addBox(frame, 'Chapter 10 window top trim', [2.2, 0.16, 0.12], [0, 0.78, 0], trimMaterial);
   addBox(frame, 'Chapter 10 window bottom trim', [2.2, 0.16, 0.12], [0, -0.78, 0], trimMaterial);
   addBox(frame, 'Chapter 10 window left trim', [0.16, 1.72, 0.12], [-1.02, 0, 0], trimMaterial);
@@ -736,6 +744,9 @@ export function createChapterTen(): ChapterTenData {
   addWindowFrame(root, -halfWidth - 0.02, -1.4, Math.PI / 2);
   addWindowFrame(root, halfWidth + 0.02, 1.6, -Math.PI / 2);
   addWindowFrame(root, -3.2, -halfDepth - 0.02, 0);
+  addWindowFrame(root, -4.73, halfDepth + 0.02, 0, 1.91);
+  addWindowFrame(root, 4.99, halfDepth + 0.02, 0, 1.62);
+  addWindowFrame(root, halfWidth + 0.02, -0.46, -Math.PI / 2, 1.85);
 
   const leftRoof = addBox(root, 'Chapter 10 left gable roof slab', [10.1, 0.34, HOUSE_DEPTH + 1.8], [-4.5, 4.45, 0], roofMaterial);
   leftRoof.rotation.z = 0.2;
