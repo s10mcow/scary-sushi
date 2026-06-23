@@ -3471,6 +3471,8 @@ export class Game {
     this.player.setMovementConstraint(
       this.chapterSixActive
         ? (nextX, nextZ, currentPosition) => this.chapterSix.canPlayerOccupy(currentPosition, nextX, nextZ)
+        : this.chapterNineActive
+          ? (nextX, nextZ) => this.chapterNine.canPlayerOccupy(nextX, nextZ)
         : null,
     );
     const playerPositionBeforeMove = this.player.getPosition().clone();

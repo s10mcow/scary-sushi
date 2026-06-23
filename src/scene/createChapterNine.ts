@@ -47,6 +47,7 @@ export interface ChapterNineData {
   update(deltaSeconds: number, playerPosition: Vector3): void;
   updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null;
   clickRockWallButton(): ChapterNineInteractionResult | null;
+  canPlayerOccupy(nextX: number, nextZ: number): boolean;
   interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult;
   record(playerPosition: Vector3): string;
   cycleHeldItem(step: number): void;
@@ -674,11 +675,17 @@ export function createChapterNine(): ChapterNineData {
   const cameraScreenMaterial = createCameraScreenMaterial();
   const redLightMaterial = new MeshBasicMaterial({ color: 0xff2733 });
   let strengthTesterTimer = 0;
+  let strengthTesterHammerPickedUp = false;
+  let strengthTesterRoot: Group | null = null;
   let strengthTesterHammer: Group | null = null;
+  let strengthTesterRope: Mesh | null = null;
   let strengthTesterPad: Mesh | null = null;
   let strengthTesterMarker: Mesh | null = null;
   let strengthTesterBell: Mesh | null = null;
-  const strengthTesterInteractPosition = new Vector3(-57, GAME_CONFIG.player.height, 26);
+  const strengthTesterPosition = new Vector3(-63.82, 0, 25.55);
+  const strengthTesterRotationY = Math.PI / 2;
+  const strengthTesterInteractPosition = new Vector3(strengthTesterPosition.x, GAME_CONFIG.player.height, strengthTesterPosition.z);
+  const strengthTesterTetherMaxDistance = 4.8;
 
   const addBox = (
     parent: Group,
@@ -2063,6 +2070,7 @@ export function createChapterNine(): ChapterNineData {
     const game = new Group();
     game.position.set(x, 0, z);
     game.rotation.y = rotationY;
+    strengthTesterRoot = game;
 
     const redPaint = new MeshStandardMaterial({ color: 0xa7262b, roughness: 0.6, metalness: 0.05 });
     const markerMaterial = new MeshStandardMaterial({ color: 0xf1e85c, emissive: 0x4b4100, emissiveIntensity: 0.25, roughness: 0.38 });
@@ -2072,8 +2080,8 @@ export function createChapterNine(): ChapterNineData {
     base.position.set(0, 0.1, 0);
     const frontTrim = new Mesh(new BoxGeometry(2.8, 0.28, 0.18), redPaint);
     frontTrim.position.set(0, 0.28, 0.98);
-    const strikeButton = new Mesh(new CylinderGeometry(0.44, 0.52, 0.2, 24), topButtonMaterial);
-    strikeButton.position.set(0, 0.32, 0.38);
+    const strikeButton = new Mesh(new CylinderGeometry(0.58, 0.58, 0.08, 32), topButtonMaterial);
+    strikeButton.position.set(0, 0.16, 0.42);
     strikeButton.rotation.x = Math.PI / 2;
     strengthTesterPad = strikeButton;
 
@@ -2108,16 +2116,18 @@ export function createChapterNine(): ChapterNineData {
     sign.position.set(0, 5.1, -0.33);
 
     const hammerPivot = new Group();
-    hammerPivot.position.set(0.96, 0.96, 0.42);
-    hammerPivot.rotation.z = -0.18;
-    const cord = new Mesh(new CylinderGeometry(0.025, 0.025, 1.12, 8), ropeMaterial);
-    cord.position.set(0, 0.52, 0);
-    const handle = new Mesh(new BoxGeometry(0.14, 1.18, 0.14), woodMaterial);
-    handle.position.set(0, -0.18, 0);
+    hammerPivot.position.set(0.82, 0.29, 0.56);
+    hammerPivot.rotation.y = -0.35;
+    const handle = new Mesh(new BoxGeometry(0.14, 0.14, 1.18), woodMaterial);
+    handle.position.set(0, 0, 0.12);
     const head = new Mesh(new BoxGeometry(0.78, 0.3, 0.3), metalMaterial);
-    head.position.set(0, -0.82, 0);
-    hammerPivot.add(cord, handle, head);
+    head.position.set(0, 0.02, -0.58);
+    const grip = new Mesh(new BoxGeometry(0.18, 0.18, 0.24), blackMetalMaterial);
+    grip.position.set(0, 0, 0.82);
+    hammerPivot.add(handle, head, grip);
     strengthTesterHammer = hammerPivot;
+    const rope = new Mesh(new CylinderGeometry(0.025, 0.025, 1, 8), ropeMaterial);
+    strengthTesterRope = rope;
 
     game.add(
       base,
@@ -2134,6 +2144,7 @@ export function createChapterNine(): ChapterNineData {
       hammerPivot,
     );
     root.add(game);
+    root.add(rope);
     addCollider(colliders, x, z, 2.9, 2.2);
   };
   const addShooterGame = (x: number, z: number, rotationY = 0): void => {
@@ -2627,7 +2638,7 @@ export function createChapterNine(): ChapterNineData {
   animatronics.length = 0;
   colliders.length = 0;
   colliders.push(...shellColliders);
-  addStrengthTester(-57, 26, 0);
+  addStrengthTester(strengthTesterPosition.x, strengthTesterPosition.z, strengthTesterRotationY);
   addShooterGame(-63.08, 16.92, Math.PI / 2);
   addAirHockeyTable(-61.19, 9, Math.PI / 2);
   addDualSpeaker(-64.77, 6.34, 8.01, Math.PI / 2);
@@ -2668,6 +2679,13 @@ export function createChapterNine(): ChapterNineData {
 
     chair.add(seat, cushion, back, backInset, frontRail, sideRailLeft, sideRailRight);
     root.add(chair);
+    colliders.push({
+      centerX: x,
+      centerZ: z,
+      halfWidth: 0.52,
+      halfDepth: 0.5,
+      rotationY,
+    });
 
     const forward = new Vector3(Math.sin(rotationY), 0, Math.cos(rotationY));
     seatedChairs.push({
@@ -2941,6 +2959,39 @@ export function createChapterNine(): ChapterNineData {
     }
   };
 
+  const updateStrengthTesterRope = (playerPosition?: Vector3): void => {
+    if (!strengthTesterRoot || !strengthTesterHammer || !strengthTesterRope) {
+      return;
+    }
+
+    const anchor = strengthTesterRoot.localToWorld(new Vector3(0.72, 0.34, 0.9));
+    const hammerWorld = strengthTesterHammerPickedUp && playerPosition
+      ? playerPosition.clone().add(new Vector3(0.34, -0.72, 0.16))
+      : strengthTesterHammer.localToWorld(new Vector3(0, 0, 0.82));
+    const midpoint = anchor.clone().lerp(hammerWorld, 0.5);
+    const direction = hammerWorld.clone().sub(anchor);
+    const length = Math.max(0.001, direction.length());
+    strengthTesterRope.position.copy(midpoint);
+    strengthTesterRope.scale.set(1, length, 1);
+    strengthTesterRope.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
+  };
+
+  const updateStrengthTesterHammerVisual = (playerPosition: Vector3): void => {
+    if (!strengthTesterRoot || !strengthTesterHammer) {
+      return;
+    }
+
+    if (strengthTesterHammerPickedUp) {
+      const localHand = strengthTesterRoot.worldToLocal(playerPosition.clone().add(new Vector3(0.45, -0.74, 0.12)));
+      strengthTesterHammer.position.copy(localHand);
+      strengthTesterHammer.rotation.set(0.15, -0.2, -0.38);
+      return;
+    }
+
+    strengthTesterHammer.position.set(0.82, 0.29, 0.56);
+    strengthTesterHammer.rotation.set(0, -0.35, 0);
+  };
+
   const reset = (): void => {
     phaseTime = 0;
     night = false;
@@ -2996,11 +3047,13 @@ export function createChapterNine(): ChapterNineData {
     rockWallButtonPressTime = 0;
     updateRockWallTopButton(0);
     strengthTesterTimer = 0;
+    strengthTesterHammerPickedUp = false;
     if (strengthTesterHammer) {
-      strengthTesterHammer.rotation.z = -0.18;
+      strengthTesterHammer.position.set(0.82, 0.29, 0.56);
+      strengthTesterHammer.rotation.set(0, -0.35, 0);
     }
     if (strengthTesterPad) {
-      strengthTesterPad.position.y = 0.32;
+      strengthTesterPad.position.y = 0.16;
     }
     if (strengthTesterMarker) {
       strengthTesterMarker.position.y = 0.74;
@@ -3012,6 +3065,7 @@ export function createChapterNine(): ChapterNineData {
       rockWallHarnessRoot.visible = true;
     }
     updateRockWallRope();
+    updateStrengthTesterRope();
   };
 
   reset();
@@ -3051,30 +3105,29 @@ export function createChapterNine(): ChapterNineData {
       });
       updateRockWallTopButton(deltaSeconds);
       updateRockWallRope(rockWallHarnessed ? getRockWallHarnessAttachmentPosition() : undefined);
+      updateStrengthTesterHammerVisual(playerPosition);
+      updateStrengthTesterRope(playerPosition);
       if (strengthTesterTimer > 0) {
         strengthTesterTimer = Math.max(0, strengthTesterTimer - deltaSeconds);
-        const progress = 1 - strengthTesterTimer / 1.25;
-        const strikePulse = Math.sin(Math.min(1, progress * 1.35) * Math.PI);
-        const markerProgress = Math.sin(Math.min(1, progress * 1.1) * Math.PI);
+        const progress = 1 - strengthTesterTimer / 1.65;
+        const strikePulse = Math.sin(Math.min(1, progress * 1.45) * Math.PI);
+        const markerProgress = Math.sin(Math.min(1, progress * 1.18) * Math.PI);
         if (strengthTesterHammer) {
-          strengthTesterHammer.rotation.z = -0.18 - strikePulse * 1.05;
+          strengthTesterHammer.rotation.z = -0.38 - strikePulse * 1.1;
         }
         if (strengthTesterPad) {
-          strengthTesterPad.position.y = 0.32 - strikePulse * 0.08;
+          strengthTesterPad.position.y = 0.16 - strikePulse * 0.055;
         }
         if (strengthTesterMarker) {
           strengthTesterMarker.position.y = 0.74 + markerProgress * 4.95;
         }
         if (strengthTesterBell) {
-          const bellShake = progress > 0.42 ? Math.sin(phaseTime * 42) * 0.18 * (1 - Math.min(1, (progress - 0.42) / 0.58)) : 0;
+          const bellShake = progress > 0.38 ? Math.sin(phaseTime * 54) * 0.24 * (1 - Math.min(1, (progress - 0.38) / 0.62)) : 0;
           strengthTesterBell.rotation.z = bellShake;
         }
       } else {
-        if (strengthTesterHammer) {
-          strengthTesterHammer.rotation.z = -0.18;
-        }
         if (strengthTesterPad) {
-          strengthTesterPad.position.y = 0.32;
+          strengthTesterPad.position.y = 0.16;
         }
         if (strengthTesterMarker) {
           strengthTesterMarker.position.y = 0.74;
@@ -3128,6 +3181,15 @@ export function createChapterNine(): ChapterNineData {
     clickRockWallButton(): ChapterNineInteractionResult | null {
       return pressRockWallTopButton('Click. The top button pushes in and the winch slowly lowers you to the floor, then unbuckles the harness.');
     },
+    canPlayerOccupy(nextX: number, nextZ: number): boolean {
+      if (!strengthTesterHammerPickedUp) {
+        return true;
+      }
+
+      const dx = nextX - strengthTesterInteractPosition.x;
+      const dz = nextZ - strengthTesterInteractPosition.z;
+      return Math.hypot(dx, dz) <= strengthTesterTetherMaxDistance;
+    },
     interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult {
       if (rockWallHarnessed) {
         const topButtonPress = pressRockWallTopButton('Click. The top button slowly pushes in and the winch lowers you to the floor, then unbuckles the harness.');
@@ -3163,10 +3225,21 @@ export function createChapterNine(): ChapterNineData {
           message: 'The voice tape clicks softly. It holds scratchy animatronic speech tests and old rehearsal lines.',
         };
       }
-      if (playerPosition.distanceTo(strengthTesterInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.9) {
-        strengthTesterTimer = 1.25;
+      if (
+        !strengthTesterHammerPickedUp
+        && playerPosition.distanceTo(strengthTesterInteractPosition) <= GAME_CONFIG.player.interactionRange + 1.1
+      ) {
+        strengthTesterHammerPickedUp = true;
+        updateStrengthTesterHammerVisual(playerPosition);
+        updateStrengthTesterRope(playerPosition);
         return {
-          message: 'You swing the tethered hammer into the strike button. The marker shoots up the pipe and rings the bell.',
+          message: 'You pick up the hammer. The rope is tied to the back, so you can only walk a few steps away.',
+        };
+      }
+      if (strengthTesterHammerPickedUp && playerPosition.distanceTo(strengthTesterInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.95) {
+        strengthTesterTimer = 1.65;
+        return {
+          message: 'You slam the hammer into the flat button. The marker shoots to the top. Ding ding ding!',
         };
       }
       const chair = seatedChairs
