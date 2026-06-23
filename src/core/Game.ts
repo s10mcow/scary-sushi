@@ -13210,7 +13210,7 @@ export class Game {
       return {
         eyebrow: 'Chapter Ten',
         title: 'House Shell',
-        summary: 'Walk around a small grass map with a simple empty house shell, porch step, roof outline, and open doorway.',
+        summary: 'Walk around a small grass map with a simple house shell, closed front door, top-wall drawers, and roof outline.',
         buttonText: 'Enter The Shell',
       };
     }
@@ -13929,12 +13929,16 @@ export class Game {
     }
 
     if (this.chapterTenActive) {
-      const result = this.chapterTen.toggleLamp(this.player.getPosition());
+      const result = this.chapterTen.interact(this.player.getPosition());
       if (result) {
-        this.gameplaySfxAudio.playSmallPanel(result.on);
+        if (result.sound === 'small-panel') {
+          this.gameplaySfxAudio.playSmallPanel(result.active ?? false);
+        } else {
+          this.gameplaySfxAudio.playClosetDoor(result.active ?? false);
+        }
         this.pushStatus(result.message, 2.2);
       } else {
-        this.pushStatus('Move closer to the little table lamp, then press E to turn it on or off.', 2.2);
+        this.pushStatus('Move closer to the front door, drawers, or little table lamp, then press E.', 2.2);
       }
       return;
     }
@@ -17556,11 +17560,15 @@ export class Game {
     }
 
     if (this.chapterTenActive) {
+      const heldItemLabel = this.chapterTen.getHeldItemLabel();
       return [
-        'Inventory: Coordinate Tool',
+        `Inventory: Coordinate Tool${heldItemLabel ? `, ${heldItemLabel}` : ''}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 10: House Shell',
-        'A small grass map with an empty house shell, open doorway, porch step, and roof shape.',
+        heldItemLabel
+          ? `Held drawer item: ${heldItemLabel}. Press E at its drawer to put it back.`
+          : 'Drawer items: axe, lighter, and computer are stored in the top-wall drawers.',
+        'Press E at the front door, drawers, or the little table lamp.',
       ].join('\n');
     }
 
@@ -18009,9 +18017,16 @@ export class Game {
     }
 
     if (this.chapterTenActive) {
+      const heldItemLabel = this.chapterTen.getHeldItemLabel();
       return [
         coordinateToolSlot,
-        ...Array.from({ length: 8 }, () => ({
+        {
+          label: heldItemLabel ? `${heldItemLabel} [Held]` : 'Drawer Item',
+          count: heldItemLabel ? 1 : 0,
+          filled: Boolean(heldItemLabel),
+          selected: Boolean(heldItemLabel),
+        },
+        ...Array.from({ length: 7 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -19088,9 +19103,9 @@ export class Game {
     }
 
     if (this.chapterTenActive) {
-      const lampPrompt = this.chapterTen.getLampPrompt(this.player.getPosition());
-      if (lampPrompt) {
-        return lampPrompt;
+      const chapterTenPrompt = this.chapterTen.getPrompt(this.player.getPosition());
+      if (chapterTenPrompt) {
+        return chapterTenPrompt;
       }
     }
 
@@ -19336,7 +19351,7 @@ export class Game {
     }
 
     if (this.chapterTenActive) {
-      return 'Chapter 10: House Shell loaded. Walk through the open doorway, inspect the empty shell, and use the Coordinate Tool to mark build changes.';
+      return 'Chapter 10: House Shell loaded. Press E for the front door, top-wall drawers, or the little table lamp.';
     }
 
     if (this.chapterEightActive) {

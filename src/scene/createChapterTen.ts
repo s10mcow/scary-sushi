@@ -21,6 +21,9 @@ export interface ChapterTenData {
   colliders: CollisionBox[];
   spawn: Vector3;
   lookTarget: Vector3;
+  interact(position: Vector3): ChapterTenInteractResult | null;
+  getPrompt(position: Vector3): string | null;
+  getHeldItemLabel(): string | null;
   toggleLamp(position: Vector3): { message: string; on: boolean } | null;
   getLampPrompt(position: Vector3): string | null;
   getSupportedFloorY(position: Vector3): number | null;
@@ -43,7 +46,6 @@ const floorMaterial = new MeshStandardMaterial({ color: 0x9a6a3b, roughness: 0.8
 const wallMaterial = new MeshStandardMaterial({ color: 0xd8c8aa, roughness: 0.78 });
 const trimMaterial = new MeshStandardMaterial({ color: 0x6e4a28, roughness: 0.68 });
 const roofMaterial = new MeshStandardMaterial({ color: 0x4f2d25, roughness: 0.88 });
-const porchMaterial = new MeshStandardMaterial({ color: 0x7a5130, roughness: 0.72 });
 const studMaterial = new MeshStandardMaterial({ color: 0xb68b5d, roughness: 0.74 });
 const stoneMaterial = new MeshStandardMaterial({ color: 0x69615a, roughness: 0.9 });
 const fireboxMaterial = new MeshStandardMaterial({ color: 0x080706, roughness: 0.96 });
@@ -98,6 +100,31 @@ interface ChapterTenLamp {
   on: boolean;
 }
 
+type ChapterTenDrawerItem = 'axe' | 'lighter' | 'computer';
+
+interface ChapterTenDrawer {
+  label: string;
+  item: ChapterTenDrawerItem;
+  interactPosition: Vector3;
+  drawerBox: Mesh;
+  itemRoot: Group;
+  open: boolean;
+  itemTaken: boolean;
+}
+
+interface ChapterTenDoor {
+  root: Group;
+  collider: CollisionBox;
+  interactPosition: Vector3;
+  open: boolean;
+}
+
+export interface ChapterTenInteractResult {
+  message: string;
+  sound: 'door' | 'small-panel' | 'drawer';
+  active?: boolean;
+}
+
 function addCollider(
   colliders: CollisionBox[],
   centerX: number,
@@ -111,7 +138,7 @@ function addCollider(
 }
 
 function addBox(
-  root: Group,
+  root: Group | Mesh,
   name: string,
   size: [number, number, number],
   position: [number, number, number],
@@ -190,17 +217,31 @@ function addGableWall(root: Group, name: string, z: number, rotationY: number): 
   root.add(mesh);
 }
 
-function addOpenFrontDoor(root: Group, halfDepth: number): void {
+function setDoorState(door: ChapterTenDoor, open: boolean): void {
+  door.open = open;
+  door.root.rotation.y = open ? -Math.PI / 2.15 : 0;
+  door.collider.enabled = !open;
+}
+
+function addFrontDoor(root: Group, colliders: CollisionBox[], halfDepth: number): ChapterTenDoor {
   const door = new Group();
-  door.name = 'Chapter 10 open front door';
-  door.position.set(-DOOR_WIDTH / 2 + 0.08, 0, halfDepth + 0.05);
-  door.rotation.y = -Math.PI / 2.8;
+  door.name = 'Chapter 10 closed front door';
+  door.position.set(-DOOR_WIDTH / 2 + 0.08, 0, halfDepth + 0.08);
 
   addBox(door, 'Chapter 10 front door panel', [1.48, 2.72, 0.14], [0.74, 1.36, 0], trimMaterial);
   addBox(door, 'Chapter 10 front door inset panel', [1.04, 1.78, 0.05], [0.74, 1.36, -0.08], wallMaterial);
   addBox(door, 'Chapter 10 front door knob', [0.14, 0.14, 0.16], [1.25, 1.25, -0.15], roofMaterial);
 
   root.add(door);
+  const collider = addCollider(colliders, 0, halfDepth + 0.08, DOOR_WIDTH / 2, 0.12);
+  const doorState: ChapterTenDoor = {
+    root: door,
+    collider,
+    interactPosition: new Vector3(0, 1.2, halfDepth + 0.95),
+    open: false,
+  };
+  setDoorState(doorState, false);
+  return doorState;
 }
 
 function createFlameMesh(
@@ -260,53 +301,121 @@ function addFireplace(root: Group, colliders: CollisionBox[], z: number): void {
   addCollider(colliders, 0, z + 0.12, 1.82, 0.62);
 }
 
-function addCornerDrawer(root: Group, colliders: CollisionBox[]): void {
-  const drawer = new Group();
-  drawer.name = 'Chapter 10 back right corner drawer with lighter car key and hoe';
-  drawer.position.set(6.92, 0, -5.45);
-  drawer.rotation.y = -Math.PI / 2;
+function setDrawerState(drawer: ChapterTenDrawer, open: boolean): void {
+  drawer.open = open;
+  drawer.drawerBox.position.z = open ? 0.34 : -0.08;
+  drawer.itemRoot.visible = open && !drawer.itemTaken;
+}
 
-  addBox(drawer, 'Chapter 10 drawer cabinet body', [2.0, 1.62, 1.1], [0, 0.81, 0], drawerMaterial);
-  addBox(drawer, 'Chapter 10 drawer dark open cavity', [1.62, 0.44, 0.12], [0, 1.18, -0.57], drawerInsideMaterial);
-  addBox(drawer, 'Chapter 10 drawer open box bottom', [1.62, 0.08, 0.86], [0, 0.9, -0.98], drawerInsideMaterial);
-  addBox(drawer, 'Chapter 10 drawer open box front', [1.74, 0.45, 0.12], [0, 1.03, -1.4], drawerMaterial);
-  addBox(drawer, 'Chapter 10 drawer brass handle', [0.52, 0.08, 0.08], [0, 1.05, -1.48], brassMaterial);
-  addBox(drawer, 'Chapter 10 lower drawer seam', [1.72, 0.05, 0.05], [0, 0.58, -0.58], trimMaterial);
-  addBox(drawer, 'Chapter 10 lower drawer knob', [0.16, 0.16, 0.08], [0, 0.58, -0.66], brassMaterial);
+function createAxeModel(): Group {
+  const axe = new Group();
+  axe.name = 'Chapter 10 axe in drawer';
+  const handle = new Mesh(new CylinderGeometry(0.045, 0.05, 1.0, 10), trimMaterial);
+  handle.name = 'Chapter 10 axe wooden handle';
+  handle.rotation.z = Math.PI / 2;
+  handle.castShadow = true;
+  axe.add(handle);
+  addBox(axe, 'Chapter 10 axe metal neck', [0.12, 0.1, 0.16], [0.46, 0, 0], metalMaterial);
+  const bladeShape = new Shape();
+  bladeShape.moveTo(0, -0.28);
+  bladeShape.quadraticCurveTo(0.3, -0.18, 0.38, 0);
+  bladeShape.quadraticCurveTo(0.3, 0.18, 0, 0.28);
+  bladeShape.lineTo(-0.12, 0.08);
+  bladeShape.lineTo(-0.12, -0.08);
+  bladeShape.lineTo(0, -0.28);
+  const blade = new Mesh(new ShapeGeometry(bladeShape), metalMaterial);
+  blade.name = 'Chapter 10 axe curved metal head';
+  blade.position.set(0.54, 0, 0);
+  blade.rotation.y = Math.PI / 2;
+  blade.castShadow = true;
+  axe.add(blade);
+  return axe;
+}
 
-  addBox(drawer, 'Chapter 10 red lighter body in drawer', [0.18, 0.14, 0.5], [-0.52, 1.12, -1.12], lighterMaterial);
-  addBox(drawer, 'Chapter 10 lighter metal top in drawer', [0.18, 0.16, 0.16], [-0.52, 1.2, -0.82], metalMaterial);
+function createLighterModel(): Group {
+  const lighter = new Group();
+  lighter.name = 'Chapter 10 lighter in drawer';
+  addBox(lighter, 'Chapter 10 red lighter body', [0.22, 0.14, 0.55], [0, 0, 0], lighterMaterial);
+  addBox(lighter, 'Chapter 10 lighter metal cap', [0.22, 0.16, 0.18], [0, 0.08, -0.26], metalMaterial);
+  addBox(lighter, 'Chapter 10 lighter spark wheel', [0.18, 0.04, 0.08], [0, 0.18, -0.2], brassMaterial);
+  return lighter;
+}
 
-  const keyRing = new Mesh(new TorusGeometry(0.12, 0.018, 8, 18), brassMaterial);
-  keyRing.name = 'Chapter 10 car key ring in drawer';
-  keyRing.position.set(0.04, 1.16, -1.12);
-  keyRing.rotation.x = Math.PI / 2;
-  keyRing.castShadow = true;
-  drawer.add(keyRing);
-  addBox(drawer, 'Chapter 10 car key blade in drawer', [0.1, 0.04, 0.45], [0.2, 1.15, -1.08], metalMaterial).rotation.y = -0.32;
-  addBox(drawer, 'Chapter 10 car key black fob in drawer', [0.26, 0.08, 0.22], [-0.12, 1.15, -1.02], roofMaterial).rotation.y = 0.28;
+function createComputerModel(): Group {
+  const computer = new Group();
+  computer.name = 'Chapter 10 small computer in drawer';
+  addBox(computer, 'Chapter 10 computer laptop base', [1.0, 0.08, 0.58], [0, 0, 0.1], darkGlassMaterial);
+  const screen = addBox(computer, 'Chapter 10 computer upright screen', [1.0, 0.08, 0.62], [0, 0.34, -0.22], darkGlassMaterial);
+  screen.rotation.x = -0.72;
+  addBox(computer, 'Chapter 10 computer keyboard glint', [0.82, 0.03, 0.34], [0, 0.06, 0.12], metalMaterial);
+  return computer;
+}
+
+function addDrawerItemModel(item: ChapterTenDrawerItem): Group {
+  const root = item === 'axe'
+    ? createAxeModel()
+    : item === 'lighter'
+      ? createLighterModel()
+      : createComputerModel();
+  root.rotation.y = item === 'axe' ? -0.35 : 0;
+  return root;
+}
+
+function addTopWallDrawers(root: Group, colliders: CollisionBox[]): ChapterTenDrawer[] {
+  const cabinet = new Group();
+  cabinet.name = 'Chapter 10 top wall three drawer cabinet';
+  cabinet.position.set(5.9, 0, -6.28);
+
+  addBox(cabinet, 'Chapter 10 drawer cabinet body against top wall', [2.35, 1.92, 1.05], [0, 0.96, 0], drawerMaterial);
+  addBox(cabinet, 'Chapter 10 drawer cabinet dark rear shadow', [2.05, 1.62, 0.08], [0, 1.0, -0.48], drawerInsideMaterial);
+
+  const definitions: Array<{ label: string; item: ChapterTenDrawerItem; y: number }> = [
+    { label: 'Top axe drawer', item: 'axe', y: 1.48 },
+    { label: 'Middle lighter drawer', item: 'lighter', y: 0.98 },
+    { label: 'Bottom computer drawer', item: 'computer', y: 0.48 },
+  ];
+  const drawers: ChapterTenDrawer[] = [];
+
+  definitions.forEach(({ label, item, y }) => {
+    const drawerBox = addBox(cabinet, `Chapter 10 ${label} closed drawer`, [2.0, 0.4, 0.62], [0, y, -0.08], drawerMaterial);
+    addBox(drawerBox, `Chapter 10 ${label} dark drawer inside`, [1.7, 0.24, 0.08], [0, 0.02, 0.33], drawerInsideMaterial);
+    addBox(drawerBox, `Chapter 10 ${label} brass handle`, [0.5, 0.07, 0.08], [0, 0.02, 0.36], brassMaterial);
+    const itemRoot = addDrawerItemModel(item);
+    itemRoot.position.set(0, y + 0.04, 0.16);
+    itemRoot.visible = false;
+    cabinet.add(itemRoot);
+    drawers.push({
+      label,
+      item,
+      interactPosition: new Vector3(cabinet.position.x, y, cabinet.position.z + 0.9),
+      drawerBox,
+      itemRoot,
+      open: false,
+      itemTaken: false,
+    });
+  });
 
   const hoe = new Group();
-  hoe.name = 'Chapter 10 small hoe in drawer';
-  hoe.position.set(0.55, 1.2, -1.11);
-  hoe.rotation.y = 0.82;
-  const hoeHandle = new Mesh(new CylinderGeometry(0.035, 0.035, 0.98, 10), trimMaterial);
-  hoeHandle.name = 'Chapter 10 hoe wooden handle in drawer';
-  hoeHandle.rotation.z = Math.PI / 2;
+  hoe.name = 'Chapter 10 hoe leaning against top wall beside drawers';
+  hoe.position.set(7.55, 0.95, -6.54);
+  hoe.rotation.z = -0.34;
+  const hoeHandle = new Mesh(new CylinderGeometry(0.04, 0.05, 1.9, 10), trimMaterial);
+  hoeHandle.name = 'Chapter 10 hoe long wooden handle leaning';
   hoeHandle.castShadow = true;
   hoe.add(hoeHandle);
-  addBox(hoe, 'Chapter 10 hoe metal neck in drawer', [0.08, 0.08, 0.18], [0.52, 0, 0], metalMaterial);
-  const hoeBlade = new Mesh(new ConeGeometry(0.18, 0.34, 4), metalMaterial);
-  hoeBlade.name = 'Chapter 10 hoe flat metal blade in drawer';
-  hoeBlade.position.set(0.66, 0, 0);
-  hoeBlade.rotation.z = Math.PI / 2;
-  hoeBlade.scale.z = 0.26;
+  const hoeBlade = new Mesh(new ConeGeometry(0.24, 0.45, 4), metalMaterial);
+  hoeBlade.name = 'Chapter 10 hoe metal blade leaning';
+  hoeBlade.position.set(0, 0.98, 0);
+  hoeBlade.rotation.z = Math.PI;
+  hoeBlade.scale.z = 0.32;
   hoeBlade.castShadow = true;
   hoe.add(hoeBlade);
-  drawer.add(hoe);
+  root.add(hoe);
 
-  root.add(drawer);
-  addCollider(colliders, 6.92, -5.45, 0.72, 1.1);
+  root.add(cabinet);
+  addCollider(colliders, cabinet.position.x, cabinet.position.z + 0.12, 1.32, 0.68);
+  drawers.forEach((drawer) => setDrawerState(drawer, false));
+  return drawers;
 }
 
 function addBed(root: Group, colliders: CollisionBox[]): void {
@@ -440,6 +549,16 @@ function addLampTable(root: Group, colliders: CollisionBox[]): ChapterTenLamp {
   };
 }
 
+function getDrawerItemLabel(item: ChapterTenDrawerItem): string {
+  if (item === 'axe') {
+    return 'Axe';
+  }
+  if (item === 'lighter') {
+    return 'Lighter';
+  }
+  return 'Computer';
+}
+
 export function createChapterTen(): ChapterTenData {
   const root = new Group();
   root.name = 'Chapter 10: House Shell';
@@ -473,7 +592,7 @@ export function createChapterTen(): ChapterTenData {
   addBox(root, 'Chapter 10 doorway header', [DOOR_WIDTH + 0.35, 0.35, WALL_THICKNESS + 0.05], [0, 3, halfDepth], trimMaterial);
   addGableWall(root, 'Chapter 10 front triangular gable wall', halfDepth + 0.03, 0);
   addGableWall(root, 'Chapter 10 back triangular gable wall', -halfDepth - 0.03, Math.PI);
-  addOpenFrontDoor(root, halfDepth);
+  const frontDoor = addFrontDoor(root, colliders, halfDepth);
 
   addStuds(root);
   addWindowFrame(root, -halfWidth - 0.02, -1.4, Math.PI / 2);
@@ -489,14 +608,9 @@ export function createChapterTen(): ChapterTenData {
   addFireplace(root, colliders, -halfDepth + 0.48);
   addBed(root, colliders);
   addTableAndChair(root, colliders);
-  addCornerDrawer(root, colliders);
+  const drawers = addTopWallDrawers(root, colliders);
   addCounterSinkOvenAndWasher(root, colliders);
   const lamp = addLampTable(root, colliders);
-
-  addBox(root, 'Chapter 10 front porch step', [5.6, 0.35, 2.2], [0, 0.17, halfDepth + 1.45], porchMaterial);
-  addBox(root, 'Chapter 10 porch left post', [0.24, 2.6, 0.24], [-2.5, 1.47, halfDepth + 2.25], trimMaterial);
-  addBox(root, 'Chapter 10 porch right post', [0.24, 2.6, 0.24], [2.5, 1.47, halfDepth + 2.25], trimMaterial);
-  addBox(root, 'Chapter 10 porch beam', [5.5, 0.24, 0.24], [0, 2.82, halfDepth + 2.25], trimMaterial);
 
   const stumpGeometry = new CylinderGeometry(0.42, 0.55, 0.55, 12);
   [-14, 14].forEach((x, index) => {
@@ -517,28 +631,147 @@ export function createChapterTen(): ChapterTenData {
 
   const spawn = new Vector3(0, GAME_CONFIG.player.height, halfDepth + 8.5);
   const lookTarget = new Vector3(0, 1.6, 0);
+  let heldItem: ChapterTenDrawerItem | null = null;
+
+  const getNearestDrawer = (position: Vector3): ChapterTenDrawer | null => {
+    let nearest: ChapterTenDrawer | null = null;
+    let nearestDistance = Infinity;
+    drawers.forEach((drawer) => {
+      const distance = position.distanceTo(drawer.interactPosition);
+      if (distance < nearestDistance) {
+        nearest = drawer;
+        nearestDistance = distance;
+      }
+    });
+    return nearest && nearestDistance <= GAME_CONFIG.player.interactionRange + 0.95 ? nearest : null;
+  };
+  const toggleLampAt = (position: Vector3): { message: string; on: boolean } | null => {
+    if (position.distanceTo(lamp.interactPosition) > GAME_CONFIG.player.interactionRange + 0.7) {
+      return null;
+    }
+
+    setLampState(lamp, !lamp.on);
+    return {
+      message: lamp.on ? 'You turn on the little table lamp.' : 'You turn off the little table lamp.',
+      on: lamp.on,
+    };
+  };
+  const getLampPromptAt = (position: Vector3): string | null => {
+    if (position.distanceTo(lamp.interactPosition) > GAME_CONFIG.player.interactionRange + 0.7) {
+      return null;
+    }
+    return lamp.on ? 'The little table lamp is on. Press E to turn it off.' : 'The little table lamp is off. Press E to turn it on.';
+  };
 
   return {
     root,
     colliders,
     spawn,
     lookTarget,
-    toggleLamp(position: Vector3): { message: string; on: boolean } | null {
-      if (position.distanceTo(lamp.interactPosition) > GAME_CONFIG.player.interactionRange + 0.7) {
-        return null;
+    interact(position: Vector3): ChapterTenInteractResult | null {
+      const doorDistance = position.distanceTo(frontDoor.interactPosition);
+      if (doorDistance <= GAME_CONFIG.player.interactionRange + 0.9) {
+        setDoorState(frontDoor, !frontDoor.open);
+        return {
+          message: frontDoor.open ? 'You open the front door.' : 'You close the front door.',
+          sound: 'door',
+          active: frontDoor.open,
+        };
       }
 
-      setLampState(lamp, !lamp.on);
-      return {
-        message: lamp.on ? 'You turn on the little table lamp.' : 'You turn off the little table lamp.',
-        on: lamp.on,
-      };
+      const drawer = getNearestDrawer(position);
+      if (drawer) {
+        const itemLabel = getDrawerItemLabel(drawer.item);
+        if (heldItem === drawer.item && drawer.itemTaken) {
+          heldItem = null;
+          drawer.itemTaken = false;
+          setDrawerState(drawer, false);
+          return {
+            message: `You put the ${itemLabel.toLowerCase()} back into the ${drawer.label.toLowerCase()} and close it.`,
+            sound: 'drawer',
+            active: false,
+          };
+        }
+
+        if (!drawer.open) {
+          setDrawerState(drawer, true);
+          return {
+            message: drawer.itemTaken
+              ? `${drawer.label} opens. It is empty.`
+              : `${drawer.label} opens. There is a ${itemLabel.toLowerCase()} inside. Press E again to take it.`,
+            sound: 'drawer',
+            active: true,
+          };
+        }
+
+        if (!drawer.itemTaken) {
+          if (heldItem) {
+            return {
+              message: `You are already holding the ${getDrawerItemLabel(heldItem).toLowerCase()}. Put it back before taking another item.`,
+              sound: 'drawer',
+              active: true,
+            };
+          }
+          heldItem = drawer.item;
+          drawer.itemTaken = true;
+          setDrawerState(drawer, false);
+          return {
+            message: `You take the ${itemLabel.toLowerCase()} and close the drawer.`,
+            sound: 'drawer',
+            active: false,
+          };
+        }
+
+        setDrawerState(drawer, false);
+        return {
+          message: `${drawer.label} closes.`,
+          sound: 'drawer',
+          active: false,
+        };
+      }
+
+      const lampResult = toggleLampAt(position);
+      if (lampResult) {
+        return {
+          message: lampResult.message,
+          sound: 'small-panel',
+          active: lampResult.on,
+        };
+      }
+
+      return null;
+    },
+    getPrompt(position: Vector3): string | null {
+      if (position.distanceTo(frontDoor.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.9) {
+        return frontDoor.open ? 'The front door is open. Press E to close it.' : 'The front door is closed. Press E to open it.';
+      }
+
+      const drawer = getNearestDrawer(position);
+      if (drawer) {
+        const itemLabel = getDrawerItemLabel(drawer.item);
+        if (heldItem === drawer.item && drawer.itemTaken) {
+          return `Holding ${itemLabel}. Press E at this drawer to put it back.`;
+        }
+        if (!drawer.open) {
+          return drawer.itemTaken
+            ? `${drawer.label} is closed and empty. Press E to open it.`
+            : `${drawer.label} is closed. Press E to open it.`;
+        }
+        return drawer.itemTaken
+          ? `${drawer.label} is open and empty. Press E to close it.`
+          : `${drawer.label} is open with a ${itemLabel.toLowerCase()} inside. Press E to take it.`;
+      }
+
+      return getLampPromptAt(position);
+    },
+    getHeldItemLabel(): string | null {
+      return heldItem ? getDrawerItemLabel(heldItem) : null;
+    },
+    toggleLamp(position: Vector3): { message: string; on: boolean } | null {
+      return toggleLampAt(position);
     },
     getLampPrompt(position: Vector3): string | null {
-      if (position.distanceTo(lamp.interactPosition) > GAME_CONFIG.player.interactionRange + 0.7) {
-        return null;
-      }
-      return lamp.on ? 'The little table lamp is on. Press E to turn it off.' : 'The little table lamp is off. Press E to turn it on.';
+      return getLampPromptAt(position);
     },
     getSupportedFloorY(position: Vector3): number | null {
       if (
@@ -556,6 +789,12 @@ export function createChapterTen(): ChapterTenData {
       // The first Chapter 10 pass is a static build shell for later map work.
     },
     reset(): void {
+      heldItem = null;
+      setDoorState(frontDoor, false);
+      drawers.forEach((drawer) => {
+        drawer.itemTaken = false;
+        setDrawerState(drawer, false);
+      });
       setLampState(lamp, false);
       root.visible = false;
     },
