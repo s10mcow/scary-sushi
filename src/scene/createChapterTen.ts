@@ -21,9 +21,9 @@ export interface ChapterTenData {
   colliders: CollisionBox[];
   spawn: Vector3;
   lookTarget: Vector3;
-  interact(position: Vector3): ChapterTenInteractResult | null;
+  interact(position: Vector3, cameraPosition?: Vector3, cameraForward?: Vector3): ChapterTenInteractResult | null;
   useHeldItem(position: Vector3): ChapterTenInteractResult | null;
-  getPrompt(position: Vector3): string | null;
+  getPrompt(position: Vector3, cameraPosition?: Vector3, cameraForward?: Vector3): string | null;
   getHeldItemLabel(): string | null;
   toggleLamp(position: Vector3): { message: string; on: boolean } | null;
   getLampPrompt(position: Vector3): string | null;
@@ -121,6 +121,7 @@ interface ChapterTenDrawer {
   label: string;
   item: ChapterTenDrawerItem;
   interactPosition: Vector3;
+  aimPosition: Vector3;
   drawerBox: Mesh;
   itemRoot: Group;
   open: boolean;
@@ -381,7 +382,7 @@ function addFireplace(root: Group, colliders: CollisionBox[], z: number): Chapte
 
 function setDrawerState(drawer: ChapterTenDrawer, open: boolean): void {
   drawer.open = open;
-  drawer.drawerBox.position.z = open ? 0.34 : -0.08;
+  drawer.drawerBox.position.z = open ? 0.48 : -0.02;
   drawer.itemRoot.visible = open && !drawer.itemTaken;
 }
 
@@ -467,6 +468,7 @@ function addTopWallDrawers(root: Group, colliders: CollisionBox[]): ChapterTenDr
       label,
       item,
       interactPosition: new Vector3(cabinet.position.x, y, cabinet.position.z + 0.9),
+      aimPosition: new Vector3(cabinet.position.x, y + 0.02, cabinet.position.z + 0.58),
       drawerBox,
       itemRoot,
       open: false,
@@ -770,17 +772,43 @@ export function createChapterTen(): ChapterTenData {
   const lookTarget = new Vector3(0, 1.6, 0);
   let heldItem: ChapterTenDrawerItem | null = null;
 
-  const getNearestDrawer = (position: Vector3): ChapterTenDrawer | null => {
-    let nearest: ChapterTenDrawer | null = null;
-    let nearestDistance = Infinity;
+  const getLookedAtDrawer = (
+    position: Vector3,
+    cameraPosition?: Vector3,
+    cameraForward?: Vector3,
+  ): ChapterTenDrawer | null => {
+    let bestDrawer: ChapterTenDrawer | null = null;
+    let bestScore = Infinity;
     drawers.forEach((drawer) => {
-      const distance = position.distanceTo(drawer.interactPosition);
-      if (distance < nearestDistance) {
-        nearest = drawer;
-        nearestDistance = distance;
+      const distance = Math.hypot(position.x - drawer.interactPosition.x, position.z - drawer.interactPosition.z);
+      if (distance > GAME_CONFIG.player.interactionRange + 0.95) {
+        return;
+      }
+
+      let score = distance;
+      if (cameraPosition && cameraForward) {
+        const toTarget = drawer.aimPosition.clone().sub(cameraPosition);
+        const targetDistance = toTarget.length();
+        if (targetDistance <= 0.001) {
+          return;
+        }
+        const along = toTarget.dot(cameraForward);
+        if (along <= 0.2) {
+          return;
+        }
+        const lateral = Math.sqrt(Math.max(0, targetDistance * targetDistance - along * along));
+        if (lateral > 0.3) {
+          return;
+        }
+        score = lateral + along * 0.025;
+      }
+
+      if (score < bestScore) {
+        bestDrawer = drawer;
+        bestScore = score;
       }
     });
-    return nearest && nearestDistance <= GAME_CONFIG.player.interactionRange + 0.95 ? nearest : null;
+    return bestDrawer;
   };
   const getNearestLamp = (position: Vector3): ChapterTenLamp | null => {
     let nearest: ChapterTenLamp | null = null;
@@ -819,7 +847,7 @@ export function createChapterTen(): ChapterTenData {
     colliders,
     spawn,
     lookTarget,
-    interact(position: Vector3): ChapterTenInteractResult | null {
+    interact(position: Vector3, cameraPosition?: Vector3, cameraForward?: Vector3): ChapterTenInteractResult | null {
       const doorDistance = position.distanceTo(frontDoor.interactPosition);
       if (doorDistance <= GAME_CONFIG.player.interactionRange + 0.9) {
         setDoorState(frontDoor, !frontDoor.open);
@@ -830,7 +858,7 @@ export function createChapterTen(): ChapterTenData {
         };
       }
 
-      const drawer = getNearestDrawer(position);
+      const drawer = getLookedAtDrawer(position, cameraPosition, cameraForward);
       if (drawer) {
         const itemLabel = getDrawerItemLabel(drawer.item);
         if (heldItem === drawer.item && drawer.itemTaken) {
@@ -846,6 +874,16 @@ export function createChapterTen(): ChapterTenData {
 
         if (!drawer.open) {
           setDrawerState(drawer, true);
+          if (!drawer.itemTaken && !heldItem) {
+            heldItem = drawer.item;
+            drawer.itemTaken = true;
+            setDrawerState(drawer, true);
+            return {
+              message: `${drawer.label} opens and you take the ${itemLabel.toLowerCase()}.`,
+              sound: 'drawer',
+              active: true,
+            };
+          }
           return {
             message: drawer.itemTaken
               ? `${drawer.label} opens. It is empty.`
@@ -865,11 +903,11 @@ export function createChapterTen(): ChapterTenData {
           }
           heldItem = drawer.item;
           drawer.itemTaken = true;
-          setDrawerState(drawer, false);
+          setDrawerState(drawer, true);
           return {
-            message: `You take the ${itemLabel.toLowerCase()} and close the drawer.`,
+            message: `You take the ${itemLabel.toLowerCase()} from the open drawer.`,
             sound: 'drawer',
-            active: false,
+            active: true,
           };
         }
 
@@ -923,12 +961,12 @@ export function createChapterTen(): ChapterTenData {
         active: fireplace.lit,
       };
     },
-    getPrompt(position: Vector3): string | null {
+    getPrompt(position: Vector3, cameraPosition?: Vector3, cameraForward?: Vector3): string | null {
       if (position.distanceTo(frontDoor.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.9) {
         return frontDoor.open ? 'The front door is open. Press E to close it.' : 'The front door is closed. Press E to open it.';
       }
 
-      const drawer = getNearestDrawer(position);
+      const drawer = getLookedAtDrawer(position, cameraPosition, cameraForward);
       if (drawer) {
         const itemLabel = getDrawerItemLabel(drawer.item);
         if (heldItem === drawer.item && drawer.itemTaken) {
@@ -937,7 +975,7 @@ export function createChapterTen(): ChapterTenData {
         if (!drawer.open) {
           return drawer.itemTaken
             ? `${drawer.label} is closed and empty. Press E to open it.`
-            : `${drawer.label} is closed. Press E to open it.`;
+            : `${drawer.label} is closed. Press E to open it and take the ${itemLabel.toLowerCase()}.`;
         }
         return drawer.itemTaken
           ? `${drawer.label} is open and empty. Press E to close it.`

@@ -13966,7 +13966,9 @@ export class Game {
     }
 
     if (this.chapterTenActive) {
-      const result = this.chapterTen.interact(this.player.getPosition());
+      const cameraPosition = this.camera.getWorldPosition(new Vector3());
+      const cameraForward = this.camera.getWorldDirection(new Vector3()).normalize();
+      const result = this.chapterTen.interact(this.player.getPosition(), cameraPosition, cameraForward);
       if (result) {
         if (result.sound === 'small-panel') {
           this.gameplaySfxAudio.playSmallPanel(result.active ?? false);
@@ -19154,7 +19156,9 @@ export class Game {
     }
 
     if (this.chapterTenActive) {
-      const chapterTenPrompt = this.chapterTen.getPrompt(this.player.getPosition());
+      const cameraPosition = this.camera.getWorldPosition(new Vector3());
+      const cameraForward = this.camera.getWorldDirection(new Vector3()).normalize();
+      const chapterTenPrompt = this.chapterTen.getPrompt(this.player.getPosition(), cameraPosition, cameraForward);
       if (chapterTenPrompt) {
         return chapterTenPrompt;
       }
