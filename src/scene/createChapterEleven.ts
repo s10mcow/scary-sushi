@@ -105,7 +105,7 @@ export function createChapterEleven(): ChapterElevenData {
       root.add(post);
     });
   };
-  addDirtPatch(-51.2, -47.23, 15, 15);
+  addDirtPatch(-47.5, -43.5, 24, 24);
 
   const northFence = new Mesh(new BoxGeometry(FIELD_WIDTH + fenceThickness * 2, fenceHeight, fenceThickness), fenceMaterial);
   northFence.name = 'Chapter 11 north border fence';
