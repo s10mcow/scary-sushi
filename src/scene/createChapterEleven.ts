@@ -19,8 +19,8 @@ export interface ChapterElevenData {
   reset(): void;
 }
 
-const FIELD_WIDTH = 2400;
-const FIELD_DEPTH = 2400;
+const FIELD_WIDTH = 50000;
+const FIELD_DEPTH = 50000;
 const FLOOR_Y = 0;
 
 const grassMaterial = new MeshStandardMaterial({
@@ -39,7 +39,7 @@ export function createChapterEleven(): ChapterElevenData {
   grass.receiveShadow = true;
   root.add(grass);
 
-  const spawn = new Vector3(0, GAME_CONFIG.player.height, FIELD_DEPTH / 2 - 24);
+  const spawn = new Vector3(0, GAME_CONFIG.player.height, 12);
   const lookTarget = new Vector3(0, GAME_CONFIG.player.height * 0.9, 0);
 
   return {
@@ -50,9 +50,8 @@ export function createChapterEleven(): ChapterElevenData {
     getSupportedFloorY(_position: Vector3): number | null {
       return FLOOR_Y + GAME_CONFIG.player.height;
     },
-    update(_deltaSeconds: number, playerPosition: Vector3): void {
-      grass.position.x = playerPosition.x;
-      grass.position.z = playerPosition.z;
+    update(_deltaSeconds: number, _playerPosition: Vector3): void {
+      // Chapter 11 uses one fixed oversized field so grass never visibly generates around the player.
     },
     reset(): void {
       root.visible = false;
