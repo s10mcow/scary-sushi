@@ -968,6 +968,8 @@ type ChapterSevenInteractable =
   | { kind: 'bird-cage'; item: ChapterSevenData['birdCage']; score: number }
   | { kind: 'oven'; item: ChapterSevenData['houseOven']; score: number };
 
+type ChapterSevenHeldItem = 'birdcage-key' | null;
+
 type ChapterEightHeldItem = 'coordinate-tool' | 'military-knife' | 'torch' | 'empty';
 
 interface PaintbrushEditRecord {
@@ -1258,6 +1260,7 @@ export class Game {
   private chapterSevenCookiePickerOpen = false;
   private chapterSevenGrandpaTradingOpen = false;
   private chapterSevenHasBirdCageKey = false;
+  private chapterSevenHeldItem: ChapterSevenHeldItem = null;
   private chapterSevenLongerNightUses = 0;
   private chapterSevenLongerNightDuration = 0;
   private chapterSevenBirdCageFreed = false;
@@ -2828,7 +2831,9 @@ export class Game {
     this.chapterSevenCookieCount = Math.max(0, this.chapterSevenCookieCount - trade.cost);
     if (tradeId === 'bird-cage-key') {
       this.chapterSevenHasBirdCageKey = true;
-      this.pushStatus('You traded 25 cookies for the Birdcage Key. It is in your inventory.', 2.8);
+      this.chapterSevenHeldItem = 'birdcage-key';
+      this.setPlacementToolActive(false);
+      this.pushStatus('You traded 25 cookies for the Birdcage Key. It is now in your hand.', 2.8);
     } else {
       this.chapterSevenLongerNightUses = 2;
       this.pushStatus('You traded 15 cookies for the longer night watch. It has 2 uses.', 2.8);
@@ -3059,7 +3064,7 @@ export class Game {
     }
 
     const hotbarSlot = this.input.consumeHotbarSlot();
-    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterEightActive || this.chapterNineActive) && hotbarSlot) {
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive) && hotbarSlot) {
       if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.selectOfficeTabletCameraBySlot(hotbarSlot);
       } else if (this.chapterNineActive) {
@@ -3089,6 +3094,8 @@ export class Game {
       } else if (this.chapterSixActive) {
         this.chapterSix.selectHotbarSlot(hotbarSlot);
         this.syncHud();
+      } else if (this.chapterSevenActive) {
+        this.selectChapterSevenHotbarSlot(hotbarSlot);
       } else if (this.chapterEightActive) {
         this.selectChapterEightHotbarSlot(hotbarSlot);
       } else {
@@ -6886,6 +6893,33 @@ export class Game {
     }
 
     this.handleChapterFourHotbarSlot(nextSlot);
+  }
+
+  private selectChapterSevenHotbarSlot(slot: number): void {
+    if (slot === 1) {
+      this.chapterSevenHeldItem = null;
+      this.setPlacementToolActive(true);
+      this.pushStatus('Coordinate Tool equipped.', 1.4);
+      this.syncHud();
+      return;
+    }
+
+    if (slot === 2 && this.chapterSevenHasBirdCageKey) {
+      this.chapterSevenHeldItem = this.chapterSevenHeldItem === 'birdcage-key' ? null : 'birdcage-key';
+      this.setPlacementToolActive(false);
+      this.pushStatus(
+        this.chapterSevenHeldItem === 'birdcage-key'
+          ? 'Birdcage Key is in your hand.'
+          : 'Birdcage Key put away.',
+        1.6,
+      );
+      this.syncHud();
+      return;
+    }
+
+    this.chapterSevenHeldItem = null;
+    this.setPlacementToolActive(false);
+    this.syncHud();
   }
 
   private selectChapterEightHotbarSlot(slot: number): void {
@@ -13680,6 +13714,7 @@ export class Game {
 
         if (this.chapterSeven.unlockBirdCage()) {
           this.chapterSevenHasBirdCageKey = false;
+          this.chapterSevenHeldItem = null;
           this.chapterSevenBirdCageFreed = true;
           this.chapterSevenBirdCageFreedDay = this.chapterSevenDayCount;
           this.chapterSevenBirdCageBonusClaims = 0;
@@ -17541,6 +17576,7 @@ export class Game {
         `Inventory: ${chapterSevenItems.join(', ')}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 7: The House',
+        this.chapterSevenHeldItem === 'birdcage-key' ? 'Held: Birdcage Key' : 'Held: empty',
         this.getChapterSevenDayNightHudLine(),
         'Inside spawn: smaller fridge, counter cabinet, oven, extended upper cupboards, bookshelf, and table drawers.',
         'Use the chapter menu button to change chapters.',
@@ -17931,12 +17967,16 @@ export class Game {
 
     if (this.chapterSevenActive) {
       return [
-        coordinateToolSlot,
         {
-          label: 'Birdcage Key',
+          ...coordinateToolSlot,
+          selected: this.placementToolActive && this.chapterSevenHeldItem === null,
+        },
+        {
+          label: `Birdcage Key ${this.chapterSevenHeldItem === 'birdcage-key' ? '[Held]' : ''}`.trim(),
           count: this.chapterSevenHasBirdCageKey ? 1 : 0,
           filled: this.chapterSevenHasBirdCageKey,
           type: 'birdcage-key',
+          selected: this.chapterSevenHeldItem === 'birdcage-key',
         },
         {
           label: 'Night Watch',
@@ -25684,6 +25724,7 @@ export class Game {
     this.chapterSevenCookiePickerOpen = false;
     this.chapterSevenGrandpaTradingOpen = false;
     this.chapterSevenHasBirdCageKey = false;
+    this.chapterSevenHeldItem = null;
     this.chapterSevenLongerNightUses = 0;
     this.chapterSevenLongerNightDuration = 0;
     this.chapterSevenBirdCageFreed = false;
