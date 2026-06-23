@@ -1522,7 +1522,9 @@ export class Game {
     this.camera.add(this.chapterFive.screenShip);
     this.camera.add(this.chapterFive.repairWrench);
     this.camera.add(this.chapterNine.shoulderCamera);
+    this.camera.add(this.chapterNine.strengthTesterHammerView);
     this.chapterNine.shoulderCamera.visible = false;
+    this.chapterNine.strengthTesterHammerView.visible = false;
     this.monsters.forEach((monster) => this.scene.add(monster.root));
     this.zombieControllers.forEach((zombie) => this.scene.add(zombie.root));
     this.doomEnemies.forEach((enemy) => this.scene.add(enemy.root));
@@ -14390,6 +14392,12 @@ export class Game {
         if (rockWallButtonClick.lookTarget) {
           this.player.lookToward(rockWallButtonClick.lookTarget, 0.35);
         }
+        return;
+      }
+
+      const strengthTesterSwing = this.chapterNine.swingStrengthTesterHammer(this.player.getPosition());
+      if (strengthTesterSwing) {
+        this.pushStatus(strengthTesterSwing.message, 2.4);
         return;
       }
 

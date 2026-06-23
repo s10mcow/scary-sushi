@@ -43,10 +43,12 @@ export interface ChapterNineData {
   spawn: Vector3;
   lookTarget: Vector3;
   shoulderCamera: Group;
+  strengthTesterHammerView: Group;
   cameraScreenMaterial: MeshStandardMaterial;
   update(deltaSeconds: number, playerPosition: Vector3): void;
   updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null;
   clickRockWallButton(): ChapterNineInteractionResult | null;
+  swingStrengthTesterHammer(playerPosition: Vector3): ChapterNineInteractionResult | null;
   canPlayerOccupy(nextX: number, nextZ: number): boolean;
   interact(playerPosition: Vector3, aimOrigin?: Vector3, aimDirection?: Vector3): ChapterNineInteractionResult;
   record(playerPosition: Vector3): string;
@@ -672,6 +674,17 @@ export function createChapterNine(): ChapterNineData {
     roughness: 0.36,
     metalness: 0.18,
   });
+  const strengthTesterHammerView = new Group();
+  strengthTesterHammerView.visible = false;
+  strengthTesterHammerView.position.set(0.48, -0.5, -0.92);
+  strengthTesterHammerView.rotation.set(0.35, -0.18, -0.48);
+  const hammerViewHandle = new Mesh(new BoxGeometry(0.1, 0.95, 0.1), woodMaterial);
+  hammerViewHandle.position.y = -0.04;
+  const hammerViewHead = new Mesh(new BoxGeometry(0.62, 0.2, 0.24), metalMaterial);
+  hammerViewHead.position.y = 0.48;
+  const hammerViewGrip = new Mesh(new BoxGeometry(0.14, 0.2, 0.14), blackMetalMaterial);
+  hammerViewGrip.position.y = -0.58;
+  strengthTesterHammerView.add(hammerViewHandle, hammerViewHead, hammerViewGrip);
   const cameraScreenMaterial = createCameraScreenMaterial();
   const redLightMaterial = new MeshBasicMaterial({ color: 0xff2733 });
   let strengthTesterTimer = 0;
@@ -2243,6 +2256,16 @@ export function createChapterNine(): ChapterNineData {
     counterTop.position.set(0, 1.05, 0.55);
     const coinSlot = new Mesh(new BoxGeometry(0.58, 0.32, 0.06), metalMaterial);
     coinSlot.position.set(0, 1.23, 1.42);
+    const legMaterial = new MeshStandardMaterial({ color: 0x20252a, roughness: 0.5, metalness: 0.36 });
+    [-1.92, 1.92].forEach((legX) => {
+      [-0.08, 1.08].forEach((legZ) => {
+        const leg = new Mesh(new BoxGeometry(0.16, 0.9, 0.16), legMaterial);
+        leg.position.set(legX, 0.45, legZ);
+        const foot = new Mesh(new BoxGeometry(0.34, 0.06, 0.34), blackMetalMaterial);
+        foot.position.set(legX, 0.03, legZ);
+        game.add(leg, foot);
+      });
+    });
 
     const addGun = (gunX: number, material: MeshStandardMaterial): void => {
       const gun = new Group();
@@ -3053,6 +3076,23 @@ export function createChapterNine(): ChapterNineData {
     strengthTesterHammer.rotation.set(0, -0.35, 0);
   };
 
+  const startStrengthTesterStrike = (playerPosition: Vector3): ChapterNineInteractionResult | null => {
+    if (!strengthTesterHammerPickedUp) {
+      return null;
+    }
+
+    if (playerPosition.distanceTo(strengthTesterInteractPosition) > GAME_CONFIG.player.interactionRange + 0.95) {
+      return {
+        message: 'Move closer to the flat button before swinging the hammer.',
+      };
+    }
+
+    strengthTesterTimer = 1.65;
+    return {
+      message: 'You swing the hammer forward into the flat button. The marker shoots to the top. Ding ding ding!',
+    };
+  };
+
   const reset = (): void => {
     phaseTime = 0;
     night = false;
@@ -3099,6 +3139,7 @@ export function createChapterNine(): ChapterNineData {
       bot.rightEye.visible = true;
     });
     shoulderCamera.visible = true;
+    strengthTesterHammerView.visible = false;
     redDot.visible = false;
     screenRecLight.visible = false;
     rockWallHarnessed = false;
@@ -3137,6 +3178,7 @@ export function createChapterNine(): ChapterNineData {
     spawn,
     lookTarget,
     shoulderCamera,
+    strengthTesterHammerView,
     cameraScreenMaterial,
     update(deltaSeconds: number, playerPosition: Vector3): void {
       phaseTime += deltaSeconds;
@@ -3168,6 +3210,7 @@ export function createChapterNine(): ChapterNineData {
       updateRockWallRope(rockWallHarnessed ? getRockWallHarnessAttachmentPosition() : undefined);
       updateStrengthTesterHammerVisual(playerPosition);
       updateStrengthTesterRope(playerPosition);
+      strengthTesterHammerView.visible = strengthTesterHammerPickedUp;
       if (strengthTesterTimer > 0) {
         strengthTesterTimer = Math.max(0, strengthTesterTimer - deltaSeconds);
         const progress = 1 - strengthTesterTimer / 1.65;
@@ -3176,6 +3219,11 @@ export function createChapterNine(): ChapterNineData {
         if (strengthTesterHammer) {
           strengthTesterHammer.rotation.z = -0.38 - strikePulse * 1.1;
         }
+        strengthTesterHammerView.rotation.set(
+          0.35 + strikePulse * 0.9,
+          -0.18,
+          -0.48 - strikePulse * 0.72,
+        );
         if (strengthTesterPad) {
           strengthTesterPad.position.y = 0.16 - strikePulse * 0.055;
         }
@@ -3196,6 +3244,7 @@ export function createChapterNine(): ChapterNineData {
         if (strengthTesterBell) {
           strengthTesterBell.rotation.z = 0;
         }
+        strengthTesterHammerView.rotation.set(0.35, -0.18, -0.48);
       }
     },
     updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null {
@@ -3241,6 +3290,9 @@ export function createChapterNine(): ChapterNineData {
     },
     clickRockWallButton(): ChapterNineInteractionResult | null {
       return pressRockWallTopButton('Click. The top button pushes in and the winch slowly lowers you to the floor, then unbuckles the harness.');
+    },
+    swingStrengthTesterHammer(playerPosition: Vector3): ChapterNineInteractionResult | null {
+      return startStrengthTesterStrike(playerPosition);
     },
     canPlayerOccupy(nextX: number, nextZ: number): boolean {
       if (!strengthTesterHammerPickedUp) {
@@ -3295,12 +3347,6 @@ export function createChapterNine(): ChapterNineData {
         updateStrengthTesterRope(playerPosition);
         return {
           message: 'You pick up the hammer. The rope is tied to the back, so you can only walk a few steps away.',
-        };
-      }
-      if (strengthTesterHammerPickedUp && playerPosition.distanceTo(strengthTesterInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.95) {
-        strengthTesterTimer = 1.65;
-        return {
-          message: 'You slam the hammer into the flat button. The marker shoots to the top. Ding ding ding!',
         };
       }
       const chair = seatedChairs
