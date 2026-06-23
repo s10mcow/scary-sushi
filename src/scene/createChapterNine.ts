@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
+  PointLight,
   RepeatWrapping,
   SphereGeometry,
   TorusGeometry,
@@ -2849,6 +2850,69 @@ export function createChapterNine(): ChapterNineData {
     root.add(game);
     addArcadeAttractionCollider(x, z, 1.04, 0.66, rotationY);
   };
+
+  const addDiscoBall = (x: number, z: number, lightColors: number[]): void => {
+    const fixture = new Group();
+    fixture.name = 'Chapter 9 ceiling disco ball';
+    fixture.position.set(x, 0, z);
+    fixture.userData.discoSpin = true;
+    fixture.userData.discoSpeed = 0.35 + lightColors.length * 0.04;
+
+    const ceilingPlate = new Mesh(new CylinderGeometry(0.42, 0.42, 0.08, 32), metalMaterial);
+    ceilingPlate.position.y = WALL_HEIGHT - 0.22;
+    const pipe = new Mesh(new CylinderGeometry(0.055, 0.055, 0.82, 14), metalMaterial);
+    pipe.position.y = WALL_HEIGHT - 0.66;
+    const hangerRing = new Mesh(new TorusGeometry(0.22, 0.022, 8, 24), blackMetalMaterial);
+    hangerRing.position.y = WALL_HEIGHT - 1.08;
+    hangerRing.rotation.x = Math.PI / 2;
+    const mirrorMaterial = new MeshStandardMaterial({
+      color: 0xd8e5ef,
+      roughness: 0.16,
+      metalness: 0.82,
+    });
+    const ball = new Mesh(new SphereGeometry(0.34, 22, 14), mirrorMaterial);
+    ball.position.y = WALL_HEIGHT - 1.34;
+
+    for (let band = -2; band <= 2; band += 1) {
+      for (let column = 0; column < 8; column += 1) {
+        const tile = new Mesh(new BoxGeometry(0.12, 0.018, 0.08), metalMaterial);
+        const angle = (column / 8) * Math.PI * 2 + band * 0.16;
+        const radius = 0.34 * Math.cos(band * 0.26);
+        tile.position.set(Math.cos(angle) * radius, WALL_HEIGHT - 1.34 + band * 0.095, Math.sin(angle) * radius);
+        tile.rotation.y = -angle;
+        tile.rotation.x = band * 0.08;
+        fixture.add(tile);
+      }
+    }
+
+    lightColors.forEach((color, index) => {
+      const light = new PointLight(color, 0.55, 9, 2.2);
+      const angle = (index / lightColors.length) * Math.PI * 2;
+      light.position.set(Math.cos(angle) * 0.35, WALL_HEIGHT - 1.42, Math.sin(angle) * 0.35);
+      fixture.add(light);
+
+      const spotMaterial = new MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.32,
+        side: DoubleSide,
+        depthWrite: false,
+      });
+      const floorSpot = new Mesh(new PlaneGeometry(1.35, 0.18), spotMaterial);
+      floorSpot.position.set(Math.cos(angle) * 3.2, 0.035, Math.sin(angle) * 3.2);
+      floorSpot.rotation.x = -Math.PI / 2;
+      floorSpot.rotation.z = angle + Math.PI / 2;
+      fixture.add(floorSpot);
+
+      const wallSpot = new Mesh(new PlaneGeometry(1.0, 0.18), spotMaterial.clone());
+      wallSpot.position.set(Math.cos(angle) * 4.2, 2.35 + (index % 2) * 0.42, Math.sin(angle) * 4.2);
+      wallSpot.rotation.y = angle + Math.PI / 2;
+      fixture.add(wallSpot);
+    });
+
+    fixture.add(ceilingPlate, pipe, hangerRing, ball);
+    root.add(fixture);
+  };
   const stage = addBox(root, 30, 1.1, 11, 0, 0.55, -36, new MeshStandardMaterial({ color: 0x2f1720, roughness: 0.82 }));
   stage.name = 'Chapter 9 preserved stage';
   addCollider(colliders, 0, -36, 31, 12);
@@ -3196,6 +3260,10 @@ export function createChapterNine(): ChapterNineData {
   addDancePadGame(-56.55, 28.82, Math.PI);
   addPirateCannonGame(-60.7, 28.75, Math.PI);
   addTreasureDropGame(-52.6, 29.02, Math.PI);
+  addDiscoBall(-57.5, 24.5, [0xff3f8f, 0x42d5ff, 0xffdb4d]);
+  addDiscoBall(-58.5, 6.5, [0x7a5cff, 0x50ff9c, 0xff5a38]);
+  addDiscoBall(-38.5, 18.5, [0xffd44d, 0x43b7ff, 0xff4ec6]);
+  addDiscoBall(-34.5, -22.5, [0x64ffda, 0xff4a65, 0xf5ff5d]);
 
   const seatedChairs: ChapterNineSeat[] = [];
   const addSitChair = (id: string, label: string, x: number, z: number, rotationY: number): void => {
@@ -3672,6 +3740,9 @@ export function createChapterNine(): ChapterNineData {
       root.traverse((object) => {
         if (object.userData.dustPhase !== undefined) {
           object.position.y = object.userData.baseY + Math.sin(phaseTime * 0.7 + object.userData.dustPhase) * 0.025;
+        }
+        if (object.userData.discoSpin) {
+          object.rotation.y += deltaSeconds * object.userData.discoSpeed;
         }
       });
       updateRockWallTopButton(deltaSeconds);
