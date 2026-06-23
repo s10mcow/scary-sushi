@@ -4037,7 +4037,7 @@ export function createChapterSeven(): ChapterSevenData {
 
     const parrot = new Group();
     parrot.position.set(-0.08, 0.58, 0.02);
-    parrot.rotation.y = Math.PI;
+    parrot.rotation.set(0, Math.PI, 0);
     const body = new Mesh(new SphereGeometry(0.13, 18, 12), parrotGreenMaterial);
     body.scale.set(0.72, 1.08, 0.82);
     const belly = new Mesh(new SphereGeometry(0.085, 14, 8), parrotYellowMaterial);
@@ -8396,6 +8396,7 @@ export function createChapterSeven(): ChapterSevenData {
         fishMotion.fish.rotation.z = Math.sin(swimTime * 2.4) * 0.08;
       });
       birdCageBirds.forEach((bird) => {
+        bird.parrot.rotation.z = 0;
         bird.nextPeep -= deltaSeconds;
         bird.nextAction -= deltaSeconds;
         if (bird.action === 'unlock') {
@@ -8449,6 +8450,7 @@ export function createChapterSeven(): ChapterSevenData {
           bird.parrot.position.y += Math.sin(forestTime * 3.8 + bird.phase) * 0.12;
           bird.parrot.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
           bird.parrot.rotation.x = Math.sin(forestTime * 2.3 + bird.phase) * 0.12;
+          bird.parrot.rotation.z = 0;
           const freeFlap = Math.abs(Math.sin(forestTime * 22 + bird.phase));
           bird.leftWingPivot.rotation.z = -0.18 - freeFlap * 0.92;
           bird.rightWingPivot.rotation.z = 0.18 + freeFlap * 0.92;
@@ -8480,6 +8482,7 @@ export function createChapterSeven(): ChapterSevenData {
           if (Math.abs(dx) + Math.abs(dz) > 0.001) {
             bird.parrot.rotation.y = Math.atan2(dx, dz);
           }
+          bird.parrot.rotation.z = 0;
           return t;
         };
 
@@ -8495,6 +8498,7 @@ export function createChapterSeven(): ChapterSevenData {
           bird.parrot.position.copy(waterPosition);
           bird.parrot.rotation.y = Math.PI * 0.34;
           bird.parrot.rotation.x = Math.sin(forestTime * 8.0) * 0.08 - 0.2;
+          bird.parrot.rotation.z = 0;
           if (bird.actionTimer >= 2.6) {
             bird.action = 'return-water';
             bird.actionTimer = 0;
@@ -8510,6 +8514,7 @@ export function createChapterSeven(): ChapterSevenData {
           bird.parrot.position.copy(foodPosition);
           bird.parrot.rotation.y = -Math.PI * 0.68;
           bird.parrot.rotation.x = Math.sin(forestTime * 9.0) * 0.08 - 0.18;
+          bird.parrot.rotation.z = 0;
           if (bird.actionTimer >= 2.4) {
             bird.action = 'return-food';
             bird.actionTimer = 0;
@@ -8520,8 +8525,7 @@ export function createChapterSeven(): ChapterSevenData {
           if (moveBird(returnFrom, perchPosition, 2.1) >= 1) {
             bird.action = 'idle';
             bird.actionTimer = 0;
-            bird.parrot.rotation.y = Math.PI;
-            bird.parrot.rotation.x = 0;
+            bird.parrot.rotation.set(0, Math.PI, 0);
           }
         }
 
@@ -8540,8 +8544,7 @@ export function createChapterSeven(): ChapterSevenData {
         bird.rightWingPivot.rotation.x = flapping ? -Math.sin(forestTime * 15.5 + bird.phase) * 0.12 : 0;
         if (bird.action === 'idle') {
           bird.parrot.position.copy(perchPosition);
-          bird.parrot.rotation.y = Math.PI;
-          bird.parrot.rotation.x = 0;
+          bird.parrot.rotation.set(0, Math.PI, 0);
           bird.parrot.position.y = bird.baseY + (flapping ? Math.sin(forestTime * 18.0 + bird.phase) * 0.018 : 0);
         }
         if (bird.nextPeep <= 0) {
@@ -8886,8 +8889,7 @@ export function createChapterSeven(): ChapterSevenData {
       birdCageBirds.forEach((bird) => {
         bird.cageRoot.attach(bird.parrot);
         bird.parrot.position.set(-0.08, bird.baseY, 0.02);
-        bird.parrot.rotation.y = Math.PI;
-        bird.parrot.rotation.x = 0;
+        bird.parrot.rotation.set(0, Math.PI, 0);
         bird.leftWingPivot.rotation.set(0, 0, 0);
         bird.rightWingPivot.rotation.set(0, 0, 0);
         bird.cageDoor.rotation.set(0, 0, 0);

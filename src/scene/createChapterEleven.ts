@@ -19,29 +19,14 @@ export interface ChapterElevenData {
   reset(): void;
 }
 
-const FIELD_WIDTH = 120;
-const FIELD_DEPTH = 100;
+const FIELD_WIDTH = 260;
+const FIELD_DEPTH = 220;
 const FLOOR_Y = 0;
 
 const grassMaterial = new MeshStandardMaterial({
   color: 0x4f963f,
   roughness: 0.94,
 });
-
-const edgeMaterial = new MeshStandardMaterial({
-  color: 0x2f642b,
-  roughness: 0.96,
-});
-
-function addCollider(
-  colliders: CollisionBox[],
-  centerX: number,
-  centerZ: number,
-  halfWidth: number,
-  halfDepth: number,
-): void {
-  colliders.push({ centerX, centerZ, halfWidth, halfDepth });
-}
 
 export function createChapterEleven(): ChapterElevenData {
   const root = new Group();
@@ -54,27 +39,7 @@ export function createChapterEleven(): ChapterElevenData {
   grass.receiveShadow = true;
   root.add(grass);
 
-  const edgeThickness = 1.2;
-  const northEdge = new Mesh(new BoxGeometry(FIELD_WIDTH + edgeThickness * 2, 0.16, edgeThickness), edgeMaterial);
-  northEdge.name = 'Chapter 11 far grass edge';
-  northEdge.position.set(0, 0.02, -FIELD_DEPTH / 2 - edgeThickness / 2);
-  const southEdge = northEdge.clone();
-  southEdge.name = 'Chapter 11 near grass edge';
-  southEdge.position.z = FIELD_DEPTH / 2 + edgeThickness / 2;
-  const westEdge = new Mesh(new BoxGeometry(edgeThickness, 0.16, FIELD_DEPTH + edgeThickness * 2), edgeMaterial);
-  westEdge.name = 'Chapter 11 left grass edge';
-  westEdge.position.set(-FIELD_WIDTH / 2 - edgeThickness / 2, 0.02, 0);
-  const eastEdge = westEdge.clone();
-  eastEdge.name = 'Chapter 11 right grass edge';
-  eastEdge.position.x = FIELD_WIDTH / 2 + edgeThickness / 2;
-  root.add(northEdge, southEdge, westEdge, eastEdge);
-
-  addCollider(colliders, 0, -FIELD_DEPTH / 2 - edgeThickness / 2, FIELD_WIDTH / 2 + edgeThickness, edgeThickness / 2);
-  addCollider(colliders, 0, FIELD_DEPTH / 2 + edgeThickness / 2, FIELD_WIDTH / 2 + edgeThickness, edgeThickness / 2);
-  addCollider(colliders, -FIELD_WIDTH / 2 - edgeThickness / 2, 0, edgeThickness / 2, FIELD_DEPTH / 2 + edgeThickness);
-  addCollider(colliders, FIELD_WIDTH / 2 + edgeThickness / 2, 0, edgeThickness / 2, FIELD_DEPTH / 2 + edgeThickness);
-
-  const spawn = new Vector3(0, GAME_CONFIG.player.height, FIELD_DEPTH / 2 - 12);
+  const spawn = new Vector3(0, GAME_CONFIG.player.height, FIELD_DEPTH / 2 - 24);
   const lookTarget = new Vector3(0, GAME_CONFIG.player.height * 0.9, 0);
 
   return {
@@ -82,10 +47,8 @@ export function createChapterEleven(): ChapterElevenData {
     colliders,
     spawn,
     lookTarget,
-    getSupportedFloorY(position: Vector3): number | null {
-      const insideField = Math.abs(position.x) <= FIELD_WIDTH / 2
-        && Math.abs(position.z) <= FIELD_DEPTH / 2;
-      return insideField ? FLOOR_Y + GAME_CONFIG.player.height : null;
+    getSupportedFloorY(_position: Vector3): number | null {
+      return FLOOR_Y + GAME_CONFIG.player.height;
     },
     update(_deltaSeconds: number): void {
       // Empty field for now.
