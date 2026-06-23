@@ -62,6 +62,7 @@ import { createChapterSix, type ChapterSixData, type ChapterSixItemType } from '
 import { createChapterSeven, type ChapterSevenData } from '../scene/createChapterSeven';
 import { createChapterEight, type ChapterEightData } from '../scene/createChapterEight';
 import { createChapterNine, type ChapterNineData, type ChapterNineJumpscareEvent } from '../scene/createChapterNine';
+import { createChapterTen, type ChapterTenData } from '../scene/createChapterTen';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -200,8 +201,9 @@ const START_IN_CHAPTER_THREE = false;
 const START_IN_CHAPTER_FOUR = false;
 const START_IN_CHAPTER_FIVE = false;
 const START_IN_CHAPTER_SIX = false;
-const START_IN_CHAPTER_SEVEN = true;
+const START_IN_CHAPTER_SEVEN = false;
 const START_IN_CHAPTER_NINE = false;
+const START_IN_CHAPTER_TEN = true;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -999,6 +1001,7 @@ export class Game {
   private readonly chapterSeven: ChapterSevenData;
   private readonly chapterEight: ChapterEightData;
   private readonly chapterNine: ChapterNineData;
+  private readonly chapterTen: ChapterTenData;
   private readonly chapterNineCameraRenderTarget = new WebGLRenderTarget(256, 144);
   private readonly zombieMode: ZombieModeData;
   private readonly doomMode: DoomModeData;
@@ -1151,6 +1154,7 @@ export class Game {
   private chapterSevenActive = false;
   private chapterEightActive = false;
   private chapterNineActive = false;
+  private chapterTenActive = false;
   private zombieModeActive = false;
   private doomModeActive = false;
   private chapterMenuOpen = false;
@@ -1432,6 +1436,8 @@ export class Game {
     this.chapterNine.cameraScreenMaterial.map = this.chapterNineCameraRenderTarget.texture;
     this.chapterNine.cameraScreenMaterial.needsUpdate = true;
     this.chapterNine.root.visible = false;
+    this.chapterTen = createChapterTen();
+    this.chapterTen.root.visible = false;
     this.zombieMode = createZombieMode();
     this.zombieMode.root.visible = false;
     this.doomMode = createDoomMode();
@@ -1452,6 +1458,7 @@ export class Game {
         ...this.chapterSeven.colliders,
         ...this.chapterEight.colliders,
         ...this.chapterNine.colliders,
+        ...this.chapterTen.colliders,
         ...this.zombieMode.colliders,
         ...this.doomMode.colliders,
       ],
@@ -1496,6 +1503,7 @@ export class Game {
     this.scene.add(this.chapterSeven.root);
     this.scene.add(this.chapterEight.root);
     this.scene.add(this.chapterNine.root);
+    this.scene.add(this.chapterTen.root);
     this.scene.add(this.zombieMode.root);
     this.scene.add(this.doomMode.root);
     this.scene.add(this.camera);
@@ -1636,7 +1644,9 @@ export class Game {
     this.resizeObserver.observe(this.shell.viewport);
     this.resize();
 
-    if (START_IN_CHAPTER_NINE) {
+    if (START_IN_CHAPTER_TEN) {
+      this.beginChapterTen();
+    } else if (START_IN_CHAPTER_NINE) {
       this.beginChapterNine();
     } else if (START_IN_CHAPTER_SEVEN) {
       this.beginChapterSeven();
@@ -1712,7 +1722,7 @@ export class Game {
               ? 0.9
               : this.chapterSevenActive
                 ? 0.9
-                : this.chapterEightActive || this.chapterNineActive
+                : this.chapterEightActive || this.chapterNineActive || this.chapterTenActive
                   ? 0.9
                 : 1;
     const renderWidth = Math.max(1, Math.round(width * renderScale));
@@ -1727,7 +1737,7 @@ export class Game {
     this.renderer.toneMapping = this.doomModeActive ? NoToneMapping : ACESFilmicToneMapping;
     this.renderer.setPixelRatio(
       this.doomModeActive || this.officeChapterActive || this.chapterFourActive
-        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive
+        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive
         ? PERFORMANCE_RENDER_PIXEL_RATIO
         : Math.min(window.devicePixelRatio, DEFAULT_RENDER_PIXEL_RATIO),
     );
@@ -1996,6 +2006,8 @@ export class Game {
       this.beginChapterEight();
     } else if (chapterId === 'chapter-9') {
       this.beginChapterNine();
+    } else if (chapterId === 'chapter-10') {
+      this.beginChapterTen();
     } else if (chapterId === 'doom-fps') {
       this.beginDoomMode();
     } else {
@@ -3539,7 +3551,7 @@ export class Game {
       this.updateZombieMode(deltaSeconds);
     } else if (this.doomModeActive) {
       this.updateDoomMode(deltaSeconds);
-    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive) {
+    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive) {
       this.monsterState = this.unlockedMonsterState;
       this.touchingMonster = null;
     } else {
@@ -3550,7 +3562,7 @@ export class Game {
     this.updateChapterSevenDayNightCycle(deltaSeconds);
     this.updateChapterSevenAmbientAudio(deltaSeconds);
     this.updateAtmosphere();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
     }
     this.updateOfficeGlassThrows(deltaSeconds);
@@ -3558,7 +3570,7 @@ export class Game {
     this.updateOfficeVentBoyJumpscare(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateMachineJobs(deltaSeconds);
     }
 
@@ -3671,7 +3683,9 @@ export class Game {
     } else if (this.chapterNineActive) {
       this.chapterNine.update(deltaSeconds, this.player.getPosition());
       this.handleChapterNineJumpscareEvents(deltaSeconds);
-    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive) {
+    } else if (this.chapterTenActive) {
+      this.chapterTen.update(deltaSeconds);
+    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
       this.chapterTwo.update(deltaSeconds, this.player.getPosition());
@@ -3750,7 +3764,7 @@ export class Game {
     this.updateChapterFourGreenJumpscareModel();
     this.updateOfficeGlassDisplay();
     this.updateOfficePrizeItemDisplay();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateStoveLight();
     }
     if (this.shouldSyncHudThisFrame(deltaSeconds, jumpscareLocked)) {
@@ -5885,6 +5899,9 @@ export class Game {
   }
 
   private getMicrophoneSoundLibraryScope(): string {
+    if (this.chapterTenActive) {
+      return 'chapter-10-house-shell';
+    }
     if (this.chapterNineActive) {
       return 'chapter-9-freddys-pizza-complex';
     }
@@ -11676,6 +11693,10 @@ export class Game {
       return [this.chapterNine.root];
     }
 
+    if (this.chapterTenActive) {
+      return [this.chapterTen.root];
+    }
+
     if (this.chapterTwoActive) {
       return [this.chapterTwo.root];
     }
@@ -12406,6 +12427,8 @@ export class Game {
         return 'Chapter 8: The Woods';
       case 'chapter-9':
         return "Chapter 9: Freddy's Pizza Complex";
+      case 'chapter-10':
+        return 'Chapter 10: House Shell';
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
@@ -12639,7 +12662,7 @@ export class Game {
   private updateAtmosphere(): void {
     this.lighting.flashlight.angle = GAME_CONFIG.flashlight.angle;
     this.lighting.flashlight.penumbra = GAME_CONFIG.flashlight.penumbra;
-    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive ? 980 : GAME_CONFIG.camera.far;
+    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive ? 980 : GAME_CONFIG.camera.far;
     if (Math.abs(this.camera.far - targetCameraFar) > 0.01) {
       this.camera.far = targetCameraFar;
       this.camera.updateProjectionMatrix();
@@ -12882,6 +12905,25 @@ export class Game {
       return;
     }
 
+    if (this.chapterTenActive) {
+      this.lighting.ambient.intensity = 0.72;
+      this.lighting.hemisphere.intensity = 0.94;
+      this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.72;
+      this.lighting.flashlight.distance = 28;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0x9fc0d1);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0xb8c4b3);
+        this.scene.fog.near = 76;
+        this.scene.fog.far = 220;
+      }
+
+      return;
+    }
+
     const playerZ = this.player.getPosition().z;
     const threshold = this.level.pantryEntrancePosition.z + 10;
     const mazeBlend = MathUtils.clamp((threshold - playerZ) / 18, 0, 1);
@@ -12942,6 +12984,10 @@ export class Game {
 
     if (this.chapterNineActive) {
       return this.chapterNine.colliders;
+    }
+
+    if (this.chapterTenActive) {
+      return this.chapterTen.colliders;
     }
 
     if (this.zombieModeActive) {
@@ -13120,6 +13166,10 @@ export class Game {
       return 'chapter-9';
     }
 
+    if (this.chapterTenActive) {
+      return 'chapter-10';
+    }
+
     return this.chapterTwoActive ? 'chapter-2' : 'chapter-1';
   }
 
@@ -13156,6 +13206,15 @@ export class Game {
   }
 
   private getIntroHudState(): { eyebrow: string; title: string; summary: string; buttonText: string } {
+    if (this.chapterTenActive) {
+      return {
+        eyebrow: 'Chapter Ten',
+        title: 'House Shell',
+        summary: 'Walk around a small grass map with a simple empty house shell, porch step, roof outline, and open doorway.',
+        buttonText: 'Enter The Shell',
+      };
+    }
+
     if (this.chapterNineActive) {
       return {
         eyebrow: 'Chapter Nine',
@@ -13242,6 +13301,8 @@ export class Game {
                       ? 'Chapter: Chapter 8: The Woods'
                       : this.chapterNineActive
                         ? "Chapter: Freddy's Pizza Complex"
+                        : this.chapterTenActive
+                          ? 'Chapter: House Shell'
                       : this.chapterTwoActive
                     ? 'Chapter: daycare horror'
                     : 'Chapter: scary-sushi',
@@ -17216,6 +17277,16 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterTenActive) {
+      return [
+        'Chapter 10: House Shell',
+        '',
+        'A small build map with a simple house shell on a grass lot.',
+        'The shell has a wood floor, exterior walls, an open front doorway, window frames, a porch step, and a roof outline.',
+        'Use the Coordinate Tool to mark where you want rooms, doors, furniture, or details added next.',
+      ].join('\n');
+    }
+
     if (this.chapterEightActive) {
       return [
         'Chapter 8: The Woods',
@@ -17473,6 +17544,15 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterTenActive) {
+      return [
+        'Inventory: Coordinate Tool',
+        this.getCoordinateToolInventoryLine(),
+        'Chapter 10: House Shell',
+        'A small grass map with an empty house shell, open doorway, porch step, and roof shape.',
+      ].join('\n');
+    }
+
     if (this.chapterTwoActive) {
       const cards = CHAPTER_TWO_KEYCARD_ORDER
         .filter((color) => this.chapterTwoKeycards.has(color))
@@ -17668,7 +17748,7 @@ export class Game {
 
     return {
       text: this.getChapterExitNoticeText(),
-      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.zombieModeActive && !this.doomModeActive,
+      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.zombieModeActive && !this.doomModeActive,
       label: 'Chapter Shift',
     };
   }
@@ -17910,6 +17990,17 @@ export class Game {
           selected: chapterNineHeldItem === 'keycard',
         },
         ...Array.from({ length: 5 }, () => ({
+          label: 'Empty',
+          count: 0,
+          filled: false,
+        })),
+      ];
+    }
+
+    if (this.chapterTenActive) {
+      return [
+        coordinateToolSlot,
+        ...Array.from({ length: 8 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -18907,6 +18998,10 @@ export class Game {
       return '';
     }
 
+    if (this.chapterTenActive) {
+      return '';
+    }
+
     if (!this.chapterTwoActive) {
       return '';
     }
@@ -19220,6 +19315,10 @@ export class Game {
       }
 
       return 'Chapter 7: The House starts inside on the front bedroom bed. Press Space to jump, hold Space for 2 seconds to crawl, and press E for drawers, cupboards, the cardboard box, old closet, sliding glass door, or sink faucet.';
+    }
+
+    if (this.chapterTenActive) {
+      return 'Chapter 10: House Shell loaded. Walk through the open doorway, inspect the empty shell, and use the Coordinate Tool to mark build changes.';
     }
 
     if (this.chapterEightActive) {
@@ -20009,6 +20108,10 @@ export class Game {
 
     if (this.chapterNineActive) {
       return this.chapterNine.getSupportedFloorY(this.player.getPosition());
+    }
+
+    if (this.chapterTenActive) {
+      return this.chapterTen.getSupportedFloorY(this.player.getPosition());
     }
 
     return null;
@@ -24486,6 +24589,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24512,6 +24616,7 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.chapterTwo.reset();
     this.officeChapter.reset();
@@ -24521,6 +24626,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24591,7 +24697,7 @@ export class Game {
   private updateChapterExit(deltaSeconds: number): void {
     this.level.chapterExitDoor.visible = this.chapterExitUnlocked || this.chapterTwoActive;
 
-    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.zombieModeActive || this.doomModeActive) {
+    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.zombieModeActive || this.doomModeActive) {
       return;
     }
 
@@ -24686,6 +24792,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24714,6 +24821,7 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -24724,6 +24832,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24794,6 +24903,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = true;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -24819,6 +24929,7 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.doomMode.root.visible = false;
     this.zombieMode.root.visible = true;
     this.chapterTwo.reset();
@@ -24829,6 +24940,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -24917,6 +25029,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = true;
     this.chapterMenuOpen = false;
@@ -24942,6 +25055,7 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = true;
     this.chapterTwo.reset();
@@ -24952,6 +25066,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -25043,6 +25158,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -25066,6 +25182,7 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -25075,6 +25192,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -25197,6 +25315,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -25226,6 +25345,7 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -25235,6 +25355,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -25318,6 +25439,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -25349,6 +25471,7 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -25358,6 +25481,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -25454,6 +25578,7 @@ export class Game {
     this.chapterSevenActive = true;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -25485,6 +25610,7 @@ export class Game {
     this.chapterSeven.root.visible = true;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -25494,6 +25620,7 @@ export class Game {
     this.chapterSix.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -25595,6 +25722,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = true;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -25624,8 +25752,10 @@ export class Game {
     this.chapterSix.root.visible = false;
     this.chapterSeven.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.chapterEight.root.visible = true;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
@@ -25736,6 +25866,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = true;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -25767,7 +25898,9 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.setPlacementToolActive(true);
     this.chapterNine.root.visible = true;
     this.zombieMode.root.visible = false;
@@ -25867,6 +26000,146 @@ export class Game {
     this.resize();
   }
 
+  private beginChapterTen(): void {
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
+    this.chapterEightActive = false;
+    this.chapterNineActive = false;
+    this.chapterTenActive = true;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = 'Chapter 10: House Shell';
+    this.chapterCardBody =
+      'A small empty map with a simple house shell, open doorway, wood floor, roof shape, and porch step.';
+    this.activeJumpscare = null;
+    this.chapterNineJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.clearPaintbrushState();
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
+    this.chapterTen.reset();
+    this.chapterTen.root.visible = true;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
+    this.chapterEight.reset();
+    this.chapterNine.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
+    this.chapterSevenBoxHidden = false;
+    this.chapterSevenOvenHidden = false;
+    this.chapterSevenSwingSeated = false;
+    this.chapterSeven.setSwingOccupied(false);
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
+    this.chapterEightHeldItemAnchor.visible = false;
+    this.chapterNine.shoulderCamera.visible = false;
+    this.chapterTwoKeycards.clear();
+    this.chapterTwoPuzzlePiecesCollected = 0;
+    this.chapterTwoRedPuzzleSolved = false;
+    this.chapterTwoEggsHeld = 0;
+    this.chapterTwoEggsDeposited = 0;
+    this.chapterTwoEggQuestStarted = false;
+    this.chapterTwoEggQuestNoticeTime = 0;
+    this.chapterTwoBlueBearsHeld = 0;
+    this.chapterTwoBlueBearsReturned = 0;
+    this.chapterTwoBearDialogueIndex = null;
+    this.chapterTwoBearDialogueComplete = false;
+    this.chapterTwoBearChoicePending = false;
+    this.chapterTwoBearQuestAccepted = false;
+    this.chapterTwoBearRefusalTimer = 0;
+    this.chapterTwoDodoTrailActive = false;
+    this.chapterTwoDodoTrailNoticeTime = 0;
+    this.chapterTwoPowerOutageTriggered = false;
+    this.chapterTwoPowerOutageNoticeTime = 0;
+    this.chapterTwoDodoPowerRipSoundPlayed = false;
+    this.chapterTwoDodoNightAttack = null;
+    this.officeChapterTickets = 0;
+    this.officeBasketballHeld = false;
+    this.chapterTwoCoffeeJob = null;
+    this.activeCoffeeDrink = null;
+    this.coffeeBoostRemaining = 0;
+    this.carriedDrinkAnchor.visible = false;
+    this.officeBasketballAnchor.visible = false;
+    this.officeChapter.setBasketballHeld(false);
+    this.resetOfficeTabletState();
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.setPlacementToolActive(true);
+    this.player.teleport(this.chapterTen.spawn);
+    this.player.lookToward(this.chapterTen.lookTarget, 1);
+    this.pushStatus(
+      'Chapter 10 loaded. A small house shell map is ready for markers and future room work.',
+      3.2,
+    );
+    this.resize();
+  }
+
   private beginOfficeChapter(sandboxCopy = false): void {
     this.stopOfficeGameMode();
     this.officeSandboxChapterActive = sandboxCopy;
@@ -25884,6 +26157,7 @@ export class Game {
     this.chapterSevenActive = false;
     this.chapterEightActive = false;
     this.chapterNineActive = false;
+    this.chapterTenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -25909,6 +26183,7 @@ export class Game {
     this.chapterSeven.root.visible = false;
     this.chapterEight.root.visible = false;
     this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -25919,6 +26194,7 @@ export class Game {
     this.chapterSeven.reset();
     this.chapterEight.reset();
     this.chapterNine.reset();
+    this.chapterTen.reset();
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;

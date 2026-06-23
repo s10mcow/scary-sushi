@@ -11,6 +11,7 @@ export type HudChapterId =
   | 'chapter-7'
   | 'chapter-8'
   | 'chapter-9'
+  | 'chapter-10'
   | 'zombie-fps'
   | 'doom-fps';
 export type HudJumpScareVariant = MonsterVariant | 'bear' | 'quacky' | 'fluffle' | 'bori' | 'foxy' | 'purple' | 'blue' | 'green';
@@ -1440,6 +1441,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-9' as const,
       label: "Chapter 9: Freddy's Pizza Complex",
       body: 'A huge abandoned brick pizza complex with FNAF animatronics, vents, filming evidence, puzzles, and locked night survival.',
+    },
+    {
+      id: 'chapter-10' as const,
+      label: 'Chapter 10: House Shell',
+      body: 'A small grass map with a simple house shell, doorway, porch step, roof, and exposed wall framing.',
     },
     {
       id: 'zombie-fps' as const,
