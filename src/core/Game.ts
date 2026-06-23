@@ -3376,7 +3376,7 @@ export class Game {
       } else if (this.paintbrushActive) {
         this.applyPaintbrushStroke();
         this.paintbrushStrokeCooldown = Math.max(this.paintbrushStrokeCooldown, 0.08);
-      } else if (this.chapterSevenActive && this.chapterSevenHeldItem === 'night-watch') {
+      } else if (this.chapterSevenActive && this.chapterSevenLongerNightUses > 0) {
         this.useChapterSevenLongerNightWatch();
       } else if (this.chapterTenActive && this.chapterTen.getHeldItemLabel() === 'Lighter') {
         this.handleFire();
@@ -22704,12 +22704,18 @@ export class Game {
     }
 
     const playerPosition = this.player.getPosition();
-    const distance = Math.hypot(
+    const cageWorldPosition = this.chapterSeven.birdCage.root.getWorldPosition(new Vector3());
+    const storedDistance = Math.hypot(
       playerPosition.x - this.chapterSeven.birdCage.interactPosition.x,
       playerPosition.z - this.chapterSeven.birdCage.interactPosition.z,
     );
+    const actualDistance = Math.hypot(
+      playerPosition.x - cageWorldPosition.x,
+      playerPosition.z - cageWorldPosition.z,
+    );
+    const distance = Math.min(storedDistance, actualDistance);
 
-    return distance <= GAME_CONFIG.player.interactionRange + 2.0 ? this.chapterSeven.birdCage : null;
+    return distance <= GAME_CONFIG.player.interactionRange + 4.25 ? this.chapterSeven.birdCage : null;
   }
 
   private isPlayerInsideChapterSevenCardboardBox(): boolean {
