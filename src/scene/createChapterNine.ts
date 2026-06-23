@@ -10,7 +10,6 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
-  PointLight,
   RepeatWrapping,
   SphereGeometry,
   TorusGeometry,
@@ -2862,27 +2861,39 @@ export function createChapterNine(): ChapterNineData {
   };
 
   const addPirateCoveDarkZone = (): void => {
-    const darkFloor = new Mesh(new PlaneGeometry(43, 32), new MeshBasicMaterial({
+    const darkMaterial = new MeshBasicMaterial({
       color: 0x05040a,
       transparent: true,
-      opacity: 0.24,
+      opacity: 0.34,
       side: DoubleSide,
       depthWrite: false,
-    }));
-    darkFloor.position.set(-43.8, 0.045, -50.4);
+    });
+    const darkFloor = new Mesh(new PlaneGeometry(45, 96), darkMaterial);
+    darkFloor.position.set(-43.8, 0.045, -17.6);
     darkFloor.rotation.x = -Math.PI / 2;
     root.add(darkFloor);
 
-    const darkCeiling = new Mesh(new PlaneGeometry(43, 32), new MeshBasicMaterial({
+    const darkCeiling = new Mesh(new PlaneGeometry(45, 96), new MeshBasicMaterial({
       color: 0x02020a,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.42,
       side: DoubleSide,
       depthWrite: false,
     }));
-    darkCeiling.position.set(-43.8, WALL_HEIGHT - 0.18, -50.4);
+    darkCeiling.position.set(-43.8, WALL_HEIGHT - 0.18, -17.6);
     darkCeiling.rotation.x = Math.PI / 2;
     root.add(darkCeiling);
+
+    const sideWallTint = new Mesh(new PlaneGeometry(96, WALL_HEIGHT), new MeshBasicMaterial({
+      color: 0x03020a,
+      transparent: true,
+      opacity: 0.18,
+      side: DoubleSide,
+      depthWrite: false,
+    }));
+    sideWallTint.position.set(-64.62, WALL_HEIGHT / 2, -17.6);
+    sideWallTint.rotation.y = Math.PI / 2;
+    root.add(sideWallTint);
   };
 
   const addDiscoBall = (x: number, z: number, lightColors: number[]): void => {
@@ -2907,10 +2918,10 @@ export function createChapterNine(): ChapterNineData {
     const ball = new Mesh(new SphereGeometry(0.34, 22, 14), mirrorMaterial);
     ball.position.y = WALL_HEIGHT - 1.34;
 
-    for (let band = -2; band <= 2; band += 1) {
-      for (let column = 0; column < 8; column += 1) {
+    for (let band = -1; band <= 1; band += 1) {
+      for (let column = 0; column < 6; column += 1) {
         const tile = new Mesh(new BoxGeometry(0.12, 0.018, 0.08), metalMaterial);
-        const angle = (column / 8) * Math.PI * 2 + band * 0.16;
+        const angle = (column / 6) * Math.PI * 2 + band * 0.16;
         const radius = 0.34 * Math.cos(band * 0.26);
         tile.position.set(Math.cos(angle) * radius, WALL_HEIGHT - 1.34 + band * 0.095, Math.sin(angle) * radius);
         tile.rotation.y = -angle;
@@ -2920,15 +2931,12 @@ export function createChapterNine(): ChapterNineData {
     }
 
     lightColors.forEach((color, index) => {
-      const light = new PointLight(color, 1.75, 22, 1.65);
       const angle = (index / lightColors.length) * Math.PI * 2;
-      light.position.set(Math.cos(angle) * 0.35, WALL_HEIGHT - 1.42, Math.sin(angle) * 0.35);
-      fixture.add(light);
 
       const spotMaterial = new MeshBasicMaterial({
         color,
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.58,
         side: DoubleSide,
         depthWrite: false,
       });
@@ -2943,32 +2951,34 @@ export function createChapterNine(): ChapterNineData {
       const addBeam = (end: Vector3, radius: number, opacity: number): void => {
         const beamDirection = beamStart.clone().sub(end);
         const beamLength = beamDirection.length();
-        const beam = new Mesh(new ConeGeometry(radius, beamLength, 28, 1, true), makeBeamMaterial(opacity));
+        const beam = new Mesh(new ConeGeometry(radius, beamLength, 10, 1, true), makeBeamMaterial(opacity));
         beam.position.copy(beamStart).add(end).multiplyScalar(0.5);
         beam.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), beamDirection.normalize());
         fixture.add(beam);
       };
-      const downEnd = new Vector3(Math.cos(angle) * 3.8, 0.1, Math.sin(angle) * 3.8);
-      const sideEnd = new Vector3(Math.cos(angle + 0.32) * 7.2, 2.6 + (index % 2) * 0.5, Math.sin(angle + 0.32) * 7.2);
-      const highEnd = new Vector3(Math.cos(angle - 0.48) * 5.4, WALL_HEIGHT - 0.32, Math.sin(angle - 0.48) * 5.4);
-      addBeam(downEnd, 0.86, 0.18);
-      addBeam(sideEnd, 0.58, 0.13);
-      addBeam(highEnd, 0.42, 0.1);
+      const downEnd = new Vector3(Math.cos(angle) * 4.2, 0.1, Math.sin(angle) * 4.2);
+      const sideEnd = new Vector3(Math.cos(angle + 0.32) * 8.4, 2.6 + (index % 2) * 0.5, Math.sin(angle + 0.32) * 8.4);
+      const highEnd = new Vector3(Math.cos(angle - 0.48) * 6.2, WALL_HEIGHT - 0.32, Math.sin(angle - 0.48) * 6.2);
+      addBeam(downEnd, 0.9, 0.24);
+      addBeam(sideEnd, 0.62, 0.16);
+      if (index % 2 === 0) {
+        addBeam(highEnd, 0.46, 0.12);
+      }
 
-      const floorSpot = new Mesh(new PlaneGeometry(2.15, 0.34), spotMaterial);
+      const floorSpot = new Mesh(new PlaneGeometry(2.45, 0.42), spotMaterial);
       floorSpot.position.copy(downEnd);
       floorSpot.position.y = 0.11;
       floorSpot.rotation.x = -Math.PI / 2;
       floorSpot.rotation.z = angle + Math.PI / 2;
       fixture.add(floorSpot);
 
-      const secondFloorSpot = new Mesh(new PlaneGeometry(1.65, 0.24), spotMaterial.clone());
+      const secondFloorSpot = new Mesh(new PlaneGeometry(1.95, 0.28), spotMaterial.clone());
       secondFloorSpot.position.set(Math.cos(angle + 0.55) * 5.25, 0.115, Math.sin(angle + 0.55) * 5.25);
       secondFloorSpot.rotation.x = -Math.PI / 2;
       secondFloorSpot.rotation.z = angle + 0.85;
       fixture.add(secondFloorSpot);
 
-      const sideSpot = new Mesh(new PlaneGeometry(1.6, 0.24), spotMaterial.clone());
+      const sideSpot = new Mesh(new PlaneGeometry(2.2, 0.32), spotMaterial.clone());
       sideSpot.position.copy(sideEnd);
       sideSpot.rotation.y = angle + Math.PI / 2;
       sideSpot.rotation.z = 0.12;
@@ -3326,14 +3336,12 @@ export function createChapterNine(): ChapterNineData {
   addPirateCannonGame(-60.7, 28.75, Math.PI);
   addTreasureDropGame(-52.6, 29.02, Math.PI);
   addPirateCoveDarkZone();
-  addDiscoBall(-58.5, 24.5, [0xff3f8f, 0x42d5ff, 0xffdb4d, 0x7a5cff]);
-  addDiscoBall(-58.5, 12.5, [0x7a5cff, 0x50ff9c, 0xff5a38, 0xfff05a]);
-  addDiscoBall(-58.5, 1.5, [0x64ffda, 0xff4a65, 0xf5ff5d, 0x48a8ff]);
-  addDiscoBall(-43.5, 24, [0xffd44d, 0x43b7ff, 0xff4ec6, 0x74ff6a]);
-  addDiscoBall(-43.5, 13, [0x42d5ff, 0xff5a38, 0xfff05a, 0xb46dff]);
-  addDiscoBall(-54, -55, [0x2ecbff, 0xff3f8f, 0x79ff62, 0xffe95a]);
-  addDiscoBall(-39, -55, [0xff5a38, 0x7a5cff, 0x42d5ff, 0xfff05a]);
-  addDiscoBall(-35, -41.5, [0x64ffda, 0xff4ec6, 0xffdb4d, 0x48a8ff]);
+  addDiscoBall(-58.5, 24.5, [0xff3f8f, 0x42d5ff, 0xffdb4d]);
+  addDiscoBall(-58.5, 10, [0x7a5cff, 0x50ff9c, 0xff5a38]);
+  addDiscoBall(-57, -4, [0x64ffda, 0xff4a65, 0xf5ff5d]);
+  addDiscoBall(-54, -55, [0x2ecbff, 0xff3f8f, 0x79ff62]);
+  addDiscoBall(-39, -55, [0xff5a38, 0x7a5cff, 0x42d5ff]);
+  addDiscoBall(-35, -41.5, [0x64ffda, 0xff4ec6, 0xffdb4d]);
 
   const seatedChairs: ChapterNineSeat[] = [];
   const addSitChair = (id: string, label: string, x: number, z: number, rotationY: number): void => {
