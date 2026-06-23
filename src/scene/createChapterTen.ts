@@ -22,6 +22,7 @@ export interface ChapterTenData {
   spawn: Vector3;
   lookTarget: Vector3;
   interact(position: Vector3): ChapterTenInteractResult | null;
+  useHeldItem(position: Vector3): ChapterTenInteractResult | null;
   getPrompt(position: Vector3): string | null;
   getHeldItemLabel(): string | null;
   toggleLamp(position: Vector3): { message: string; on: boolean } | null;
@@ -91,6 +92,12 @@ const brassMaterial = new MeshStandardMaterial({ color: 0xc8952d, metalness: 0.4
 const porcelainMaterial = new MeshStandardMaterial({ color: 0xe8e2d7, roughness: 0.48 });
 const applianceMaterial = new MeshStandardMaterial({ color: 0xd5d9dc, metalness: 0.1, roughness: 0.42 });
 const darkGlassMaterial = new MeshStandardMaterial({ color: 0x1b1a18, metalness: 0.05, roughness: 0.35 });
+const smokeMaterial = new MeshStandardMaterial({
+  color: 0xb8b5ae,
+  transparent: true,
+  opacity: 0.48,
+  roughness: 0.9,
+});
 
 interface ChapterTenLamp {
   interactPosition: Vector3;
@@ -117,6 +124,17 @@ interface ChapterTenDoor {
   collider: CollisionBox;
   interactPosition: Vector3;
   open: boolean;
+  targetRotation: number;
+}
+
+interface ChapterTenFireplace {
+  root: Group;
+  flames: Group;
+  smoke: Group;
+  light: PointLight;
+  emberBed: Mesh;
+  interactPosition: Vector3;
+  lit: boolean;
 }
 
 export interface ChapterTenInteractResult {
@@ -219,7 +237,7 @@ function addGableWall(root: Group, name: string, z: number, rotationY: number): 
 
 function setDoorState(door: ChapterTenDoor, open: boolean): void {
   door.open = open;
-  door.root.rotation.y = open ? -Math.PI / 2.15 : 0;
+  door.targetRotation = open ? -Math.PI / 2.15 : 0;
   door.collider.enabled = !open;
 }
 
@@ -228,9 +246,10 @@ function addFrontDoor(root: Group, colliders: CollisionBox[], halfDepth: number)
   door.name = 'Chapter 10 closed front door';
   door.position.set(-DOOR_WIDTH / 2 + 0.08, 0, halfDepth + 0.08);
 
-  addBox(door, 'Chapter 10 front door panel', [1.48, 2.72, 0.14], [0.74, 1.36, 0], trimMaterial);
-  addBox(door, 'Chapter 10 front door inset panel', [1.04, 1.78, 0.05], [0.74, 1.36, -0.08], wallMaterial);
-  addBox(door, 'Chapter 10 front door knob', [0.14, 0.14, 0.16], [1.25, 1.25, -0.15], roofMaterial);
+  addBox(door, 'Chapter 10 full front door panel', [DOOR_WIDTH, 2.9, 0.16], [DOOR_WIDTH / 2, 1.45, 0], trimMaterial);
+  addBox(door, 'Chapter 10 front door upper inset panel', [DOOR_WIDTH - 0.72, 0.88, 0.05], [DOOR_WIDTH / 2, 2.02, -0.09], wallMaterial);
+  addBox(door, 'Chapter 10 front door lower inset panel', [DOOR_WIDTH - 0.72, 0.96, 0.05], [DOOR_WIDTH / 2, 0.92, -0.09], wallMaterial);
+  addBox(door, 'Chapter 10 front door knob', [0.14, 0.14, 0.16], [DOOR_WIDTH - 0.36, 1.32, -0.15], roofMaterial);
 
   root.add(door);
   const collider = addCollider(colliders, 0, halfDepth + 0.08, DOOR_WIDTH / 2, 0.12);
@@ -239,6 +258,7 @@ function addFrontDoor(root: Group, colliders: CollisionBox[], halfDepth: number)
     collider,
     interactPosition: new Vector3(0, 1.2, halfDepth + 0.95),
     open: false,
+    targetRotation: 0,
   };
   setDoorState(doorState, false);
   return doorState;
@@ -268,7 +288,14 @@ function createFlameMesh(
   return mesh;
 }
 
-function addFireplace(root: Group, colliders: CollisionBox[], z: number): void {
+function setFireplaceState(fireplace: ChapterTenFireplace, lit: boolean): void {
+  fireplace.lit = lit;
+  fireplace.flames.visible = lit;
+  fireplace.light.visible = lit;
+  fireplace.emberBed.visible = lit;
+}
+
+function addFireplace(root: Group, colliders: CollisionBox[], z: number): ChapterTenFireplace {
   const fireplace = new Group();
   fireplace.name = 'Chapter 10 stone fireplace with recessed opening';
   fireplace.position.set(0, 0, z);
@@ -281,24 +308,57 @@ function addFireplace(root: Group, colliders: CollisionBox[], z: number): void {
   addBox(fireplace, 'Chapter 10 fireplace back shadow wall', [1.62, 1.1, 0.18], [0, 0.92, -0.42], fireboxMaterial);
   addBox(fireplace, 'Chapter 10 fireplace log left', [0.9, 0.16, 0.22], [-0.24, 0.42, -0.02], trimMaterial).rotation.z = 0.18;
   addBox(fireplace, 'Chapter 10 fireplace log right', [0.9, 0.16, 0.22], [0.24, 0.42, -0.02], trimMaterial).rotation.z = -0.18;
-  addBox(fireplace, 'Chapter 10 glowing ember bed', [1.18, 0.12, 0.46], [0, 0.42, -0.08], emberMaterial);
+  const emberBed = addBox(fireplace, 'Chapter 10 glowing ember bed', [1.18, 0.12, 0.46], [0, 0.42, -0.08], emberMaterial);
   addBox(fireplace, 'Chapter 10 charred coal left', [0.28, 0.16, 0.24], [-0.42, 0.53, -0.04], coalMaterial).rotation.z = -0.32;
   addBox(fireplace, 'Chapter 10 charred coal center', [0.34, 0.17, 0.25], [0.02, 0.55, -0.02], coalMaterial).rotation.z = 0.2;
   addBox(fireplace, 'Chapter 10 charred coal right', [0.24, 0.14, 0.22], [0.43, 0.51, -0.08], coalMaterial).rotation.z = 0.38;
-  fireplace.add(createFlameMesh('Chapter 10 fireplace outer flame sheet', 0.82, 1.14, flameOuterMaterial, [0, 0.48, 0.04], 0));
-  fireplace.add(createFlameMesh('Chapter 10 fireplace outer flame cross sheet', 0.78, 1.02, flameOuterMaterial, [0.06, 0.5, -0.02], Math.PI / 2));
-  fireplace.add(createFlameMesh('Chapter 10 fireplace orange flame tongue left', 0.42, 0.86, flameMiddleMaterial, [-0.24, 0.52, 0.02], -0.38));
-  fireplace.add(createFlameMesh('Chapter 10 fireplace orange flame tongue right', 0.44, 0.92, flameMiddleMaterial, [0.24, 0.5, -0.02], 0.44));
-  fireplace.add(createFlameMesh('Chapter 10 fireplace bright inner flame', 0.34, 0.76, flameCoreMaterial, [0, 0.56, 0.08], 0.16));
-  fireplace.add(createFlameMesh('Chapter 10 fireplace bright inner cross flame', 0.28, 0.66, flameCoreMaterial, [0.08, 0.57, -0.04], Math.PI / 2.2));
+  const flames = new Group();
+  flames.name = 'Chapter 10 controllable fireplace flames';
+  flames.add(createFlameMesh('Chapter 10 fireplace outer flame sheet', 0.82, 1.14, flameOuterMaterial, [0, 0.48, 0.04], 0));
+  flames.add(createFlameMesh('Chapter 10 fireplace outer flame cross sheet', 0.78, 1.02, flameOuterMaterial, [0.06, 0.5, -0.02], Math.PI / 2));
+  flames.add(createFlameMesh('Chapter 10 fireplace orange flame tongue left', 0.42, 0.86, flameMiddleMaterial, [-0.24, 0.52, 0.02], -0.38));
+  flames.add(createFlameMesh('Chapter 10 fireplace orange flame tongue right', 0.44, 0.92, flameMiddleMaterial, [0.24, 0.5, -0.02], 0.44));
+  flames.add(createFlameMesh('Chapter 10 fireplace bright inner flame', 0.34, 0.76, flameCoreMaterial, [0, 0.56, 0.08], 0.16));
+  flames.add(createFlameMesh('Chapter 10 fireplace bright inner cross flame', 0.28, 0.66, flameCoreMaterial, [0.08, 0.57, -0.04], Math.PI / 2.2));
+  fireplace.add(flames);
   const fireLight = new PointLight(0xff8a24, 2.6, 9.5, 1.8);
   fireLight.name = 'Chapter 10 realistic fireplace glow';
   fireLight.position.set(0, 1.1, 0.35);
   fireplace.add(fireLight);
-  addBox(fireplace, 'Chapter 10 short chimney inside shell', [1.25, 1.35, 0.42], [0, 3.05, -0.06], stoneMaterial);
+  addBox(fireplace, 'Chapter 10 chimney throat inside shell', [1.25, 1.35, 0.42], [0, 3.05, -0.06], stoneMaterial);
 
   root.add(fireplace);
+  addBox(root, 'Chapter 10 stone chimney stack through roof', [1.34, 2.15, 0.72], [0, 5.95, z - 0.08], stoneMaterial);
+  const smoke = new Group();
+  smoke.name = 'Chapter 10 chimney smoke puffs';
+  [
+    [-0.18, 7.16, z - 0.08, 0.34, 0.72],
+    [0.12, 7.62, z - 0.18, 0.46, 0.82],
+    [-0.28, 8.08, z - 0.28, 0.58, 0.92],
+    [0.2, 8.62, z - 0.34, 0.7, 1.05],
+  ].forEach(([x, y, smokeZ, radius, height], index) => {
+    const puff = new Mesh(new CylinderGeometry(radius, radius * 0.55, height, 14), smokeMaterial);
+    puff.name = `Chapter 10 chimney smoke puff ${index + 1}`;
+    puff.position.set(x, y, smokeZ);
+    puff.userData.baseY = y;
+    puff.rotation.z = index % 2 === 0 ? 0.18 : -0.22;
+    puff.castShadow = false;
+    puff.receiveShadow = false;
+    smoke.add(puff);
+  });
+  root.add(smoke);
   addCollider(colliders, 0, z + 0.12, 1.82, 0.62);
+  const fireplaceState: ChapterTenFireplace = {
+    root: fireplace,
+    flames,
+    smoke,
+    light: fireLight,
+    emberBed,
+    interactPosition: new Vector3(0, 1, z + 0.9),
+    lit: true,
+  };
+  setFireplaceState(fireplaceState, false);
+  return fireplaceState;
 }
 
 function setDrawerState(drawer: ChapterTenDrawer, open: boolean): void {
@@ -428,21 +488,74 @@ function addBed(root: Group, colliders: CollisionBox[]): void {
   addCollider(colliders, 6.62, -0.55, 1.42, 2.65);
 }
 
-function addTableAndChair(root: Group, colliders: CollisionBox[]): void {
-  addBox(root, 'Chapter 10 moved left wall table top', [1.16, 0.24, 3.24], [-7.62, 1.02, -1.25], tableMaterial);
-  addBox(root, 'Chapter 10 moved table front left leg', [0.16, 0.92, 0.16], [-8.05, 0.48, 0.16], tableMaterial);
-  addBox(root, 'Chapter 10 moved table front right leg', [0.16, 0.92, 0.16], [-7.19, 0.48, 0.16], tableMaterial);
-  addBox(root, 'Chapter 10 moved table back left leg', [0.16, 0.92, 0.16], [-8.05, 0.48, -2.66], tableMaterial);
-  addBox(root, 'Chapter 10 moved table back right leg', [0.16, 0.92, 0.16], [-7.19, 0.48, -2.66], tableMaterial);
-  addCollider(colliders, -7.62, -1.25, 0.68, 1.72);
+function addSideFacingLamp(root: Group, name: string, position: Vector3, directionX: 1 | -1): ChapterTenLamp {
+  const group = new Group();
+  group.name = name;
+  group.position.copy(position);
 
-  addBox(root, 'Chapter 10 left table chair seat', [1.08, 0.22, 1.08], [-6.12, 0.66, -1.25], chairMaterial);
-  addBox(root, 'Chapter 10 left table chair back', [0.2, 1.42, 1.08], [-5.56, 1.24, -1.25], chairMaterial);
-  addBox(root, 'Chapter 10 left table chair front left leg', [0.14, 0.68, 0.14], [-6.48, 0.34, -0.84], chairMaterial);
-  addBox(root, 'Chapter 10 left table chair front right leg', [0.14, 0.68, 0.14], [-6.48, 0.34, -1.66], chairMaterial);
-  addBox(root, 'Chapter 10 left table chair back left leg', [0.14, 0.68, 0.14], [-5.76, 0.34, -0.84], chairMaterial);
-  addBox(root, 'Chapter 10 left table chair back right leg', [0.14, 0.68, 0.14], [-5.76, 0.34, -1.66], chairMaterial);
-  addCollider(colliders, -6.12, -1.25, 0.68, 0.68);
+  const shadeMaterial = new MeshStandardMaterial({
+    color: 0xd7c28d,
+    emissive: 0xffc86b,
+    emissiveIntensity: 0,
+    roughness: 0.55,
+  });
+  const bulbMaterial = new MeshStandardMaterial({
+    color: 0xfff4cf,
+    emissive: 0xffd37a,
+    emissiveIntensity: 0.08,
+    roughness: 0.3,
+  });
+
+  addBox(group, `${name} metal disk base`, [0.42, 0.08, 0.42], [0, 0.04, 0], brassMaterial);
+  addBox(group, `${name} upright pole`, [0.06, 0.56, 0.06], [0, 0.34, 0], brassMaterial);
+  addBox(group, `${name} sideways arm`, [0.66, 0.06, 0.06], [directionX * 0.34, 0.62, 0], brassMaterial);
+  const bulb = new Mesh(new CylinderGeometry(0.11, 0.13, 0.2, 16), bulbMaterial);
+  bulb.name = `${name} exposed bulb`;
+  bulb.position.set(directionX * 0.66, 0.62, 0);
+  bulb.rotation.z = Math.PI / 2;
+  bulb.castShadow = false;
+  group.add(bulb);
+  const shade = new Mesh(new ConeGeometry(0.28, 0.44, 20, 1, true), shadeMaterial);
+  shade.name = `${name} sideways funnel shade`;
+  shade.position.set(directionX * 0.78, 0.62, 0);
+  shade.rotation.z = directionX > 0 ? -Math.PI / 2 : Math.PI / 2;
+  shade.castShadow = true;
+  group.add(shade);
+  const light = new PointLight(0xffc36b, 1.9, 9, 1.6);
+  light.name = `${name} warm light`;
+  light.position.set(directionX * 0.7, 0.62, 0);
+  light.visible = false;
+  group.add(light);
+
+  root.add(group);
+  return {
+    interactPosition: position.clone().add(new Vector3(0, 0.9, 0)),
+    light,
+    bulbMaterial,
+    shadeMaterial,
+    on: false,
+  };
+}
+
+function addTableAndChair(root: Group, colliders: CollisionBox[]): ChapterTenLamp {
+  const tableX = -7.9;
+  addBox(root, 'Chapter 10 moved left wall table top', [1.16, 0.24, 3.24], [tableX, 1.02, -1.25], tableMaterial);
+  addBox(root, 'Chapter 10 moved table front left leg', [0.16, 0.92, 0.16], [tableX - 0.43, 0.48, 0.16], tableMaterial);
+  addBox(root, 'Chapter 10 moved table front right leg', [0.16, 0.92, 0.16], [tableX + 0.43, 0.48, 0.16], tableMaterial);
+  addBox(root, 'Chapter 10 moved table back left leg', [0.16, 0.92, 0.16], [tableX - 0.43, 0.48, -2.66], tableMaterial);
+  addBox(root, 'Chapter 10 moved table back right leg', [0.16, 0.92, 0.16], [tableX + 0.43, 0.48, -2.66], tableMaterial);
+  addCollider(colliders, tableX, -1.25, 0.68, 1.72);
+
+  const chairX = -6.4;
+  addBox(root, 'Chapter 10 left table chair seat', [1.08, 0.22, 1.08], [chairX, 0.66, -1.25], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair back', [0.2, 1.42, 1.08], [chairX + 0.56, 1.24, -1.25], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair front left leg', [0.14, 0.68, 0.14], [chairX - 0.36, 0.34, -0.84], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair front right leg', [0.14, 0.68, 0.14], [chairX - 0.36, 0.34, -1.66], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair back left leg', [0.14, 0.68, 0.14], [chairX + 0.36, 0.34, -0.84], chairMaterial);
+  addBox(root, 'Chapter 10 left table chair back right leg', [0.14, 0.68, 0.14], [chairX + 0.36, 0.34, -1.66], chairMaterial);
+  addCollider(colliders, chairX, -1.25, 0.68, 0.68);
+
+  return addSideFacingLamp(root, 'Chapter 10 left wall table lamp', new Vector3(tableX, 1.16, -0.2), 1);
 }
 
 function addCounterSinkOvenAndWasher(root: Group, colliders: CollisionBox[]): void {
@@ -507,46 +620,9 @@ function addLampTable(root: Group, colliders: CollisionBox[]): ChapterTenLamp {
   addBox(group, 'Chapter 10 bottom left lamp table leg back left', [0.14, 0.72, 0.14], [-0.52, 0.36, -0.42], tableMaterial);
   addBox(group, 'Chapter 10 bottom left lamp table leg back right', [0.14, 0.72, 0.14], [0.52, 0.36, -0.42], tableMaterial);
 
-  const shadeMaterial = new MeshStandardMaterial({
-    color: 0xd7c28d,
-    emissive: 0xffc86b,
-    emissiveIntensity: 0,
-    roughness: 0.55,
-  });
-  const bulbMaterial = new MeshStandardMaterial({
-    color: 0xfff4cf,
-    emissive: 0xffd37a,
-    emissiveIntensity: 0.08,
-    roughness: 0.3,
-  });
-  addBox(group, 'Chapter 10 lamp base', [0.36, 0.12, 0.36], [0, 0.96, 0], brassMaterial);
-  addBox(group, 'Chapter 10 lamp stem', [0.1, 0.62, 0.1], [0, 1.25, 0], brassMaterial);
-  const bulb = new Mesh(new CylinderGeometry(0.12, 0.14, 0.2, 16), bulbMaterial);
-  bulb.name = 'Chapter 10 lamp glowing bulb';
-  bulb.position.set(0, 1.55, 0);
-  bulb.castShadow = false;
-  group.add(bulb);
-  const shade = new Mesh(new ConeGeometry(0.48, 0.52, 20, 1, true), shadeMaterial);
-  shade.name = 'Chapter 10 lamp shade';
-  shade.position.set(0, 1.66, 0);
-  shade.rotation.x = Math.PI;
-  shade.castShadow = true;
-  group.add(shade);
-  const light = new PointLight(0xffc36b, 1.9, 9, 1.6);
-  light.name = 'Chapter 10 lamp light';
-  light.position.set(0, 1.56, 0);
-  light.visible = false;
-  group.add(light);
-
   root.add(group);
   addCollider(colliders, -7.28, 5.15, 0.86, 0.74);
-  return {
-    interactPosition: new Vector3(-7.28, 0.9, 5.15),
-    light,
-    bulbMaterial,
-    shadeMaterial,
-    on: false,
-  };
+  return addSideFacingLamp(root, 'Chapter 10 bottom table side lamp', new Vector3(-7.28, 0.92, 5.15), -1);
 }
 
 function getDrawerItemLabel(item: ChapterTenDrawerItem): string {
@@ -605,12 +681,13 @@ export function createChapterTen(): ChapterTenData {
   rightRoof.rotation.z = -0.2;
   addBox(root, 'Chapter 10 roof ridge cap', [0.5, 0.38, HOUSE_DEPTH + 2], [0, 5.37, 0], roofMaterial);
 
-  addFireplace(root, colliders, -halfDepth + 0.48);
+  const fireplace = addFireplace(root, colliders, -halfDepth + 0.48);
   addBed(root, colliders);
-  addTableAndChair(root, colliders);
+  const tableLamp = addTableAndChair(root, colliders);
   const drawers = addTopWallDrawers(root, colliders);
   addCounterSinkOvenAndWasher(root, colliders);
   const lamp = addLampTable(root, colliders);
+  const lamps = [tableLamp, lamp];
 
   const stumpGeometry = new CylinderGeometry(0.42, 0.55, 0.55, 12);
   [-14, 14].forEach((x, index) => {
@@ -645,22 +722,36 @@ export function createChapterTen(): ChapterTenData {
     });
     return nearest && nearestDistance <= GAME_CONFIG.player.interactionRange + 0.95 ? nearest : null;
   };
+  const getNearestLamp = (position: Vector3): ChapterTenLamp | null => {
+    let nearest: ChapterTenLamp | null = null;
+    let nearestDistance = Infinity;
+    lamps.forEach((candidate) => {
+      const distance = position.distanceTo(candidate.interactPosition);
+      if (distance < nearestDistance) {
+        nearest = candidate;
+        nearestDistance = distance;
+      }
+    });
+    return nearest && nearestDistance <= GAME_CONFIG.player.interactionRange + 0.7 ? nearest : null;
+  };
   const toggleLampAt = (position: Vector3): { message: string; on: boolean } | null => {
-    if (position.distanceTo(lamp.interactPosition) > GAME_CONFIG.player.interactionRange + 0.7) {
+    const nearestLamp = getNearestLamp(position);
+    if (!nearestLamp) {
       return null;
     }
 
-    setLampState(lamp, !lamp.on);
+    setLampState(nearestLamp, !nearestLamp.on);
     return {
-      message: lamp.on ? 'You turn on the little table lamp.' : 'You turn off the little table lamp.',
-      on: lamp.on,
+      message: nearestLamp.on ? 'You turn on the table lamp.' : 'You turn off the table lamp.',
+      on: nearestLamp.on,
     };
   };
   const getLampPromptAt = (position: Vector3): string | null => {
-    if (position.distanceTo(lamp.interactPosition) > GAME_CONFIG.player.interactionRange + 0.7) {
+    const nearestLamp = getNearestLamp(position);
+    if (!nearestLamp) {
       return null;
     }
-    return lamp.on ? 'The little table lamp is on. Press E to turn it off.' : 'The little table lamp is off. Press E to turn it on.';
+    return nearestLamp.on ? 'The table lamp is on. Press E to turn it off.' : 'The table lamp is off. Press E to turn it on.';
   };
 
   return {
@@ -741,6 +832,25 @@ export function createChapterTen(): ChapterTenData {
 
       return null;
     },
+    useHeldItem(position: Vector3): ChapterTenInteractResult | null {
+      if (heldItem !== 'lighter') {
+        return null;
+      }
+      if (position.distanceTo(fireplace.interactPosition) > GAME_CONFIG.player.interactionRange + 1.25) {
+        return {
+          message: 'Move closer to the fireplace, then left click with the lighter.',
+          sound: 'small-panel',
+          active: false,
+        };
+      }
+
+      setFireplaceState(fireplace, !fireplace.lit);
+      return {
+        message: fireplace.lit ? 'You flick the lighter and light the fireplace.' : 'You flick the lighter and put out the fireplace.',
+        sound: 'small-panel',
+        active: fireplace.lit,
+      };
+    },
     getPrompt(position: Vector3): string | null {
       if (position.distanceTo(frontDoor.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.9) {
         return frontDoor.open ? 'The front door is open. Press E to close it.' : 'The front door is closed. Press E to open it.';
@@ -760,6 +870,15 @@ export function createChapterTen(): ChapterTenData {
         return drawer.itemTaken
           ? `${drawer.label} is open and empty. Press E to close it.`
           : `${drawer.label} is open with a ${itemLabel.toLowerCase()} inside. Press E to take it.`;
+      }
+
+      if (
+        heldItem === 'lighter'
+        && position.distanceTo(fireplace.interactPosition) <= GAME_CONFIG.player.interactionRange + 1.25
+      ) {
+        return fireplace.lit
+          ? 'The fireplace is lit. Left click with the lighter to put it out.'
+          : 'The fireplace is unlit. Left click with the lighter to light it.';
       }
 
       return getLampPromptAt(position);
@@ -785,17 +904,30 @@ export function createChapterTen(): ChapterTenData {
 
       return GAME_CONFIG.player.height + FLOOR_Y;
     },
-    update(_deltaSeconds: number): void {
-      // The first Chapter 10 pass is a static build shell for later map work.
+    update(deltaSeconds: number): void {
+      const rotationDelta = frontDoor.targetRotation - frontDoor.root.rotation.y;
+      if (Math.abs(rotationDelta) > 0.002) {
+        frontDoor.root.rotation.y += rotationDelta * Math.min(1, deltaSeconds * 7.5);
+      } else {
+        frontDoor.root.rotation.y = frontDoor.targetRotation;
+      }
+      fireplace.flames.rotation.y += deltaSeconds * 0.55;
+      fireplace.smoke.children.forEach((puff, index) => {
+        const baseY = typeof puff.userData.baseY === 'number' ? puff.userData.baseY : puff.position.y;
+        puff.position.y = baseY + Math.sin(performance.now() * 0.0012 + index) * 0.08;
+        puff.rotation.y += deltaSeconds * (0.08 + index * 0.025);
+      });
     },
     reset(): void {
       heldItem = null;
       setDoorState(frontDoor, false);
+      frontDoor.root.rotation.y = 0;
       drawers.forEach((drawer) => {
         drawer.itemTaken = false;
         setDrawerState(drawer, false);
       });
-      setLampState(lamp, false);
+      lamps.forEach((sceneLamp) => setLampState(sceneLamp, false));
+      setFireplaceState(fireplace, false);
       root.visible = false;
     },
   };

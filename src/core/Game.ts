@@ -3365,6 +3365,8 @@ export class Game {
       } else if (this.paintbrushActive) {
         this.applyPaintbrushStroke();
         this.paintbrushStrokeCooldown = Math.max(this.paintbrushStrokeCooldown, 0.08);
+      } else if (this.chapterTenActive && this.chapterTen.getHeldItemLabel() === 'Lighter') {
+        this.handleFire();
       } else if (this.placementToolActive) {
         this.placePlacementMarker();
       } else {
@@ -14165,6 +14167,15 @@ export class Game {
       return;
     }
 
+    if (this.chapterTenActive) {
+      const result = this.chapterTen.useHeldItem(this.player.getPosition());
+      if (result) {
+        this.gameplaySfxAudio.playSmallPanel(result.active ?? false);
+        this.pushStatus(result.message, 2.2);
+      }
+      return;
+    }
+
     if (!this.zombieModeActive) {
       return;
     }
@@ -17566,9 +17577,9 @@ export class Game {
         this.getCoordinateToolInventoryLine(),
         'Chapter 10: House Shell',
         heldItemLabel
-          ? `Held drawer item: ${heldItemLabel}. Press E at its drawer to put it back.`
+          ? `Held drawer item: ${heldItemLabel}. ${heldItemLabel === 'Lighter' ? 'Left click near the fireplace to light or unlight it.' : 'Press E at its drawer to put it back.'}`
           : 'Drawer items: axe, lighter, and computer are stored in the top-wall drawers.',
-        'Press E at the front door, drawers, or the little table lamp.',
+        'Press E at the front door, drawers, or either table lamp.',
       ].join('\n');
     }
 
@@ -19351,7 +19362,7 @@ export class Game {
     }
 
     if (this.chapterTenActive) {
-      return 'Chapter 10: House Shell loaded. Press E for the front door, top-wall drawers, or the little table lamp.';
+      return 'Chapter 10: House Shell loaded. Press E for the front door, top-wall drawers, or either table lamp.';
     }
 
     if (this.chapterEightActive) {
@@ -26052,7 +26063,7 @@ export class Game {
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter 10: House Shell';
     this.chapterCardBody =
-      'A small empty map with a simple house shell, open doorway, wood floor, roof shape, and porch step.';
+      'A small house shell with a closed front door, top-wall drawers, table lamps, and an unlit fireplace.';
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
@@ -26167,7 +26178,7 @@ export class Game {
     this.player.teleport(this.chapterTen.spawn);
     this.player.lookToward(this.chapterTen.lookTarget, 1);
     this.pushStatus(
-      'Chapter 10 loaded. A small house shell map is ready for markers and future room work.',
+      'Chapter 10 loaded. The fireplace is unlit. Find the lighter in the drawers to light it.',
       3.2,
     );
     this.resize();
