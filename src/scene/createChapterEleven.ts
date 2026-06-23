@@ -53,6 +53,8 @@ const shirtMaterial = new MeshStandardMaterial({ color: 0x4f83c4, roughness: 0.7
 const pantsMaterial = new MeshStandardMaterial({ color: 0x2d3558, roughness: 0.78 });
 const hairMaterial = new MeshStandardMaterial({ color: 0x3d2417, roughness: 0.8 });
 const faceMaterial = new MeshStandardMaterial({ color: 0x1b140f, roughness: 0.55 });
+const pathStoneMaterial = new MeshStandardMaterial({ color: 0x8a7d6a, roughness: 0.96 });
+const pathStoneDarkMaterial = new MeshStandardMaterial({ color: 0x655d52, roughness: 0.98 });
 
 function addCollider(
   colliders: CollisionBox[],
@@ -193,6 +195,33 @@ export function createChapterEleven(): ChapterElevenData {
   stand.add(person);
   root.add(stand);
   addCollider(colliders, -53.1, 11.34, 2.2, 3.15);
+
+  const pathStart = new Vector3(-25.09, 0.004, -40.86);
+  const pathEnd = new Vector3(-57.21, 0.004, -42.25);
+  const pathVector = pathEnd.clone().sub(pathStart);
+  const pathLength = Math.hypot(pathVector.x, pathVector.z);
+  const pathAngle = Math.atan2(pathVector.x, pathVector.z);
+  const pathDirection = pathVector.clone().normalize();
+  const pathSide = new Vector3(pathDirection.z, 0, -pathDirection.x);
+  const stoneCount = 13;
+  for (let i = 0; i < stoneCount; i += 1) {
+    const t = i / (stoneCount - 1);
+    const center = pathStart.clone().lerp(pathEnd, t);
+    const sideOffset = pathSide.clone().multiplyScalar(i % 2 === 0 ? -0.38 : 0.38);
+    center.add(sideOffset);
+    const stone = new Mesh(new BoxGeometry(2.05, 0.022, 2.45), i % 3 === 0 ? pathStoneDarkMaterial : pathStoneMaterial);
+    stone.name = 'Chapter 11 embedded rock brick path stone';
+    stone.position.set(center.x, 0.004, center.z);
+    stone.rotation.y = pathAngle + (i % 2 === 0 ? 0.04 : -0.035);
+    stone.receiveShadow = true;
+    root.add(stone);
+  }
+  const pathBase = new Mesh(new BoxGeometry(3.55, 0.012, pathLength + 1.4), pathStoneMaterial);
+  pathBase.name = 'Chapter 11 flat embedded rock path base';
+  pathBase.position.set((pathStart.x + pathEnd.x) / 2, 0.001, (pathStart.z + pathEnd.z) / 2);
+  pathBase.rotation.y = pathAngle;
+  pathBase.receiveShadow = true;
+  root.add(pathBase);
 
   const northFence = new Mesh(new BoxGeometry(FIELD_WIDTH + fenceThickness * 2, fenceHeight, fenceThickness), fenceMaterial);
   northFence.name = 'Chapter 11 north border fence';
