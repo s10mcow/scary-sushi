@@ -3,6 +3,7 @@ import {
   Group,
   Mesh,
   MeshStandardMaterial,
+  SphereGeometry,
   Vector3,
 } from 'three';
 
@@ -43,6 +44,16 @@ const dirtFenceMaterial = new MeshStandardMaterial({
   roughness: 0.9,
 });
 
+const standWoodMaterial = new MeshStandardMaterial({ color: 0x8a5a2f, roughness: 0.82 });
+const standDarkWoodMaterial = new MeshStandardMaterial({ color: 0x5f3a1f, roughness: 0.88 });
+const canopyRedMaterial = new MeshStandardMaterial({ color: 0xc8332f, roughness: 0.72 });
+const canopyWhiteMaterial = new MeshStandardMaterial({ color: 0xf2eadb, roughness: 0.66 });
+const skinMaterial = new MeshStandardMaterial({ color: 0xc98f64, roughness: 0.62 });
+const shirtMaterial = new MeshStandardMaterial({ color: 0x4f83c4, roughness: 0.74 });
+const pantsMaterial = new MeshStandardMaterial({ color: 0x2d3558, roughness: 0.78 });
+const hairMaterial = new MeshStandardMaterial({ color: 0x3d2417, roughness: 0.8 });
+const faceMaterial = new MeshStandardMaterial({ color: 0x1b140f, roughness: 0.55 });
+
 function addCollider(
   colliders: CollisionBox[],
   centerX: number,
@@ -51,6 +62,22 @@ function addCollider(
   halfDepth: number,
 ): void {
   colliders.push({ centerX, centerZ, halfWidth, halfDepth });
+}
+
+function addBox(
+  root: Group,
+  name: string,
+  size: [number, number, number],
+  position: [number, number, number],
+  material: MeshStandardMaterial,
+): Mesh {
+  const mesh = new Mesh(new BoxGeometry(size[0], size[1], size[2]), material);
+  mesh.name = name;
+  mesh.position.set(position[0], position[1], position[2]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  root.add(mesh);
+  return mesh;
 }
 
 export function createChapterEleven(): ChapterElevenData {
@@ -106,6 +133,66 @@ export function createChapterEleven(): ChapterElevenData {
     });
   };
   addDirtPatch(-41.5, -39.85, 34, 38.7);
+
+  const stand = new Group();
+  stand.name = 'Chapter 11 old fashioned garden stand with worker';
+  stand.position.set(-53.46, 0, 11.34);
+
+  addBox(stand, 'Chapter 11 stand wooden counter front', [0.26, 1.18, 5.4], [1.15, 0.65, 0], standWoodMaterial);
+  addBox(stand, 'Chapter 11 stand counter top plank', [1.75, 0.18, 5.8], [0.62, 1.28, 0], standDarkWoodMaterial);
+  addBox(stand, 'Chapter 11 stand lower shelf plank', [1.42, 0.16, 4.9], [0.36, 0.34, 0], standDarkWoodMaterial);
+  [-2.62, 2.62].forEach((z) => {
+    addBox(stand, 'Chapter 11 stand front stick post', [0.18, 2.46, 0.18], [1.24, 1.38, z], standDarkWoodMaterial);
+    addBox(stand, 'Chapter 11 stand rear stick post', [0.18, 2.46, 0.18], [-0.78, 1.38, z], standDarkWoodMaterial);
+  });
+  [-2.62, 2.62].forEach((z) => {
+    addBox(stand, 'Chapter 11 stand side stick wall rail', [2.14, 0.14, 0.14], [0.22, 1.74, z], standWoodMaterial);
+    addBox(stand, 'Chapter 11 stand low side stick wall rail', [2.14, 0.12, 0.12], [0.22, 0.88, z], standWoodMaterial);
+  });
+  [-1.7, -0.85, 0, 0.85, 1.7].forEach((z) => {
+    addBox(stand, 'Chapter 11 stand vertical front counter board', [0.08, 0.9, 0.12], [1.31, 0.7, z], standDarkWoodMaterial);
+  });
+  for (let i = 0; i < 7; i += 1) {
+    const z = -2.7 + i * 0.9;
+    const material = i % 2 === 0 ? canopyRedMaterial : canopyWhiteMaterial;
+    addBox(stand, 'Chapter 11 red white striped canopy panel', [2.42, 0.16, 0.82], [0.22, 2.74, z], material);
+  }
+  addBox(stand, 'Chapter 11 stand canopy front lip', [0.2, 0.28, 6.0], [1.44, 2.62, 0], standDarkWoodMaterial);
+  addBox(stand, 'Chapter 11 stand canopy rear lip', [0.2, 0.24, 6.0], [-1.02, 2.6, 0], standDarkWoodMaterial);
+
+  const person = new Group();
+  person.name = 'Chapter 11 garden stand person facing counter';
+  person.position.set(-1.18, 0, 0);
+  const torso = addBox(person, 'Chapter 11 stand person shirt torso', [0.58, 0.92, 0.38], [0, 1.2, 0], shirtMaterial);
+  torso.rotation.z = -0.04;
+  const head = new Mesh(new SphereGeometry(0.28, 18, 12), skinMaterial);
+  head.name = 'Chapter 11 stand person head';
+  head.position.set(0.02, 1.87, 0);
+  head.castShadow = true;
+  person.add(head);
+  const hair = new Mesh(new SphereGeometry(0.3, 18, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMaterial);
+  hair.name = 'Chapter 11 stand person hair cap';
+  hair.position.set(0.0, 2.02, 0);
+  hair.castShadow = true;
+  person.add(hair);
+  const leftEye = new Mesh(new SphereGeometry(0.025, 8, 6), faceMaterial);
+  leftEye.name = 'Chapter 11 stand person left eye';
+  leftEye.position.set(0.24, 1.91, -0.08);
+  const rightEye = leftEye.clone();
+  rightEye.name = 'Chapter 11 stand person right eye';
+  rightEye.position.z = 0.08;
+  const mouth = addBox(person, 'Chapter 11 stand person small smile', [0.035, 0.02, 0.18], [0.265, 1.78, 0], faceMaterial);
+  mouth.rotation.x = 0.08;
+  person.add(leftEye, rightEye);
+  addBox(person, 'Chapter 11 stand person left arm', [0.18, 0.72, 0.18], [0.1, 1.17, -0.34], skinMaterial).rotation.z = -0.18;
+  addBox(person, 'Chapter 11 stand person right arm', [0.18, 0.72, 0.18], [0.1, 1.17, 0.34], skinMaterial).rotation.z = -0.18;
+  addBox(person, 'Chapter 11 stand person left leg', [0.2, 0.82, 0.18], [-0.08, 0.43, -0.14], pantsMaterial);
+  addBox(person, 'Chapter 11 stand person right leg', [0.2, 0.82, 0.18], [-0.08, 0.43, 0.14], pantsMaterial);
+  addBox(person, 'Chapter 11 stand person shoes', [0.28, 0.12, 0.52], [0.03, 0.08, 0], standDarkWoodMaterial);
+  person.rotation.y = 0;
+  stand.add(person);
+  root.add(stand);
+  addCollider(colliders, -53.1, 11.34, 2.2, 3.15);
 
   const northFence = new Mesh(new BoxGeometry(FIELD_WIDTH + fenceThickness * 2, fenceHeight, fenceThickness), fenceMaterial);
   northFence.name = 'Chapter 11 north border fence';
