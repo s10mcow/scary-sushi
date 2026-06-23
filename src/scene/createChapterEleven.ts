@@ -19,8 +19,8 @@ export interface ChapterElevenData {
   reset(): void;
 }
 
-const FIELD_WIDTH = 600;
-const FIELD_DEPTH = 600;
+const FIELD_WIDTH = 20;
+const FIELD_DEPTH = 20;
 const FLOOR_Y = 0;
 
 const grassMaterial = new MeshStandardMaterial({
@@ -29,9 +29,24 @@ const grassMaterial = new MeshStandardMaterial({
 });
 
 const dirtMaterial = new MeshStandardMaterial({
-  color: 0x8b653d,
+  color: 0x7a4f2a,
   roughness: 0.98,
 });
+
+const fenceMaterial = new MeshStandardMaterial({
+  color: 0xd8c28d,
+  roughness: 0.82,
+});
+
+function addCollider(
+  colliders: CollisionBox[],
+  centerX: number,
+  centerZ: number,
+  halfWidth: number,
+  halfDepth: number,
+): void {
+  colliders.push({ centerX, centerZ, halfWidth, halfDepth });
+}
 
 export function createChapterEleven(): ChapterElevenData {
   const root = new Group();
@@ -45,19 +60,60 @@ export function createChapterEleven(): ChapterElevenData {
   root.add(grass);
 
   const dirtPatchGeometry = new BoxGeometry(5, 0.035, 10);
-  for (let z = -180; z <= 220; z += 40) {
+  [-4, 5].forEach((z) => {
     const leftPatch = new Mesh(dirtPatchGeometry, dirtMaterial);
-    leftPatch.name = 'Chapter 11 left dirt walking landmark';
-    leftPatch.position.set(-24, 0.005, z);
+    leftPatch.name = 'Chapter 11 left brown dirt patch';
+    leftPatch.position.set(-7.5, 0.005, z);
     leftPatch.receiveShadow = true;
     const rightPatch = leftPatch.clone();
-    rightPatch.name = 'Chapter 11 right dirt walking landmark';
-    rightPatch.position.x = 24;
+    rightPatch.name = 'Chapter 11 right brown dirt patch';
+    rightPatch.position.x = 7.5;
     root.add(leftPatch, rightPatch);
+  });
+
+  const fenceHeight = 1.25;
+  const fenceThickness = 0.22;
+  const halfWidth = FIELD_WIDTH / 2;
+  const halfDepth = FIELD_DEPTH / 2;
+  const northFence = new Mesh(new BoxGeometry(FIELD_WIDTH + fenceThickness * 2, fenceHeight, fenceThickness), fenceMaterial);
+  northFence.name = 'Chapter 11 north border fence';
+  northFence.position.set(0, fenceHeight / 2, -halfDepth);
+  const southFence = northFence.clone();
+  southFence.name = 'Chapter 11 south border fence';
+  southFence.position.z = halfDepth;
+  const westFence = new Mesh(new BoxGeometry(fenceThickness, fenceHeight, FIELD_DEPTH + fenceThickness * 2), fenceMaterial);
+  westFence.name = 'Chapter 11 west border fence';
+  westFence.position.set(-halfWidth, fenceHeight / 2, 0);
+  const eastFence = westFence.clone();
+  eastFence.name = 'Chapter 11 east border fence';
+  eastFence.position.x = halfWidth;
+  root.add(northFence, southFence, westFence, eastFence);
+
+  const postGeometry = new BoxGeometry(0.32, 1.55, 0.32);
+  for (let i = -halfWidth; i <= halfWidth + 0.001; i += 2.5) {
+    const northPost = new Mesh(postGeometry, fenceMaterial);
+    northPost.name = 'Chapter 11 fence post';
+    northPost.position.set(i, 0.775, -halfDepth);
+    const southPost = northPost.clone();
+    southPost.position.z = halfDepth;
+    root.add(northPost, southPost);
+  }
+  for (let i = -halfDepth + 2.5; i <= halfDepth - 2.5 + 0.001; i += 2.5) {
+    const westPost = new Mesh(postGeometry, fenceMaterial);
+    westPost.name = 'Chapter 11 fence side post';
+    westPost.position.set(-halfWidth, 0.775, i);
+    const eastPost = westPost.clone();
+    eastPost.position.x = halfWidth;
+    root.add(westPost, eastPost);
   }
 
-  const spawn = new Vector3(0, GAME_CONFIG.player.height, 12);
-  const lookTarget = new Vector3(0, GAME_CONFIG.player.height * 0.9, 0);
+  addCollider(colliders, 0, -halfDepth, halfWidth + fenceThickness, fenceThickness);
+  addCollider(colliders, 0, halfDepth, halfWidth + fenceThickness, fenceThickness);
+  addCollider(colliders, -halfWidth, 0, fenceThickness, halfDepth + fenceThickness);
+  addCollider(colliders, halfWidth, 0, fenceThickness, halfDepth + fenceThickness);
+
+  const spawn = new Vector3(0, GAME_CONFIG.player.height, 0);
+  const lookTarget = new Vector3(0, GAME_CONFIG.player.height * 0.9, -4);
 
   return {
     root,
@@ -68,7 +124,7 @@ export function createChapterEleven(): ChapterElevenData {
       return FLOOR_Y + GAME_CONFIG.player.height;
     },
     update(_deltaSeconds: number, _playerPosition: Vector3): void {
-      // Chapter 11 uses one fixed oversized field so grass never visibly generates around the player.
+      // Empty garden plot for now.
     },
     reset(): void {
       root.visible = false;
