@@ -19,8 +19,8 @@ export interface ChapterElevenData {
   reset(): void;
 }
 
-const FIELD_WIDTH = 40;
-const FIELD_DEPTH = 40;
+const FIELD_WIDTH = 80;
+const FIELD_DEPTH = 80;
 const FLOOR_Y = 0;
 
 const grassMaterial = new MeshStandardMaterial({
@@ -69,29 +69,32 @@ export function createChapterEleven(): ChapterElevenData {
   const halfWidth = FIELD_WIDTH / 2;
   const halfDepth = FIELD_DEPTH / 2;
 
-  const dirtPatchGeometry = new BoxGeometry(10, 0.035, 10);
+  const dirtPatchWidth = 14;
+  const dirtPatchDepth = 14;
+  const dirtPatchGeometry = new BoxGeometry(dirtPatchWidth, 0.035, dirtPatchDepth);
   const dirtFenceRailHeight = 0.28;
   const dirtFenceRailThickness = 0.12;
   const dirtFencePostGeometry = new BoxGeometry(0.18, 0.52, 0.18);
   const addDirtPatchFence = (centerX: number, centerZ: number): void => {
-    const plotHalfSize = 5;
-    const northRail = new Mesh(new BoxGeometry(10.2, dirtFenceRailHeight, dirtFenceRailThickness), dirtFenceMaterial);
+    const plotHalfWidth = dirtPatchWidth / 2;
+    const plotHalfDepth = dirtPatchDepth / 2;
+    const northRail = new Mesh(new BoxGeometry(dirtPatchWidth + 0.2, dirtFenceRailHeight, dirtFenceRailThickness), dirtFenceMaterial);
     northRail.name = 'Chapter 11 dirt patch stick fence rail';
-    northRail.position.set(centerX, dirtFenceRailHeight / 2, centerZ - plotHalfSize);
+    northRail.position.set(centerX, dirtFenceRailHeight / 2, centerZ - plotHalfDepth);
     const southRail = northRail.clone();
-    southRail.position.z = centerZ + plotHalfSize;
-    const westRail = new Mesh(new BoxGeometry(dirtFenceRailThickness, dirtFenceRailHeight, 10.2), dirtFenceMaterial);
+    southRail.position.z = centerZ + plotHalfDepth;
+    const westRail = new Mesh(new BoxGeometry(dirtFenceRailThickness, dirtFenceRailHeight, dirtPatchDepth + 0.2), dirtFenceMaterial);
     westRail.name = 'Chapter 11 dirt patch stick side rail';
-    westRail.position.set(centerX - plotHalfSize, dirtFenceRailHeight / 2, centerZ);
+    westRail.position.set(centerX - plotHalfWidth, dirtFenceRailHeight / 2, centerZ);
     const eastRail = westRail.clone();
-    eastRail.position.x = centerX + plotHalfSize;
+    eastRail.position.x = centerX + plotHalfWidth;
     root.add(northRail, southRail, westRail, eastRail);
 
     [
-      [centerX - plotHalfSize, centerZ - plotHalfSize],
-      [centerX + plotHalfSize, centerZ - plotHalfSize],
-      [centerX - plotHalfSize, centerZ + plotHalfSize],
-      [centerX + plotHalfSize, centerZ + plotHalfSize],
+      [centerX - plotHalfWidth, centerZ - plotHalfDepth],
+      [centerX + plotHalfWidth, centerZ - plotHalfDepth],
+      [centerX - plotHalfWidth, centerZ + plotHalfDepth],
+      [centerX + plotHalfWidth, centerZ + plotHalfDepth],
     ].forEach(([postX, postZ]) => {
       const post = new Mesh(dirtFencePostGeometry, dirtFenceMaterial);
       post.name = 'Chapter 11 dirt patch stick fence post';
@@ -100,7 +103,7 @@ export function createChapterEleven(): ChapterElevenData {
     });
   };
 
-  [-7, 7].forEach((x) => {
+  [-halfWidth + dirtPatchWidth / 2 + 1.2, halfWidth - dirtPatchWidth / 2 - 1.2].forEach((x) => {
     const dirtPatch = new Mesh(dirtPatchGeometry, dirtMaterial);
     dirtPatch.name = 'Chapter 11 old-map-size brown dirt patch';
     dirtPatch.position.set(x, 0.005, 0);
