@@ -53,6 +53,7 @@ const shirtMaterial = new MeshStandardMaterial({ color: 0x4f83c4, roughness: 0.7
 const pantsMaterial = new MeshStandardMaterial({ color: 0x2d3558, roughness: 0.78 });
 const hairMaterial = new MeshStandardMaterial({ color: 0x3d2417, roughness: 0.8 });
 const faceMaterial = new MeshStandardMaterial({ color: 0x1b140f, roughness: 0.55 });
+const lipMaterial = new MeshStandardMaterial({ color: 0x7d322d, roughness: 0.68 });
 const pathStoneMaterial = new MeshStandardMaterial({ color: 0x8a7d6a, roughness: 0.96 });
 const pathStoneDarkMaterial = new MeshStandardMaterial({ color: 0x655d52, roughness: 0.98 });
 
@@ -140,33 +141,34 @@ export function createChapterEleven(): ChapterElevenData {
   stand.name = 'Chapter 11 old fashioned garden stand with worker';
   stand.position.set(-53.46, 0, 11.34);
 
-  addBox(stand, 'Chapter 11 stand wooden counter front', [0.26, 1.18, 5.4], [1.15, 0.65, 0], standWoodMaterial);
-  addBox(stand, 'Chapter 11 stand counter top plank', [1.75, 0.18, 5.8], [0.62, 1.28, 0], standDarkWoodMaterial);
-  addBox(stand, 'Chapter 11 stand lower shelf plank', [1.42, 0.16, 4.9], [0.36, 0.34, 0], standDarkWoodMaterial);
+  addBox(stand, 'Chapter 11 stand shorter wooden counter front', [0.26, 0.84, 5.4], [1.15, 0.48, 0], standWoodMaterial);
+  addBox(stand, 'Chapter 11 stand shorter counter top plank', [1.75, 0.18, 5.8], [0.62, 0.94, 0], standDarkWoodMaterial);
+  addBox(stand, 'Chapter 11 stand lower shelf plank', [1.42, 0.16, 4.9], [0.36, 0.28, 0], standDarkWoodMaterial);
   [-2.62, 2.62].forEach((z) => {
     addBox(stand, 'Chapter 11 stand front stick post', [0.18, 2.46, 0.18], [1.24, 1.38, z], standDarkWoodMaterial);
     addBox(stand, 'Chapter 11 stand rear stick post', [0.18, 2.46, 0.18], [-0.78, 1.38, z], standDarkWoodMaterial);
   });
   [-2.62, 2.62].forEach((z) => {
     addBox(stand, 'Chapter 11 stand side stick wall rail', [2.14, 0.14, 0.14], [0.22, 1.74, z], standWoodMaterial);
-    addBox(stand, 'Chapter 11 stand low side stick wall rail', [2.14, 0.12, 0.12], [0.22, 0.88, z], standWoodMaterial);
+    addBox(stand, 'Chapter 11 stand low side stick wall rail', [2.14, 0.12, 0.12], [0.22, 0.7, z], standWoodMaterial);
   });
   [-1.7, -0.85, 0, 0.85, 1.7].forEach((z) => {
-    addBox(stand, 'Chapter 11 stand vertical front counter board', [0.08, 0.9, 0.12], [1.31, 0.7, z], standDarkWoodMaterial);
+    addBox(stand, 'Chapter 11 stand vertical front counter board', [0.08, 0.62, 0.12], [1.31, 0.52, z], standDarkWoodMaterial);
   });
   for (let i = 0; i < 7; i += 1) {
     const z = -2.7 + i * 0.9;
     const material = i % 2 === 0 ? canopyRedMaterial : canopyWhiteMaterial;
-    addBox(stand, 'Chapter 11 red white striped canopy panel', [2.42, 0.16, 0.82], [0.22, 2.74, z], material);
+    addBox(stand, 'Chapter 11 red white striped canopy panel', [2.42, 0.16, 0.82], [0.22, 2.74, z], material).rotation.z = -0.12;
   }
-  addBox(stand, 'Chapter 11 stand canopy front lip', [0.2, 0.28, 6.0], [1.44, 2.62, 0], standDarkWoodMaterial);
-  addBox(stand, 'Chapter 11 stand canopy rear lip', [0.2, 0.24, 6.0], [-1.02, 2.6, 0], standDarkWoodMaterial);
+  addBox(stand, 'Chapter 11 stand canopy front lip', [0.2, 0.28, 6.0], [1.44, 2.56, 0], standDarkWoodMaterial).rotation.z = -0.12;
+  addBox(stand, 'Chapter 11 stand canopy rear lip', [0.2, 0.24, 6.0], [-1.02, 2.72, 0], standDarkWoodMaterial).rotation.z = -0.12;
 
   const person = new Group();
   person.name = 'Chapter 11 garden stand person facing counter';
   person.position.set(-1.18, 0, 0);
-  const torso = addBox(person, 'Chapter 11 stand person shirt torso', [0.58, 0.92, 0.38], [0, 1.2, 0], shirtMaterial);
+  const torso = addBox(person, 'Chapter 11 stand person shirt torso', [0.62, 0.9, 0.42], [0, 1.18, 0], shirtMaterial);
   torso.rotation.z = -0.04;
+  addBox(person, 'Chapter 11 stand person neck', [0.18, 0.18, 0.16], [0.03, 1.69, 0], skinMaterial);
   const head = new Mesh(new SphereGeometry(0.28, 18, 12), skinMaterial);
   head.name = 'Chapter 11 stand person head';
   head.position.set(0.02, 1.87, 0);
@@ -177,19 +179,39 @@ export function createChapterEleven(): ChapterElevenData {
   hair.position.set(0.0, 2.02, 0);
   hair.castShadow = true;
   person.add(hair);
-  const leftEye = new Mesh(new SphereGeometry(0.025, 8, 6), faceMaterial);
+  const leftEye = new Mesh(new SphereGeometry(0.032, 10, 8), faceMaterial);
   leftEye.name = 'Chapter 11 stand person left eye';
-  leftEye.position.set(0.24, 1.91, -0.08);
+  leftEye.position.set(0.26, 1.91, -0.085);
   const rightEye = leftEye.clone();
   rightEye.name = 'Chapter 11 stand person right eye';
-  rightEye.position.z = 0.08;
-  const mouth = addBox(person, 'Chapter 11 stand person small smile', [0.035, 0.02, 0.18], [0.265, 1.78, 0], faceMaterial);
+  rightEye.position.z = 0.085;
+  addBox(person, 'Chapter 11 stand person left eyebrow', [0.025, 0.018, 0.16], [0.285, 1.99, -0.09], hairMaterial).rotation.x = -0.08;
+  addBox(person, 'Chapter 11 stand person right eyebrow', [0.025, 0.018, 0.16], [0.285, 1.99, 0.09], hairMaterial).rotation.x = 0.08;
+  const nose = new Mesh(new SphereGeometry(0.045, 8, 6), skinMaterial);
+  nose.name = 'Chapter 11 stand person small nose';
+  nose.position.set(0.285, 1.84, 0);
+  nose.scale.set(0.65, 0.9, 0.55);
+  nose.castShadow = true;
+  person.add(nose);
+  const leftEar = new Mesh(new SphereGeometry(0.055, 8, 6), skinMaterial);
+  leftEar.name = 'Chapter 11 stand person left ear';
+  leftEar.position.set(0.02, 1.87, -0.27);
+  leftEar.scale.set(0.55, 0.85, 0.32);
+  const rightEar = leftEar.clone();
+  rightEar.name = 'Chapter 11 stand person right ear';
+  rightEar.position.z = 0.27;
+  person.add(leftEar, rightEar);
+  const mouth = addBox(person, 'Chapter 11 stand person realistic mouth', [0.035, 0.024, 0.18], [0.282, 1.76, 0], lipMaterial);
   mouth.rotation.x = 0.08;
   person.add(leftEye, rightEye);
-  addBox(person, 'Chapter 11 stand person left arm', [0.18, 0.72, 0.18], [0.1, 1.17, -0.34], skinMaterial).rotation.z = -0.18;
-  addBox(person, 'Chapter 11 stand person right arm', [0.18, 0.72, 0.18], [0.1, 1.17, 0.34], skinMaterial).rotation.z = -0.18;
-  addBox(person, 'Chapter 11 stand person left leg', [0.2, 0.82, 0.18], [-0.08, 0.43, -0.14], pantsMaterial);
-  addBox(person, 'Chapter 11 stand person right leg', [0.2, 0.82, 0.18], [-0.08, 0.43, 0.14], pantsMaterial);
+  addBox(person, 'Chapter 11 stand person left arm sleeve', [0.18, 0.5, 0.18], [0.05, 1.28, -0.42], shirtMaterial).rotation.z = -0.18;
+  addBox(person, 'Chapter 11 stand person right arm sleeve', [0.18, 0.5, 0.18], [0.05, 1.28, 0.42], shirtMaterial).rotation.z = -0.18;
+  addBox(person, 'Chapter 11 stand person left forearm', [0.16, 0.34, 0.16], [0.18, 1.0, -0.42], skinMaterial).rotation.z = -0.2;
+  addBox(person, 'Chapter 11 stand person right forearm', [0.16, 0.34, 0.16], [0.18, 1.0, 0.42], skinMaterial).rotation.z = -0.2;
+  addBox(person, 'Chapter 11 stand person left hand', [0.16, 0.11, 0.18], [0.25, 0.8, -0.42], skinMaterial);
+  addBox(person, 'Chapter 11 stand person right hand', [0.16, 0.11, 0.18], [0.25, 0.8, 0.42], skinMaterial);
+  addBox(person, 'Chapter 11 stand person left leg', [0.22, 0.82, 0.18], [-0.08, 0.43, -0.15], pantsMaterial);
+  addBox(person, 'Chapter 11 stand person right leg', [0.22, 0.82, 0.18], [-0.08, 0.43, 0.15], pantsMaterial);
   addBox(person, 'Chapter 11 stand person shoes', [0.28, 0.12, 0.52], [0.03, 0.08, 0], standDarkWoodMaterial);
   person.rotation.y = 0;
   stand.add(person);
