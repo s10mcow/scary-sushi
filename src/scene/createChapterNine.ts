@@ -2136,8 +2136,6 @@ export function createChapterNine(): ChapterNineData {
     root.add(game);
     addCollider(colliders, x, z, 2.9, 2.2);
   };
-  addStrengthTester(-57, 26, 0);
-
   const stage = addBox(root, 30, 1.1, 11, 0, 0.55, -36, new MeshStandardMaterial({ color: 0x2f1720, roughness: 0.82 }));
   stage.name = 'Chapter 9 preserved stage';
   addCollider(colliders, 0, -36, 31, 12);
@@ -2469,6 +2467,7 @@ export function createChapterNine(): ChapterNineData {
   animatronics.length = 0;
   colliders.length = 0;
   colliders.push(...shellColliders);
+  addStrengthTester(-57, 26, 0);
 
   const seatedChairs: ChapterNineSeat[] = [];
   const addSitChair = (id: string, label: string, x: number, z: number, rotationY: number): void => {
@@ -2514,6 +2513,24 @@ export function createChapterNine(): ChapterNineData {
       lookTarget: new Vector3(x + forward.x * 4, 1.45, z + forward.z * 4),
     });
   };
+  const addSitChairRow = (
+    idPrefix: string,
+    label: string,
+    startX: number,
+    startZ: number,
+    endX: number,
+    endZ: number,
+    rotationY: number,
+  ): void => {
+    const length = Math.hypot(endX - startX, endZ - startZ);
+    const count = Math.max(2, Math.floor(length / 1.55) + 1);
+    for (let index = 0; index < count; index += 1) {
+      const t = count === 1 ? 0 : index / (count - 1);
+      const x = startX + (endX - startX) * t;
+      const z = startZ + (endZ - startZ) * t;
+      addSitChair(`${idPrefix}-${index + 1}`, label, x, z, rotationY);
+    }
+  };
 
   addSitChair('front-chair-1', 'front wall chair', -3.25, 28.8, Math.PI);
   addSitChair('front-chair-2', 'front wall chair', -5.98, 28.92, Math.PI);
@@ -2522,6 +2539,10 @@ export function createChapterNine(): ChapterNineData {
   addSitChair('right-wall-chair-1', 'right wall chair', 3.19, 26.22, -Math.PI / 2);
   addSitChair('right-wall-chair-2', 'right wall chair', 2.96, 22.86, -Math.PI / 2);
   addSitChair('right-wall-chair-3', 'right wall chair', 2.93, 20.29, -Math.PI / 2);
+  addSitChairRow('left-auditorium-row-1', 'left side chair row', -31.7, 15.73, -31.62, 26.34, Math.PI / 2);
+  addSitChairRow('left-auditorium-row-2', 'left side chair row', -36.98, 14.27, -36.83, 26.32, Math.PI / 2);
+  addSitChairRow('left-auditorium-row-3', 'left side chair row', -42.23, 26.35, -42.32, 10.93, Math.PI / 2);
+  addSitChairRow('left-auditorium-row-4', 'left side chair row', -47.72, 8.48, -47.77, 26.31, Math.PI / 2);
 
   const shoulderCamera = new Group();
   shoulderCamera.name = 'Chapter 9 shoulder recording camera';
