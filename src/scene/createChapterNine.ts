@@ -2581,8 +2581,8 @@ export function createChapterNine(): ChapterNineData {
     body.position.y = 0.48;
     const top = new Mesh(new BoxGeometry(2.5, 0.12, 1.65), new MeshStandardMaterial({ color: 0x7b4a28, roughness: 0.64 }));
     top.position.y = 0.98;
-    const label = new Mesh(new PlaneGeometry(2.0, 0.42), createSignMaterial('WHACK-A', 'PIRATE!', '#f4c45f'));
-    label.position.set(0, 1.46, 0.86);
+    const wallLabel = new Mesh(new PlaneGeometry(2.25, 0.52), createSignMaterial('WHACK-A', 'PIRATE!', '#f4c45f'));
+    wallLabel.position.set(0, 2.35, -0.9);
     const mallet = new Group();
     mallet.position.set(0.78, 1.16, 0.45);
     mallet.rotation.z = -0.55;
@@ -2609,7 +2609,7 @@ export function createChapterNine(): ChapterNineData {
         table.add(hole, pirateHead);
       });
     });
-    table.add(body, top, label, mallet);
+    table.add(body, top, wallLabel, mallet);
     root.add(table);
     addArcadeAttractionCollider(x, z, 1.24, 0.82, rotationY);
   };
