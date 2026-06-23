@@ -1,12 +1,15 @@
 import {
   BoxGeometry,
+  ConeGeometry,
   CylinderGeometry,
   DoubleSide,
   Group,
   Mesh,
   MeshStandardMaterial,
+  PointLight,
   Shape,
   ShapeGeometry,
+  TorusGeometry,
   Vector3,
 } from 'three';
 
@@ -43,11 +46,44 @@ const studMaterial = new MeshStandardMaterial({ color: 0xb68b5d, roughness: 0.74
 const stoneMaterial = new MeshStandardMaterial({ color: 0x69615a, roughness: 0.9 });
 const fireboxMaterial = new MeshStandardMaterial({ color: 0x080706, roughness: 0.96 });
 const emberMaterial = new MeshStandardMaterial({ color: 0xff7a22, emissive: 0xff4a10, emissiveIntensity: 0.8, roughness: 0.45 });
+const coalMaterial = new MeshStandardMaterial({ color: 0x16100c, emissive: 0x551400, emissiveIntensity: 0.35, roughness: 0.72 });
+const flameOuterMaterial = new MeshStandardMaterial({
+  color: 0xff7b18,
+  emissive: 0xff4f08,
+  emissiveIntensity: 1.8,
+  transparent: true,
+  opacity: 0.72,
+  side: DoubleSide,
+  roughness: 0.25,
+});
+const flameMiddleMaterial = new MeshStandardMaterial({
+  color: 0xffcf4d,
+  emissive: 0xffa21a,
+  emissiveIntensity: 2.1,
+  transparent: true,
+  opacity: 0.78,
+  side: DoubleSide,
+  roughness: 0.2,
+});
+const flameCoreMaterial = new MeshStandardMaterial({
+  color: 0xfff3a7,
+  emissive: 0xffd66b,
+  emissiveIntensity: 2.4,
+  transparent: true,
+  opacity: 0.84,
+  side: DoubleSide,
+  roughness: 0.18,
+});
 const mattressMaterial = new MeshStandardMaterial({ color: 0xd8d5c8, roughness: 0.76 });
 const blanketMaterial = new MeshStandardMaterial({ color: 0x526a86, roughness: 0.82 });
 const pillowMaterial = new MeshStandardMaterial({ color: 0xf1eee4, roughness: 0.7 });
 const tableMaterial = new MeshStandardMaterial({ color: 0x7b5130, roughness: 0.74 });
 const chairMaterial = new MeshStandardMaterial({ color: 0x6d4627, roughness: 0.78 });
+const drawerMaterial = new MeshStandardMaterial({ color: 0x9b6539, roughness: 0.78 });
+const drawerInsideMaterial = new MeshStandardMaterial({ color: 0x3d2416, roughness: 0.86 });
+const metalMaterial = new MeshStandardMaterial({ color: 0xb9bdc2, metalness: 0.45, roughness: 0.38 });
+const lighterMaterial = new MeshStandardMaterial({ color: 0xcc2323, roughness: 0.42 });
+const brassMaterial = new MeshStandardMaterial({ color: 0xc8952d, metalness: 0.42, roughness: 0.34 });
 
 function addCollider(
   colliders: CollisionBox[],
@@ -154,6 +190,30 @@ function addOpenFrontDoor(root: Group, halfDepth: number): void {
   root.add(door);
 }
 
+function createFlameMesh(
+  name: string,
+  width: number,
+  height: number,
+  material: MeshStandardMaterial,
+  position: [number, number, number],
+  rotationY: number,
+): Mesh {
+  const shape = new Shape();
+  shape.moveTo(-width / 2, 0);
+  shape.quadraticCurveTo(-width * 0.46, height * 0.42, -width * 0.14, height * 0.7);
+  shape.quadraticCurveTo(0, height, width * 0.14, height * 0.7);
+  shape.quadraticCurveTo(width * 0.46, height * 0.42, width / 2, 0);
+  shape.quadraticCurveTo(0, height * 0.12, -width / 2, 0);
+
+  const mesh = new Mesh(new ShapeGeometry(shape), material);
+  mesh.name = name;
+  mesh.position.set(position[0], position[1], position[2]);
+  mesh.rotation.y = rotationY;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  return mesh;
+}
+
 function addFireplace(root: Group, colliders: CollisionBox[], z: number): void {
   const fireplace = new Group();
   fireplace.name = 'Chapter 10 stone fireplace with recessed opening';
@@ -167,12 +227,73 @@ function addFireplace(root: Group, colliders: CollisionBox[], z: number): void {
   addBox(fireplace, 'Chapter 10 fireplace back shadow wall', [1.62, 1.1, 0.18], [0, 0.92, -0.42], fireboxMaterial);
   addBox(fireplace, 'Chapter 10 fireplace log left', [0.9, 0.16, 0.22], [-0.24, 0.42, -0.02], trimMaterial).rotation.z = 0.18;
   addBox(fireplace, 'Chapter 10 fireplace log right', [0.9, 0.16, 0.22], [0.24, 0.42, -0.02], trimMaterial).rotation.z = -0.18;
-  const flame = addBox(fireplace, 'Chapter 10 fireplace small flame', [0.34, 0.72, 0.18], [0, 0.78, -0.05], emberMaterial);
-  flame.rotation.z = Math.PI / 4;
+  addBox(fireplace, 'Chapter 10 glowing ember bed', [1.18, 0.12, 0.46], [0, 0.42, -0.08], emberMaterial);
+  addBox(fireplace, 'Chapter 10 charred coal left', [0.28, 0.16, 0.24], [-0.42, 0.53, -0.04], coalMaterial).rotation.z = -0.32;
+  addBox(fireplace, 'Chapter 10 charred coal center', [0.34, 0.17, 0.25], [0.02, 0.55, -0.02], coalMaterial).rotation.z = 0.2;
+  addBox(fireplace, 'Chapter 10 charred coal right', [0.24, 0.14, 0.22], [0.43, 0.51, -0.08], coalMaterial).rotation.z = 0.38;
+  fireplace.add(createFlameMesh('Chapter 10 fireplace outer flame sheet', 0.82, 1.14, flameOuterMaterial, [0, 0.48, 0.04], 0));
+  fireplace.add(createFlameMesh('Chapter 10 fireplace outer flame cross sheet', 0.78, 1.02, flameOuterMaterial, [0.06, 0.5, -0.02], Math.PI / 2));
+  fireplace.add(createFlameMesh('Chapter 10 fireplace orange flame tongue left', 0.42, 0.86, flameMiddleMaterial, [-0.24, 0.52, 0.02], -0.38));
+  fireplace.add(createFlameMesh('Chapter 10 fireplace orange flame tongue right', 0.44, 0.92, flameMiddleMaterial, [0.24, 0.5, -0.02], 0.44));
+  fireplace.add(createFlameMesh('Chapter 10 fireplace bright inner flame', 0.34, 0.76, flameCoreMaterial, [0, 0.56, 0.08], 0.16));
+  fireplace.add(createFlameMesh('Chapter 10 fireplace bright inner cross flame', 0.28, 0.66, flameCoreMaterial, [0.08, 0.57, -0.04], Math.PI / 2.2));
+  const fireLight = new PointLight(0xff8a24, 2.6, 9.5, 1.8);
+  fireLight.name = 'Chapter 10 realistic fireplace glow';
+  fireLight.position.set(0, 1.1, 0.35);
+  fireplace.add(fireLight);
   addBox(fireplace, 'Chapter 10 short chimney inside shell', [1.25, 1.35, 0.42], [0, 3.05, -0.06], stoneMaterial);
 
   root.add(fireplace);
   addCollider(colliders, 0, z + 0.12, 1.82, 0.62);
+}
+
+function addCornerDrawer(root: Group, colliders: CollisionBox[]): void {
+  const drawer = new Group();
+  drawer.name = 'Chapter 10 back right corner drawer with lighter car key and hoe';
+  drawer.position.set(6.92, 0, -5.45);
+  drawer.rotation.y = -Math.PI / 2;
+
+  addBox(drawer, 'Chapter 10 drawer cabinet body', [2.0, 1.62, 1.1], [0, 0.81, 0], drawerMaterial);
+  addBox(drawer, 'Chapter 10 drawer dark open cavity', [1.62, 0.44, 0.12], [0, 1.18, -0.57], drawerInsideMaterial);
+  addBox(drawer, 'Chapter 10 drawer open box bottom', [1.62, 0.08, 0.86], [0, 0.9, -0.98], drawerInsideMaterial);
+  addBox(drawer, 'Chapter 10 drawer open box front', [1.74, 0.45, 0.12], [0, 1.03, -1.4], drawerMaterial);
+  addBox(drawer, 'Chapter 10 drawer brass handle', [0.52, 0.08, 0.08], [0, 1.05, -1.48], brassMaterial);
+  addBox(drawer, 'Chapter 10 lower drawer seam', [1.72, 0.05, 0.05], [0, 0.58, -0.58], trimMaterial);
+  addBox(drawer, 'Chapter 10 lower drawer knob', [0.16, 0.16, 0.08], [0, 0.58, -0.66], brassMaterial);
+
+  addBox(drawer, 'Chapter 10 red lighter body in drawer', [0.18, 0.14, 0.5], [-0.52, 1.12, -1.12], lighterMaterial);
+  addBox(drawer, 'Chapter 10 lighter metal top in drawer', [0.18, 0.16, 0.16], [-0.52, 1.2, -0.82], metalMaterial);
+
+  const keyRing = new Mesh(new TorusGeometry(0.12, 0.018, 8, 18), brassMaterial);
+  keyRing.name = 'Chapter 10 car key ring in drawer';
+  keyRing.position.set(0.04, 1.16, -1.12);
+  keyRing.rotation.x = Math.PI / 2;
+  keyRing.castShadow = true;
+  drawer.add(keyRing);
+  addBox(drawer, 'Chapter 10 car key blade in drawer', [0.1, 0.04, 0.45], [0.2, 1.15, -1.08], metalMaterial).rotation.y = -0.32;
+  addBox(drawer, 'Chapter 10 car key black fob in drawer', [0.26, 0.08, 0.22], [-0.12, 1.15, -1.02], roofMaterial).rotation.y = 0.28;
+
+  const hoe = new Group();
+  hoe.name = 'Chapter 10 small hoe in drawer';
+  hoe.position.set(0.55, 1.2, -1.11);
+  hoe.rotation.y = 0.82;
+  const hoeHandle = new Mesh(new CylinderGeometry(0.035, 0.035, 0.98, 10), trimMaterial);
+  hoeHandle.name = 'Chapter 10 hoe wooden handle in drawer';
+  hoeHandle.rotation.z = Math.PI / 2;
+  hoeHandle.castShadow = true;
+  hoe.add(hoeHandle);
+  addBox(hoe, 'Chapter 10 hoe metal neck in drawer', [0.08, 0.08, 0.18], [0.52, 0, 0], metalMaterial);
+  const hoeBlade = new Mesh(new ConeGeometry(0.18, 0.34, 4), metalMaterial);
+  hoeBlade.name = 'Chapter 10 hoe flat metal blade in drawer';
+  hoeBlade.position.set(0.66, 0, 0);
+  hoeBlade.rotation.z = Math.PI / 2;
+  hoeBlade.scale.z = 0.26;
+  hoeBlade.castShadow = true;
+  hoe.add(hoeBlade);
+  drawer.add(hoe);
+
+  root.add(drawer);
+  addCollider(colliders, 6.92, -5.45, 0.72, 1.1);
 }
 
 function addBed(root: Group, colliders: CollisionBox[]): void {
@@ -249,6 +370,7 @@ export function createChapterTen(): ChapterTenData {
   addFireplace(root, colliders, -halfDepth + 0.48);
   addBed(root, colliders);
   addTableAndChair(root, colliders);
+  addCornerDrawer(root, colliders);
 
   addBox(root, 'Chapter 10 front porch step', [5.6, 0.35, 2.2], [0, 0.17, halfDepth + 1.45], porchMaterial);
   addBox(root, 'Chapter 10 porch left post', [0.24, 2.6, 0.24], [-2.5, 1.47, halfDepth + 2.25], trimMaterial);
