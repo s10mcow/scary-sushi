@@ -15,12 +15,12 @@ export interface ChapterElevenData {
   spawn: Vector3;
   lookTarget: Vector3;
   getSupportedFloorY(position: Vector3): number | null;
-  update(deltaSeconds: number): void;
+  update(deltaSeconds: number, playerPosition: Vector3): void;
   reset(): void;
 }
 
-const FIELD_WIDTH = 260;
-const FIELD_DEPTH = 220;
+const FIELD_WIDTH = 2400;
+const FIELD_DEPTH = 2400;
 const FLOOR_Y = 0;
 
 const grassMaterial = new MeshStandardMaterial({
@@ -50,8 +50,9 @@ export function createChapterEleven(): ChapterElevenData {
     getSupportedFloorY(_position: Vector3): number | null {
       return FLOOR_Y + GAME_CONFIG.player.height;
     },
-    update(_deltaSeconds: number): void {
-      // Empty field for now.
+    update(_deltaSeconds: number, playerPosition: Vector3): void {
+      grass.position.x = playerPosition.x;
+      grass.position.z = playerPosition.z;
     },
     reset(): void {
       root.visible = false;

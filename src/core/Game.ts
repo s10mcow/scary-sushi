@@ -3770,7 +3770,7 @@ export class Game {
     } else if (this.chapterTenActive) {
       this.chapterTen.update(deltaSeconds);
     } else if (this.chapterElevenActive) {
-      this.chapterEleven.update(deltaSeconds);
+      this.chapterEleven.update(deltaSeconds, this.player.getPosition());
     } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
