@@ -12717,17 +12717,13 @@ export class Game {
       return;
     }
 
-    if (this.chapterSevenLongerNightDuration > 0) {
-      this.pushStatus('The longer night watch is already active for this night.', 2.2);
-      return;
-    }
-
     this.chapterSevenLongerNightUses = Math.max(0, this.chapterSevenLongerNightUses - 1);
     this.chapterSevenLongerNightDuration = 150;
+    this.chapterSevenPhaseTime = 0;
     if (this.chapterSevenLongerNightUses <= 0) {
       this.chapterSevenHeldItem = null;
     }
-    this.pushStatus(`The longer night watch ticks loudly. This night now lasts 2:30. Uses left: ${this.chapterSevenLongerNightUses}.`, 3);
+    this.pushStatus(`The longer night watch resets the night timer to 2:30. Uses left: ${this.chapterSevenLongerNightUses}.`, 3);
     this.syncHud();
   }
 
@@ -13760,8 +13756,13 @@ export class Game {
         return;
       }
 
-      if (interactable?.kind === 'bird-cage') {
-        if (this.chapterSevenBirdCageFreed || interactable.item.unlocked) {
+      const birdCageTarget = interactable?.kind === 'bird-cage'
+        ? interactable.item
+        : !interactable
+          ? this.getNearestChapterSevenBirdCage()
+          : null;
+      if (birdCageTarget) {
+        if (this.chapterSevenBirdCageFreed || birdCageTarget.unlocked) {
           this.pushStatus('The birdcage door is open. The parrot is flying around the house.', 2.6);
           return;
         }
@@ -22677,6 +22678,20 @@ export class Game {
     }
 
     return closestFixture;
+  }
+
+  private getNearestChapterSevenBirdCage(): ChapterSevenData['birdCage'] | null {
+    if (!this.chapterSevenActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const distance = Math.hypot(
+      playerPosition.x - this.chapterSeven.birdCage.interactPosition.x,
+      playerPosition.z - this.chapterSeven.birdCage.interactPosition.z,
+    );
+
+    return distance <= GAME_CONFIG.player.interactionRange + 1.05 ? this.chapterSeven.birdCage : null;
   }
 
   private isPlayerInsideChapterSevenCardboardBox(): boolean {
