@@ -2391,6 +2391,236 @@ export function createChapterNine(): ChapterNineData {
 
     root.add(speaker);
   };
+
+  const addArcadeAttractionCollider = (
+    x: number,
+    z: number,
+    halfWidth: number,
+    halfDepth: number,
+    rotationY: number,
+  ): void => {
+    colliders.push({
+      centerX: x,
+      centerZ: z,
+      halfWidth,
+      halfDepth,
+      rotationY,
+    });
+  };
+
+  const addClawMachine = (x: number, z: number, rotationY = 0): void => {
+    const machine = new Group();
+    machine.position.set(x, 0, z);
+    machine.rotation.y = rotationY;
+    const redFrame = new MeshStandardMaterial({ color: 0xb82838, roughness: 0.5, metalness: 0.08 });
+    const base = new Mesh(new BoxGeometry(2.25, 0.9, 1.42), redFrame);
+    base.position.y = 0.45;
+    const glassBox = new Mesh(new BoxGeometry(2.05, 1.9, 1.22), glassMaterial);
+    glassBox.position.y = 1.84;
+    const top = new Mesh(new BoxGeometry(2.25, 0.34, 1.42), redFrame);
+    top.position.y = 2.95;
+    const joystick = new Mesh(new CylinderGeometry(0.055, 0.055, 0.42, 10), blackMetalMaterial);
+    joystick.position.set(-0.62, 1.03, 0.78);
+    joystick.rotation.x = 0.35;
+    const button = new Mesh(new CylinderGeometry(0.12, 0.12, 0.07, 18), topButtonMaterial);
+    button.position.set(0.52, 1.0, 0.79);
+    button.rotation.x = Math.PI / 2;
+    [-0.58, 0, 0.58].forEach((prizeX, index) => {
+      const prize = new Mesh(new SphereGeometry(0.2, 14, 10), new MeshStandardMaterial({ color: [0xf4d35e, 0x66b8e8, 0xd85b8a][index], roughness: 0.6 }));
+      prize.scale.set(1.0, 0.8, 0.78);
+      prize.position.set(prizeX, 1.08, 0.08 - index * 0.22);
+      machine.add(prize);
+    });
+    const clawRail = new Mesh(new BoxGeometry(1.4, 0.05, 0.08), metalMaterial);
+    clawRail.position.set(0, 2.62, 0);
+    const clawCable = new Mesh(new CylinderGeometry(0.025, 0.025, 0.54, 8), metalMaterial);
+    clawCable.position.set(0.35, 2.33, 0);
+    const clawHub = new Mesh(new SphereGeometry(0.08, 10, 8), metalMaterial);
+    clawHub.position.set(0.35, 2.05, 0);
+    [-0.12, 0, 0.12].forEach((clawX) => {
+      const claw = new Mesh(new BoxGeometry(0.035, 0.28, 0.035), metalMaterial);
+      claw.position.set(0.35 + clawX, 1.9, 0.02);
+      claw.rotation.z = clawX * 2.2;
+      machine.add(claw);
+    });
+    const sign = new Mesh(new PlaneGeometry(1.7, 0.42), createSignMaterial('CLAW', 'PRIZES', '#f7d76b'));
+    sign.position.set(0, 3.2, 0.73);
+    machine.add(base, glassBox, top, joystick, button, clawRail, clawCable, clawHub, sign);
+    root.add(machine);
+    addArcadeAttractionCollider(x, z, 1.14, 0.72, rotationY);
+  };
+
+  const addBoxingMachine = (x: number, z: number, rotationY = 0): void => {
+    const game = new Group();
+    game.position.set(x, 0, z);
+    game.rotation.y = rotationY;
+    const cabinet = new MeshStandardMaterial({ color: 0x2a1f24, roughness: 0.62, metalness: 0.08 });
+    const base = new Mesh(new BoxGeometry(1.55, 1.05, 1.2), cabinet);
+    base.position.y = 0.52;
+    const post = new Mesh(new CylinderGeometry(0.1, 0.13, 2.25, 14), blackMetalMaterial);
+    post.position.y = 1.85;
+    const bag = new Mesh(new SphereGeometry(0.35, 18, 12), new MeshStandardMaterial({ color: 0xa3242f, roughness: 0.74 }));
+    bag.scale.set(0.82, 1.18, 0.82);
+    bag.position.set(0, 2.86, 0.42);
+    const score = new Mesh(new PlaneGeometry(1.18, 0.58), createSignMaterial('PUNCH', '000', '#ff5a5a'));
+    score.position.set(0, 2.24, 0.61);
+    game.add(base, post, bag, score);
+    root.add(game);
+    addArcadeAttractionCollider(x, z, 0.82, 0.64, rotationY);
+  };
+
+  const addBasketballShot = (x: number, z: number, rotationY = 0): void => {
+    const game = new Group();
+    game.position.set(x, 0, z);
+    game.rotation.y = rotationY;
+    const railMaterial = new MeshStandardMaterial({ color: 0x1d2730, roughness: 0.6, metalness: 0.25 });
+    const ramp = new Mesh(new BoxGeometry(2.0, 0.18, 3.1), new MeshStandardMaterial({ color: 0x354458, roughness: 0.7 }));
+    ramp.position.set(0, 0.55, 0.35);
+    ramp.rotation.x = -0.15;
+    const backboard = new Mesh(new BoxGeometry(1.7, 1.1, 0.12), new MeshStandardMaterial({ color: 0xe8edf0, roughness: 0.5 }));
+    backboard.position.set(0, 2.35, -1.12);
+    const rim = new Mesh(new TorusGeometry(0.28, 0.025, 8, 26), new MeshStandardMaterial({ color: 0xd85824, roughness: 0.4 }));
+    rim.position.set(0, 1.86, -0.82);
+    rim.rotation.x = Math.PI / 2;
+    [-0.78, 0.78].forEach((railX) => {
+      const rail = new Mesh(new BoxGeometry(0.08, 0.75, 3.2), railMaterial);
+      rail.position.set(railX, 0.88, 0.32);
+      game.add(rail);
+    });
+    [-0.42, 0.28].forEach((ballX, index) => {
+      const ball = new Mesh(new SphereGeometry(0.18, 16, 10), new MeshStandardMaterial({ color: 0xc76a25, roughness: 0.62 }));
+      ball.position.set(ballX, 0.84, 1.22 - index * 0.34);
+      game.add(ball);
+    });
+    game.add(ramp, backboard, rim);
+    root.add(game);
+    addArcadeAttractionCollider(x, z, 1.04, 1.58, rotationY);
+  };
+
+  const addSkeeBallLane = (x: number, z: number, rotationY = 0): void => {
+    const lane = new Group();
+    lane.position.set(x, 0, z);
+    lane.rotation.y = rotationY;
+    const woodLane = new MeshStandardMaterial({ color: 0x8b5d35, roughness: 0.72 });
+    const ramp = new Mesh(new BoxGeometry(1.55, 0.22, 3.5), woodLane);
+    ramp.position.set(0, 0.48, 0.28);
+    ramp.rotation.x = -0.12;
+    const targetBoard = new Mesh(new BoxGeometry(1.68, 1.45, 0.22), new MeshStandardMaterial({ color: 0x26415e, roughness: 0.58 }));
+    targetBoard.position.set(0, 1.28, -1.62);
+    [0.18, 0.32, 0.46].forEach((radius, index) => {
+      const ring = new Mesh(new TorusGeometry(radius, 0.02, 8, 28), new MeshStandardMaterial({ color: [0xf5d35f, 0xf07b3f, 0xf7f7f7][index], roughness: 0.5 }));
+      ring.position.set(0, 1.46 - index * 0.34, -1.48);
+      lane.add(ring);
+    });
+    [-0.34, 0.28].forEach((ballX) => {
+      const ball = new Mesh(new SphereGeometry(0.15, 14, 10), new MeshStandardMaterial({ color: 0x222831, roughness: 0.35, metalness: 0.16 }));
+      ball.position.set(ballX, 0.72, 1.42);
+      lane.add(ball);
+    });
+    lane.add(ramp, targetBoard);
+    root.add(lane);
+    addArcadeAttractionCollider(x, z, 0.86, 1.78, rotationY);
+  };
+
+  const addWhackMoleTable = (x: number, z: number, rotationY = 0): void => {
+    const table = new Group();
+    table.position.set(x, 0, z);
+    table.rotation.y = rotationY;
+    const body = new Mesh(new BoxGeometry(2.4, 0.9, 1.55), new MeshStandardMaterial({ color: 0x315c45, roughness: 0.66 }));
+    body.position.y = 0.48;
+    const top = new Mesh(new BoxGeometry(2.5, 0.12, 1.65), new MeshStandardMaterial({ color: 0x3f7a55, roughness: 0.58 }));
+    top.position.y = 0.98;
+    const mallet = new Group();
+    mallet.position.set(0.78, 1.16, 0.45);
+    mallet.rotation.z = -0.55;
+    const handle = new Mesh(new CylinderGeometry(0.035, 0.04, 0.78, 8), woodMaterial);
+    const head = new Mesh(new CylinderGeometry(0.16, 0.16, 0.42, 14), new MeshStandardMaterial({ color: 0xc9b28a, roughness: 0.72 }));
+    head.rotation.z = Math.PI / 2;
+    head.position.y = 0.38;
+    mallet.add(handle, head);
+    [-0.68, 0, 0.68].forEach((holeX, row) => {
+      [-0.32, 0.38].forEach((holeZ, column) => {
+        const hole = new Mesh(new CylinderGeometry(0.18, 0.18, 0.045, 18), blackMetalMaterial);
+        hole.position.set(holeX, 1.07, holeZ);
+        const mole = new Mesh(new SphereGeometry(0.13, 12, 8), new MeshStandardMaterial({ color: 0x6d412a, roughness: 0.72 }));
+        mole.position.set(holeX, 1.18 + ((row + column) % 2) * 0.08, holeZ);
+        table.add(hole, mole);
+      });
+    });
+    table.add(body, top, mallet);
+    root.add(table);
+    addArcadeAttractionCollider(x, z, 1.24, 0.82, rotationY);
+  };
+
+  const addRacingSimulator = (x: number, z: number, rotationY = 0): void => {
+    const game = new Group();
+    game.position.set(x, 0, z);
+    game.rotation.y = rotationY;
+    const shellMaterial = new MeshStandardMaterial({ color: 0x1f3f7f, roughness: 0.52, metalness: 0.08 });
+    const seat = new Mesh(new BoxGeometry(1.25, 0.46, 1.05), shellMaterial);
+    seat.position.set(0, 0.42, 0.72);
+    seat.rotation.x = -0.2;
+    const seatBack = new Mesh(new BoxGeometry(1.25, 1.05, 0.22), shellMaterial);
+    seatBack.position.set(0, 0.94, 1.18);
+    seatBack.rotation.x = -0.34;
+    const dash = new Mesh(new BoxGeometry(1.55, 0.62, 0.58), blackMetalMaterial);
+    dash.position.set(0, 1.0, -0.22);
+    const screen = new Mesh(new PlaneGeometry(1.55, 0.9), createSignMaterial('RACE', 'READY', '#77c9ff'));
+    screen.position.set(0, 1.85, -0.54);
+    const wheel = new Mesh(new TorusGeometry(0.28, 0.035, 10, 28), blackMetalMaterial);
+    wheel.position.set(0, 1.2, 0.18);
+    wheel.rotation.x = Math.PI / 2.4;
+    const pedal = new Mesh(new BoxGeometry(0.52, 0.06, 0.22), metalMaterial);
+    pedal.position.set(0, 0.12, -0.08);
+    game.add(seat, seatBack, dash, screen, wheel, pedal);
+    root.add(game);
+    addArcadeAttractionCollider(x, z, 0.9, 1.18, rotationY);
+  };
+
+  const addDancePadGame = (x: number, z: number, rotationY = 0): void => {
+    const game = new Group();
+    game.position.set(x, 0, z);
+    game.rotation.y = rotationY;
+    const screen = new Mesh(new BoxGeometry(2.1, 2.45, 0.36), new MeshStandardMaterial({ color: 0x181e2d, roughness: 0.55 }));
+    screen.position.set(0, 1.6, -0.86);
+    const screenFace = new Mesh(new PlaneGeometry(1.65, 1.12), createSignMaterial('DANCE', 'STEP', '#f062c0'));
+    screenFace.position.set(0, 1.78, -0.66);
+    const poleLeft = new Mesh(new CylinderGeometry(0.055, 0.055, 1.55, 10), metalMaterial);
+    poleLeft.position.set(-0.72, 0.8, 0.5);
+    const poleRight = poleLeft.clone();
+    poleRight.position.x = 0.72;
+    const rail = new Mesh(new BoxGeometry(1.55, 0.08, 0.08), metalMaterial);
+    rail.position.set(0, 1.48, 0.5);
+    [-0.42, 0.42].forEach((padX) => {
+      [-0.1, 0.62].forEach((padZ, index) => {
+        const pad = new Mesh(new BoxGeometry(0.58, 0.08, 0.58), new MeshStandardMaterial({ color: index === 0 ? 0x35a6d8 : 0xd8357c, roughness: 0.5, metalness: 0.08 }));
+        pad.position.set(padX, 0.05, padZ);
+        game.add(pad);
+      });
+    });
+    game.add(screen, screenFace, poleLeft, poleRight, rail);
+    root.add(game);
+    addArcadeAttractionCollider(x, z, 1.08, 1.2, rotationY);
+  };
+
+  const addPhotoBooth = (x: number, z: number, rotationY = 0): void => {
+    const booth = new Group();
+    booth.position.set(x, 0, z);
+    booth.rotation.y = rotationY;
+    const boothMaterial = new MeshStandardMaterial({ color: 0x5b2246, roughness: 0.68 });
+    const body = new Mesh(new BoxGeometry(2.0, 2.8, 1.35), boothMaterial);
+    body.position.y = 1.4;
+    const curtain = new Mesh(new BoxGeometry(1.28, 1.82, 0.08), new MeshStandardMaterial({ color: 0x2b1025, roughness: 0.86 }));
+    curtain.position.set(0, 1.26, 0.72);
+    const camera = new Mesh(new CylinderGeometry(0.14, 0.18, 0.16, 16), blackMetalMaterial);
+    camera.position.set(0, 2.15, 0.78);
+    camera.rotation.x = Math.PI / 2;
+    const sign = new Mesh(new PlaneGeometry(1.55, 0.42), createSignMaterial('PHOTO', 'BOOTH', '#ffb8df'));
+    sign.position.set(0, 2.72, 0.75);
+    booth.add(body, curtain, camera, sign);
+    root.add(booth);
+    addArcadeAttractionCollider(x, z, 1.02, 0.7, rotationY);
+  };
   const stage = addBox(root, 30, 1.1, 11, 0, 0.55, -36, new MeshStandardMaterial({ color: 0x2f1720, roughness: 0.82 }));
   stage.name = 'Chapter 9 preserved stage';
   addCollider(colliders, 0, -36, 31, 12);
@@ -2728,6 +2958,14 @@ export function createChapterNine(): ChapterNineData {
   addDualSpeaker(-64.77, 6.34, 8.01, Math.PI / 2);
   addDualSpeaker(-64.77, 5, -41.23, Math.PI / 2);
   addDualSpeaker(-39.73, 4.55, 29.77, Math.PI);
+  addClawMachine(-52.62, 4.15, -Math.PI / 2);
+  addWhackMoleTable(-52.62, 8.45, -Math.PI / 2);
+  addSkeeBallLane(-52.58, 13.55, -Math.PI / 2);
+  addBasketballShot(-52.58, 18.75, -Math.PI / 2);
+  addBoxingMachine(-63.62, -7.6, Math.PI / 2);
+  addPhotoBooth(-63.62, -2.9, Math.PI / 2);
+  addRacingSimulator(-63.5, 3.0, Math.PI / 2);
+  addDancePadGame(-56.55, 28.82, Math.PI);
 
   const seatedChairs: ChapterNineSeat[] = [];
   const addSitChair = (id: string, label: string, x: number, z: number, rotationY: number): void => {
