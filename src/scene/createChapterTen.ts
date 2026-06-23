@@ -92,6 +92,14 @@ const brassMaterial = new MeshStandardMaterial({ color: 0xc8952d, metalness: 0.4
 const porcelainMaterial = new MeshStandardMaterial({ color: 0xe8e2d7, roughness: 0.48 });
 const applianceMaterial = new MeshStandardMaterial({ color: 0xd5d9dc, metalness: 0.1, roughness: 0.42 });
 const darkGlassMaterial = new MeshStandardMaterial({ color: 0x1b1a18, metalness: 0.05, roughness: 0.35 });
+const faucetWaterMaterial = new MeshStandardMaterial({
+  color: 0x6fc7ff,
+  emissive: 0x2d8dff,
+  emissiveIntensity: 0.45,
+  transparent: true,
+  opacity: 0.7,
+  roughness: 0.18,
+});
 const smokeMaterial = new MeshStandardMaterial({
   color: 0xb8b5ae,
   transparent: true,
@@ -135,6 +143,15 @@ interface ChapterTenFireplace {
   emberBed: Mesh;
   interactPosition: Vector3;
   lit: boolean;
+}
+
+interface ChapterTenSink {
+  interactPosition: Vector3;
+  handlePivot: Group;
+  waterStream: Mesh;
+  open: boolean;
+  openAmount: number;
+  targetOpenAmount: number;
 }
 
 export interface ChapterTenInteractResult {
@@ -247,9 +264,10 @@ function addFrontDoor(root: Group, colliders: CollisionBox[], halfDepth: number)
   door.position.set(-DOOR_WIDTH / 2 + 0.08, 0, halfDepth + 0.08);
 
   addBox(door, 'Chapter 10 full front door panel', [DOOR_WIDTH, 2.9, 0.16], [DOOR_WIDTH / 2, 1.45, 0], trimMaterial);
-  addBox(door, 'Chapter 10 front door upper inset panel', [DOOR_WIDTH - 0.72, 0.88, 0.05], [DOOR_WIDTH / 2, 2.02, -0.09], wallMaterial);
-  addBox(door, 'Chapter 10 front door lower inset panel', [DOOR_WIDTH - 0.72, 0.96, 0.05], [DOOR_WIDTH / 2, 0.92, -0.09], wallMaterial);
-  addBox(door, 'Chapter 10 front door knob', [0.14, 0.14, 0.16], [DOOR_WIDTH - 0.36, 1.32, -0.15], roofMaterial);
+  addBox(door, 'Chapter 10 outside front door upper inset panel', [DOOR_WIDTH - 0.72, 0.88, 0.05], [DOOR_WIDTH / 2, 2.02, 0.09], wallMaterial);
+  addBox(door, 'Chapter 10 outside front door lower inset panel', [DOOR_WIDTH - 0.72, 0.96, 0.05], [DOOR_WIDTH / 2, 0.92, 0.09], wallMaterial);
+  addBox(door, 'Chapter 10 outside front door knob', [0.14, 0.14, 0.16], [DOOR_WIDTH - 0.36, 1.32, 0.15], roofMaterial);
+  addBox(door, 'Chapter 10 plain inside door brace', [DOOR_WIDTH - 0.42, 0.12, 0.04], [DOOR_WIDTH / 2, 1.44, -0.1], wallMaterial);
 
   root.add(door);
   const collider = addCollider(colliders, 0, halfDepth + 0.08, DOOR_WIDTH / 2, 0.12);
@@ -423,11 +441,12 @@ function addDrawerItemModel(item: ChapterTenDrawerItem): Group {
 
 function addTopWallDrawers(root: Group, colliders: CollisionBox[]): ChapterTenDrawer[] {
   const cabinet = new Group();
-  cabinet.name = 'Chapter 10 top wall three drawer cabinet';
-  cabinet.position.set(5.9, 0, -6.28);
+  cabinet.name = 'Chapter 10 flipped top wall three drawer cabinet';
+  cabinet.position.set(5.9, 0, -6.22);
 
-  addBox(cabinet, 'Chapter 10 drawer cabinet body against top wall', [2.35, 1.92, 1.05], [0, 0.96, 0], drawerMaterial);
-  addBox(cabinet, 'Chapter 10 drawer cabinet dark rear shadow', [2.05, 1.62, 0.08], [0, 1.0, -0.48], drawerInsideMaterial);
+  addBox(cabinet, 'Chapter 10 drawer cabinet body against top wall', [2.35, 1.92, 1.12], [0, 0.96, 0], drawerMaterial);
+  addBox(cabinet, 'Chapter 10 drawer plain back panel against fireplace wall', [2.16, 1.74, 0.08], [0, 1.0, -0.55], trimMaterial);
+  addBox(cabinet, 'Chapter 10 drawer front frame facing room', [2.22, 1.78, 0.08], [0, 1.0, 0.55], drawerInsideMaterial);
 
   const definitions: Array<{ label: string; item: ChapterTenDrawerItem; y: number }> = [
     { label: 'Top axe drawer', item: 'axe', y: 1.48 },
@@ -437,9 +456,9 @@ function addTopWallDrawers(root: Group, colliders: CollisionBox[]): ChapterTenDr
   const drawers: ChapterTenDrawer[] = [];
 
   definitions.forEach(({ label, item, y }) => {
-    const drawerBox = addBox(cabinet, `Chapter 10 ${label} closed drawer`, [2.0, 0.4, 0.62], [0, y, -0.08], drawerMaterial);
-    addBox(drawerBox, `Chapter 10 ${label} dark drawer inside`, [1.7, 0.24, 0.08], [0, 0.02, 0.33], drawerInsideMaterial);
-    addBox(drawerBox, `Chapter 10 ${label} brass handle`, [0.5, 0.07, 0.08], [0, 0.02, 0.36], brassMaterial);
+    const drawerBox = addBox(cabinet, `Chapter 10 ${label} flipped drawer front`, [2.0, 0.4, 0.62], [0, y, -0.02], drawerMaterial);
+    addBox(drawerBox, `Chapter 10 ${label} dark drawer inside`, [1.7, 0.24, 0.08], [0, 0.02, 0.36], drawerInsideMaterial);
+    addBox(drawerBox, `Chapter 10 ${label} brass handle facing room`, [0.5, 0.07, 0.08], [0, 0.02, 0.43], brassMaterial);
     const itemRoot = addDrawerItemModel(item);
     itemRoot.position.set(0, y + 0.04, 0.16);
     itemRoot.visible = false;
@@ -558,21 +577,53 @@ function addTableAndChair(root: Group, colliders: CollisionBox[]): ChapterTenLam
   return addSideFacingLamp(root, 'Chapter 10 left wall table lamp', new Vector3(tableX, 1.16, -0.2), 1);
 }
 
-function addCounterSinkOvenAndWasher(root: Group, colliders: CollisionBox[]): void {
+function addCounterSinkOvenAndWasher(root: Group, colliders: CollisionBox[]): ChapterTenSink {
   const sinkCounter = new Group();
   sinkCounter.name = 'Chapter 10 left wall sink countertop';
   sinkCounter.position.set(-8.18, 0, -5.41);
-  addBox(sinkCounter, 'Chapter 10 sink counter base', [1.18, 1.08, 1.88], [0, 0.54, 0], drawerMaterial);
-  addBox(sinkCounter, 'Chapter 10 sink counter top slab', [1.26, 0.16, 1.98], [0, 1.16, 0], tableMaterial);
-  addBox(sinkCounter, 'Chapter 10 inset sink bowl', [0.72, 0.16, 0.82], [0.06, 1.27, -0.1], porcelainMaterial);
-  const faucet = new Mesh(new TorusGeometry(0.22, 0.035, 8, 18), metalMaterial);
-  faucet.name = 'Chapter 10 curved sink faucet';
-  faucet.position.set(0.2, 1.48, -0.48);
-  faucet.rotation.x = Math.PI / 2;
-  faucet.rotation.z = Math.PI / 2;
-  faucet.scale.y = 0.65;
-  faucet.castShadow = true;
-  sinkCounter.add(faucet);
+  addBox(sinkCounter, 'Chapter 10 Chapter Seven style sink base', [1.18, 1.08, 1.88], [0, 0.54, 0], drawerMaterial);
+  addBox(sinkCounter, 'Chapter 10 Chapter Seven style counter slab', [1.3, 0.16, 2.02], [0, 1.16, 0], tableMaterial);
+  addBox(sinkCounter, 'Chapter 10 white inset sink bowl', [0.82, 0.16, 0.92], [0.02, 1.27, -0.02], porcelainMaterial);
+  addBox(sinkCounter, 'Chapter 10 sink blue basin water', [0.62, 0.035, 0.68], [0.02, 1.36, -0.01], faucetWaterMaterial);
+  addBox(sinkCounter, 'Chapter 10 sink cabinet left door', [0.05, 0.72, 0.78], [0.61, 0.58, -0.42], drawerMaterial);
+  addBox(sinkCounter, 'Chapter 10 sink cabinet right door', [0.05, 0.72, 0.78], [0.61, 0.58, 0.42], drawerMaterial);
+  addBox(sinkCounter, 'Chapter 10 sink cabinet handles', [0.07, 0.38, 0.05], [0.66, 0.62, -0.16], brassMaterial);
+  addBox(sinkCounter, 'Chapter 10 sink cabinet handles', [0.07, 0.38, 0.05], [0.66, 0.62, 0.16], brassMaterial);
+
+  const faucetBase = new Mesh(new CylinderGeometry(0.12, 0.13, 0.12, 16), metalMaterial);
+  faucetBase.name = 'Chapter 10 sink faucet base';
+  faucetBase.position.set(0.04, 1.42, -0.48);
+  faucetBase.castShadow = true;
+  sinkCounter.add(faucetBase);
+  const faucetNeck = new Mesh(new TorusGeometry(0.22, 0.035, 8, 18, Math.PI), metalMaterial);
+  faucetNeck.name = 'Chapter 10 Chapter Seven curved faucet neck';
+  faucetNeck.position.set(0.04, 1.55, -0.24);
+  faucetNeck.rotation.x = Math.PI / 2;
+  faucetNeck.rotation.z = Math.PI;
+  faucetNeck.scale.y = 0.72;
+  faucetNeck.castShadow = true;
+  sinkCounter.add(faucetNeck);
+  const faucetSpout = new Mesh(new CylinderGeometry(0.045, 0.05, 0.42, 14), metalMaterial);
+  faucetSpout.name = 'Chapter 10 sink faucet spout';
+  faucetSpout.position.set(0.04, 1.43, 0.08);
+  faucetSpout.rotation.x = Math.PI / 2;
+  faucetSpout.castShadow = true;
+  sinkCounter.add(faucetSpout);
+  const handlePivot = new Group();
+  handlePivot.name = 'Chapter 10 sink faucet handle pivot';
+  handlePivot.position.set(0.34, 1.42, -0.42);
+  const handleStem = new Mesh(new CylinderGeometry(0.035, 0.035, 0.15, 12), metalMaterial);
+  handleStem.position.y = 0.08;
+  const handleBar = new Mesh(new BoxGeometry(0.32, 0.055, 0.08), metalMaterial);
+  handleBar.position.y = 0.18;
+  handlePivot.add(handleStem, handleBar);
+  sinkCounter.add(handlePivot);
+  const waterStream = new Mesh(new CylinderGeometry(0.035, 0.045, 0.68, 12), faucetWaterMaterial);
+  waterStream.name = 'Chapter 10 sink running water stream';
+  waterStream.position.set(0.04, 1.17, 0.18);
+  waterStream.visible = false;
+  waterStream.scale.y = 0.01;
+  sinkCounter.add(waterStream);
   root.add(sinkCounter);
   addCollider(colliders, -8.18, -5.41, 0.7, 1.06);
 
@@ -600,6 +651,15 @@ function addCounterSinkOvenAndWasher(root: Group, colliders: CollisionBox[]): vo
   addBox(washer, 'Chapter 10 washing machine top controls', [1.18, 0.16, 0.16], [0, 1.28, -0.64], metalMaterial);
   root.add(washer);
   addCollider(colliders, 6.8, 5.92, 0.86, 0.7);
+
+  return {
+    interactPosition: new Vector3(-7.25, 1.2, -5.41),
+    handlePivot,
+    waterStream,
+    open: false,
+    openAmount: 0,
+    targetOpenAmount: 0,
+  };
 }
 
 function setLampState(lamp: ChapterTenLamp, on: boolean): void {
@@ -685,7 +745,7 @@ export function createChapterTen(): ChapterTenData {
   addBed(root, colliders);
   const tableLamp = addTableAndChair(root, colliders);
   const drawers = addTopWallDrawers(root, colliders);
-  addCounterSinkOvenAndWasher(root, colliders);
+  const kitchenSink = addCounterSinkOvenAndWasher(root, colliders);
   const lamp = addLampTable(root, colliders);
   const lamps = [tableLamp, lamp];
 
@@ -830,6 +890,18 @@ export function createChapterTen(): ChapterTenData {
         };
       }
 
+      if (position.distanceTo(kitchenSink.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.85) {
+        kitchenSink.targetOpenAmount = kitchenSink.targetOpenAmount > 0.5 ? 0 : 1;
+        kitchenSink.open = kitchenSink.targetOpenAmount > 0.5;
+        return {
+          message: kitchenSink.open
+            ? 'You turn the faucet handle. Water starts pouring into the sink.'
+            : 'You turn the faucet handle back. The water stops.',
+          sound: 'small-panel',
+          active: kitchenSink.open,
+        };
+      }
+
       return null;
     },
     useHeldItem(position: Vector3): ChapterTenInteractResult | null {
@@ -881,6 +953,12 @@ export function createChapterTen(): ChapterTenData {
           : 'The fireplace is unlit. Left click with the lighter to light it.';
       }
 
+      if (position.distanceTo(kitchenSink.interactPosition) <= GAME_CONFIG.player.interactionRange + 0.85) {
+        return kitchenSink.open
+          ? 'The sink faucet is running. Press E to turn it off.'
+          : 'The sink faucet is off. Press E to turn it on.';
+      }
+
       return getLampPromptAt(position);
     },
     getHeldItemLabel(): string | null {
@@ -917,6 +995,16 @@ export function createChapterTen(): ChapterTenData {
         puff.position.y = baseY + Math.sin(performance.now() * 0.0012 + index) * 0.08;
         puff.rotation.y += deltaSeconds * (0.08 + index * 0.025);
       });
+      const sinkDelta = kitchenSink.targetOpenAmount - kitchenSink.openAmount;
+      if (Math.abs(sinkDelta) > 0.001) {
+        kitchenSink.openAmount += Math.sign(sinkDelta) * Math.min(Math.abs(sinkDelta), deltaSeconds * 4.4);
+      } else {
+        kitchenSink.openAmount = kitchenSink.targetOpenAmount;
+      }
+      kitchenSink.handlePivot.rotation.z = -kitchenSink.openAmount * Math.PI * 0.52;
+      kitchenSink.waterStream.visible = kitchenSink.openAmount > 0.03;
+      kitchenSink.waterStream.scale.y = Math.max(0.01, kitchenSink.openAmount);
+      kitchenSink.open = kitchenSink.targetOpenAmount > 0.5;
     },
     reset(): void {
       heldItem = null;
@@ -928,6 +1016,12 @@ export function createChapterTen(): ChapterTenData {
       });
       lamps.forEach((sceneLamp) => setLampState(sceneLamp, false));
       setFireplaceState(fireplace, false);
+      kitchenSink.open = false;
+      kitchenSink.openAmount = 0;
+      kitchenSink.targetOpenAmount = 0;
+      kitchenSink.handlePivot.rotation.z = 0;
+      kitchenSink.waterStream.visible = false;
+      kitchenSink.waterStream.scale.y = 0.01;
       root.visible = false;
     },
   };
