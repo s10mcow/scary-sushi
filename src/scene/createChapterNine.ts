@@ -2136,6 +2136,166 @@ export function createChapterNine(): ChapterNineData {
     root.add(game);
     addCollider(colliders, x, z, 2.9, 2.2);
   };
+  const addShooterGame = (x: number, z: number, rotationY = 0): void => {
+    const game = new Group();
+    game.position.set(x, 0, z);
+    game.rotation.y = rotationY;
+
+    const cabinetMaterial = new MeshStandardMaterial({ color: 0x1b2634, roughness: 0.58, metalness: 0.08 });
+    const redPlastic = new MeshStandardMaterial({ color: 0xa51f2d, roughness: 0.52, metalness: 0.05 });
+    const bluePlastic = new MeshStandardMaterial({ color: 0x244fa5, roughness: 0.52, metalness: 0.05 });
+    const targetScreenMaterial = makeCanvasMaterial((context, canvas) => {
+      const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#151f33');
+      gradient.addColorStop(1, '#070b12');
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#2f5e35';
+      context.fillRect(0, canvas.height * 0.62, canvas.width, canvas.height * 0.38);
+      context.fillStyle = '#d7c987';
+      context.fillRect(0, canvas.height * 0.58, canvas.width, 22);
+      context.fillStyle = '#f5f0d0';
+      context.font = 'bold 28px Arial';
+      context.textAlign = 'center';
+      context.fillText('TARGET BLAST', canvas.width / 2, 44);
+      const targets = [
+        [130, 104, '#e13a43'],
+        [265, 138, '#f0cf34'],
+        [390, 96, '#52b8e8'],
+        [190, 188, '#f1f1f1'],
+        [335, 205, '#e13a43'],
+      ] as const;
+      targets.forEach(([targetX, targetY, color]) => {
+        context.fillStyle = color;
+        context.beginPath();
+        context.arc(targetX, targetY, 24, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = '#111';
+        context.lineWidth = 5;
+        context.stroke();
+        context.strokeStyle = '#fff';
+        context.lineWidth = 4;
+        context.beginPath();
+        context.arc(targetX, targetY, 11, 0, Math.PI * 2);
+        context.stroke();
+      });
+    });
+
+    const tvBody = new Mesh(new BoxGeometry(4.1, 2.7, 0.42), cabinetMaterial);
+    tvBody.position.set(0, 2.25, -0.48);
+    const tvScreen = new Mesh(new PlaneGeometry(3.45, 1.92), targetScreenMaterial);
+    tvScreen.position.set(0, 2.3, -0.25);
+    const counter = new Mesh(new BoxGeometry(4.5, 0.55, 1.55), cabinetMaterial);
+    counter.position.set(0, 0.72, 0.55);
+    const counterTop = new Mesh(new BoxGeometry(4.65, 0.14, 1.7), blackMetalMaterial);
+    counterTop.position.set(0, 1.05, 0.55);
+    const coinSlot = new Mesh(new BoxGeometry(0.58, 0.32, 0.06), metalMaterial);
+    coinSlot.position.set(0, 1.23, 1.42);
+
+    const addGun = (gunX: number, material: MeshStandardMaterial): void => {
+      const gun = new Group();
+      gun.position.set(gunX, 1.24, 0.56);
+      gun.rotation.x = -0.22;
+      const grip = new Mesh(new BoxGeometry(0.22, 0.5, 0.18), blackMetalMaterial);
+      grip.position.set(0, -0.18, 0.28);
+      grip.rotation.x = 0.45;
+      const body = new Mesh(new BoxGeometry(0.34, 0.22, 0.58), material);
+      body.position.set(0, 0.02, 0.02);
+      const barrel = new Mesh(new CylinderGeometry(0.07, 0.07, 0.75, 14), metalMaterial);
+      barrel.rotation.x = Math.PI / 2;
+      barrel.position.set(0, 0.04, -0.43);
+      const cord = new Mesh(new CylinderGeometry(0.025, 0.025, 0.86, 8), blackMetalMaterial);
+      cord.rotation.x = Math.PI / 2;
+      cord.position.set(0, -0.12, 0.58);
+      gun.add(grip, body, barrel, cord);
+      game.add(gun);
+    };
+    addGun(-0.82, redPlastic);
+    addGun(0.82, bluePlastic);
+
+    const title = new Mesh(new PlaneGeometry(3.65, 0.48), createSignMaterial('SHOOTER', '2 players', '#58bdf0'));
+    title.position.set(0, 3.95, -0.23);
+
+    game.add(tvBody, tvScreen, counter, counterTop, coinSlot, title);
+    root.add(game);
+    addCollider(colliders, x, z, 4.8, 2.15);
+  };
+
+  const addAirHockeyTable = (x: number, z: number, rotationY = 0): void => {
+    const table = new Group();
+    table.position.set(x, 0, z);
+    table.rotation.y = rotationY;
+
+    const sideMaterial = new MeshStandardMaterial({ color: 0x26313c, roughness: 0.58, metalness: 0.08 });
+    const surfaceMaterial = new MeshStandardMaterial({ color: 0xe9eef2, roughness: 0.38, metalness: 0.04 });
+    const redMaterial = new MeshStandardMaterial({ color: 0xc3252f, roughness: 0.48 });
+    const blueMaterial = new MeshStandardMaterial({ color: 0x245fc7, roughness: 0.48 });
+
+    const base = new Mesh(new BoxGeometry(5.4, 0.82, 2.75), sideMaterial);
+    base.position.y = 0.52;
+    const top = new Mesh(new BoxGeometry(5.25, 0.12, 2.6), surfaceMaterial);
+    top.position.y = 1.0;
+    const centerLine = new Mesh(new BoxGeometry(0.05, 0.035, 2.32), redMaterial);
+    centerLine.position.y = 1.08;
+    const centerCircle = new Mesh(new TorusGeometry(0.55, 0.025, 8, 32), blueMaterial);
+    centerCircle.position.y = 1.1;
+    centerCircle.rotation.x = Math.PI / 2;
+    const leftGoal = new Mesh(new BoxGeometry(0.14, 0.14, 1.2), redMaterial);
+    leftGoal.position.set(-2.58, 1.16, 0);
+    const rightGoal = new Mesh(new BoxGeometry(0.14, 0.14, 1.2), blueMaterial);
+    rightGoal.position.set(2.58, 1.16, 0);
+    const puck = new Mesh(new CylinderGeometry(0.18, 0.18, 0.08, 22), blackMetalMaterial);
+    puck.position.set(0.35, 1.15, 0.18);
+    const redPaddle = new Mesh(new CylinderGeometry(0.28, 0.28, 0.16, 24), redMaterial);
+    redPaddle.position.set(-1.42, 1.18, -0.48);
+    const bluePaddle = new Mesh(new CylinderGeometry(0.28, 0.28, 0.16, 24), blueMaterial);
+    bluePaddle.position.set(1.42, 1.18, 0.48);
+
+    [-2.25, 2.25].forEach((legX) => {
+      [-1.04, 1.04].forEach((legZ) => {
+        const leg = new Mesh(new BoxGeometry(0.2, 0.88, 0.2), blackMetalMaterial);
+        leg.position.set(legX, 0.36, legZ);
+        table.add(leg);
+      });
+    });
+
+    table.add(base, top, centerLine, centerCircle, leftGoal, rightGoal, puck, redPaddle, bluePaddle);
+    root.add(table);
+    addCollider(colliders, x, z, 5.7, 3.05);
+  };
+
+  const addDualSpeaker = (x: number, y: number, z: number, rotationY = 0): void => {
+    const speaker = new Group();
+    speaker.position.set(x, y, z);
+    speaker.rotation.y = rotationY;
+    const speakerMaterial = new MeshStandardMaterial({ color: 0x101114, roughness: 0.54, metalness: 0.12 });
+    const coneMaterial = new MeshStandardMaterial({ color: 0x30343a, roughness: 0.5, metalness: 0.2 });
+    const rimMaterial = new MeshStandardMaterial({ color: 0x050607, roughness: 0.5, metalness: 0.24 });
+
+    const bracket = new Mesh(new BoxGeometry(1.45, 0.18, 0.16), metalMaterial);
+    bracket.position.set(0, 0.62, -0.32);
+    speaker.add(bracket);
+
+    [-0.38, 0.38].forEach((offsetX, index) => {
+      const cabinet = new Group();
+      cabinet.position.set(offsetX, 0, 0);
+      cabinet.rotation.y = index === 0 ? -0.24 : 0.24;
+      const body = new Mesh(new BoxGeometry(0.72, 1.34, 0.42), speakerMaterial);
+      const upperCone = new Mesh(new CylinderGeometry(0.2, 0.28, 0.08, 24), coneMaterial);
+      upperCone.rotation.x = Math.PI / 2;
+      upperCone.position.set(0, 0.28, 0.24);
+      const lowerCone = upperCone.clone();
+      lowerCone.position.y = -0.28;
+      const upperRim = new Mesh(new TorusGeometry(0.29, 0.035, 8, 24), rimMaterial);
+      upperRim.position.set(0, 0.28, 0.285);
+      const lowerRim = upperRim.clone();
+      lowerRim.position.y = -0.28;
+      cabinet.add(body, upperCone, lowerCone, upperRim, lowerRim);
+      speaker.add(cabinet);
+    });
+
+    root.add(speaker);
+  };
   const stage = addBox(root, 30, 1.1, 11, 0, 0.55, -36, new MeshStandardMaterial({ color: 0x2f1720, roughness: 0.82 }));
   stage.name = 'Chapter 9 preserved stage';
   addCollider(colliders, 0, -36, 31, 12);
@@ -2468,6 +2628,11 @@ export function createChapterNine(): ChapterNineData {
   colliders.length = 0;
   colliders.push(...shellColliders);
   addStrengthTester(-57, 26, 0);
+  addShooterGame(-63.08, 16.92, Math.PI / 2);
+  addAirHockeyTable(-61.19, 9, Math.PI / 2);
+  addDualSpeaker(-64.77, 6.34, 8.01, Math.PI / 2);
+  addDualSpeaker(-64.77, 5, -41.23, Math.PI / 2);
+  addDualSpeaker(-39.73, 4.55, 29.77, Math.PI);
 
   const seatedChairs: ChapterNineSeat[] = [];
   const addSitChair = (id: string, label: string, x: number, z: number, rotationY: number): void => {
