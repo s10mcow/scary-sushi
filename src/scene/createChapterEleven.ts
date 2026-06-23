@@ -19,8 +19,8 @@ export interface ChapterElevenData {
   reset(): void;
 }
 
-const FIELD_WIDTH = 20;
-const FIELD_DEPTH = 20;
+const FIELD_WIDTH = 10;
+const FIELD_DEPTH = 10;
 const FLOOR_Y = 0;
 
 const grassMaterial = new MeshStandardMaterial({
@@ -59,22 +59,23 @@ export function createChapterEleven(): ChapterElevenData {
   grass.receiveShadow = true;
   root.add(grass);
 
-  const dirtPatchGeometry = new BoxGeometry(5, 0.035, 10);
-  [-4, 5].forEach((z) => {
-    const leftPatch = new Mesh(dirtPatchGeometry, dirtMaterial);
-    leftPatch.name = 'Chapter 11 left brown dirt patch';
-    leftPatch.position.set(-7.5, 0.005, z);
-    leftPatch.receiveShadow = true;
-    const rightPatch = leftPatch.clone();
-    rightPatch.name = 'Chapter 11 right brown dirt patch';
-    rightPatch.position.x = 7.5;
-    root.add(leftPatch, rightPatch);
-  });
-
   const fenceHeight = 1.25;
   const fenceThickness = 0.22;
   const halfWidth = FIELD_WIDTH / 2;
   const halfDepth = FIELD_DEPTH / 2;
+
+  const dirtPatchGeometry = new BoxGeometry(1.7, 0.035, 2.6);
+  [-1.55, 1.55].forEach((z) => {
+    const leftPatch = new Mesh(dirtPatchGeometry, dirtMaterial);
+    leftPatch.name = 'Chapter 11 left fence brown dirt patch';
+    leftPatch.position.set(-halfWidth + 1.1, 0.005, z);
+    leftPatch.receiveShadow = true;
+    const rightPatch = leftPatch.clone();
+    rightPatch.name = 'Chapter 11 right fence brown dirt patch';
+    rightPatch.position.x = halfWidth - 1.1;
+    root.add(leftPatch, rightPatch);
+  });
+
   const northFence = new Mesh(new BoxGeometry(FIELD_WIDTH + fenceThickness * 2, fenceHeight, fenceThickness), fenceMaterial);
   northFence.name = 'Chapter 11 north border fence';
   northFence.position.set(0, fenceHeight / 2, -halfDepth);
