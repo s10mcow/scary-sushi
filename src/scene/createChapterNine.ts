@@ -2532,6 +2532,11 @@ export function createChapterNine(): ChapterNineData {
     const rim = new Mesh(new TorusGeometry(0.28, 0.025, 8, 26), new MeshStandardMaterial({ color: 0xd85824, roughness: 0.4 }));
     rim.position.set(0, 1.86, -0.82);
     rim.rotation.x = Math.PI / 2;
+    [-0.9, 0.9].forEach((postX) => {
+      const wallPost = new Mesh(new BoxGeometry(0.12, 2.45, 0.12), metalMaterial);
+      wallPost.position.set(postX, 1.22, -1.48);
+      game.add(wallPost);
+    });
     [-0.78, 0.78].forEach((railX) => {
       const rail = new Mesh(new BoxGeometry(0.08, 0.75, 3.2), railMaterial);
       rail.position.set(railX, 0.88, 0.32);
@@ -2559,6 +2564,11 @@ export function createChapterNine(): ChapterNineData {
     targetBoard.position.set(0, 1.28, -1.62);
     const label = new Mesh(new PlaneGeometry(1.32, 0.34), createSignMaterial('SKEE', 'BALL', '#f5d35f'));
     label.position.set(0, 2.24, -1.5);
+    [-0.82, 0.82].forEach((postX) => {
+      const wallPost = new Mesh(new BoxGeometry(0.11, 1.9, 0.11), metalMaterial);
+      wallPost.position.set(postX, 0.95, -1.72);
+      lane.add(wallPost);
+    });
     [0.18, 0.32, 0.46].forEach((radius, index) => {
       const ring = new Mesh(new TorusGeometry(radius, 0.02, 8, 28), new MeshStandardMaterial({ color: [0xf5d35f, 0xf07b3f, 0xf7f7f7][index], roughness: 0.5 }));
       ring.position.set(0, 1.46 - index * 0.34, -1.48);
@@ -3252,8 +3262,8 @@ export function createChapterNine(): ChapterNineData {
   addDualSpeaker(-39.73, 4.55, 29.77, Math.PI);
   addClawMachine(-52.62, 4.15, -Math.PI / 2);
   addWhackMoleTable(-52.62, 8.45, -Math.PI / 2);
-  addSkeeBallLane(-52.58, 13.55, -Math.PI / 2);
-  addBasketballShot(-52.58, 18.75, -Math.PI / 2);
+  addSkeeBallLane(-53.82, 13.55, -Math.PI / 2);
+  addBasketballShot(-53.64, 18.75, -Math.PI / 2);
   addBoxingMachine(-63.62, -7.6, Math.PI / 2);
   addPhotoBooth(-63.62, -2.9, Math.PI / 2);
   addRacingSimulator(-63.5, 3.0, Math.PI / 2);
