@@ -673,6 +673,12 @@ export function createChapterNine(): ChapterNineData {
   });
   const cameraScreenMaterial = createCameraScreenMaterial();
   const redLightMaterial = new MeshBasicMaterial({ color: 0xff2733 });
+  let strengthTesterTimer = 0;
+  let strengthTesterHammer: Group | null = null;
+  let strengthTesterPad: Mesh | null = null;
+  let strengthTesterMarker: Mesh | null = null;
+  let strengthTesterBell: Mesh | null = null;
+  const strengthTesterInteractPosition = new Vector3(-57, GAME_CONFIG.player.height, 26);
 
   const addBox = (
     parent: Group,
@@ -2053,6 +2059,85 @@ export function createChapterNine(): ChapterNineData {
   };
   [-53, -47, -41, -35, -29].forEach((x, index) => addArcade(x, 21, [0x5e2b91, 0x1961a5, 0xa02535, 0x1b7a53, 0x9b7424][index]));
 
+  const addStrengthTester = (x: number, z: number, rotationY = 0): void => {
+    const game = new Group();
+    game.position.set(x, 0, z);
+    game.rotation.y = rotationY;
+
+    const redPaint = new MeshStandardMaterial({ color: 0xa7262b, roughness: 0.6, metalness: 0.05 });
+    const markerMaterial = new MeshStandardMaterial({ color: 0xf1e85c, emissive: 0x4b4100, emissiveIntensity: 0.25, roughness: 0.38 });
+    const bellMaterial = new MeshStandardMaterial({ color: 0xd5ae43, emissive: 0x443000, emissiveIntensity: 0.22, roughness: 0.32, metalness: 0.42 });
+
+    const base = new Mesh(new BoxGeometry(2.7, 0.2, 2.05), woodMaterial);
+    base.position.set(0, 0.1, 0);
+    const frontTrim = new Mesh(new BoxGeometry(2.8, 0.28, 0.18), redPaint);
+    frontTrim.position.set(0, 0.28, 0.98);
+    const strikeButton = new Mesh(new CylinderGeometry(0.44, 0.52, 0.2, 24), topButtonMaterial);
+    strikeButton.position.set(0, 0.32, 0.38);
+    strikeButton.rotation.x = Math.PI / 2;
+    strengthTesterPad = strikeButton;
+
+    const towerBack = new Mesh(new BoxGeometry(0.62, 5.95, 0.2), darkWoodMaterial);
+    towerBack.position.set(0, 3.14, -0.76);
+    const leftRail = new Mesh(new CylinderGeometry(0.055, 0.055, 5.8, 12), metalMaterial);
+    leftRail.position.set(-0.3, 3.15, -0.56);
+    const rightRail = leftRail.clone();
+    rightRail.position.x = 0.3;
+    const tubeGlass = new Mesh(new BoxGeometry(0.42, 5.2, 0.08), glassMaterial);
+    tubeGlass.position.set(0, 3.0, -0.45);
+
+    const tickMaterial = new MeshStandardMaterial({ color: 0xf6f0d8, roughness: 0.66 });
+    for (let index = 0; index < 7; index += 1) {
+      const tick = new Mesh(new BoxGeometry(index % 2 === 0 ? 0.68 : 0.45, 0.045, 0.06), tickMaterial);
+      tick.position.set(0, 0.75 + index * 0.72, -0.37);
+      game.add(tick);
+    }
+
+    const marker = new Mesh(new SphereGeometry(0.17, 18, 12), markerMaterial);
+    marker.position.set(0, 0.74, -0.28);
+    strengthTesterMarker = marker;
+
+    const bell = new Mesh(new CylinderGeometry(0.36, 0.48, 0.34, 28), bellMaterial);
+    bell.position.set(0, 6.18, -0.74);
+    bell.rotation.x = Math.PI;
+    strengthTesterBell = bell;
+    const bellClapper = new Mesh(new SphereGeometry(0.1, 14, 10), metalMaterial);
+    bellClapper.position.set(0, 5.95, -0.74);
+
+    const sign = new Mesh(new PlaneGeometry(2.1, 0.62), createSignMaterial('HIGH STRIKER', 'ring the bell', '#7a151b'));
+    sign.position.set(0, 5.1, -0.33);
+
+    const hammerPivot = new Group();
+    hammerPivot.position.set(0.96, 0.96, 0.42);
+    hammerPivot.rotation.z = -0.18;
+    const cord = new Mesh(new CylinderGeometry(0.025, 0.025, 1.12, 8), ropeMaterial);
+    cord.position.set(0, 0.52, 0);
+    const handle = new Mesh(new BoxGeometry(0.14, 1.18, 0.14), woodMaterial);
+    handle.position.set(0, -0.18, 0);
+    const head = new Mesh(new BoxGeometry(0.78, 0.3, 0.3), metalMaterial);
+    head.position.set(0, -0.82, 0);
+    hammerPivot.add(cord, handle, head);
+    strengthTesterHammer = hammerPivot;
+
+    game.add(
+      base,
+      frontTrim,
+      strikeButton,
+      towerBack,
+      leftRail,
+      rightRail,
+      tubeGlass,
+      marker,
+      bell,
+      bellClapper,
+      sign,
+      hammerPivot,
+    );
+    root.add(game);
+    addCollider(colliders, x, z, 2.9, 2.2);
+  };
+  addStrengthTester(-57, 26, 0);
+
   const stage = addBox(root, 30, 1.1, 11, 0, 0.55, -36, new MeshStandardMaterial({ color: 0x2f1720, roughness: 0.82 }));
   stage.name = 'Chapter 9 preserved stage';
   addCollider(colliders, 0, -36, 31, 12);
@@ -2724,6 +2809,19 @@ export function createChapterNine(): ChapterNineData {
     rockWallClimbY = 0;
     rockWallButtonPressTime = 0;
     updateRockWallTopButton(0);
+    strengthTesterTimer = 0;
+    if (strengthTesterHammer) {
+      strengthTesterHammer.rotation.z = -0.18;
+    }
+    if (strengthTesterPad) {
+      strengthTesterPad.position.y = 0.32;
+    }
+    if (strengthTesterMarker) {
+      strengthTesterMarker.position.y = 0.74;
+    }
+    if (strengthTesterBell) {
+      strengthTesterBell.rotation.z = 0;
+    }
     if (rockWallHarnessRoot) {
       rockWallHarnessRoot.visible = true;
     }
@@ -2767,6 +2865,38 @@ export function createChapterNine(): ChapterNineData {
       });
       updateRockWallTopButton(deltaSeconds);
       updateRockWallRope(rockWallHarnessed ? getRockWallHarnessAttachmentPosition() : undefined);
+      if (strengthTesterTimer > 0) {
+        strengthTesterTimer = Math.max(0, strengthTesterTimer - deltaSeconds);
+        const progress = 1 - strengthTesterTimer / 1.25;
+        const strikePulse = Math.sin(Math.min(1, progress * 1.35) * Math.PI);
+        const markerProgress = Math.sin(Math.min(1, progress * 1.1) * Math.PI);
+        if (strengthTesterHammer) {
+          strengthTesterHammer.rotation.z = -0.18 - strikePulse * 1.05;
+        }
+        if (strengthTesterPad) {
+          strengthTesterPad.position.y = 0.32 - strikePulse * 0.08;
+        }
+        if (strengthTesterMarker) {
+          strengthTesterMarker.position.y = 0.74 + markerProgress * 4.95;
+        }
+        if (strengthTesterBell) {
+          const bellShake = progress > 0.42 ? Math.sin(phaseTime * 42) * 0.18 * (1 - Math.min(1, (progress - 0.42) / 0.58)) : 0;
+          strengthTesterBell.rotation.z = bellShake;
+        }
+      } else {
+        if (strengthTesterHammer) {
+          strengthTesterHammer.rotation.z = -0.18;
+        }
+        if (strengthTesterPad) {
+          strengthTesterPad.position.y = 0.32;
+        }
+        if (strengthTesterMarker) {
+          strengthTesterMarker.position.y = 0.74;
+        }
+        if (strengthTesterBell) {
+          strengthTesterBell.rotation.z = 0;
+        }
+      }
     },
     updateRockWallHarness(deltaSeconds: number, movement: { forward: number; strafe: number }): { position: Vector3; lookTarget: Vector3 } | null {
       if (!rockWallHarnessed) {
@@ -2845,6 +2975,12 @@ export function createChapterNine(): ChapterNineData {
       if (playerPosition.distanceTo(voiceTapeInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.55) {
         return {
           message: 'The voice tape clicks softly. It holds scratchy animatronic speech tests and old rehearsal lines.',
+        };
+      }
+      if (playerPosition.distanceTo(strengthTesterInteractPosition) <= GAME_CONFIG.player.interactionRange + 0.9) {
+        strengthTesterTimer = 1.25;
+        return {
+          message: 'You swing the tethered hammer into the strike button. The marker shoots up the pipe and rings the bell.',
         };
       }
       const chair = seatedChairs
