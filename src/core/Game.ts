@@ -207,6 +207,7 @@ const START_IN_CHAPTER_TEN = true;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
+const CHAPTER_SEVEN_TRADE_INVENTORY_STORAGE_KEY = 'scary-sushi:chapter-seven-trade-inventory';
 const ZOMBIE_DAY_DURATION = 36;
 const ZOMBIE_NIGHT_DURATION = 42;
 const ZOMBIE_FIRE_COOLDOWN: Record<ZombieWeaponId, number> = {
@@ -2798,6 +2799,57 @@ export class Game {
     ];
   }
 
+  private loadChapterSevenTradeInventory(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(CHAPTER_SEVEN_TRADE_INVENTORY_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const saved = JSON.parse(raw) as Partial<{
+        hasBirdCageKey: boolean;
+        longerNightUses: number;
+        birdCageFreed: boolean;
+        birdCageFreedDay: number;
+        birdCageBonusClaims: number;
+      }>;
+      this.chapterSevenHasBirdCageKey = saved.hasBirdCageKey === true;
+      this.chapterSevenLongerNightUses = Math.max(0, Math.min(2, Math.floor(saved.longerNightUses ?? 0)));
+      this.chapterSevenBirdCageFreed = saved.birdCageFreed === true;
+      this.chapterSevenBirdCageFreedDay = Math.max(0, Math.floor(saved.birdCageFreedDay ?? 0));
+      this.chapterSevenBirdCageBonusClaims = Math.max(0, Math.floor(saved.birdCageBonusClaims ?? 0));
+      if (this.chapterSevenHeldItem === 'birdcage-key' && !this.chapterSevenHasBirdCageKey) {
+        this.chapterSevenHeldItem = null;
+      }
+      if (this.chapterSevenHeldItem === 'night-watch' && this.chapterSevenLongerNightUses <= 0) {
+        this.chapterSevenHeldItem = null;
+      }
+    } catch {
+      window.localStorage.removeItem(CHAPTER_SEVEN_TRADE_INVENTORY_STORAGE_KEY);
+    }
+  }
+
+  private saveChapterSevenTradeInventory(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(
+      CHAPTER_SEVEN_TRADE_INVENTORY_STORAGE_KEY,
+      JSON.stringify({
+        hasBirdCageKey: this.chapterSevenHasBirdCageKey,
+        longerNightUses: this.chapterSevenLongerNightUses,
+        birdCageFreed: this.chapterSevenBirdCageFreed,
+        birdCageFreedDay: this.chapterSevenBirdCageFreedDay,
+        birdCageBonusClaims: this.chapterSevenBirdCageBonusClaims,
+      }),
+    );
+  }
+
   private readonly handleChapterSevenCookieTargetSelect = (target: number): void => {
     if (![25, 50, 80].includes(target)) {
       return;
@@ -2840,6 +2892,7 @@ export class Game {
       this.setPlacementToolActive(false);
       this.pushStatus('You traded 15 cookies for the longer night watch. It is now in your hand and has 2 uses.', 2.8);
     }
+    this.saveChapterSevenTradeInventory();
     this.syncHud();
   };
 
@@ -12692,6 +12745,7 @@ export class Game {
           const bonusCookies = newBirdClaims * 5;
           this.chapterSevenBirdCageBonusClaims += newBirdClaims;
           this.chapterSevenCookieCount += bonusCookies;
+          this.saveChapterSevenTradeInventory();
           this.pushStatus(`The freed parrot brings you ${bonusCookies} cookies for helping it.`, 3);
         }
       }
@@ -12709,6 +12763,7 @@ export class Game {
 
   private useChapterSevenLongerNightWatch(): void {
     if (this.chapterSevenLongerNightUses <= 0) {
+      this.pushStatus('You do not have a Night Watch in your hotbar.', 1.8);
       return;
     }
 
@@ -12723,8 +12778,42 @@ export class Game {
     if (this.chapterSevenLongerNightUses <= 0) {
       this.chapterSevenHeldItem = null;
     }
+    this.saveChapterSevenTradeInventory();
     this.pushStatus(`The longer night watch resets the night timer to 2:30. Uses left: ${this.chapterSevenLongerNightUses}.`, 3);
     this.syncHud();
+  }
+
+  private tryUnlockChapterSevenBirdCageFromHotbar(showLockedMessage = true): boolean {
+    const nearbyBirdCage = this.getNearestChapterSevenBirdCage();
+    if (!nearbyBirdCage) {
+      return false;
+    }
+
+    if (this.chapterSevenBirdCageFreed || nearbyBirdCage.unlocked) {
+      this.pushStatus('The birdcage door is open. The parrot is flying around the house.', 2.6);
+      return true;
+    }
+
+    if (!this.chapterSevenHasBirdCageKey) {
+      if (showLockedMessage) {
+        this.pushStatus('The birdcage is locked. You need the Birdcage Key from Grandpa.', 2.6);
+      }
+      return showLockedMessage;
+    }
+
+    if (!this.chapterSeven.unlockBirdCage()) {
+      this.pushStatus('The birdcage is already unlocking.', 2.0);
+      return true;
+    }
+
+    this.chapterSevenBirdCageFreed = true;
+    this.chapterSevenBirdCageFreedDay = this.chapterSevenDayCount;
+    this.chapterSevenBirdCageBonusClaims = 0;
+    this.chapterSevenCookieCount += 10;
+    this.saveChapterSevenTradeInventory();
+    this.pushStatus('The key slides into the birdcage lock, turns, and the door opens. The parrot flies out, and you gain 10 cookies.', 3.8);
+    this.syncHud();
+    return true;
   }
 
   private updateChapterSevenAmbientAudio(deltaSeconds: number): void {
@@ -13733,22 +13822,8 @@ export class Game {
         return;
       }
 
-      const nearbyBirdCage = this.getNearestChapterSevenBirdCage();
-      if (nearbyBirdCage && !this.chapterSevenBirdCageFreed && !nearbyBirdCage.unlocked) {
-        if (!this.chapterSevenHasBirdCageKey) {
-          this.pushStatus('The birdcage is locked. You need the Birdcage Key from Grandpa.', 2.6);
-          return;
-        }
-
-        if (this.chapterSeven.unlockBirdCage()) {
-          this.chapterSevenBirdCageFreed = true;
-          this.chapterSevenBirdCageFreedDay = this.chapterSevenDayCount;
-          this.chapterSevenBirdCageBonusClaims = 0;
-          this.chapterSevenCookieCount += 10;
-          this.pushStatus('The key slides into the birdcage lock, turns, and the door opens. The parrot flies out, and you gain 10 cookies.', 3.8);
-          this.syncHud();
-          return;
-        }
+      if (this.tryUnlockChapterSevenBirdCageFromHotbar(false)) {
+        return;
       }
 
       const interactable = this.getLookedAtChapterSevenInteractable();
@@ -13774,31 +13849,8 @@ export class Game {
         return;
       }
 
-      const birdCageTarget = interactable?.kind === 'bird-cage'
-        ? interactable.item
-        : !interactable
-          ? this.getNearestChapterSevenBirdCage()
-          : null;
-      if (birdCageTarget) {
-        if (this.chapterSevenBirdCageFreed || birdCageTarget.unlocked) {
-          this.pushStatus('The birdcage door is open. The parrot is flying around the house.', 2.6);
-          return;
-        }
-
-        if (!this.chapterSevenHasBirdCageKey) {
-          this.pushStatus('The birdcage is locked. You need the Birdcage Key from Grandpa.', 2.6);
-          return;
-        }
-
-        if (this.chapterSeven.unlockBirdCage()) {
-          this.chapterSevenBirdCageFreed = true;
-          this.chapterSevenBirdCageFreedDay = this.chapterSevenDayCount;
-          this.chapterSevenBirdCageBonusClaims = 0;
-          this.chapterSevenCookieCount += 10;
-          this.pushStatus('The key slides into the birdcage lock, turns, and the door opens. The parrot flies out, and you gain 10 cookies.', 3.8);
-          this.syncHud();
-          return;
-        }
+      if (interactable?.kind === 'bird-cage' && this.tryUnlockChapterSevenBirdCageFromHotbar(true)) {
+        return;
       }
 
       const manualDoor = this.getNearestChapterSevenManualDoor();
@@ -25835,6 +25887,10 @@ export class Game {
     this.chapterSevenBirdCageFreed = false;
     this.chapterSevenBirdCageFreedDay = 0;
     this.chapterSevenBirdCageBonusClaims = 0;
+    this.loadChapterSevenTradeInventory();
+    if (this.chapterSevenBirdCageFreed) {
+      this.chapterSeven.unlockBirdCage();
+    }
     this.chapterSevenCricketCooldown = 0;
     this.chapterSeven.setDay(this.chapterSevenDayCount);
     this.chapterFourBoxHeldAnchor.visible = false;
