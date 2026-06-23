@@ -605,8 +605,8 @@ export function createChapterNine(): ChapterNineData {
   root.visible = false;
   const colliders: CollisionBox[] = [];
 
-  const spawn = new Vector3(0, GAME_CONFIG.player.height, BUILDING_CENTER_Z + BUILDING_DEPTH / 2 + 5);
-  const lookTarget = new Vector3(0, 1.7, BUILDING_CENTER_Z + BUILDING_DEPTH / 2);
+  const spawn = new Vector3(-49.34, GAME_CONFIG.player.height, -7.67);
+  const lookTarget = new Vector3(-42, 1.7, -7.67);
 
   const asphaltMaterial = new MeshStandardMaterial({ color: 0x1b1b1d, roughness: 0.96, metalness: 0.02 });
   const grassMaterial = new MeshStandardMaterial({ color: 0x2f7d32, roughness: 0.96, metalness: 0.0 });
@@ -1439,7 +1439,6 @@ export function createChapterNine(): ChapterNineData {
       panel.position.set(x, y, z);
       panel.name = 'Chapter 9 Foxy stage curtain';
       root.add(panel);
-      addCollider(colliders, x, z, panelWidth, panelDepth);
     };
     const curtainHeight = 4.7;
     const curtainY = stageHeight + curtainHeight / 2;
