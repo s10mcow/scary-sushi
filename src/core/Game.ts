@@ -232,7 +232,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 300, section: 'expensive' },
   { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 300, section: 'expensive' },
   { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 350, section: 'expensive' },
-  { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 2, section: 'expensive' },
+  { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 250, section: 'expensive' },
 ];
 type ChapterElevenCropId =
   | 'carrot'
@@ -444,7 +444,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     sellValue: 60,
     babySeconds: 5,
     matureSeconds: 16,
-    regrows: false,
+    regrows: true,
   },
 };
 const CHAPTER_ELEVEN_SELL_STAND_X = -53.46;
@@ -7621,6 +7621,11 @@ export class Game {
 
   private getChapterElevenHotbarItems(): ChapterElevenHotbarItem[] {
     const items: ChapterElevenHotbarItem[] = [];
+    this.chapterElevenPetEggInventory.forEach((count, petType) => {
+      if (count > 0) {
+        items.push({ kind: 'pet-egg', id: petType });
+      }
+    });
     this.chapterElevenSeedHotbar.forEach((seedId) => {
       if (seedId && (this.chapterElevenSeedInventory.get(seedId) ?? 0) > 0) {
         items.push({ kind: 'seed', id: seedId });
@@ -7629,11 +7634,6 @@ export class Game {
     this.chapterElevenCropInventory.forEach((count, cropId) => {
       if (count > 0) {
         items.push({ kind: 'crop', id: cropId });
-      }
-    });
-    this.chapterElevenPetEggInventory.forEach((count, petType) => {
-      if (count > 0) {
-        items.push({ kind: 'pet-egg', id: petType });
       }
     });
     return items.slice(0, 9);
@@ -7971,7 +7971,8 @@ export class Game {
       || cropId === 'pumpkin'
       || cropId === 'peach'
       || cropId === 'apple'
-      || cropId === 'tomato';
+      || cropId === 'tomato'
+      || cropId === 'pepper';
   }
 
   private createChapterElevenPickableFruits(cropId: ChapterElevenCropId): ChapterElevenPickableFruit[] {
@@ -8036,6 +8037,15 @@ export class Game {
       ];
     }
 
+    if (cropId === 'pepper') {
+      return [
+        makeFruit(new Vector3(0.12, 0.54, 0.04), 'Pepper', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(-0.18, 0.48, 0.12), 'Pepper', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(0.26, 0.62, -0.14), 'Pepper', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(-0.06, 0.68, -0.18), 'Pepper', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+      ];
+    }
+
     if (cropId === 'pumpkin') {
       return [
         makeFruit(new Vector3(0, 0.34, 0), 'Pumpkin', CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pumpkin', 'Golden Pumpkin'),
@@ -8093,6 +8103,7 @@ export class Game {
       raspberry: new MeshStandardMaterial({ color: 0xc93668, roughness: 0.62 }),
       blueberry: new MeshStandardMaterial({ color: 0x2b5ab4, roughness: 0.62 }),
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
+      pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
       pumpkin: new MeshStandardMaterial({ color: 0xd87522, roughness: 0.78 }),
       peach: new MeshStandardMaterial({ color: 0xf2a36f, roughness: 0.64 }),
       goldenPeach: new MeshStandardMaterial({ color: 0xf2ca4d, roughness: 0.42, metalness: 0.22 }),
@@ -8151,6 +8162,16 @@ export class Game {
         leafCap.rotation.x = Math.PI;
         leafCap.castShadow = true;
         plant.root.add(leafCap);
+      } else if (fruitState.cropId === 'pepper') {
+        fruit = new Mesh(new ConeGeometry(0.07, 0.32, 12), fruitState.golden ? materials.genericGold : materials.pepper);
+        fruit.scale.set(0.72, 1, 0.58);
+        fruit.rotation.set(Math.PI, 0, index % 2 === 0 ? -0.34 : 0.24);
+        const stem = new Mesh(new CylinderGeometry(0.011, 0.015, 0.09, 6), materials.stem);
+        stem.name = 'Chapter 11 pickable pepper small stem';
+        stem.position.copy(fruitState.offset).add(new Vector3(0, 0.12, 0));
+        stem.rotation.z = index % 2 === 0 ? -0.18 : 0.14;
+        stem.castShadow = true;
+        plant.root.add(stem);
       } else if (fruitState.cropId === 'raspberry') {
         fruit = new Mesh(new SphereGeometry(0.055, 12, 8), fruitState.golden ? materials.genericGold : materials.raspberry);
       } else if (fruitState.cropId === 'blueberry') {
@@ -8301,14 +8322,12 @@ export class Game {
     }
 
     if (config.cropId === 'pepper') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
       const vineMaterial = new MeshStandardMaterial({ color: 0x2c7d35, roughness: 0.86 });
       const leafMaterial = new MeshStandardMaterial({ color: 0x2f8f3b, roughness: 0.82 });
-      const pepperMaterial = new MeshStandardMaterial({
-        color: plant.golden ? 0xf1c84b : 0xc62824,
-        roughness: plant.golden ? 0.42 : 0.6,
-        metalness: plant.golden ? 0.28 : 0,
-      });
-      const pepperStemMaterial = new MeshStandardMaterial({ color: 0x315f27, roughness: 0.86 });
       const vineSegments: Array<[number, number, number, number, number]> = [
         [0, 0.28, 0, 0.56, -0.3],
         [-0.18, 0.36, 0.05, 0.48, 0.32],
@@ -8339,25 +8358,7 @@ export class Game {
         leaf.castShadow = true;
         plant.root.add(leaf);
       });
-      const pepperOffsets: Array<[number, number, number, number]> = [
-        [0.12, 0.54, 0.04, -0.38],
-        [-0.18, 0.48, 0.12, 0.22],
-        [0.26, 0.62, -0.14, -0.16],
-      ];
-      pepperOffsets.forEach(([x, y, z, rotationZ]) => {
-        const pepper = new Mesh(new ConeGeometry(0.07, 0.32, 12), pepperMaterial);
-        pepper.name = 'Chapter 11 curved red pepper on vine';
-        pepper.position.set(x, y, z);
-        pepper.scale.set(0.72, 1, 0.58);
-        pepper.rotation.set(Math.PI, 0, rotationZ);
-        pepper.castShadow = true;
-        const stem = new Mesh(new CylinderGeometry(0.011, 0.015, 0.09, 6), pepperStemMaterial);
-        stem.name = 'Chapter 11 pepper small stem';
-        stem.position.set(x, y + 0.12, z);
-        stem.rotation.z = rotationZ * 0.5;
-        stem.castShadow = true;
-        plant.root.add(stem, pepper);
-      });
+      this.addChapterElevenPickableFruitMeshes(plant);
       return;
     }
 
@@ -8777,7 +8778,8 @@ export class Game {
     this.chapterElevenSelectedPetEggType = petType;
     this.placementToolActive = false;
     this.placementPreview.visible = false;
-    this.pushStatus(`The Pet Eggs seller hands you a ${this.getChapterElevenPetLabel(petType)} Egg. Press E on your farm dirt patch to place it.`, 3.2);
+    const hotbarSlot = this.getCurrentChapterElevenHotbarSlot();
+    this.pushStatus(`Bought a ${this.getChapterElevenPetLabel(petType)} Egg for $${CHAPTER_ELEVEN_PET_EGG_COST}. It is in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}. Press E on your farm dirt patch to place it.`, 3.5);
     this.syncHud();
   }
 
