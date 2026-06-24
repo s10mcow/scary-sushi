@@ -1553,7 +1553,7 @@ export function createHud(host: HTMLElement): HudController {
     {
       id: 'chapter-12' as const,
       label: 'Chapter 12: The Truck Game',
-      body: 'A forest off-road area with muddy trails, jump ramps, and a parked dirt bike.',
+      body: 'A big forest mud field with truck trails, jumps, and a drivable Ford F250 Super Duty.',
     },
     {
       id: 'zombie-fps' as const,

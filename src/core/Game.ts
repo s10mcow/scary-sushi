@@ -3946,6 +3946,17 @@ export class Game {
         this.chapterFive.getFlightLookTarget(this.chapterFiveCameraPosition, this.chapterFiveFlightLookTarget);
         this.player.lookToward(this.chapterFiveFlightLookTarget, 1);
       }
+    } else if (this.chapterTwelveActive && this.chapterTwelve.isDriving()) {
+      this.player.update(
+        deltaSeconds,
+        { forward: 0, strafe: 0, sprint: false },
+        false,
+        false,
+        0,
+        true,
+      );
+      this.chapterTwelve.update(deltaSeconds, effectiveMovement);
+      this.player.teleport(this.chapterTwelve.getDriverCameraPosition());
     } else {
       this.player.update(
         deltaSeconds,
@@ -4025,6 +4036,7 @@ export class Game {
       this.player.isLocked()
         && !this.chapterMenuOpen
         && !this.chapterFiveActive
+        && !(this.chapterTwelveActive && this.chapterTwelve.isDriving())
         && !playerInOfficeBallPit
         && !playerOnChapterNineTrampoline
         && horizontalMoveDistance > 0.001,
@@ -4037,7 +4049,7 @@ export class Game {
       effectiveMovement.sprint,
       jumpRequested && chapterNineTrampolineBeforeMove,
     );
-    this.updateStamina(deltaSeconds, sprinting && !this.chapterFiveActive && !this.officeChapterActive);
+    this.updateStamina(deltaSeconds, sprinting && !this.chapterFiveActive && !this.officeChapterActive && !(this.chapterTwelveActive && this.chapterTwelve.isDriving()));
     this.updateChapterTwoClimb(deltaSeconds);
     this.updateChapterTwoSlide(deltaSeconds);
 
@@ -4183,7 +4195,7 @@ export class Game {
       this.chapterEleven.update(deltaSeconds, this.player.getPosition());
       this.updateChapterElevenPlants(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
-    } else if (this.chapterTwelveActive) {
+    } else if (this.chapterTwelveActive && !this.chapterTwelve.isDriving()) {
       this.chapterTwelve.update(deltaSeconds);
     } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive) {
       this.level.stationAnimator.update(deltaSeconds);
@@ -16296,6 +16308,18 @@ export class Game {
       return;
     }
 
+    if (this.chapterTwelveActive) {
+      const result = this.chapterTwelve.interact(this.player.getPosition());
+      if (result.cameraPosition) {
+        this.player.teleport(result.cameraPosition);
+      }
+      if (result.lookTarget) {
+        this.player.lookToward(result.lookTarget, 1);
+      }
+      this.pushStatus(result.message, 2.8);
+      return;
+    }
+
     if (this.chapterNineActive) {
       const cameraPosition = this.camera.getWorldPosition(new Vector3());
       const cameraForward = this.camera.getWorldDirection(new Vector3()).normalize();
@@ -19720,8 +19744,8 @@ export class Game {
       return [
         'Chapter 12: The Truck Game',
         '',
-        'A forest off-road spot with muddy trails, jump ramps, and a parked dirt bike.',
-        'The trails loop through the clearing with wet tire ruts and several dirt jumps.',
+        'A big open forest field with deep mud pits, muddy truck trails, and broad jumps.',
+        'A Ford F250 Super Duty is parked in the mud and can be driven around the field.',
         'Use the Coordinate Tool to mark where truck-game details should go next.',
       ].join('\n');
     }
@@ -21896,7 +21920,13 @@ export class Game {
     }
 
     if (this.chapterTwelveActive) {
-      return 'Chapter 12: The Truck Game loaded. Explore the forest mud trails, dirt jumps, and parked dirt bike.';
+      if (this.chapterTwelve.isDriving()) {
+        return 'Driving the Ford F250 Super Duty. Use W/S to drive, A/D to steer, Shift for more speed, and E to get out.';
+      }
+      if (this.chapterTwelve.isNearTruck(this.player.getPosition())) {
+        return 'Press E to get in the Ford F250 Super Duty and drive through the mud.';
+      }
+      return 'Chapter 12: The Truck Game loaded. Walk to the Ford F250 Super Duty, press E, and drive around the muddy field.';
     }
 
     if (this.chapterEightActive) {
@@ -22697,7 +22727,7 @@ export class Game {
     }
 
     if (this.chapterTwelveActive) {
-      return 0;
+      return GAME_CONFIG.player.height;
     }
 
     return null;
@@ -28892,7 +28922,7 @@ export class Game {
     this.officeModeMenuOpen = false;
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter 12: The Truck Game';
-    this.chapterCardBody = 'A forest off-road spot with muddy trails, jump ramps, and a dirt bike.';
+    this.chapterCardBody = 'A big open forest mud field with broad jumps and a drivable Ford F250 Super Duty.';
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
@@ -28986,7 +29016,7 @@ export class Game {
     this.setPlacementToolActive(true);
     this.player.teleport(this.chapterTwelve.spawn);
     this.player.lookToward(this.chapterTwelve.lookTarget, 1);
-    this.pushStatus('The Truck Game loaded. Mud trails and jump ramps are ready around the parked dirt bike.', 3.2);
+    this.pushStatus('The Truck Game loaded. Press E near the Ford F250 Super Duty to drive through the mud field.', 3.2);
     this.resize();
   }
 
