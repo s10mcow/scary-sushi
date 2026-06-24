@@ -95,6 +95,7 @@ export interface HudController {
   onChapterFiveMonitorAction(handler: (action: HudChapterFiveMonitorAction) => void): void;
   onChapterSevenCookieTargetSelect(handler: (target: number) => void): void;
   onChapterSevenGrandpaTrade(handler: (tradeId: ChapterSevenGrandpaTradeId) => void): void;
+  onChapterElevenSeedPurchase(handler: (seedId: ChapterElevenSeedId) => void): void;
   onCuratorSave(handler: (slotLabel: string, summary: string) => void): void;
   setTheme(theme: 'default' | 'doom'): void;
   setCrosshairMode(mode: 'default' | 'firearm' | 'minecraft'): void;
@@ -110,6 +111,8 @@ export interface HudController {
   setChapterSevenCookieCounter(active: boolean, cookies: number, target: number): void;
   setChapterSevenCookiePicker(active: boolean, currentTarget: number): void;
   setChapterSevenTrading(active: boolean, cookies: number, trades: ChapterSevenGrandpaTradeView[]): void;
+  setChapterElevenSeedShop(active: boolean, money: number, items: ChapterElevenSeedShopItemView[]): void;
+  setMoney(value: number): void;
   setChapterSevenPhaseTimer(active: boolean, phase: 'day' | 'night', secondsLeft: number, urgent: boolean): void;
   setChapterMenu(active: boolean, currentChapter: HudChapterId): void;
   setCompass(active: boolean, headingDegrees: number): void;
@@ -160,6 +163,13 @@ export interface HudController {
 }
 
 export type ChapterSevenGrandpaTradeId = 'bird-cage-key' | 'longer-night-watch';
+export type ChapterElevenSeedId =
+  | 'carrot-seeds'
+  | 'mushroom'
+  | 'strawberry'
+  | 'blackberry-bush'
+  | 'pumpkin-seeds'
+  | 'nut-seeds';
 
 export interface ChapterSevenGrandpaTradeView {
   id: ChapterSevenGrandpaTradeId;
@@ -167,6 +177,14 @@ export interface ChapterSevenGrandpaTradeView {
   cost: number;
   description: string;
   ownedLabel?: string;
+  enabled: boolean;
+}
+
+export interface ChapterElevenSeedShopItemView {
+  id: ChapterElevenSeedId;
+  label: string;
+  cost: number;
+  section: 'cheap' | 'expensive';
   enabled: boolean;
 }
 
@@ -515,6 +533,7 @@ export function createHud(host: HTMLElement): HudController {
   root.style.setProperty('--threat-eye-intensity', '0');
   let chapterSevenCookieTargetSelectHandler: ((target: number) => void) | null = null;
   let chapterSevenGrandpaTradeHandler: ((tradeId: ChapterSevenGrandpaTradeId) => void) | null = null;
+  let chapterElevenSeedPurchaseHandler: ((seedId: ChapterElevenSeedId) => void) | null = null;
 
   const backdrop = document.createElement('div');
   backdrop.className = 'hud__backdrop';
@@ -1142,6 +1161,23 @@ export function createHud(host: HTMLElement): HudController {
   chapterSevenTradingOptions.className = 'hud__chapter-seven-trading-options';
 
   chapterSevenTrading.append(chapterSevenTradingTitle, chapterSevenTradingCookies, chapterSevenTradingOptions);
+
+  const chapterElevenSeedShop = document.createElement('section');
+  chapterElevenSeedShop.className = 'hud__chapter-eleven-seed-shop';
+  chapterElevenSeedShop.dataset.active = 'false';
+
+  const chapterElevenSeedShopTitle = document.createElement('h2');
+  chapterElevenSeedShopTitle.className = 'hud__chapter-seven-cookie-picker-title';
+  chapterElevenSeedShopTitle.textContent = 'Seeds';
+
+  const chapterElevenSeedShopMoney = document.createElement('p');
+  chapterElevenSeedShopMoney.className = 'hud__chapter-seven-trading-cookies';
+  chapterElevenSeedShopMoney.textContent = 'Money: $200';
+
+  const chapterElevenSeedShopOptions = document.createElement('div');
+  chapterElevenSeedShopOptions.className = 'hud__chapter-seven-trading-options';
+
+  chapterElevenSeedShop.append(chapterElevenSeedShopTitle, chapterElevenSeedShopMoney, chapterElevenSeedShopOptions);
 
   const statusPanel = document.createElement('section');
   statusPanel.className = 'hud__panel hud__panel--right';
@@ -1974,6 +2010,7 @@ export function createHud(host: HTMLElement): HudController {
     chapterSevenPhaseTimer,
     chapterSevenCookiePicker,
     chapterSevenTrading,
+    chapterElevenSeedShop,
     crosshair,
     moneyPanel,
     meterPanel,
@@ -2606,6 +2643,9 @@ export function createHud(host: HTMLElement): HudController {
     onChapterSevenGrandpaTrade(handler): void {
       chapterSevenGrandpaTradeHandler = handler;
     },
+    onChapterElevenSeedPurchase(handler): void {
+      chapterElevenSeedPurchaseHandler = handler;
+    },
     onCuratorSave(handler): void {
       curatorSaveHandler = handler;
     },
@@ -2692,6 +2732,47 @@ export function createHud(host: HTMLElement): HudController {
         });
         return button;
       }));
+    },
+    setChapterElevenSeedShop(active, money, items): void {
+      chapterElevenSeedShop.dataset.active = String(active);
+      const safeMoney = Math.max(0, Math.floor(money));
+      chapterElevenSeedShopMoney.textContent = `Money: $${safeMoney}`;
+      const rows: HTMLElement[] = [];
+      let currentSection: ChapterElevenSeedShopItemView['section'] | null = null;
+      items.forEach((item) => {
+        if (item.section !== currentSection) {
+          currentSection = item.section;
+          const heading = document.createElement('p');
+          heading.className = 'hud__chapter-eleven-seed-section';
+          heading.textContent = item.section === 'cheap' ? 'Seeds cheap' : 'Expensive';
+          rows.push(heading);
+        }
+
+        const button = document.createElement('button');
+        button.className = 'hud__chapter-seven-trade';
+        button.type = 'button';
+        button.disabled = !item.enabled;
+        button.dataset.seed = item.id;
+        const title = document.createElement('span');
+        title.className = 'hud__chapter-seven-trade-title';
+        title.textContent = `${item.label} $${item.cost}`;
+        const description = document.createElement('span');
+        description.className = 'hud__chapter-seven-trade-description';
+        description.textContent = item.enabled
+          ? 'Available'
+          : `Need $${Math.max(0, item.cost - safeMoney)} more`;
+        button.append(title, description);
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          chapterElevenSeedPurchaseHandler?.(item.id);
+        });
+        rows.push(button);
+      });
+      chapterElevenSeedShopOptions.replaceChildren(...rows);
+    },
+    setMoney(value): void {
+      moneyValue.textContent = `$${Math.max(0, Math.floor(value))}`;
     },
     setChapterSevenPhaseTimer(active, phase, secondsLeft, urgent): void {
       const safeSeconds = Math.max(0, Math.ceil(secondsLeft));

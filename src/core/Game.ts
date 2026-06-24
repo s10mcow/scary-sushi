@@ -126,6 +126,8 @@ import { PlayerController, type PlayerMovementOptions } from '../systems/player/
 import { ZombieController } from '../systems/zombie/ZombieController';
 import {
   createHud,
+  type ChapterElevenSeedId,
+  type ChapterElevenSeedShopItemView,
   type HudChapterId,
   type HudChapterFiveMonitorAction,
   type ChapterSevenGrandpaTradeId,
@@ -206,6 +208,23 @@ const START_IN_CHAPTER_SEVEN = false;
 const START_IN_CHAPTER_NINE = false;
 const START_IN_CHAPTER_TEN = false;
 const START_IN_CHAPTER_ELEVEN = true;
+const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
+const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
+const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
+const CHAPTER_ELEVEN_STARTING_MONEY = 200;
+const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
+  id: ChapterElevenSeedId;
+  label: string;
+  cost: number;
+  section: ChapterElevenSeedShopItemView['section'];
+}> = [
+  { id: 'carrot-seeds', label: 'Carrot seeds', cost: 10, section: 'cheap' },
+  { id: 'mushroom', label: 'Mushroom', cost: 20, section: 'cheap' },
+  { id: 'strawberry', label: 'Strawberry', cost: 40, section: 'cheap' },
+  { id: 'blackberry-bush', label: 'Blackberry bush', cost: 50, section: 'cheap' },
+  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', cost: 100, section: 'expensive' },
+  { id: 'nut-seeds', label: 'Nut seeds', cost: 500, section: 'expensive' },
+];
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -1264,6 +1283,9 @@ export class Game {
   private chapterSevenCookieTarget = 25;
   private chapterSevenCookiePickerOpen = false;
   private chapterSevenGrandpaTradingOpen = false;
+  private chapterElevenSeedShopOpen = false;
+  private chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
+  private readonly chapterElevenSeedInventory = new Map<ChapterElevenSeedId, number>();
   private chapterSevenHasBirdCageKey = false;
   private chapterSevenHeldItem: ChapterSevenHeldItem = null;
   private chapterSevenLongerNightUses = 0;
@@ -1649,6 +1671,7 @@ export class Game {
     this.hud.onChapterFiveMonitorAction(this.handleChapterFiveMonitorAction);
     this.hud.onChapterSevenCookieTargetSelect(this.handleChapterSevenCookieTargetSelect);
     this.hud.onChapterSevenGrandpaTrade(this.handleChapterSevenGrandpaTrade);
+    this.hud.onChapterElevenSeedPurchase(this.handleChapterElevenSeedPurchase);
     this.hud.onCuratorSave(this.handleCuratorSave);
     this.player.controls.addEventListener('lock', this.handleLockChange);
     this.player.controls.addEventListener('unlock', this.handleLockChange);
@@ -1923,8 +1946,8 @@ export class Game {
     }
 
     const clickedMenu = event.target instanceof Element
-      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading');
-    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen) {
+      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop');
+    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen) {
       if (clickedMenu) {
         return;
       }
@@ -1935,10 +1958,11 @@ export class Game {
       this.officeModeMenuOpen = false;
       this.chapterSevenCookiePickerOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
+      this.chapterElevenSeedShopOpen = false;
       this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading')) {
+    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop')) {
       return;
     }
 
@@ -2722,6 +2746,7 @@ export class Game {
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
+      this.chapterElevenSeedShopOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -2749,6 +2774,7 @@ export class Game {
       this.curatorToolOpen = false;
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
+      this.chapterElevenSeedShopOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -2777,6 +2803,7 @@ export class Game {
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
       this.chapterSevenCookiePickerOpen = false;
+      this.chapterElevenSeedShopOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -2787,6 +2814,76 @@ export class Game {
 
     this.syncHud();
   }
+
+  private setChapterElevenSeedShopOpen(open: boolean): void {
+    if (!this.chapterElevenActive) {
+      open = false;
+    }
+
+    if (this.chapterElevenSeedShopOpen === open) {
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenSeedShopOpen = open;
+    if (open) {
+      this.chapterMenuOpen = false;
+      this.curatorToolOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+      this.chapterSevenCookiePickerOpen = false;
+      this.chapterSevenGrandpaTradingOpen = false;
+    }
+
+    if (open && this.player.isLocked()) {
+      this.syncHud();
+      this.player.controls.unlock();
+      return;
+    }
+
+    this.syncHud();
+  }
+
+  private isNearChapterElevenSeedShop(): boolean {
+    if (!this.chapterElevenActive) {
+      return false;
+    }
+
+    const playerPosition = this.player.getPosition();
+    return Math.hypot(
+      playerPosition.x - CHAPTER_ELEVEN_SEED_SHOP_X,
+      playerPosition.z - CHAPTER_ELEVEN_SEED_SHOP_Z,
+    ) <= CHAPTER_ELEVEN_SEED_SHOP_RANGE;
+  }
+
+  private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
+    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.map((item) => ({
+      ...item,
+      enabled: this.chapterElevenMoney >= item.cost,
+    }));
+  }
+
+  private readonly handleChapterElevenSeedPurchase = (seedId: ChapterElevenSeedId): void => {
+    if (!this.chapterElevenActive || !this.chapterElevenSeedShopOpen) {
+      return;
+    }
+
+    const item = CHAPTER_ELEVEN_SEED_SHOP_ITEMS.find((candidate) => candidate.id === seedId);
+    if (!item) {
+      return;
+    }
+
+    if (this.chapterElevenMoney < item.cost) {
+      this.pushStatus(`You need $${item.cost - this.chapterElevenMoney} more for ${item.label}.`, 2.5);
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenMoney -= item.cost;
+    this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
+    this.pushStatus(`Bought ${item.label}. Money left: $${this.chapterElevenMoney}.`, 2.4);
+    this.syncHud();
+  };
 
   private getChapterSevenGrandpaTrades(): ChapterSevenGrandpaTradeView[] {
     return [
@@ -13516,6 +13613,7 @@ export class Game {
         : 0,
     );
     this.hud.setFlashlight(this.flashlight.isEnabled());
+    this.hud.setMoney(this.chapterElevenMoney);
     this.chapterNine.shoulderCamera.visible = this.chapterNineActive && locked && !this.chapterMenuOpen && this.chapterNine.getHeldItem() === 'camera';
     this.hud.setHealthLabel('Health');
     this.hud.setStaminaLabel(this.doomModeActive ? 'Armor' : 'Stamina');
@@ -13561,6 +13659,11 @@ export class Game {
       this.chapterSevenActive && this.chapterSevenGrandpaTradingOpen,
       this.chapterSevenCookieCount,
       this.getChapterSevenGrandpaTrades(),
+    );
+    this.hud.setChapterElevenSeedShop(
+      this.chapterElevenActive && this.chapterElevenSeedShopOpen,
+      this.chapterElevenMoney,
+      this.getChapterElevenSeedShopItems(),
     );
     const chapterSevenPhaseSecondsLeft = this.getChapterSevenPhaseSecondsLeft();
     this.hud.setChapterSevenPhaseTimer(
@@ -14140,6 +14243,17 @@ export class Game {
 
     if (this.chapterEightActive) {
       this.handleChapterEightInteract();
+      return;
+    }
+
+    if (this.chapterElevenActive) {
+      if (this.isNearChapterElevenSeedShop()) {
+        this.setChapterElevenSeedShopOpen(true);
+        this.pushStatus('The Buy Seeds shop opens.', 2.2);
+        return;
+      }
+
+      this.pushStatus('Move closer to the Buy Seeds stand and press E to shop.', 2.2);
       return;
     }
 
@@ -17839,11 +17953,18 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
+      const seedInventory = CHAPTER_ELEVEN_SEED_SHOP_ITEMS
+        .map((item) => {
+          const count = this.chapterElevenSeedInventory.get(item.id) ?? 0;
+          return count > 0 ? `${item.label} x${count}` : null;
+        })
+        .filter((item): item is string => Boolean(item));
       return [
-        'Inventory: Coordinate Tool',
+        `Inventory: Coordinate Tool${seedInventory.length > 0 ? `, ${seedInventory.join(', ')}` : ''}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 11: Grow a garden',
-        'A clean open grassy field. No props have been added yet.',
+        `Money: $${this.chapterElevenMoney}`,
+        'Press E at the Buy Seeds stand to open the seed shop.',
       ].join('\n');
     }
 
@@ -18315,14 +18436,26 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
+      const seedSlots = CHAPTER_ELEVEN_SEED_SHOP_ITEMS
+        .map((item) => ({
+          label: item.label,
+          count: this.chapterElevenSeedInventory.get(item.id) ?? 0,
+        }))
+        .filter((item) => item.count > 0)
+        .map((item) => ({
+          label: item.count > 1 ? `${item.label} x${item.count}` : item.label,
+          count: item.count,
+          filled: true,
+        }));
       return [
         coordinateToolSlot,
-        ...Array.from({ length: 8 }, () => ({
+        ...seedSlots,
+        ...Array.from({ length: Math.max(0, 8 - seedSlots.length) }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
         })),
-      ];
+      ].slice(0, 9);
     }
 
     const filledSlots = HOTBAR_ORDER
@@ -19648,6 +19781,10 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
+      if (this.isNearChapterElevenSeedShop()) {
+        return 'Press E at the Buy Seeds stand to buy seeds.';
+      }
+
       return 'Chapter 11: Grow a garden loaded. A big open grass field is ready for garden building.';
     }
 
@@ -25853,6 +25990,7 @@ export class Game {
     this.chapterSevenBoxHidden = false;
     this.chapterSevenOvenHidden = false;
     this.chapterSevenSwingSeated = false;
+    this.chapterElevenSeedShopOpen = false;
     this.chapterSeven.setSwingOccupied(false);
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
@@ -26237,6 +26375,9 @@ export class Game {
       'The Freddy Pizza Complex building shell is still standing, but the interior has been cleared out.';
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
+    this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
+    this.chapterElevenSeedInventory.clear();
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();

@@ -404,7 +404,7 @@ export function createChapterEleven(): ChapterElevenData {
   addCollider(colliders, -2.61, 52.33, 3.02, 1.55);
 
   addStandLabel(stand, 'sell');
-  addStandLabel(girlStand, 'buy seats');
+  addStandLabel(girlStand, 'Buy Seeds');
   addStandLabel(petEggsStand, 'Pet Eggs');
 
   const addPetEggDisplay = (x: number, y: number, z: number): void => {
