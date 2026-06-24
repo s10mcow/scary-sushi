@@ -424,6 +424,12 @@ export function createChapterEleven(): ChapterElevenData {
       [-0.2, 0.48, 0.02, 0.06],
       [0.11, 0.2, 0.22, 0.05],
       [0.0, 0.7, 0.06, 0.045],
+      [0.2, 0.64, 0.16, 0.055],
+      [-0.18, 0.62, 0.19, 0.048],
+      [0.24, 0.48, 0.02, 0.05],
+      [-0.08, 0.38, 0.25, 0.052],
+      [0.0, 0.15, -0.08, 0.045],
+      [-0.22, 0.22, 0.1, 0.04],
     ];
     spots.forEach(([spotX, spotY, spotZ, radius], index) => {
       const spot = new Mesh(new SphereGeometry(radius, 12, 8), petEggSpotMaterial);
@@ -436,7 +442,7 @@ export function createChapterEleven(): ChapterElevenData {
     });
     root.add(eggGroup);
   };
-  addPetEggDisplay(-1.93, 1.03, 53.95);
+  addPetEggDisplay(-0.99, 1.03, 51.46);
 
   const addSeedPacketPile = (x: number, y: number, z: number): void => {
     const packetPile = new Group();
