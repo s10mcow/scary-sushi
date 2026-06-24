@@ -315,7 +315,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     sellValue: 100,
     babySeconds: 4,
     matureSeconds: 14,
-    regrows: false,
+    regrows: true,
   },
   'nut-seeds': {
     seedId: 'nut-seeds',
@@ -7652,6 +7652,20 @@ export class Game {
 
     const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
     if (plant.stage === 'baby') {
+      if (config.cropId === 'pumpkin') {
+        const vineMaterial = new MeshStandardMaterial({ color: 0x2f7a2f, roughness: 0.86 });
+        for (let index = 0; index < 4; index += 1) {
+          const vine = new Mesh(new BoxGeometry(0.1, 0.055, 0.72), vineMaterial);
+          vine.name = 'Chapter 11 baby pumpkin vine runner';
+          vine.position.set(Math.cos(index * Math.PI / 2) * 0.2, 0.12, Math.sin(index * Math.PI / 2) * 0.2);
+          vine.rotation.y = index * Math.PI / 2 + (index % 2 === 0 ? 0.18 : -0.18);
+          vine.castShadow = true;
+          vine.receiveShadow = true;
+          plant.root.add(vine);
+        }
+        this.addChapterElevenLeafCluster(plant.root, 6, 0.2, 0.2);
+        return;
+      }
       this.addChapterElevenLeafCluster(plant.root, 4, config.cropId === 'nut' ? 0.26 : 0.18, 0.06);
       return;
     }
@@ -7676,6 +7690,52 @@ export class Game {
       cap.position.y = 0.42;
       cap.scale.set(1.15, 0.42, 1.15);
       plant.root.add(stem, cap);
+      return;
+    }
+
+    if (config.cropId === 'pumpkin') {
+      const vineMaterial = new MeshStandardMaterial({ color: 0x2b7d32, roughness: 0.86 });
+      const vineSegments: Array<[number, number, number, number]> = [
+        [0, 0.13, 0, 0],
+        [0.38, 0.13, 0.05, Math.PI / 2],
+        [-0.38, 0.13, -0.04, Math.PI / 2],
+        [0.05, 0.14, 0.38, 0],
+        [-0.08, 0.14, -0.38, 0],
+        [0.34, 0.15, 0.34, Math.PI / 4],
+        [-0.34, 0.15, -0.34, Math.PI / 4],
+      ];
+      vineSegments.forEach(([vineX, vineY, vineZ, rotationY]) => {
+        const vine = new Mesh(new BoxGeometry(0.12, 0.06, 0.88), vineMaterial);
+        vine.name = 'Chapter 11 permanent pumpkin vine';
+        vine.position.set(vineX, vineY, vineZ);
+        vine.rotation.y = rotationY;
+        vine.castShadow = true;
+        vine.receiveShadow = true;
+        plant.root.add(vine);
+      });
+      this.addChapterElevenLeafCluster(plant.root, 9, 0.24, 0.34);
+
+      const pumpkinMaterial = new MeshStandardMaterial({ color: 0xd87522, roughness: 0.78 });
+      const stemMaterial = new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 });
+      const pumpkinOffsets: Array<[number, number, number, number]> = [
+        [0.0, 0.34, 0.0, 0.34],
+        [0.42, 0.26, -0.25, 0.25],
+        [-0.38, 0.25, 0.28, 0.23],
+      ];
+      pumpkinOffsets.forEach(([pumpkinX, pumpkinY, pumpkinZ, radius], index) => {
+        const pumpkin = new Mesh(new SphereGeometry(radius, 24, 14), pumpkinMaterial);
+        pumpkin.name = 'Chapter 11 mature pumpkin on permanent vine';
+        pumpkin.position.set(pumpkinX, pumpkinY, pumpkinZ);
+        pumpkin.scale.set(1.25, 0.82, 1.05);
+        pumpkin.castShadow = true;
+        pumpkin.receiveShadow = true;
+        const stem = new Mesh(new CylinderGeometry(0.035, 0.05, 0.16, 8), stemMaterial);
+        stem.name = 'Chapter 11 pumpkin short stem';
+        stem.position.set(pumpkinX, pumpkinY + radius * 0.78, pumpkinZ);
+        stem.rotation.z = index % 2 === 0 ? 0.1 : -0.1;
+        stem.castShadow = true;
+        plant.root.add(pumpkin, stem);
+      });
       return;
     }
 
@@ -7708,17 +7768,6 @@ export class Game {
         fruit.castShadow = true;
         plant.root.add(fruit);
       }
-      return;
-    }
-
-    if (config.cropId === 'pumpkin') {
-      const pumpkin = new Mesh(new SphereGeometry(0.34, 24, 14), new MeshStandardMaterial({ color: 0xd87522, roughness: 0.78 }));
-      pumpkin.name = 'Chapter 11 mature pumpkin crop';
-      pumpkin.position.y = 0.34;
-      pumpkin.scale.set(1.25, 0.82, 1.05);
-      const stem = new Mesh(new CylinderGeometry(0.04, 0.055, 0.18, 8), new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }));
-      stem.position.y = 0.66;
-      plant.root.add(pumpkin, stem);
       return;
     }
 
