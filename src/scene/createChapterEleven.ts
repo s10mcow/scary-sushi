@@ -267,19 +267,18 @@ export function createChapterEleven(): ChapterElevenData {
   addBox(person, 'Chapter 11 stand person shoes', [0.28, 0.12, 0.52], [0.03, 0.08, 0], standDarkWoodMaterial);
   const addGardeningSuitDetails = (
     target: Group,
-    workerLocalX: number,
     material: MeshStandardMaterial,
     prefix: string,
   ): void => {
-    addBox(target, `${prefix} gardening suit front apron`, [0.055, 0.7, 0.34], [workerLocalX + 0.325, 1.17, 0], material);
-    addBox(target, `${prefix} gardening suit left strap`, [0.06, 0.55, 0.045], [workerLocalX + 0.348, 1.47, -0.12], material).rotation.z = 0.13;
-    addBox(target, `${prefix} gardening suit right strap`, [0.06, 0.55, 0.045], [workerLocalX + 0.348, 1.47, 0.12], material).rotation.z = 0.13;
-    addBox(target, `${prefix} gardening suit waist band`, [0.065, 0.08, 0.42], [workerLocalX + 0.34, 0.93, 0], material);
-    addBox(target, `${prefix} gardening suit small pocket`, [0.07, 0.18, 0.16], [workerLocalX + 0.372, 1.14, 0], standDarkWoodMaterial);
-    addBox(target, `${prefix} gardening glove left`, [0.18, 0.055, 0.16], [workerLocalX + 0.66, 0.75, -0.48], material);
-    addBox(target, `${prefix} gardening glove right`, [0.18, 0.055, 0.16], [workerLocalX + 0.66, 0.75, 0.48], material);
+    addBox(target, `${prefix} gardening suit front apron`, [0.055, 0.7, 0.34], [0.325, 1.17, 0], material);
+    addBox(target, `${prefix} gardening suit left strap`, [0.06, 0.55, 0.045], [0.348, 1.47, -0.12], material).rotation.z = 0.13;
+    addBox(target, `${prefix} gardening suit right strap`, [0.06, 0.55, 0.045], [0.348, 1.47, 0.12], material).rotation.z = 0.13;
+    addBox(target, `${prefix} gardening suit waist band`, [0.065, 0.08, 0.42], [0.34, 0.93, 0], material);
+    addBox(target, `${prefix} gardening suit small pocket`, [0.07, 0.18, 0.16], [0.372, 1.14, 0], standDarkWoodMaterial);
+    addBox(target, `${prefix} gardening glove left`, [0.18, 0.055, 0.16], [0.66, 0.75, -0.48], material);
+    addBox(target, `${prefix} gardening glove right`, [0.18, 0.055, 0.16], [0.66, 0.75, 0.48], material);
   };
-  addGardeningSuitDetails(person, 0, gardenSuitMaterial, 'Chapter 11 boy worker');
+  addGardeningSuitDetails(person, gardenSuitMaterial, 'Chapter 11 boy worker');
   person.rotation.y = 0;
   stand.add(person);
   root.add(stand);
@@ -288,11 +287,14 @@ export function createChapterEleven(): ChapterElevenData {
   const girlStand = stand.clone(true);
   girlStand.name = 'Chapter 11 second old fashioned garden stand with girl worker';
   girlStand.position.set(-52.82, 0, -2.42);
-  addGardeningSuitDetails(girlStand, -1.18, girlGardenSuitMaterial, 'Chapter 11 girl worker');
-  addBox(girlStand, 'Chapter 11 girl worker long back hair', [0.16, 0.54, 0.46], [-1.22, 1.72, 0], girlHairMaterial);
-  addBox(girlStand, 'Chapter 11 girl worker left long hair side', [0.12, 0.46, 0.1], [-0.98, 1.66, -0.24], girlHairMaterial).rotation.z = -0.08;
-  addBox(girlStand, 'Chapter 11 girl worker right long hair side', [0.12, 0.46, 0.1], [-0.98, 1.66, 0.24], girlHairMaterial).rotation.z = -0.08;
-  addBox(girlStand, 'Chapter 11 girl worker garden hat brim', [0.08, 0.05, 0.72], [-0.87, 2.03, 0], dirtFenceMaterial);
+  const girlWorker = girlStand.getObjectByName('Chapter 11 garden stand person facing counter') as Group | undefined;
+  if (girlWorker) {
+    addGardeningSuitDetails(girlWorker, girlGardenSuitMaterial, 'Chapter 11 girl worker');
+    addBox(girlWorker, 'Chapter 11 girl worker long back hair', [0.16, 0.54, 0.46], [-0.04, 1.72, 0], girlHairMaterial);
+    addBox(girlWorker, 'Chapter 11 girl worker left long hair side', [0.12, 0.46, 0.1], [0.2, 1.66, -0.24], girlHairMaterial).rotation.z = -0.08;
+    addBox(girlWorker, 'Chapter 11 girl worker right long hair side', [0.12, 0.46, 0.1], [0.2, 1.66, 0.24], girlHairMaterial).rotation.z = -0.08;
+    addBox(girlWorker, 'Chapter 11 girl worker garden hat brim', [0.08, 0.05, 0.72], [0.31, 2.03, 0], dirtFenceMaterial);
+  }
   root.add(girlStand);
   addCollider(colliders, -52.82, -2.42, 1.55, 3.02);
 
