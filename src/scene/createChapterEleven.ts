@@ -56,7 +56,7 @@ const pantsMaterial = new MeshStandardMaterial({ color: 0x2d3558, roughness: 0.7
 const hairMaterial = new MeshStandardMaterial({ color: 0x3d2417, roughness: 0.8 });
 const gardenSuitMaterial = new MeshStandardMaterial({ color: 0x4f7a37, roughness: 0.84 });
 const girlGardenSuitMaterial = new MeshStandardMaterial({ color: 0x6b8f3f, roughness: 0.82 });
-const girlHairMaterial = new MeshStandardMaterial({ color: 0x6b3a1f, roughness: 0.82 });
+const girlHairMaterial = new MeshStandardMaterial({ color: 0x070606, roughness: 0.86 });
 const faceMaterial = new MeshStandardMaterial({ color: 0x1b140f, roughness: 0.55 });
 const eyeWhiteMaterial = new MeshStandardMaterial({ color: 0xf2f0e8, roughness: 0.5 });
 const lipMaterial = new MeshStandardMaterial({ color: 0x7d322d, roughness: 0.68 });
@@ -325,9 +325,26 @@ export function createChapterEleven(): ChapterElevenData {
   const girlWorker = girlStand.getObjectByName('Chapter 11 garden stand person facing counter') as Group | undefined;
   if (girlWorker) {
     addGardeningSuitDetails(girlWorker, girlGardenSuitMaterial, 'Chapter 11 girl worker');
-    addBox(girlWorker, 'Chapter 11 girl worker long back hair', [0.16, 0.54, 0.46], [-0.04, 1.72, 0], girlHairMaterial);
-    addBox(girlWorker, 'Chapter 11 girl worker left long hair side', [0.12, 0.46, 0.1], [0.2, 1.66, -0.24], girlHairMaterial).rotation.z = -0.08;
-    addBox(girlWorker, 'Chapter 11 girl worker right long hair side', [0.12, 0.46, 0.1], [0.2, 1.66, 0.24], girlHairMaterial).rotation.z = -0.08;
+    [
+      'Chapter 11 stand person hair cap',
+      'Chapter 11 stand person left eyebrow',
+      'Chapter 11 stand person right eyebrow',
+    ].forEach((name) => {
+      const hairPiece = girlWorker.getObjectByName(name) as Mesh | undefined;
+      if (hairPiece) {
+        hairPiece.material = girlHairMaterial;
+      }
+    });
+    const backHair = new Mesh(new SphereGeometry(0.32, 16, 10), girlHairMaterial);
+    backHair.name = 'Chapter 11 girl worker rounded black hair running down back';
+    backHair.position.set(-0.09, 1.5, 0);
+    backHair.scale.set(0.5, 1.45, 0.82);
+    backHair.castShadow = true;
+    girlWorker.add(backHair);
+    addBox(girlWorker, 'Chapter 11 girl worker smooth black lower back hair', [0.16, 0.88, 0.5], [-0.14, 1.32, 0], girlHairMaterial);
+    addBox(girlWorker, 'Chapter 11 girl worker left black hair side strand', [0.12, 0.76, 0.12], [0.17, 1.55, -0.26], girlHairMaterial).rotation.z = -0.06;
+    addBox(girlWorker, 'Chapter 11 girl worker right black hair side strand', [0.12, 0.76, 0.12], [0.17, 1.55, 0.26], girlHairMaterial).rotation.z = -0.06;
+    addBox(girlWorker, 'Chapter 11 girl worker short black front bang', [0.08, 0.18, 0.34], [0.24, 1.99, 0], girlHairMaterial).rotation.z = -0.16;
     addBox(girlWorker, 'Chapter 11 girl worker garden hat brim', [0.08, 0.05, 0.72], [0.31, 2.03, 0], dirtFenceMaterial);
   }
   root.add(girlStand);
