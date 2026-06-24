@@ -507,6 +507,22 @@ export function createChapterEleven(): ChapterElevenData {
   addSeedPacketPile(-51.89, 1.06, -1.36);
   addCarrotPile(-52.62, 1.08, 12.59);
 
+  const addGroundSign = (label: string, x: number, z: number): void => {
+    const signRoot = new Group();
+    signRoot.name = `Chapter 11 ${label} ground sign`;
+    signRoot.position.set(x, 0, z);
+    const sign = new Mesh(new PlaneGeometry(2.45, 0.92), createStandLabelMaterial(label));
+    sign.name = `Chapter 11 ${label} sign face`;
+    sign.position.set(0, 1.55, 0);
+    sign.rotation.y = Math.PI;
+    sign.castShadow = true;
+    signRoot.add(sign);
+    addBox(signRoot, `Chapter 11 ${label} sign left post`, [0.1, 1.36, 0.1], [-0.82, 0.68, 0.04], standDarkWoodMaterial);
+    addBox(signRoot, `Chapter 11 ${label} sign right post`, [0.1, 1.36, 0.1], [0.82, 0.68, 0.04], standDarkWoodMaterial);
+    root.add(signRoot);
+  };
+  addGroundSign('My Farm', -35.18, -20.16);
+
   const addBrickPath = (pathStart: Vector3, pathEnd: Vector3): void => {
     const pathVector = pathEnd.clone().sub(pathStart);
     const pathLength = Math.hypot(pathVector.x, pathVector.z);
