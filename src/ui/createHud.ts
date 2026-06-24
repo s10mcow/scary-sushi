@@ -1168,7 +1168,7 @@ export function createHud(host: HTMLElement): HudController {
 
   const chapterElevenSeedShopTitle = document.createElement('h2');
   chapterElevenSeedShopTitle.className = 'hud__chapter-seven-cookie-picker-title';
-  chapterElevenSeedShopTitle.textContent = 'Seeds';
+  chapterElevenSeedShopTitle.textContent = 'Buy Seeds';
 
   const chapterElevenSeedShopMoney = document.createElement('p');
   chapterElevenSeedShopMoney.className = 'hud__chapter-seven-trading-cookies';
@@ -2744,7 +2744,7 @@ export function createHud(host: HTMLElement): HudController {
           currentSection = item.section;
           const heading = document.createElement('p');
           heading.className = 'hud__chapter-eleven-seed-section';
-          heading.textContent = item.section === 'cheap' ? 'Seeds cheap' : 'Expensive';
+          heading.textContent = item.section === 'cheap' ? 'Cheap seeds' : 'Expensive';
           rows.push(heading);
         }
 
