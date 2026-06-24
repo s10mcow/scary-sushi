@@ -1,6 +1,7 @@
 import {
   BoxGeometry,
   CanvasTexture,
+  ConeGeometry,
   Group,
   Mesh,
   MeshStandardMaterial,
@@ -63,6 +64,8 @@ const lipMaterial = new MeshStandardMaterial({ color: 0x7d322d, roughness: 0.68 
 const pathStoneMaterial = new MeshStandardMaterial({ color: 0x8f9290, roughness: 0.96 });
 const pathStoneLightMaterial = new MeshStandardMaterial({ color: 0xd8d6cd, roughness: 0.94 });
 const pathDirtBaseMaterial = new MeshStandardMaterial({ color: 0xb8945f, roughness: 0.98 });
+const carrotMaterial = new MeshStandardMaterial({ color: 0xe87920, roughness: 0.74 });
+const carrotLeafMaterial = new MeshStandardMaterial({ color: 0x2f8b35, roughness: 0.82 });
 
 function createStandLabelMaterial(label: string): MeshStandardMaterial {
   const canvas = document.createElement('canvas');
@@ -92,6 +95,35 @@ function createStandLabelMaterial(label: string): MeshStandardMaterial {
   return new MeshStandardMaterial({
     map: texture,
     roughness: 0.7,
+  });
+}
+
+function createSeedPacketMaterial(label: string, color: string): MeshStandardMaterial {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 192;
+  const context = canvas.getContext('2d');
+  if (context) {
+    context.fillStyle = color;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#442716';
+    context.lineWidth = 10;
+    context.strokeRect(8, 8, canvas.width - 16, canvas.height - 16);
+    context.fillStyle = '#f6edc7';
+    context.fillRect(34, 36, canvas.width - 68, 58);
+    context.fillStyle = '#1f2b16';
+    context.font = 'bold 30px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(label.toUpperCase(), canvas.width / 2, 65);
+    context.font = 'bold 38px Arial';
+    context.fillText('SEEDS', canvas.width / 2, 132);
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.72,
   });
 }
 
@@ -362,6 +394,69 @@ export function createChapterEleven(): ChapterElevenData {
   };
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'buy seats');
+
+  const addSeedPacketPile = (x: number, y: number, z: number): void => {
+    const packetPile = new Group();
+    packetPile.name = 'Chapter 11 little pile of seed packets';
+    packetPile.position.set(x, y, z);
+    const packetMaterials = [
+      createSeedPacketMaterial('Tomato', '#d65c4d'),
+      createSeedPacketMaterial('Corn', '#e0b546'),
+      createSeedPacketMaterial('Pea', '#78a954'),
+      createSeedPacketMaterial('Carrot', '#df8b3b'),
+      createSeedPacketMaterial('Flower', '#b96bb8'),
+    ];
+    packetMaterials.forEach((material, index) => {
+      const packet = new Mesh(new BoxGeometry(0.34, 0.018, 0.46), material);
+      packet.name = 'Chapter 11 counter seed packet';
+      packet.position.set((index % 3) * 0.13 - 0.13, index * 0.012, Math.floor(index / 3) * 0.16 - 0.08);
+      packet.rotation.y = (index - 2) * 0.28;
+      packet.rotation.z = (index % 2 === 0 ? 0.04 : -0.05);
+      packet.castShadow = true;
+      packet.receiveShadow = true;
+      packetPile.add(packet);
+    });
+    root.add(packetPile);
+  };
+
+  const addCarrotPile = (x: number, y: number, z: number): void => {
+    const carrotPile = new Group();
+    carrotPile.name = 'Chapter 11 pile of carrots on stand';
+    carrotPile.position.set(x, y, z);
+    const carrotOffsets: Array<[number, number, number, number]> = [
+      [-0.22, 0.02, -0.04, -0.18],
+      [-0.08, 0.06, 0.08, 0.18],
+      [0.1, 0.03, -0.08, -0.34],
+      [0.24, 0.07, 0.05, 0.28],
+      [0.02, 0.1, 0.0, 0.02],
+    ];
+    carrotOffsets.forEach(([offsetX, offsetY, offsetZ, angle], index) => {
+      const carrot = new Mesh(new ConeGeometry(0.055, 0.46, 12), carrotMaterial);
+      carrot.name = 'Chapter 11 loose carrot';
+      carrot.position.set(offsetX, offsetY, offsetZ);
+      carrot.rotation.z = Math.PI / 2 + angle;
+      carrot.rotation.y = index * 0.48;
+      carrot.castShadow = true;
+      carrot.receiveShadow = true;
+      carrotPile.add(carrot);
+
+      const leaves = new Group();
+      leaves.name = 'Chapter 11 carrot leafy top';
+      leaves.position.set(offsetX - Math.cos(angle) * 0.23, offsetY + 0.01, offsetZ - Math.sin(angle) * 0.05);
+      for (let leaf = 0; leaf < 3; leaf += 1) {
+        const leafBlade = new Mesh(new BoxGeometry(0.025, 0.12, 0.035), carrotLeafMaterial);
+        leafBlade.position.set(0, leaf * 0.01, (leaf - 1) * 0.035);
+        leafBlade.rotation.z = -0.7 + leaf * 0.22;
+        leafBlade.castShadow = true;
+        leaves.add(leafBlade);
+      }
+      carrotPile.add(leaves);
+    });
+    root.add(carrotPile);
+  };
+
+  addSeedPacketPile(-51.89, 1.06, -1.36);
+  addCarrotPile(-52.62, 1.08, 12.59);
 
   const addBrickPath = (pathStart: Vector3, pathEnd: Vector3): void => {
     const pathVector = pathEnd.clone().sub(pathStart);
