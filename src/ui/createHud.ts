@@ -2811,6 +2811,8 @@ export function createHud(host: HTMLElement): HudController {
           chapterElevenSeedPurchaseHandler?.(item.id);
         };
         button.addEventListener('pointerdown', handlePurchasePointer);
+        button.addEventListener('mousedown', handlePurchasePointer);
+        button.addEventListener('touchstart', handlePurchasePointer, { passive: false });
         button.addEventListener('click', handlePurchasePointer);
         rows.push(button);
       });
