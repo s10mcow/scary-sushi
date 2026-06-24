@@ -9170,24 +9170,27 @@ export class Game {
     const darkMaterial = new MeshStandardMaterial({ color: petType === 'cow' ? 0x1c1814 : 0x2a1c12, roughness: 0.8 });
     const noseMaterial = new MeshStandardMaterial({ color: petType === 'rabbit' ? 0xe7a8b0 : 0x17110d, roughness: 0.7 });
     const pawMaterial = new MeshStandardMaterial({ color: petType === 'rabbit' ? 0xd8d1c5 : petType === 'dog' ? 0x7b4a2c : petType === 'cow' ? 0x201a15 : 0x4f773f, roughness: 0.84 });
-    const body = new Mesh(new SphereGeometry(petType === 'dinosaur' ? 0.36 : 0.28, 18, 12), bodyMaterial);
-    body.position.y = petType === 'dinosaur' ? 0.48 : 0.36;
-    body.scale.set(petType === 'dinosaur' ? 1.45 : 1.2, 0.72, 0.8);
+    const body = new Mesh(new SphereGeometry(petType === 'dinosaur' ? 0.36 : petType === 'cow' ? 0.38 : 0.28, 18, 12), bodyMaterial);
+    body.position.y = petType === 'dinosaur' ? 0.48 : petType === 'cow' ? 0.52 : 0.36;
+    body.scale.set(petType === 'dinosaur' ? 1.45 : petType === 'cow' ? 1.72 : 1.2, petType === 'cow' ? 0.82 : 0.72, petType === 'cow' ? 1.02 : 0.8);
     body.castShadow = true;
     root.add(body);
-    const head = new Mesh(new SphereGeometry(petType === 'cow' ? 0.18 : 0.16, 16, 10), bodyMaterial);
-    head.position.set(0.36, petType === 'dinosaur' ? 0.62 : 0.46, 0);
+    const head = new Mesh(new SphereGeometry(petType === 'cow' ? 0.25 : 0.16, 16, 10), bodyMaterial);
+    head.position.set(petType === 'cow' ? 0.58 : 0.36, petType === 'dinosaur' ? 0.62 : petType === 'cow' ? 0.62 : 0.46, 0);
+    if (petType === 'cow') {
+      head.scale.set(1.12, 0.9, 1);
+    }
     head.castShadow = true;
     root.add(head);
     [-0.17, 0.17].forEach((z) => {
-      const eye = new Mesh(new SphereGeometry(0.025, 8, 6), darkMaterial);
-      eye.position.set(0.49, petType === 'dinosaur' ? 0.67 : 0.5, z);
+      const eye = new Mesh(new SphereGeometry(petType === 'cow' ? 0.032 : 0.025, 8, 6), darkMaterial);
+      eye.position.set(petType === 'cow' ? 0.76 : 0.49, petType === 'dinosaur' ? 0.67 : petType === 'cow' ? 0.67 : 0.5, z);
       root.add(eye);
     });
-    const nose = new Mesh(new SphereGeometry(petType === 'cow' ? 0.08 : 0.05, 10, 8), noseMaterial);
+    const nose = new Mesh(new SphereGeometry(petType === 'cow' ? 0.13 : 0.05, 10, 8), petType === 'cow' ? new MeshStandardMaterial({ color: 0xe5b4a9, roughness: 0.78 }) : noseMaterial);
     nose.name = `Chapter 11 ${this.getChapterElevenPetLabel(petType)} nose`;
-    nose.position.set(0.53, petType === 'dinosaur' ? 0.6 : 0.43, 0);
-    nose.scale.set(1.05, 0.68, petType === 'cow' ? 1.45 : 1);
+    nose.position.set(petType === 'cow' ? 0.84 : 0.53, petType === 'dinosaur' ? 0.6 : petType === 'cow' ? 0.55 : 0.43, 0);
+    nose.scale.set(petType === 'cow' ? 1.25 : 1.05, petType === 'cow' ? 0.58 : 0.68, petType === 'cow' ? 1.45 : 1);
     root.add(nose);
     if (petType === 'rabbit') {
       [-0.07, 0.07].forEach((z) => {
@@ -9228,26 +9231,49 @@ export class Game {
       tail.rotation.z = -0.75;
       root.add(tail);
     } else if (petType === 'cow') {
-      [[-0.18, -0.22], [0.18, 0.22]].forEach(([z, hornZ]) => {
+      [
+        [-0.22, 0.58, 0.24, 1.3, 0.34, 1.0],
+        [0.02, 0.6, -0.28, 1.5, 0.32, 1.1],
+        [-0.3, 0.42, -0.1, 1.1, 0.26, 0.9],
+        [0.34, 0.5, 0.14, 1.0, 0.22, 0.82],
+      ].forEach(([x, y, z, sx, sy, sz]) => {
+        const patch = new Mesh(new SphereGeometry(0.15, 12, 8), darkMaterial);
+        patch.name = 'Chapter 11 cow black Holstein body patch';
+        patch.position.set(x, y, z);
+        patch.scale.set(sx, sy, sz);
+        root.add(patch);
+      });
+      [[-0.24, -0.28], [0.24, 0.28]].forEach(([z, hornZ]) => {
         const spot = new Mesh(new SphereGeometry(0.12, 10, 8), darkMaterial);
-        spot.position.set(-0.08, 0.42, z);
-        spot.scale.set(1.2, 0.24, 0.9);
+        spot.name = 'Chapter 11 cow black face patch';
+        spot.position.set(0.56, 0.64, z);
+        spot.scale.set(1.15, 0.34, 0.9);
         root.add(spot);
-        const horn = new Mesh(new ConeGeometry(0.035, 0.16, 8), new MeshStandardMaterial({ color: 0xd8c89a, roughness: 0.7 }));
-        horn.position.set(0.42, 0.62, hornZ);
+        const ear = new Mesh(new BoxGeometry(0.06, 0.16, 0.16), bodyMaterial);
+        ear.name = 'Chapter 11 cow side ear';
+        ear.position.set(0.45, 0.66, z);
+        ear.rotation.z = 0.28;
+        root.add(ear);
+        const horn = new Mesh(new ConeGeometry(0.045, 0.2, 8), new MeshStandardMaterial({ color: 0xd8c89a, roughness: 0.7 }));
+        horn.position.set(0.66, 0.8, hornZ);
         horn.rotation.z = -Math.PI / 2;
         root.add(horn);
       });
       const udder = new Mesh(new SphereGeometry(0.1, 12, 8), new MeshStandardMaterial({ color: 0xe8b0b5, roughness: 0.76 }));
       udder.name = 'Chapter 11 cow small udder';
-      udder.position.set(-0.12, 0.22, 0);
-      udder.scale.set(1, 0.52, 1.28);
+      udder.position.set(-0.18, 0.24, 0);
+      udder.scale.set(1.2, 0.55, 1.45);
       root.add(udder);
-      const tail = new Mesh(new CylinderGeometry(0.018, 0.026, 0.38, 8), darkMaterial);
+      const tail = new Mesh(new CylinderGeometry(0.022, 0.032, 0.52, 8), darkMaterial);
       tail.name = 'Chapter 11 cow tail';
-      tail.position.set(-0.45, 0.48, 0);
-      tail.rotation.z = -0.55;
+      tail.position.set(-0.66, 0.54, 0);
+      tail.rotation.z = -0.68;
       root.add(tail);
+      const tuft = new Mesh(new SphereGeometry(0.055, 10, 6), darkMaterial);
+      tuft.name = 'Chapter 11 cow tail tuft';
+      tuft.position.set(-0.82, 0.33, 0);
+      tuft.scale.set(0.75, 1.15, 0.75);
+      root.add(tuft);
     } else {
       for (let index = 0; index < 5; index += 1) {
         const plate = new Mesh(new ConeGeometry(0.055, 0.18, 5), new MeshStandardMaterial({ color: 0x3f6d35, roughness: 0.78 }));
@@ -9261,12 +9287,14 @@ export class Game {
       tail.rotation.z = Math.PI / 2;
       root.add(tail);
     }
-    [-0.22, 0.22].forEach((x) => [-0.16, 0.16].forEach((z) => {
-      const leg = new Mesh(new CylinderGeometry(0.035, 0.045, 0.24, 8), darkMaterial);
-      leg.position.set(x, 0.16, z);
-      const paw = new Mesh(new SphereGeometry(0.055, 10, 6), pawMaterial);
-      paw.position.set(x + 0.03, 0.035, z);
-      paw.scale.set(1.3, 0.36, 0.95);
+    const legXs = petType === 'cow' ? [-0.46, 0.38] : [-0.22, 0.22];
+    const legZs = petType === 'cow' ? [-0.24, 0.24] : [-0.16, 0.16];
+    legXs.forEach((x) => legZs.forEach((z) => {
+      const leg = new Mesh(new CylinderGeometry(petType === 'cow' ? 0.05 : 0.035, petType === 'cow' ? 0.06 : 0.045, petType === 'cow' ? 0.36 : 0.24, 8), darkMaterial);
+      leg.position.set(x, petType === 'cow' ? 0.2 : 0.16, z);
+      const paw = new Mesh(new SphereGeometry(petType === 'cow' ? 0.07 : 0.055, 10, 6), pawMaterial);
+      paw.position.set(x + (petType === 'cow' ? 0.04 : 0.03), 0.035, z);
+      paw.scale.set(petType === 'cow' ? 1.5 : 1.3, 0.36, petType === 'cow' ? 1.12 : 0.95);
       root.add(leg, paw);
     }));
     return root;
