@@ -325,6 +325,7 @@ interface ChapterElevenPet {
   z: number;
   targetX: number;
   targetZ: number;
+  targetKind: 'wander' | 'carrot' | 'seed' | 'crop';
   actionTimer: number;
   homePatch: ChapterElevenDirtPatch;
 }
@@ -8805,6 +8806,7 @@ export class Game {
       z: egg.z,
       targetX: egg.x,
       targetZ: egg.z,
+      targetKind: 'wander',
       actionTimer: 4 + Math.random() * 4,
       homePatch: egg.homePatch,
     });
@@ -8850,6 +8852,50 @@ export class Game {
       .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0] ?? null;
   }
 
+  private findChapterElevenDogSeedTarget(pet: ChapterElevenPet): ChapterElevenPlanting | null {
+    if (pet.petType !== 'dog') {
+      return null;
+    }
+
+    return this.chapterElevenPlants
+      .filter((plant) => (
+        plant.stage === 'planted'
+        && plant.root.userData.chapterElevenDogFertilized !== true
+        && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
+      ))
+      .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0] ?? null;
+  }
+
+  private findChapterElevenCowCropTarget(pet: ChapterElevenPet): ChapterElevenPlanting | null {
+    if (pet.petType !== 'cow') {
+      return null;
+    }
+
+    return this.chapterElevenPlants
+      .filter((plant) => (
+        plant.mature
+        && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
+      ))
+      .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0] ?? null;
+  }
+
+  private addChapterElevenRainbowPoop(root: Group): void {
+    const colors = [0xff3b3b, 0xff9f1a, 0xf5e642, 0x44c767, 0x48a4ff, 0x8b5cf6];
+    colors.forEach((color, index) => {
+      const poop = new Mesh(new SphereGeometry(0.09 - index * 0.006, 12, 8), new MeshStandardMaterial({
+        color,
+        roughness: 0.68,
+        metalness: 0.02,
+      }));
+      poop.name = 'Chapter 11 rainbow dog fertilizer poop';
+      const angle = index * 0.85;
+      poop.position.set(Math.cos(angle) * 0.07, 0.12 + index * 0.035, Math.sin(angle) * 0.055);
+      poop.scale.set(1.15, 0.62, 0.9);
+      poop.castShadow = true;
+      root.add(poop);
+    });
+  }
+
   private updateChapterElevenPetAction(pet: ChapterElevenPet): void {
     if (pet.petType === 'rabbit') {
       const carrot = this.findChapterElevenRabbitCarrotTarget(pet);
@@ -8863,12 +8909,25 @@ export class Game {
     }
 
     if (pet.petType === 'dog') {
-      const plant = this.chapterElevenPlants
+      const plant = this.findChapterElevenDogSeedTarget(pet) ?? this.chapterElevenPlants
         .filter((candidate) => !candidate.mature && this.isPointInChapterElevenPatch(candidate.x, candidate.z, pet.homePatch, 0.1))
         .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0];
       if (plant) {
-        plant.age += 8;
-        this.pushStatus('Your dog left rainbow fertilizer. A nearby plant grows faster.', 2.2);
+        plant.age += plant.stage === 'planted' ? 10 : 8;
+        if (plant.root.userData.chapterElevenDogFertilized !== true) {
+          this.addChapterElevenRainbowPoop(plant.root);
+          plant.root.userData.chapterElevenDogFertilized = true;
+        }
+        this.pushStatus('Your dog left rainbow fertilizer on a planted seed. It grows faster.', 2.2);
+      }
+      return;
+    }
+
+    if (pet.petType === 'cow') {
+      const crop = this.findChapterElevenCowCropTarget(pet);
+      if (crop) {
+        this.trampleChapterElevenPlantIntoInventory(crop);
+        this.pushStatus('Your cow trampled a grown crop into your inventory.', 2.4);
       }
       return;
     }
@@ -8904,21 +8963,43 @@ export class Game {
 
     this.chapterElevenPets.forEach((pet) => {
       const rabbitCarrot = this.findChapterElevenRabbitCarrotTarget(pet);
+      const dogSeed = this.findChapterElevenDogSeedTarget(pet);
+      const cowCrop = this.findChapterElevenCowCropTarget(pet);
       if (rabbitCarrot) {
         pet.targetX = rabbitCarrot.x;
         pet.targetZ = rabbitCarrot.z;
+        pet.targetKind = 'carrot';
+      } else if (dogSeed) {
+        pet.targetX = dogSeed.x;
+        pet.targetZ = dogSeed.z;
+        pet.targetKind = 'seed';
+      } else if (cowCrop) {
+        pet.targetX = cowCrop.x;
+        pet.targetZ = cowCrop.z;
+        pet.targetKind = 'crop';
       }
 
       const toTarget = new Vector3(pet.targetX - pet.x, 0, pet.targetZ - pet.z);
       const distance = Math.hypot(toTarget.x, toTarget.z);
       if (distance < 0.25) {
-        if (rabbitCarrot) {
+        if (rabbitCarrot || dogSeed || cowCrop) {
           this.updateChapterElevenPetAction(pet);
-          pet.actionTimer = 5 + Math.random() * 2;
+          pet.actionTimer = pet.petType === 'dog' ? 6 : pet.petType === 'cow' ? 3.5 : 5 + Math.random() * 2;
         }
         this.chooseChapterElevenPetTarget(pet);
+        pet.targetKind = 'wander';
       } else {
-        const speed = rabbitCarrot ? 2.45 : pet.petType === 'dinosaur' ? 1.1 : pet.petType === 'rabbit' ? 1.45 : 1.25;
+        const speed = rabbitCarrot
+          ? 2.45
+          : dogSeed
+            ? 1.85
+            : cowCrop
+              ? 1.55
+              : pet.petType === 'dinosaur'
+                ? 1.1
+                : pet.petType === 'rabbit'
+                  ? 1.45
+                  : 1.25;
         const step = Math.min(distance, speed * deltaSeconds);
         pet.x += (toTarget.x / distance) * step;
         pet.z += (toTarget.z / distance) * step;
@@ -9429,6 +9510,7 @@ export class Game {
       mature: false,
       golden: !this.isChapterElevenPickableFruitCrop(config.cropId) && Math.random() < CHAPTER_ELEVEN_GOLDEN_CHANCE,
     };
+    root.userData.chapterElevenDogFertilized = false;
     this.chapterElevenNextPlantId += 1;
     this.rebuildChapterElevenPlantVisual(plant);
     this.chapterEleven.root.add(root);
