@@ -8243,10 +8243,65 @@ export class Game {
     });
   }
 
+  private getChapterElevenPlantFootprintRadius(seedId: ChapterElevenSeedId): number {
+    const config = CHAPTER_ELEVEN_CROP_CONFIGS[seedId];
+    switch (config.cropId) {
+      case 'carrot':
+        return 0.34;
+      case 'mushroom':
+        return 0.78;
+      case 'pumpkin':
+        return 0.9;
+      case 'peach':
+      case 'apple':
+        return 0.82;
+      case 'blackberry':
+      case 'raspberry':
+      case 'blueberry':
+      case 'strawberry':
+      case 'tomato':
+        return 0.64;
+      case 'pepper':
+        return 0.58;
+      case 'nut':
+        return 0.52;
+      default:
+        return CHAPTER_ELEVEN_PLANT_MIN_DISTANCE * 0.5;
+    }
+  }
+
+  private getChapterElevenPlantedSpotRadius(seedId: ChapterElevenSeedId): number {
+    const config = CHAPTER_ELEVEN_CROP_CONFIGS[seedId];
+    switch (config.cropId) {
+      case 'carrot':
+        return 0.2;
+      case 'mushroom':
+        return 0.32;
+      case 'pumpkin':
+        return 0.54;
+      case 'peach':
+      case 'apple':
+        return 0.42;
+      case 'blackberry':
+      case 'raspberry':
+      case 'blueberry':
+      case 'strawberry':
+      case 'tomato':
+        return 0.36;
+      case 'pepper':
+        return 0.34;
+      case 'nut':
+        return 0.3;
+      default:
+        return 0.34;
+    }
+  }
+
   private rebuildChapterElevenPlantVisual(plant: ChapterElevenPlanting): void {
     this.clearChapterElevenPlantVisual(plant);
 
-    const spot = new Mesh(new CircleGeometry(0.46, 28), new MeshStandardMaterial({
+    const spotRadius = this.getChapterElevenPlantedSpotRadius(plant.seedId);
+    const spot = new Mesh(new CircleGeometry(spotRadius, 28), new MeshStandardMaterial({
       color: 0xb9814a,
       roughness: 0.98,
       side: DoubleSide,
@@ -9100,7 +9155,14 @@ export class Game {
       return;
     }
 
-    const tooClose = this.chapterElevenPlants.some((plant) => Math.hypot(plant.x - point.x, plant.z - point.z) < CHAPTER_ELEVEN_PLANT_MIN_DISTANCE);
+    const newPlantRadius = this.getChapterElevenPlantFootprintRadius(seedId);
+    const tooClose = this.chapterElevenPlants.some((plant) => {
+      const existingRadius = this.getChapterElevenPlantFootprintRadius(plant.seedId);
+      return Math.hypot(plant.x - point.x, plant.z - point.z) < Math.max(
+        CHAPTER_ELEVEN_PLANT_MIN_DISTANCE,
+        newPlantRadius + existingRadius + 0.18,
+      );
+    });
     if (tooClose) {
       this.pushStatus('Plant that seed a little farther away from the other crop.', 2.1);
       return;
