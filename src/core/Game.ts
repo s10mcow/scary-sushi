@@ -2898,10 +2898,13 @@ export class Game {
 
     this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
     this.chapterElevenMoney -= item.cost;
-    this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
+    const seedCount = (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1;
+    this.chapterElevenSeedInventory.set(seedId, seedCount);
     this.chapterElevenSelectedSeedId = seedId;
+    this.placementToolActive = false;
+    this.placementPreview.visible = false;
     this.chapterElevenSeedShopOpen = false;
-    this.pushStatus(`Bought ${item.singularLabel}. It is in your hotbar. Money left: $${this.chapterElevenMoney}.`, 2.8);
+    this.pushStatus(`Bought ${item.singularLabel}. It is in hotbar slot ${hotbarIndex + 2}. Money left: $${this.chapterElevenMoney}.`, 3.2);
     this.syncHud();
     this.player.lock();
   };

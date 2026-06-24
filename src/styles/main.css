@@ -4962,6 +4962,36 @@ select {
   box-shadow: 0 0.95rem 2.2rem rgba(100, 148, 89, 0.16);
 }
 
+.hud__slot[data-filled="true"][data-item$="-seeds"],
+.hud__slot[data-filled="true"][data-item="mushroom"],
+.hud__slot[data-filled="true"][data-item="strawberry"],
+.hud__slot[data-filled="true"][data-item="blackberry-bush"] {
+  border-color: rgba(87, 129, 57, 0.72);
+  background: linear-gradient(180deg, #fff9d8, #e0f0b0);
+  box-shadow:
+    0 0.95rem 2.2rem rgba(89, 133, 57, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+}
+
+.hud__slot[data-filled="true"][data-item$="-seeds"]::before,
+.hud__slot[data-filled="true"][data-item="mushroom"]::before,
+.hud__slot[data-filled="true"][data-item="strawberry"]::before,
+.hud__slot[data-filled="true"][data-item="blackberry-bush"]::before {
+  width: 1.55rem;
+  height: 1.9rem;
+  transform: translateX(-50%) rotateZ(-5deg);
+  border-color: rgba(79, 94, 41, 0.64);
+  border-radius: 0.16rem;
+  background:
+    radial-gradient(circle at 50% 72%, rgba(91, 53, 24, 0.74) 0 0.13rem, transparent 0.14rem),
+    radial-gradient(circle at 35% 56%, rgba(91, 53, 24, 0.64) 0 0.11rem, transparent 0.12rem),
+    radial-gradient(circle at 63% 48%, rgba(91, 53, 24, 0.68) 0 0.1rem, transparent 0.11rem),
+    linear-gradient(180deg, rgba(88, 151, 73, 0.94) 0 0.44rem, rgba(255, 248, 195, 0.96) 0.44rem 100%);
+  box-shadow:
+    0 0.18rem 0.38rem rgba(52, 66, 25, 0.22),
+    inset 0 0 0 0.08rem rgba(255, 255, 255, 0.34);
+}
+
 .hud__slot-image {
   position: absolute;
   left: 50%;
