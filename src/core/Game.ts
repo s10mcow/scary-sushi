@@ -8400,6 +8400,41 @@ export class Game {
     this.syncHud();
   }
 
+  private getChapterElevenSellableCrop(cropId: ChapterElevenCropId): { label: string; value: number } | null {
+    if (cropId === 'golden-nut') {
+      return {
+        label: 'Golden Nuts',
+        value: CHAPTER_ELEVEN_CROP_CONFIGS['nut-seeds'].sellValue * 2,
+      };
+    }
+
+    if (cropId === 'golden-blackberry') {
+      return {
+        label: 'Golden Blackberries',
+        value: CHAPTER_ELEVEN_CROP_CONFIGS['blackberry-bush'].sellValue * 2,
+      };
+    }
+
+    if (cropId === 'golden-peach') {
+      return {
+        label: 'Golden Peaches',
+        value: CHAPTER_ELEVEN_CROP_CONFIGS['peach-seeds'].sellValue * 2,
+      };
+    }
+
+    const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
+    return config
+      ? {
+        label: config.pluralLabel,
+        value: config.sellValue,
+      }
+      : null;
+  }
+
+  private hasChapterElevenSeedsInInventory(): boolean {
+    return Array.from(this.chapterElevenSeedInventory.values()).some((count) => count > 0);
+  }
+
   private sellChapterElevenCrops(): void {
     let total = 0;
     const soldLabels: string[] = [];
@@ -8408,35 +8443,22 @@ export class Game {
         return;
       }
 
-      if (cropId === 'golden-nut') {
-        total += CHAPTER_ELEVEN_CROP_CONFIGS['nut-seeds'].sellValue * 2 * count;
-        soldLabels.push(`Golden Nuts x${count}`);
+      const sellableCrop = this.getChapterElevenSellableCrop(cropId);
+      if (!sellableCrop) {
         return;
       }
 
-      if (cropId === 'golden-blackberry') {
-        total += CHAPTER_ELEVEN_CROP_CONFIGS['blackberry-bush'].sellValue * 2 * count;
-        soldLabels.push(`Golden Blackberries x${count}`);
-        return;
-      }
-
-      if (cropId === 'golden-peach') {
-        total += CHAPTER_ELEVEN_CROP_CONFIGS['peach-seeds'].sellValue * 2 * count;
-        soldLabels.push(`Golden Peaches x${count}`);
-        return;
-      }
-
-      const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
-      if (!config) {
-        return;
-      }
-
-      total += config.sellValue * count;
-      soldLabels.push(`${config.pluralLabel} x${count}`);
+      total += sellableCrop.value * count;
+      soldLabels.push(`${sellableCrop.label} x${count}`);
     });
 
     if (total <= 0) {
-      this.pushStatus('You have no harvested crops to sell yet.', 2.1);
+      this.pushStatus(
+        this.hasChapterElevenSeedsInInventory()
+          ? 'Seeds cannot be sold. Grow them first, then sell the fruit, vegetables, or grown plants here.'
+          : 'You have no fruit, vegetables, or grown plants to sell yet.',
+        2.6,
+      );
       return;
     }
 
