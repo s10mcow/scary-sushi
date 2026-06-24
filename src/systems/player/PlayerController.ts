@@ -11,6 +11,9 @@ const LOOK_SMOOTHING = 42;
 const LOOK_BUFFER_LIMIT = 180;
 const LOOK_EPSILON = 0.001;
 const HALF_PI = Math.PI / 2;
+const MAX_HORIZONTAL_STEP_PER_FRAME = 0.65;
+const MAX_SPEED_MULTIPLIER = 4;
+const MAX_MOVEMENT_OPTION_MULTIPLIER = 3;
 
 export interface PlayerMovementOptions {
   sprintMultiplier?: number;
@@ -161,18 +164,30 @@ export class PlayerController {
 
     const position = this.controls.object.position;
     if (this.movement.lengthSq() > 0) {
+      const safeSpeedMultiplier = Number.isFinite(speedMultiplier)
+        ? MathUtils.clamp(speedMultiplier, 0, MAX_SPEED_MULTIPLIER)
+        : 1;
+      const sprintMultiplier = Number.isFinite(movementOptions.sprintMultiplier)
+        ? MathUtils.clamp(movementOptions.sprintMultiplier ?? 1, 0, MAX_MOVEMENT_OPTION_MULTIPLIER)
+        : 1;
+      const strafeMultiplier = Number.isFinite(movementOptions.strafeMultiplier)
+        ? MathUtils.clamp(movementOptions.strafeMultiplier ?? 1, 0, MAX_MOVEMENT_OPTION_MULTIPLIER)
+        : 1;
       const baseSpeed = (input.sprint ? GAME_CONFIG.player.sprintSpeed : GAME_CONFIG.player.walkSpeed)
-        * speedMultiplier
-        * (input.sprint ? movementOptions.sprintMultiplier ?? 1 : 1);
+        * safeSpeedMultiplier
+        * (input.sprint ? sprintMultiplier : 1);
       const dodgeStrafeAmount = input.strafe
         * baseSpeed
-        * Math.max(0, (movementOptions.strafeMultiplier ?? 1) - 1)
+        * Math.max(0, strafeMultiplier - 1)
         * deltaSeconds;
       this.movement.normalize().multiplyScalar(
         baseSpeed * deltaSeconds,
       );
       if (dodgeStrafeAmount !== 0) {
         this.movement.addScaledVector(this.right, dodgeStrafeAmount);
+      }
+      if (this.movement.length() > MAX_HORIZONTAL_STEP_PER_FRAME) {
+        this.movement.setLength(MAX_HORIZONTAL_STEP_PER_FRAME);
       }
 
       const nextX = position.x + this.movement.x;

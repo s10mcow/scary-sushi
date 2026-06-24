@@ -3770,6 +3770,8 @@ export class Game {
         ? (nextX, nextZ, currentPosition) => this.chapterSix.canPlayerOccupy(currentPosition, nextX, nextZ)
         : this.chapterNineActive
           ? (nextX, nextZ) => this.chapterNine.canPlayerOccupy(nextX, nextZ)
+        : this.chapterElevenActive
+          ? (nextX, nextZ) => this.canPlayerOccupyChapterElevenField(nextX, nextZ)
         : null,
     );
     const playerPositionBeforeMove = this.player.getPosition().clone();
@@ -7699,6 +7701,19 @@ export class Game {
         this.addChapterElevenLeafCluster(plant.root, 6, 0.2, 0.2);
         return;
       }
+      if (config.cropId === 'mushroom') {
+        const stem = new Mesh(new CylinderGeometry(0.04, 0.055, 0.2, 10), new MeshStandardMaterial({ color: 0xf3dcc5, roughness: 0.74 }));
+        stem.name = 'Chapter 11 baby mini mushroom stem';
+        stem.position.y = 0.19;
+        const cap = new Mesh(new SphereGeometry(0.13, 16, 10), new MeshStandardMaterial({ color: 0xb5443f, roughness: 0.68 }));
+        cap.name = 'Chapter 11 baby mini mushroom cap';
+        cap.position.y = 0.32;
+        cap.scale.set(1.12, 0.48, 1.12);
+        stem.castShadow = true;
+        cap.castShadow = true;
+        plant.root.add(stem, cap);
+        return;
+      }
       this.addChapterElevenLeafCluster(plant.root, 4, config.cropId === 'nut' ? 0.26 : 0.18, 0.06);
       return;
     }
@@ -7715,14 +7730,36 @@ export class Game {
     }
 
     if (config.cropId === 'mushroom') {
-      const stem = new Mesh(new CylinderGeometry(0.055, 0.08, 0.32, 12), new MeshStandardMaterial({ color: 0xf1dec7, roughness: 0.72 }));
-      stem.name = 'Chapter 11 mature mushroom stem';
-      stem.position.y = 0.23;
-      const cap = new Mesh(new SphereGeometry(0.2, 18, 10), new MeshStandardMaterial({ color: 0xb34b43, roughness: 0.68 }));
-      cap.name = 'Chapter 11 mature mushroom cap';
-      cap.position.y = 0.42;
-      cap.scale.set(1.15, 0.42, 1.15);
+      const stemMaterial = new MeshStandardMaterial({ color: 0xf1dec7, roughness: 0.72 });
+      const capMaterial = new MeshStandardMaterial({ color: 0xb9433f, roughness: 0.68 });
+      const spotMaterial = new MeshStandardMaterial({ color: 0xf8f1df, roughness: 0.62 });
+      const stem = new Mesh(new CylinderGeometry(0.14, 0.22, 0.78, 16), stemMaterial);
+      stem.name = 'Chapter 11 huge mature mushroom stem';
+      stem.position.y = 0.46;
+      stem.castShadow = true;
+      stem.receiveShadow = true;
+      const cap = new Mesh(new SphereGeometry(0.58, 28, 16), capMaterial);
+      cap.name = 'Chapter 11 huge mature mushroom red cap';
+      cap.position.y = 0.88;
+      cap.scale.set(1.18, 0.44, 1.12);
+      cap.castShadow = true;
+      cap.receiveShadow = true;
       plant.root.add(stem, cap);
+      const spotOffsets: Array<[number, number, number, number]> = [
+        [0, 1.12, -0.06, 0.09],
+        [-0.22, 1.02, 0.18, 0.07],
+        [0.24, 1.0, 0.15, 0.075],
+        [-0.34, 0.94, -0.12, 0.055],
+        [0.34, 0.95, -0.16, 0.06],
+      ];
+      spotOffsets.forEach(([x, y, z, radius]) => {
+        const spot = new Mesh(new SphereGeometry(radius, 12, 8), spotMaterial);
+        spot.name = 'Chapter 11 mature mushroom white cap spot';
+        spot.position.set(x, y, z);
+        spot.scale.y = 0.18;
+        spot.castShadow = true;
+        plant.root.add(spot);
+      });
       return;
     }
 
@@ -7917,6 +7954,19 @@ export class Game {
     }
   }
 
+  private canPlayerOccupyChapterElevenField(nextX: number, nextZ: number): boolean {
+    if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) {
+      return false;
+    }
+
+    const bounds = this.chapterEleven.fieldBounds;
+    const margin = GAME_CONFIG.player.radius + 0.18;
+    return nextX >= bounds.minX + margin
+      && nextX <= bounds.maxX - margin
+      && nextZ >= bounds.minZ + margin
+      && nextZ <= bounds.maxZ - margin;
+  }
+
   private updateChapterElevenPlants(deltaSeconds: number): void {
     if (!this.chapterElevenActive) {
       return;
@@ -8071,6 +8121,42 @@ export class Game {
       if (plant && berry?.visible) {
         return { plant, berry, index: berryIndex };
       }
+    }
+
+    let closestTarget: { plant: ChapterElevenPlanting; berry: ChapterElevenBlackberryBerry; index: number; aimDistance: number } | null = null;
+    const berryWorldPosition = new Vector3();
+    for (const plant of this.chapterElevenPlants) {
+      if (plant.cropId !== 'blackberry' || plant.stage !== 'mature' || !plant.blackberryBerries) {
+        continue;
+      }
+
+      for (let index = 0; index < plant.blackberryBerries.length; index += 1) {
+        const berry = plant.blackberryBerries[index];
+        if (!berry.visible || !berry.mesh) {
+          continue;
+        }
+
+        berry.mesh.getWorldPosition(berryWorldPosition);
+        const toBerry = berryWorldPosition.clone().sub(this.placementRayOrigin);
+        const along = toBerry.dot(this.placementRayDirection);
+        if (along < 0.1 || along > this.placementRaycaster.far) {
+          continue;
+        }
+
+        const closestPoint = this.placementRayOrigin.clone().addScaledVector(this.placementRayDirection, along);
+        const aimDistance = closestPoint.distanceTo(berryWorldPosition);
+        if (aimDistance <= 0.22 && (!closestTarget || aimDistance < closestTarget.aimDistance)) {
+          closestTarget = { plant, berry, index, aimDistance };
+        }
+      }
+    }
+
+    if (closestTarget) {
+      return {
+        plant: closestTarget.plant,
+        berry: closestTarget.berry,
+        index: closestTarget.index,
+      };
     }
 
     return null;
@@ -14628,6 +14714,8 @@ export class Game {
     this.hud.setCrosshairMode(
       this.chapterSixActive
         ? 'minecraft'
+        : this.chapterElevenActive
+          ? 'minecraft'
         : this.zombieModeActive || this.doomModeActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive
           ? 'firearm'
           : 'default',
