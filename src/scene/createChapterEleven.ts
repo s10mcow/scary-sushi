@@ -535,7 +535,7 @@ export function createChapterEleven(): ChapterElevenData {
   addCollider(colliders, halfWidth, 0, fenceThickness, halfDepth + fenceThickness);
 
   const spawn = new Vector3(0, GAME_CONFIG.player.height, 0);
-  const lookTarget = new Vector3(0, GAME_CONFIG.player.height * 0.9, -4);
+  const lookTarget = new Vector3(-52.8, GAME_CONFIG.player.height * 0.9, 4.6);
 
   return {
     root,
