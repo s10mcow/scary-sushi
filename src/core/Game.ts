@@ -7906,6 +7906,42 @@ export class Game {
     return root;
   }
 
+  private addChapterElevenStrawberryDetails(root: Group, position: Vector3, scale: number, golden: boolean, leafMaterial: MeshStandardMaterial): void {
+    const seedMaterial = new MeshStandardMaterial({ color: golden ? 0xfff2a3 : 0xf8d58a, roughness: 0.58, metalness: golden ? 0.18 : 0.02 });
+    const seedOffsets: Array<[number, number, number]> = [
+      [0.02, 0.02, 0.064],
+      [-0.035, 0.0, 0.052],
+      [0.038, -0.038, 0.046],
+      [-0.018, -0.052, 0.055],
+      [0.0, 0.044, -0.058],
+      [0.038, -0.01, -0.048],
+      [-0.04, -0.035, -0.046],
+      [0.0, -0.078, 0.02],
+    ];
+    seedOffsets.forEach(([x, y, z]) => {
+      const seed = new Mesh(new SphereGeometry(0.009 * scale, 6, 4), seedMaterial);
+      seed.name = 'Chapter 11 strawberry raised seed';
+      seed.position.set(position.x + x * scale, position.y + y * scale, position.z + z * scale);
+      seed.scale.set(1, 0.32, 0.72);
+      seed.castShadow = true;
+      root.add(seed);
+    });
+
+    for (let index = 0; index < 5; index += 1) {
+      const leaf = new Mesh(new ConeGeometry(0.018 * scale, 0.07 * scale, 5), leafMaterial);
+      leaf.name = 'Chapter 11 strawberry leafy crown piece';
+      const angle = (index / 5) * Math.PI * 2;
+      leaf.position.set(
+        position.x + Math.cos(angle) * 0.038 * scale,
+        position.y + 0.085 * scale,
+        position.z + Math.sin(angle) * 0.038 * scale,
+      );
+      leaf.rotation.set(Math.PI * 0.62, angle, 0);
+      leaf.castShadow = true;
+      root.add(leaf);
+    }
+  }
+
   private createChapterElevenHeldCropModel(cropId: ChapterElevenCropId): Group {
     const root = new Group();
     const handMaterial = new MeshStandardMaterial({ color: 0xd5a17b, roughness: 0.84 });
@@ -7949,13 +7985,31 @@ export class Game {
       return root;
     }
 
+    if (baseCrop === 'strawberry') {
+      const strawberryMaterial = materialFor(0xd73535, 0.62);
+      const berry = new Mesh(new SphereGeometry(0.14, 18, 12), strawberryMaterial);
+      berry.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
+      berry.position.set(-0.03, 0.13, -0.02);
+      berry.scale.set(0.82, 1.22, 0.78);
+      root.add(berry);
+      const point = new Mesh(new ConeGeometry(0.08, 0.16, 14), strawberryMaterial);
+      point.name = 'Held strawberry tapered lower point';
+      point.position.set(-0.03, -0.012, -0.02);
+      point.rotation.x = Math.PI;
+      point.scale.set(0.82, 1, 0.78);
+      root.add(point);
+      this.addChapterElevenStrawberryDetails(root, berry.position, 1.18, golden, new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }));
+      root.scale.setScalar(1.12);
+      return root;
+    }
+
     const color = baseCrop === 'blackberry'
       ? 0x1b0c26
       : baseCrop === 'blueberry'
         ? 0x2b5ab4
         : baseCrop === 'raspberry'
           ? 0xc93668
-          : baseCrop === 'strawberry' || baseCrop === 'tomato' || baseCrop === 'apple'
+          : baseCrop === 'tomato' || baseCrop === 'apple'
             ? 0xd7392e
             : baseCrop === 'pumpkin'
               ? 0xd87522
@@ -7968,8 +8022,6 @@ export class Game {
     crop.position.set(-0.03, 0.1, -0.02);
     if (baseCrop === 'pumpkin') {
       crop.scale.set(1.24, 0.82, 1.04);
-    } else if (baseCrop === 'strawberry') {
-      crop.scale.set(0.88, 1.16, 0.86);
     } else if (baseCrop === 'peach') {
       crop.scale.set(1.05, 0.94, 1);
     }
@@ -8219,14 +8271,16 @@ export class Game {
         stem.castShadow = true;
         plant.root.add(stem);
       } else if (fruitState.cropId === 'strawberry') {
-        fruit = new Mesh(new SphereGeometry(0.075, 14, 10), fruitState.golden ? materials.genericGold : materials.strawberry);
-        fruit.scale.set(0.9, 1.15, 0.86);
-        const leafCap = new Mesh(new ConeGeometry(0.045, 0.06, 6), materials.strawberryLeaf);
-        leafCap.name = 'Chapter 11 strawberry tiny green top';
-        leafCap.position.copy(fruitState.offset).add(new Vector3(0, 0.065, 0));
-        leafCap.rotation.x = Math.PI;
-        leafCap.castShadow = true;
-        plant.root.add(leafCap);
+        fruit = new Mesh(new SphereGeometry(0.078, 18, 12), fruitState.golden ? materials.genericGold : materials.strawberry);
+        fruit.scale.set(0.82, 1.18, 0.78);
+        const lowerPoint = new Mesh(new ConeGeometry(0.043, 0.082, 12), fruitState.golden ? materials.genericGold : materials.strawberry);
+        lowerPoint.name = 'Chapter 11 strawberry tapered point';
+        lowerPoint.position.copy(fruitState.offset).add(new Vector3(0, -0.082, 0));
+        lowerPoint.rotation.x = Math.PI;
+        lowerPoint.scale.set(0.82, 1, 0.78);
+        lowerPoint.castShadow = true;
+        plant.root.add(lowerPoint);
+        this.addChapterElevenStrawberryDetails(plant.root, fruitState.offset, 0.82, fruitState.golden, materials.strawberryLeaf);
       } else if (fruitState.cropId === 'peach') {
         fruit = new Mesh(
           new SphereGeometry(fruitState.golden ? 0.095 : 0.085, 14, 10),
