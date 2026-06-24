@@ -213,14 +213,52 @@ export function createChapterEleven(): ChapterElevenData {
   const mouth = addBox(person, 'Chapter 11 stand person realistic mouth', [0.035, 0.024, 0.18], [0.282, 1.76, 0], lipMaterial);
   mouth.rotation.x = 0.08;
   person.add(leftEyeWhite, rightEyeWhite, leftPupil, rightPupil);
-  addBox(person, 'Chapter 11 stand person left shoulder seam', [0.12, 0.28, 0.08], [0.0, 1.42, -0.35], shirtMaterial);
-  addBox(person, 'Chapter 11 stand person right shoulder seam', [0.12, 0.28, 0.08], [0.0, 1.42, 0.35], shirtMaterial);
-  addBox(person, 'Chapter 11 stand person left upper arm separated from shirt', [0.16, 0.52, 0.16], [0.16, 1.28, -0.52], shirtMaterial).rotation.z = -0.34;
-  addBox(person, 'Chapter 11 stand person right upper arm separated from shirt', [0.16, 0.52, 0.16], [0.16, 1.28, 0.52], shirtMaterial).rotation.z = -0.34;
-  addBox(person, 'Chapter 11 stand person left forearm resting near counter', [0.15, 0.48, 0.15], [0.36, 1.02, -0.52], skinMaterial).rotation.z = -0.62;
-  addBox(person, 'Chapter 11 stand person right forearm resting near counter', [0.15, 0.48, 0.15], [0.36, 1.02, 0.52], skinMaterial).rotation.z = -0.62;
-  addBox(person, 'Chapter 11 stand person left hand on counter edge', [0.2, 0.09, 0.18], [0.6, 0.88, -0.52], skinMaterial);
-  addBox(person, 'Chapter 11 stand person right hand on counter edge', [0.2, 0.09, 0.18], [0.6, 0.88, 0.52], skinMaterial);
+  const addConnectedArm = (side: -1 | 1): void => {
+    const shoulderZ = side * 0.29;
+    const elbowZ = side * 0.43;
+    const handZ = side * 0.48;
+    const shoulderCap = new Mesh(new SphereGeometry(0.15, 12, 8), shirtMaterial);
+    shoulderCap.name = side < 0 ? 'Chapter 11 stand person left rounded attached shoulder' : 'Chapter 11 stand person right rounded attached shoulder';
+    shoulderCap.scale.set(0.8, 1.05, 0.68);
+    shoulderCap.position.set(0.06, 1.42, shoulderZ);
+    shoulderCap.castShadow = true;
+    person.add(shoulderCap);
+
+    const sleeve = addBox(
+      person,
+      side < 0 ? 'Chapter 11 stand person left connected shirt sleeve' : 'Chapter 11 stand person right connected shirt sleeve',
+      [0.2, 0.5, 0.18],
+      [0.18, 1.22, elbowZ],
+      shirtMaterial,
+    );
+    sleeve.rotation.z = -0.32;
+    sleeve.rotation.x = side * 0.12;
+
+    const elbow = new Mesh(new SphereGeometry(0.095, 10, 8), skinMaterial);
+    elbow.name = side < 0 ? 'Chapter 11 stand person left elbow joint' : 'Chapter 11 stand person right elbow joint';
+    elbow.position.set(0.29, 1.02, elbowZ);
+    elbow.castShadow = true;
+    person.add(elbow);
+
+    const forearm = addBox(
+      person,
+      side < 0 ? 'Chapter 11 stand person left connected forearm on counter' : 'Chapter 11 stand person right connected forearm on counter',
+      [0.18, 0.52, 0.16],
+      [0.43, 0.86, handZ],
+      skinMaterial,
+    );
+    forearm.rotation.z = -0.76;
+    forearm.rotation.x = side * 0.08;
+
+    const hand = new Mesh(new SphereGeometry(0.12, 12, 8), skinMaterial);
+    hand.name = side < 0 ? 'Chapter 11 stand person left rounded hand on counter' : 'Chapter 11 stand person right rounded hand on counter';
+    hand.scale.set(1.2, 0.48, 0.82);
+    hand.position.set(0.62, 0.76, handZ);
+    hand.castShadow = true;
+    person.add(hand);
+  };
+  addConnectedArm(-1);
+  addConnectedArm(1);
   addBox(person, 'Chapter 11 stand person left leg', [0.22, 0.82, 0.18], [-0.08, 0.43, -0.15], pantsMaterial);
   addBox(person, 'Chapter 11 stand person right leg', [0.22, 0.82, 0.18], [-0.08, 0.43, 0.15], pantsMaterial);
   addBox(person, 'Chapter 11 stand person shoes', [0.28, 0.12, 0.52], [0.03, 0.08, 0], standDarkWoodMaterial);
