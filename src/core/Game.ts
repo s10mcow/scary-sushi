@@ -3862,6 +3862,9 @@ export class Game {
     if (this.officeEmployeeElevatorBasementActive) {
       this.constrainOfficeEmployeeElevatorBasementPosition();
     }
+    if (this.chapterElevenActive) {
+      this.constrainChapterElevenFieldPosition();
+    }
     if (officeVentDropping) {
       this.updateOfficeVentDropAnimation(deltaSeconds);
     }
@@ -7739,6 +7742,61 @@ export class Game {
       return;
     }
 
+    if (config.cropId === 'blackberry') {
+      const leafMaterial = new MeshStandardMaterial({ color: 0x1f5f2d, roughness: 0.88 });
+      const darkLeafMaterial = new MeshStandardMaterial({ color: 0x174521, roughness: 0.9 });
+      const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.86 });
+      const thornMaterial = new MeshStandardMaterial({ color: 0xd9c39b, roughness: 0.72 });
+      const berryMaterial = new MeshStandardMaterial({ color: 0x1b0c26, roughness: 0.56, metalness: 0.02 });
+
+      const bushClusters: Array<[number, number, number, number, number, number]> = [
+        [0, 0.4, 0, 0.52, 0.72, 0.48],
+        [-0.2, 0.34, 0.06, 0.42, 0.58, 0.38],
+        [0.22, 0.36, -0.08, 0.44, 0.62, 0.4],
+        [0.03, 0.52, -0.18, 0.36, 0.48, 0.34],
+      ];
+      bushClusters.forEach(([x, y, z, scaleX, scaleY, scaleZ], index) => {
+        const cluster = new Mesh(new SphereGeometry(0.46, 18, 12), index % 2 === 0 ? leafMaterial : darkLeafMaterial);
+        cluster.name = 'Chapter 11 thorny blackberry bush leaf cluster';
+        cluster.position.set(x, y, z);
+        cluster.scale.set(scaleX, scaleY, scaleZ);
+        cluster.castShadow = true;
+        cluster.receiveShadow = true;
+        plant.root.add(cluster);
+      });
+
+      const caneAngles = [-0.52, -0.2, 0.18, 0.48];
+      caneAngles.forEach((rotationZ, index) => {
+        const cane = new Mesh(new CylinderGeometry(0.025, 0.04, 0.85, 8), stemMaterial);
+        cane.name = 'Chapter 11 blackberry thorn cane';
+        cane.position.set((index - 1.5) * 0.12, 0.42, index % 2 === 0 ? 0.08 : -0.08);
+        cane.rotation.z = rotationZ;
+        cane.rotation.x = index % 2 === 0 ? 0.16 : -0.12;
+        cane.castShadow = true;
+        plant.root.add(cane);
+      });
+
+      for (let index = 0; index < 18; index += 1) {
+        const angle = index * 1.2;
+        const thorn = new Mesh(new ConeGeometry(0.018, 0.11, 6), thornMaterial);
+        thorn.name = 'Chapter 11 blackberry sharp thorn';
+        thorn.position.set(Math.cos(angle) * 0.28, 0.22 + (index % 5) * 0.12, Math.sin(angle) * 0.2);
+        thorn.rotation.set(Math.PI / 2 + (index % 2) * 0.32, angle, 0);
+        thorn.castShadow = true;
+        plant.root.add(thorn);
+      }
+
+      for (let index = 0; index < 14; index += 1) {
+        const angle = index * 1.73;
+        const berry = new Mesh(new SphereGeometry(0.052, 12, 8), berryMaterial);
+        berry.name = 'Chapter 11 pickable blackberry berry ball';
+        berry.position.set(Math.cos(angle) * 0.3, 0.34 + (index % 4) * 0.105, Math.sin(angle) * 0.22);
+        berry.castShadow = true;
+        plant.root.add(berry);
+      }
+      return;
+    }
+
     if (config.regrows || config.cropId === 'peach') {
       const bushMaterial = new MeshStandardMaterial({
         color: config.cropId === 'peach' ? 0x3d8a3d : 0x2f6f32,
@@ -7750,13 +7808,11 @@ export class Game {
       bush.scale.set(1.25, config.cropId === 'peach' ? 1.4 : 0.85, 1.1);
       bush.castShadow = true;
       plant.root.add(bush);
-      const fruitColor = config.cropId === 'blackberry'
-        ? 0x24112b
-        : config.cropId === 'blueberry'
-          ? 0x2b5ab4
-          : config.cropId === 'raspberry'
-            ? 0xc93668
-            : 0xf2a36f;
+      const fruitColor = config.cropId === 'blueberry'
+        ? 0x2b5ab4
+        : config.cropId === 'raspberry'
+          ? 0xc93668
+          : 0xf2a36f;
       for (let index = 0; index < (config.cropId === 'peach' ? 5 : 9); index += 1) {
         const fruit = new Mesh(new SphereGeometry(config.cropId === 'peach' ? 0.085 : 0.045, 10, 8), new MeshStandardMaterial({
           color: fruitColor,
@@ -7788,6 +7844,32 @@ export class Game {
     seam.position.y = 0.38;
     seam.rotation.set(Math.PI / 2, 0.12, 0.08);
     plant.root.add(nut, seam);
+  }
+
+  private constrainChapterElevenFieldPosition(): void {
+    const position = this.player.getPosition();
+    const outOfControl = !Number.isFinite(position.x)
+      || !Number.isFinite(position.y)
+      || !Number.isFinite(position.z)
+      || position.y < -4
+      || position.y > 24
+      || Math.abs(position.x) > 1000
+      || Math.abs(position.z) > 1000;
+
+    if (outOfControl) {
+      this.player.teleport(this.chapterEleven.spawn);
+      this.pushStatus('Pulled back into the garden.', 1.8);
+      return;
+    }
+
+    const bounds = this.chapterEleven.fieldBounds;
+    const margin = GAME_CONFIG.player.radius + 0.18;
+    const clampedX = MathUtils.clamp(position.x, bounds.minX + margin, bounds.maxX - margin);
+    const clampedZ = MathUtils.clamp(position.z, bounds.minZ + margin, bounds.maxZ - margin);
+    if (clampedX !== position.x || clampedZ !== position.z) {
+      position.x = clampedX;
+      position.z = clampedZ;
+    }
   }
 
   private updateChapterElevenPlants(deltaSeconds: number): void {

@@ -18,6 +18,12 @@ export interface ChapterElevenData {
   root: Group;
   colliders: CollisionBox[];
   dirtPatches: ChapterElevenDirtPatch[];
+  fieldBounds: {
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+  };
   spawn: Vector3;
   lookTarget: Vector3;
   getSupportedFloorY(position: Vector3): number | null;
@@ -617,6 +623,12 @@ export function createChapterEleven(): ChapterElevenData {
     root,
     colliders,
     dirtPatches,
+    fieldBounds: {
+      minX: -halfWidth,
+      maxX: halfWidth,
+      minZ: -halfDepth,
+      maxZ: halfDepth,
+    },
     spawn,
     lookTarget,
     getSupportedFloorY(_position: Vector3): number | null {
