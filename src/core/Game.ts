@@ -215,15 +215,19 @@ const CHAPTER_ELEVEN_STARTING_MONEY = 200;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   id: ChapterElevenSeedId;
   label: string;
+  singularLabel: string;
   cost: number;
   section: ChapterElevenSeedShopItemView['section'];
 }> = [
-  { id: 'carrot-seeds', label: 'Carrot seeds', cost: 10, section: 'cheap' },
-  { id: 'mushroom', label: 'Mushroom', cost: 20, section: 'cheap' },
-  { id: 'strawberry', label: 'Strawberry', cost: 40, section: 'cheap' },
-  { id: 'blackberry-bush', label: 'Blackberry bush', cost: 50, section: 'cheap' },
-  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', cost: 100, section: 'expensive' },
-  { id: 'nut-seeds', label: 'Nut seeds', cost: 500, section: 'expensive' },
+  { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 10, section: 'cheap' },
+  { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 20, section: 'cheap' },
+  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 40, section: 'cheap' },
+  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 50, section: 'cheap' },
+  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 100, section: 'expensive' },
+  { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 500, section: 'expensive' },
+  { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 200, section: 'expensive' },
+  { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 300, section: 'expensive' },
+  { id: 'peat-seeds', label: 'Peat seeds', singularLabel: 'Peat seed', cost: 350, section: 'expensive' },
 ];
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
@@ -2881,8 +2885,10 @@ export class Game {
 
     this.chapterElevenMoney -= item.cost;
     this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
+    this.chapterElevenSeedShopOpen = false;
     this.pushStatus(`Bought ${item.label}. Money left: $${this.chapterElevenMoney}.`, 2.4);
     this.syncHud();
+    this.player.lock();
   };
 
   private getChapterSevenGrandpaTrades(): ChapterSevenGrandpaTradeView[] {
@@ -17956,7 +17962,7 @@ export class Game {
       const seedInventory = CHAPTER_ELEVEN_SEED_SHOP_ITEMS
         .map((item) => {
           const count = this.chapterElevenSeedInventory.get(item.id) ?? 0;
-          return count > 0 ? `${item.label} x${count}` : null;
+          return count > 0 ? (count === 1 ? item.singularLabel : `${item.label} x${count}`) : null;
         })
         .filter((item): item is string => Boolean(item));
       return [
@@ -18439,11 +18445,12 @@ export class Game {
       const seedSlots = CHAPTER_ELEVEN_SEED_SHOP_ITEMS
         .map((item) => ({
           label: item.label,
+          singularLabel: item.singularLabel,
           count: this.chapterElevenSeedInventory.get(item.id) ?? 0,
         }))
         .filter((item) => item.count > 0)
         .map((item) => ({
-          label: item.count > 1 ? `${item.label} x${item.count}` : item.label,
+          label: item.count > 1 ? `${item.label} x${item.count}` : item.singularLabel,
           count: item.count,
           filled: true,
         }));

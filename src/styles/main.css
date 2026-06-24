@@ -2740,6 +2740,13 @@ select {
   gap: 0.75rem;
 }
 
+.hud__chapter-eleven-seed-shop .hud__chapter-seven-trading-options {
+  max-height: min(25rem, 56vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.25rem;
+}
+
 .hud__chapter-eleven-seed-section {
   margin: 0.35rem 0 -0.2rem;
   color: #7d431d;

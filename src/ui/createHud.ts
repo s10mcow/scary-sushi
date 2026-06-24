@@ -169,7 +169,10 @@ export type ChapterElevenSeedId =
   | 'strawberry'
   | 'blackberry-bush'
   | 'pumpkin-seeds'
-  | 'nut-seeds';
+  | 'nut-seeds'
+  | 'blueberry-seeds'
+  | 'raspberry-seeds'
+  | 'peat-seeds';
 
 export interface ChapterSevenGrandpaTradeView {
   id: ChapterSevenGrandpaTradeId;
@@ -2744,7 +2747,7 @@ export function createHud(host: HTMLElement): HudController {
           currentSection = item.section;
           const heading = document.createElement('p');
           heading.className = 'hud__chapter-eleven-seed-section';
-          heading.textContent = item.section === 'cheap' ? 'Cheap seeds' : 'Expensive';
+          heading.textContent = item.section === 'cheap' ? 'Cheap seeds' : 'Expensive seeds';
           rows.push(heading);
         }
 
