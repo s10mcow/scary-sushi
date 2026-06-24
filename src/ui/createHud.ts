@@ -13,6 +13,7 @@ export type HudChapterId =
   | 'chapter-9'
   | 'chapter-10'
   | 'chapter-11'
+  | 'chapter-11-two'
   | 'chapter-12'
   | 'zombie-fps'
   | 'doom-fps';
@@ -1549,6 +1550,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-11' as const,
       label: 'Chapter 11: Grow a garden',
       body: 'Walk, plant your seeds in your garden.',
+    },
+    {
+      id: 'chapter-11-two' as const,
+      label: 'Grow-a-Garden Two',
+      body: 'A copied Grow-a-Garden workspace for the next garden changes.',
     },
     {
       id: 'chapter-12' as const,

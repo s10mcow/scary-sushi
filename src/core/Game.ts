@@ -1423,6 +1423,7 @@ export class Game {
   private chapterNineActive = false;
   private chapterTenActive = false;
   private chapterElevenActive = false;
+  private chapterElevenTwoActive = false;
   private chapterTwelveActive = false;
   private zombieModeActive = false;
   private doomModeActive = false;
@@ -2291,6 +2292,7 @@ export class Game {
 
   private readonly handleChapterSelection = (chapterId: HudChapterId): void => {
     this.chapterElevenActive = false;
+    this.chapterElevenTwoActive = false;
     this.chapterEleven.root.visible = false;
     this.chapterTwelveActive = false;
     this.chapterTwelve.root.visible = false;
@@ -2318,6 +2320,8 @@ export class Game {
       this.beginChapterTen();
     } else if (chapterId === 'chapter-11') {
       this.beginChapterEleven();
+    } else if (chapterId === 'chapter-11-two') {
+      this.beginChapterEleven(true);
     } else if (chapterId === 'chapter-12') {
       this.beginChapterTwelve();
     } else if (chapterId === 'doom-fps') {
@@ -6418,7 +6422,7 @@ export class Game {
       return 'chapter-10-house-shell';
     }
     if (this.chapterElevenActive) {
-      return 'chapter-11-grow-a-garden';
+      return this.chapterElevenTwoActive ? 'chapter-11-two-grow-a-garden' : 'chapter-11-grow-a-garden';
     }
     if (this.chapterNineActive) {
       return 'chapter-9-freddys-pizza-complex';
@@ -14731,6 +14735,8 @@ export class Game {
         return 'Chapter 10: House Shell';
       case 'chapter-11':
         return 'Chapter 11: Grow a garden';
+      case 'chapter-11-two':
+        return 'Grow-a-Garden Two';
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
@@ -15554,7 +15560,7 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
-      return 'chapter-11';
+      return this.chapterElevenTwoActive ? 'chapter-11-two' : 'chapter-11';
     }
 
     if (this.chapterTwelveActive) {
@@ -15599,9 +15605,11 @@ export class Game {
   private getIntroHudState(): { eyebrow: string; title: string; summary: string; buttonText: string } {
     if (this.chapterElevenActive) {
       return {
-        eyebrow: 'Chapter Eleven',
-        title: 'Grow a garden',
-        summary: 'Walk, plant your seeds in your garden.',
+        eyebrow: this.chapterElevenTwoActive ? 'Garden Copy' : 'Chapter Eleven',
+        title: this.chapterElevenTwoActive ? 'Grow-a-Garden Two' : 'Grow a garden',
+        summary: this.chapterElevenTwoActive
+          ? 'A copied Grow-a-Garden workspace for the next garden changes.'
+          : 'Walk, plant your seeds in your garden.',
         buttonText: 'Enter the garden',
       };
     }
@@ -19734,7 +19742,7 @@ export class Game {
 
     if (this.chapterElevenActive) {
       return [
-        'Chapter 11: Grow a garden',
+        this.chapterElevenTwoActive ? 'Grow-a-Garden Two' : 'Chapter 11: Grow a garden',
         '',
         'A big open grass field.',
         'No trees, logs, tall grass, props, or garden objects have been added yet.',
@@ -20054,7 +20062,7 @@ export class Game {
       return [
         `Inventory: Coordinate Tool${seedInventory.length > 0 ? `, ${seedInventory.join(', ')}` : ''}${cropInventory.length > 0 ? `, ${cropInventory.join(', ')}` : ''}${petEggInventory.length > 0 ? `, ${petEggInventory.join(', ')}` : ''}`,
         this.getCoordinateToolInventoryLine(),
-        'Chapter 11: Grow a garden',
+        this.chapterElevenTwoActive ? 'Grow-a-Garden Two' : 'Chapter 11: Grow a garden',
         `Money: $${this.chapterElevenMoney}`,
         'Buy seeds at the Buy Seeds stand. Hold a seed, aim at a dirt patch, and press E to plant. Press E on mature crops to harvest, then sell crops or refund seeds at the Sell stand.',
       ].join('\n');
@@ -21918,7 +21926,9 @@ export class Game {
           : 'Select a seed from the hotbar, then press E on dirt to plant.';
       }
 
-      return 'Chapter 11: Grow a garden loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.';
+      return this.chapterElevenTwoActive
+        ? 'Grow-a-Garden Two loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.'
+        : 'Chapter 11: Grow a garden loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.';
     }
 
     if (this.chapterTwelveActive) {
@@ -28790,7 +28800,7 @@ export class Game {
     this.resize();
   }
 
-  private beginChapterEleven(): void {
+  private beginChapterEleven(copyMode = false): void {
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -28802,14 +28812,17 @@ export class Game {
     this.chapterNineActive = false;
     this.chapterTenActive = false;
     this.chapterElevenActive = true;
+    this.chapterElevenTwoActive = copyMode;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
     this.officeJumpscareMenuOpen = false;
     this.officeModeMenuOpen = false;
     this.chapterTwoCardTime = 3.6;
-    this.chapterCardTitle = 'Chapter 11: Grow a garden';
-    this.chapterCardBody = 'Walk, plant your seeds in your garden.';
+    this.chapterCardTitle = copyMode ? 'Grow-a-Garden Two' : 'Chapter 11: Grow a garden';
+    this.chapterCardBody = copyMode
+      ? 'A copied Grow-a-Garden workspace for the next garden changes.'
+      : 'Walk, plant your seeds in your garden.';
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
@@ -28900,7 +28913,12 @@ export class Game {
     this.setPlacementToolActive(true);
     this.player.teleport(this.chapterEleven.spawn);
     this.player.lookToward(this.chapterEleven.lookTarget, 1);
-    this.pushStatus('Chapter 11 loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.', 3.2);
+    this.pushStatus(
+      copyMode
+        ? 'Grow-a-Garden Two loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.'
+        : 'Chapter 11 loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.',
+      3.2,
+    );
     this.resize();
   }
 
@@ -28916,6 +28934,7 @@ export class Game {
     this.chapterNineActive = false;
     this.chapterTenActive = false;
     this.chapterElevenActive = false;
+    this.chapterElevenTwoActive = false;
     this.chapterTwelveActive = true;
     this.zombieModeActive = false;
     this.doomModeActive = false;
