@@ -173,7 +173,10 @@ export type ChapterElevenSeedId =
   | 'nut-seeds'
   | 'blueberry-seeds'
   | 'raspberry-seeds'
-  | 'peach-seeds';
+  | 'peach-seeds'
+  | 'apple-tree-seeds'
+  | 'tomato-seeds'
+  | 'pepper-seeds';
 
 export interface ChapterSevenGrandpaTradeView {
   id: ChapterSevenGrandpaTradeId;
