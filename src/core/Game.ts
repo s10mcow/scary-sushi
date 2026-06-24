@@ -1290,6 +1290,7 @@ export class Game {
   private chapterElevenSeedShopOpen = false;
   private chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
   private readonly chapterElevenSeedInventory = new Map<ChapterElevenSeedId, number>();
+  private chapterElevenSeedHotbar: Array<ChapterElevenSeedId | null> = Array.from({ length: 9 }, () => null);
   private chapterElevenSelectedSeedId: ChapterElevenSeedId | null = null;
   private chapterSevenHasBirdCageKey = false;
   private chapterSevenHeldItem: ChapterSevenHeldItem = null;
@@ -2884,6 +2885,18 @@ export class Game {
       return;
     }
 
+    let hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === seedId);
+    if (hotbarIndex < 0) {
+      hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === null);
+    }
+
+    if (hotbarIndex < 0) {
+      this.pushStatus('Your seed hotbar is full. Make room before buying more seeds.', 2.6);
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
     this.chapterElevenMoney -= item.cost;
     this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
     this.chapterElevenSelectedSeedId = seedId;
@@ -18444,30 +18457,37 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
-      const seedSlots = CHAPTER_ELEVEN_SEED_SHOP_ITEMS
-        .map((item) => ({
-          id: item.id,
-          label: item.label,
-          singularLabel: item.singularLabel,
-          count: this.chapterElevenSeedInventory.get(item.id) ?? 0,
-        }))
-        .filter((item) => item.count > 0)
-        .map((item) => ({
-          label: item.count > 1 ? item.label : item.singularLabel,
-          count: item.count,
+      const seedSlots = this.chapterElevenSeedHotbar.map((seedId) => {
+        if (!seedId) {
+          return {
+            label: 'Empty',
+            count: 0,
+            filled: false,
+          };
+        }
+
+        const item = CHAPTER_ELEVEN_SEED_SHOP_ITEMS.find((candidate) => candidate.id === seedId);
+        const count = this.chapterElevenSeedInventory.get(seedId) ?? 0;
+        if (!item || count <= 0) {
+          return {
+            label: 'Empty',
+            count: 0,
+            filled: false,
+          };
+        }
+
+        return {
+          label: count > 1 ? item.label : item.singularLabel,
+          count,
           filled: true,
           type: item.id,
           selected: item.id === this.chapterElevenSelectedSeedId,
-        }));
+        };
+      });
       return [
         coordinateToolSlot,
         ...seedSlots,
-        ...Array.from({ length: Math.max(0, 8 - seedSlots.length) }, () => ({
-          label: 'Empty',
-          count: 0,
-          filled: false,
-        })),
-      ].slice(0, 9);
+      ];
     }
 
     const filledSlots = HOTBAR_ORDER
@@ -26390,6 +26410,7 @@ export class Game {
     this.chapterElevenSeedShopOpen = false;
     this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
     this.chapterElevenSeedInventory.clear();
+    this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
     this.chapterElevenSelectedSeedId = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
