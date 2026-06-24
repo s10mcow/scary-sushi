@@ -8749,7 +8749,7 @@ export class Game {
     this.chapterElevenSelectedPetEggType = petType;
     this.placementToolActive = false;
     this.placementPreview.visible = false;
-    this.pushStatus(`Bought a ${this.getChapterElevenPetLabel(petType)} Egg for $${CHAPTER_ELEVEN_PET_EGG_COST}. Place it on your farm dirt patch.`, 3.2);
+    this.pushStatus(`The Pet Eggs seller hands you a ${this.getChapterElevenPetLabel(petType)} Egg. Press E on your farm dirt patch to place it.`, 3.2);
     this.syncHud();
   }
 
@@ -9115,6 +9115,15 @@ export class Game {
       : null;
   }
 
+  private getChapterElevenSeedSellValue(seedId: ChapterElevenSeedId): number {
+    const item = this.getChapterElevenSeedItem(seedId);
+    if (!item) {
+      return 0;
+    }
+
+    return Math.max(1, Math.floor(item.cost * 0.8));
+  }
+
   private hasChapterElevenSeedsInInventory(): boolean {
     return Array.from(this.chapterElevenSeedInventory.values()).some((count) => count > 0);
   }
@@ -9122,6 +9131,7 @@ export class Game {
   private sellChapterElevenCrops(): void {
     let total = 0;
     const soldLabels: string[] = [];
+    let soldAnySeeds = false;
     this.chapterElevenCropInventory.forEach((count, cropId) => {
       if (count <= 0) {
         return;
@@ -9135,11 +9145,26 @@ export class Game {
       total += sellableCrop.value * count;
       soldLabels.push(`${sellableCrop.label} x${count}`);
     });
+    this.chapterElevenSeedInventory.forEach((count, seedId) => {
+      if (count <= 0) {
+        return;
+      }
+
+      const item = this.getChapterElevenSeedItem(seedId);
+      const seedSellValue = this.getChapterElevenSeedSellValue(seedId);
+      if (!item || seedSellValue <= 0) {
+        return;
+      }
+
+      total += seedSellValue * count;
+      soldAnySeeds = true;
+      soldLabels.push(`${count === 1 ? item.singularLabel : item.label} x${count}`);
+    });
 
     if (total <= 0) {
       this.pushStatus(
         this.hasChapterElevenSeedsInInventory()
-          ? 'Seeds cannot be sold. Grow them first, then sell the fruit, vegetables, or grown plants here.'
+          ? 'The Sell stand cannot price those seeds right now.'
           : 'You have no fruit, vegetables, or grown plants to sell yet.',
         2.6,
       );
@@ -9149,6 +9174,11 @@ export class Game {
     this.chapterElevenMoney += total;
     this.chapterElevenCropInventory.clear();
     this.chapterElevenSelectedCropId = null;
+    if (soldAnySeeds) {
+      this.chapterElevenSeedInventory.clear();
+      this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
+      this.chapterElevenSelectedSeedId = null;
+    }
     this.pushStatus(`Sold ${soldLabels.join(', ')} for $${total}. Money: $${this.chapterElevenMoney}.`, 3.2);
     this.syncHud();
   }
@@ -19947,7 +19977,7 @@ export class Game {
         this.getCoordinateToolInventoryLine(),
         'Chapter 11: Grow a garden',
         `Money: $${this.chapterElevenMoney}`,
-        'Buy seeds at the Buy Seeds stand. Hold a seed, aim at a dirt patch, and press E to plant. Press E on mature crops to harvest, then sell crops at the Sell stand.',
+        'Buy seeds at the Buy Seeds stand. Hold a seed, aim at a dirt patch, and press E to plant. Press E on mature crops to harvest, then sell crops or refund seeds at the Sell stand.',
       ].join('\n');
     }
 
@@ -21775,11 +21805,11 @@ export class Game {
       }
 
       if (this.isNearChapterElevenPetEggStand()) {
-        return `Press E at the Pet Eggs stand to buy a random pet egg for $${CHAPTER_ELEVEN_PET_EGG_COST}.`;
+        return `Press E by the Pet Eggs seller to get a random pet egg for $${CHAPTER_ELEVEN_PET_EGG_COST}.`;
       }
 
       if (this.isNearChapterElevenSellStand()) {
-        return 'Press E at the Sell stand to sell harvested crops.';
+        return 'Press E at the Sell stand to sell harvested crops or refund seeds for a little less than they cost.';
       }
 
       const point = this.getChapterElevenAimGroundPoint();
