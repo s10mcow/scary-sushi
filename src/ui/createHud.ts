@@ -173,7 +173,7 @@ export type ChapterElevenSeedId =
   | 'nut-seeds'
   | 'blueberry-seeds'
   | 'raspberry-seeds'
-  | 'peat-seeds';
+  | 'peach-seeds';
 
 export interface ChapterSevenGrandpaTradeView {
   id: ChapterSevenGrandpaTradeId;
@@ -2799,11 +2799,19 @@ export function createHud(host: HTMLElement): HudController {
           ? 'Available'
           : `Need $${Math.max(0, item.cost - safeMoney)} more`;
         button.append(title, description);
-        button.addEventListener('click', (event) => {
+        let purchaseHandled = false;
+        const handlePurchasePointer = (event: Event): void => {
           event.preventDefault();
           event.stopPropagation();
+          if (purchaseHandled || button.disabled) {
+            return;
+          }
+
+          purchaseHandled = true;
           chapterElevenSeedPurchaseHandler?.(item.id);
-        });
+        };
+        button.addEventListener('pointerdown', handlePurchasePointer);
+        button.addEventListener('click', handlePurchasePointer);
         rows.push(button);
       });
       chapterElevenSeedShopOptions.replaceChildren(...rows);

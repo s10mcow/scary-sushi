@@ -227,7 +227,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 500, section: 'expensive' },
   { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 200, section: 'expensive' },
   { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 300, section: 'expensive' },
-  { id: 'peat-seeds', label: 'Peat seeds', singularLabel: 'Peat seed', cost: 350, section: 'expensive' },
+  { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 300, section: 'expensive' },
 ];
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
@@ -7457,8 +7457,8 @@ export class Game {
             ? '#3d6fc0'
             : seedId === 'raspberry-seeds'
               ? '#b83368'
-              : seedId === 'peat-seeds'
-                ? '#805533'
+              : seedId === 'peach-seeds'
+                ? '#f2a36f'
                 : '#889d4d';
     const packetTexture = this.createChapterElevenSeedPacketTexture(item?.singularLabel ?? 'Seed packet', packetColor);
     const packet = new Mesh(new BoxGeometry(0.42, 0.56, 0.035), new MeshStandardMaterial({
