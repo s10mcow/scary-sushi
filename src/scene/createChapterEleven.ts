@@ -138,6 +138,7 @@ export function createChapterEleven(): ChapterElevenData {
     });
   };
   addDirtPatch(-41.5, -39.85, 34, 38.7);
+  addDirtPatch(-42.75, 40.45, 34, 38.7);
 
   const stand = new Group();
   stand.name = 'Chapter 11 old fashioned garden stand with worker';
@@ -228,32 +229,35 @@ export function createChapterEleven(): ChapterElevenData {
   root.add(stand);
   addCollider(colliders, -53.46, 11.34, 1.55, 3.02);
 
-  const pathStart = new Vector3(-25.09, 0.065, -40.86);
-  const pathEnd = new Vector3(-57.21, 0.065, -42.25);
-  const pathVector = pathEnd.clone().sub(pathStart);
-  const pathLength = Math.hypot(pathVector.x, pathVector.z);
-  const pathAngle = Math.atan2(pathVector.x, pathVector.z);
-  const pathDirection = pathVector.clone().normalize();
-  const pathSide = new Vector3(pathDirection.z, 0, -pathDirection.x);
-  const stoneCount = 13;
-  for (let i = 0; i < stoneCount; i += 1) {
-    const t = i / (stoneCount - 1);
-    const center = pathStart.clone().lerp(pathEnd, t);
-    const sideOffset = pathSide.clone().multiplyScalar(i % 2 === 0 ? -0.38 : 0.38);
-    center.add(sideOffset);
-    const stone = new Mesh(new BoxGeometry(2.05, 0.026, 2.45), i % 2 === 0 ? pathStoneMaterial : pathStoneLightMaterial);
-    stone.name = 'Chapter 11 visible gray white brick path stone';
-    stone.position.set(center.x, 0.07, center.z);
-    stone.rotation.y = pathAngle + (i % 2 === 0 ? 0.04 : -0.035);
-    stone.receiveShadow = true;
-    root.add(stone);
-  }
-  const pathBase = new Mesh(new BoxGeometry(3.55, 0.018, pathLength + 1.4), pathDirtBaseMaterial);
-  pathBase.name = 'Chapter 11 tan dirt trail under gray white bricks';
-  pathBase.position.set((pathStart.x + pathEnd.x) / 2, 0.05, (pathStart.z + pathEnd.z) / 2);
-  pathBase.rotation.y = pathAngle;
-  pathBase.receiveShadow = true;
-  root.add(pathBase);
+  const addBrickPath = (pathStart: Vector3, pathEnd: Vector3): void => {
+    const pathVector = pathEnd.clone().sub(pathStart);
+    const pathLength = Math.hypot(pathVector.x, pathVector.z);
+    const pathAngle = Math.atan2(pathVector.x, pathVector.z);
+    const pathDirection = pathVector.clone().normalize();
+    const pathSide = new Vector3(pathDirection.z, 0, -pathDirection.x);
+    const pathBase = new Mesh(new BoxGeometry(3.55, 0.018, pathLength + 1.4), pathDirtBaseMaterial);
+    pathBase.name = 'Chapter 11 tan dirt trail under gray white bricks';
+    pathBase.position.set((pathStart.x + pathEnd.x) / 2, 0.05, (pathStart.z + pathEnd.z) / 2);
+    pathBase.rotation.y = pathAngle;
+    pathBase.receiveShadow = true;
+    root.add(pathBase);
+
+    const stoneCount = 13;
+    for (let i = 0; i < stoneCount; i += 1) {
+      const t = i / (stoneCount - 1);
+      const center = pathStart.clone().lerp(pathEnd, t);
+      const sideOffset = pathSide.clone().multiplyScalar(i % 2 === 0 ? -0.38 : 0.38);
+      center.add(sideOffset);
+      const stone = new Mesh(new BoxGeometry(2.05, 0.026, 2.45), i % 2 === 0 ? pathStoneMaterial : pathStoneLightMaterial);
+      stone.name = 'Chapter 11 visible gray white brick path stone';
+      stone.position.set(center.x, 0.07, center.z);
+      stone.rotation.y = pathAngle + (i % 2 === 0 ? 0.04 : -0.035);
+      stone.receiveShadow = true;
+      root.add(stone);
+    }
+  };
+  addBrickPath(new Vector3(-25.09, 0.065, -40.86), new Vector3(-57.21, 0.065, -42.25));
+  addBrickPath(new Vector3(-26.34, 0.065, 39.44), new Vector3(-58.46, 0.065, 38.05));
 
   const northFence = new Mesh(new BoxGeometry(FIELD_WIDTH + fenceThickness * 2, fenceHeight, fenceThickness), fenceMaterial);
   northFence.name = 'Chapter 11 north border fence';
