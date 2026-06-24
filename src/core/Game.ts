@@ -1548,6 +1548,7 @@ export class Game {
   private readonly chapterElevenPets: ChapterElevenPet[] = [];
   private chapterElevenNextPlantId = 1;
   private chapterElevenNextPetId = 1;
+  private chapterElevenPetEggsBought = 0;
   private chapterSevenHasBirdCageKey = false;
   private chapterSevenHeldItem: ChapterSevenHeldItem = null;
   private chapterSevenLongerNightUses = 0;
@@ -8911,6 +8912,7 @@ export class Game {
       this.chapterElevenSelectedSeedId = null;
       this.chapterElevenSelectedCropId = null;
       this.chapterElevenSelectedPetEggType = null;
+      this.chapterElevenPetEggsBought = 0;
       this.chapterElevenSellMenuOpen = false;
       this.chapterElevenSellChoosing = false;
       this.chapterElevenSellSelectedCrops.clear();
@@ -8947,8 +8949,30 @@ export class Game {
     ) <= CHAPTER_ELEVEN_PET_SHOP_RANGE;
   }
 
-  private chooseChapterElevenPetEggType(): ChapterElevenPetType {
+  private chooseChapterElevenPetEggType(purchaseNumber: number): ChapterElevenPetType {
     const roll = Math.random();
+    const cyclePosition = ((purchaseNumber - 1) % 3) + 1;
+    if (cyclePosition === 2) {
+      if (roll < 0.1) {
+        return 'rabbit';
+      }
+      if (roll < 0.45) {
+        return 'dog';
+      }
+      if (roll < 0.85) {
+        return 'cow';
+      }
+      return 'dinosaur';
+    }
+    if (cyclePosition === 3) {
+      if (roll < 0.1) {
+        return 'dog';
+      }
+      if (roll < 0.45) {
+        return 'cow';
+      }
+      return 'dinosaur';
+    }
     if (roll < 0.46) {
       return 'rabbit';
     }
@@ -8967,7 +8991,8 @@ export class Game {
       return;
     }
 
-    const petType = this.chooseChapterElevenPetEggType();
+    this.chapterElevenPetEggsBought += 1;
+    const petType = this.chooseChapterElevenPetEggType(this.chapterElevenPetEggsBought);
     this.chapterElevenMoney -= CHAPTER_ELEVEN_PET_EGG_COST;
     this.chapterElevenPetEggInventory.set(petType, (this.chapterElevenPetEggInventory.get(petType) ?? 0) + 1);
     this.chapterElevenSelectedSeedId = null;
