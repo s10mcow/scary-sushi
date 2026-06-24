@@ -516,8 +516,7 @@ export function createChapterEleven(): ChapterElevenData {
     addBox(signRoot, `Chapter 11 ${label} wooden sign board`, [2.62, 1.02, 0.12], [0, 1.55, 0], standWoodMaterial);
     const sign = new Mesh(new PlaneGeometry(2.45, 0.92), createStandLabelMaterial(label));
     sign.name = `Chapter 11 ${label} sign face`;
-    sign.position.set(0, 1.55, -0.07);
-    sign.rotation.y = Math.PI;
+    sign.position.set(0, 1.55, 0.07);
     sign.castShadow = true;
     signRoot.add(sign);
     addBox(signRoot, `Chapter 11 ${label} sign left post`, [0.1, 1.36, 0.1], [-0.82, 0.68, 0.04], standDarkWoodMaterial);
