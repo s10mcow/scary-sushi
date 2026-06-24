@@ -234,6 +234,7 @@ type ChapterElevenCropId =
   | 'mushroom'
   | 'strawberry'
   | 'blackberry'
+  | 'golden-blackberry'
   | 'pumpkin'
   | 'nut'
   | 'golden-nut'
@@ -264,6 +265,15 @@ interface ChapterElevenPlanting {
   stage: ChapterElevenPlantStage;
   mature: boolean;
   golden: boolean;
+  blackberryBerries?: ChapterElevenBlackberryBerry[];
+}
+
+interface ChapterElevenBlackberryBerry {
+  offset: Vector3;
+  visible: boolean;
+  golden: boolean;
+  regrowTimer: number;
+  mesh: Mesh | null;
 }
 
 const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCropConfig> = {
@@ -363,6 +373,8 @@ const CHAPTER_ELEVEN_SELL_STAND_Z = 11.34;
 const CHAPTER_ELEVEN_SELL_STAND_RANGE = 5.5;
 const CHAPTER_ELEVEN_PLANT_MIN_DISTANCE = 1.12;
 const CHAPTER_ELEVEN_PLANT_INTERACT_RANGE = 1.25;
+const CHAPTER_ELEVEN_BLACKBERRY_COUNT = 5;
+const CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS = 5;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -7635,6 +7647,24 @@ export class Game {
     }
   }
 
+  private createChapterElevenBlackberryBerries(): ChapterElevenBlackberryBerry[] {
+    const offsets = [
+      new Vector3(0.3, 0.42, 0.05),
+      new Vector3(-0.22, 0.48, -0.12),
+      new Vector3(0.08, 0.6, -0.25),
+      new Vector3(-0.08, 0.36, 0.22),
+      new Vector3(0.24, 0.66, 0.18),
+    ];
+
+    return offsets.slice(0, CHAPTER_ELEVEN_BLACKBERRY_COUNT).map((offset, index) => ({
+      offset,
+      visible: true,
+      golden: index === 0 && Math.random() < 0.16,
+      regrowTimer: 0,
+      mesh: null,
+    }));
+  }
+
   private rebuildChapterElevenPlantVisual(plant: ChapterElevenPlanting): void {
     this.clearChapterElevenPlantVisual(plant);
 
@@ -7743,11 +7773,16 @@ export class Game {
     }
 
     if (config.cropId === 'blackberry') {
+      if (!plant.blackberryBerries || plant.blackberryBerries.length === 0) {
+        plant.blackberryBerries = this.createChapterElevenBlackberryBerries();
+      }
+
       const leafMaterial = new MeshStandardMaterial({ color: 0x1f5f2d, roughness: 0.88 });
       const darkLeafMaterial = new MeshStandardMaterial({ color: 0x174521, roughness: 0.9 });
       const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.86 });
       const thornMaterial = new MeshStandardMaterial({ color: 0xd9c39b, roughness: 0.72 });
       const berryMaterial = new MeshStandardMaterial({ color: 0x1b0c26, roughness: 0.56, metalness: 0.02 });
+      const goldenBerryMaterial = new MeshStandardMaterial({ color: 0xf2c84b, roughness: 0.42, metalness: 0.28 });
 
       const bushClusters: Array<[number, number, number, number, number, number]> = [
         [0, 0.4, 0, 0.52, 0.72, 0.48],
@@ -7786,14 +7821,24 @@ export class Game {
         plant.root.add(thorn);
       }
 
-      for (let index = 0; index < 14; index += 1) {
-        const angle = index * 1.73;
-        const berry = new Mesh(new SphereGeometry(0.052, 12, 8), berryMaterial);
+      plant.blackberryBerries.forEach((berryState, index) => {
+        berryState.mesh = null;
+        if (!berryState.visible) {
+          return;
+        }
+
+        const berry = new Mesh(
+          new SphereGeometry(berryState.golden ? 0.062 : 0.052, 12, 8),
+          berryState.golden ? goldenBerryMaterial : berryMaterial,
+        );
         berry.name = 'Chapter 11 pickable blackberry berry ball';
-        berry.position.set(Math.cos(angle) * 0.3, 0.34 + (index % 4) * 0.105, Math.sin(angle) * 0.22);
+        berry.userData.chapterElevenPlantId = plant.id;
+        berry.userData.chapterElevenBlackberryIndex = index;
+        berry.position.copy(berryState.offset);
         berry.castShadow = true;
         plant.root.add(berry);
-      }
+        berryState.mesh = berry;
+      });
       return;
     }
 
@@ -7890,6 +7935,33 @@ export class Game {
         plant.mature = nextStage === 'mature';
         this.rebuildChapterElevenPlantVisual(plant);
       }
+
+      if (plant.stage === 'mature' && config.cropId === 'blackberry') {
+        if (!plant.blackberryBerries || plant.blackberryBerries.length === 0) {
+          plant.blackberryBerries = this.createChapterElevenBlackberryBerries();
+          this.rebuildChapterElevenPlantVisual(plant);
+          return;
+        }
+
+        let berriesChanged = false;
+        plant.blackberryBerries.forEach((berry) => {
+          if (berry.visible) {
+            return;
+          }
+
+          berry.regrowTimer -= deltaSeconds;
+          if (berry.regrowTimer <= 0) {
+            berry.visible = true;
+            berry.regrowTimer = 0;
+            berry.golden = Math.random() < 0.12;
+            berriesChanged = true;
+          }
+        });
+
+        if (berriesChanged) {
+          this.rebuildChapterElevenPlantVisual(plant);
+        }
+      }
     });
   }
 
@@ -7963,6 +8035,47 @@ export class Game {
     return closest;
   }
 
+  private findChapterElevenTargetBlackberryBerry(): { plant: ChapterElevenPlanting; berry: ChapterElevenBlackberryBerry; index: number } | null {
+    const berryMeshes: Mesh[] = [];
+    this.chapterElevenPlants.forEach((plant) => {
+      if (plant.cropId !== 'blackberry' || plant.stage !== 'mature' || !plant.blackberryBerries) {
+        return;
+      }
+
+      plant.blackberryBerries.forEach((berry) => {
+        if (berry.visible && berry.mesh) {
+          berryMeshes.push(berry.mesh);
+        }
+      });
+    });
+
+    if (berryMeshes.length === 0) {
+      return null;
+    }
+
+    this.camera.getWorldPosition(this.placementRayOrigin);
+    this.camera.getWorldDirection(this.placementRayDirection).normalize();
+    this.placementRaycaster.near = 0.08;
+    this.placementRaycaster.far = GAME_CONFIG.player.interactionRange + 2.2;
+    this.placementRaycaster.set(this.placementRayOrigin, this.placementRayDirection);
+    const intersections = this.placementRaycaster.intersectObjects(berryMeshes, false);
+    for (const hit of intersections) {
+      const plantId = hit.object.userData.chapterElevenPlantId;
+      const berryIndex = hit.object.userData.chapterElevenBlackberryIndex;
+      if (typeof plantId !== 'number' || typeof berryIndex !== 'number') {
+        continue;
+      }
+
+      const plant = this.chapterElevenPlants.find((candidate) => candidate.id === plantId);
+      const berry = plant?.blackberryBerries?.[berryIndex] ?? null;
+      if (plant && berry?.visible) {
+        return { plant, berry, index: berryIndex };
+      }
+    }
+
+    return null;
+  }
+
   private decrementChapterElevenSelectedSeed(seedId: ChapterElevenSeedId): void {
     const nextCount = Math.max(0, (this.chapterElevenSeedInventory.get(seedId) ?? 0) - 1);
     if (nextCount > 0) {
@@ -8033,6 +8146,11 @@ export class Game {
       return;
     }
 
+    if (config.cropId === 'blackberry') {
+      this.pushStatus('Aim the center plus at a blackberry on the bush, then press E to pick it.', 2.2);
+      return;
+    }
+
     const inventoryCropId: ChapterElevenCropId = plant.golden ? 'golden-nut' : config.cropId;
     this.chapterElevenCropInventory.set(inventoryCropId, (this.chapterElevenCropInventory.get(inventoryCropId) ?? 0) + 1);
 
@@ -8050,6 +8168,16 @@ export class Game {
     this.syncHud();
   }
 
+  private harvestChapterElevenBlackberryBerry(target: { plant: ChapterElevenPlanting; berry: ChapterElevenBlackberryBerry; index: number }): void {
+    target.berry.visible = false;
+    target.berry.regrowTimer = CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS;
+    const cropId: ChapterElevenCropId = target.berry.golden ? 'golden-blackberry' : 'blackberry';
+    this.chapterElevenCropInventory.set(cropId, (this.chapterElevenCropInventory.get(cropId) ?? 0) + 1);
+    this.rebuildChapterElevenPlantVisual(target.plant);
+    this.pushStatus(target.berry.golden ? 'Golden Blackberry picked. Another berry will regrow soon.' : 'Blackberry picked. Another berry will regrow soon.', 2.2);
+    this.syncHud();
+  }
+
   private sellChapterElevenCrops(): void {
     let total = 0;
     const soldLabels: string[] = [];
@@ -8061,6 +8189,12 @@ export class Game {
       if (cropId === 'golden-nut') {
         total += CHAPTER_ELEVEN_CROP_CONFIGS['nut-seeds'].sellValue * 2 * count;
         soldLabels.push(`Golden Nuts x${count}`);
+        return;
+      }
+
+      if (cropId === 'golden-blackberry') {
+        total += CHAPTER_ELEVEN_CROP_CONFIGS['blackberry-bush'].sellValue * 2 * count;
+        soldLabels.push(`Golden Blackberries x${count}`);
         return;
       }
 
@@ -8097,6 +8231,12 @@ export class Game {
     }
 
     const point = this.getChapterElevenAimGroundPoint();
+    const blackberryTarget = this.findChapterElevenTargetBlackberryBerry();
+    if (blackberryTarget) {
+      this.harvestChapterElevenBlackberryBerry(blackberryTarget);
+      return;
+    }
+
     const targetPlant = this.findChapterElevenTargetPlant(point);
     if (targetPlant) {
       this.harvestChapterElevenPlant(targetPlant);
@@ -18849,6 +18989,10 @@ export class Game {
             return count === 1 ? 'Golden Nut' : `Golden Nuts x${count}`;
           }
 
+          if (cropId === 'golden-blackberry') {
+            return count === 1 ? 'Golden Blackberry' : `Golden Blackberries x${count}`;
+          }
+
           const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
           return config ? (count === 1 ? config.label : `${config.pluralLabel} x${count}`) : null;
         })
@@ -19357,9 +19501,47 @@ export class Game {
           selected: item.id === this.chapterElevenSelectedSeedId,
         };
       });
+      const cropSlots = Array.from(this.chapterElevenCropInventory.entries())
+        .filter(([, count]) => count > 0)
+        .map(([cropId, count]) => {
+          if (cropId === 'golden-nut') {
+            return {
+              label: count === 1 ? 'Golden Nut' : 'Golden Nuts',
+              count,
+              filled: true,
+              type: cropId,
+            };
+          }
+          if (cropId === 'golden-blackberry') {
+            return {
+              label: count === 1 ? 'Golden Blackberry' : 'Golden Blackberries',
+              count,
+              filled: true,
+              type: cropId,
+            };
+          }
+
+          const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
+          return {
+            label: config ? (count === 1 ? config.label : config.pluralLabel) : 'Crop',
+            count,
+            filled: true,
+            type: cropId,
+          };
+        });
+      let cropSlotIndex = 0;
+      const mergedSlots = seedSlots.map((slot) => {
+        if (slot.filled || cropSlotIndex >= cropSlots.length) {
+          return slot;
+        }
+
+        const cropSlot = cropSlots[cropSlotIndex];
+        cropSlotIndex += 1;
+        return cropSlot;
+      });
       return [
         coordinateToolSlot,
-        ...seedSlots,
+        ...mergedSlots,
       ];
     }
 
@@ -20695,9 +20877,19 @@ export class Game {
       }
 
       const point = this.getChapterElevenAimGroundPoint();
+      const blackberryTarget = this.findChapterElevenTargetBlackberryBerry();
+      if (blackberryTarget) {
+        return blackberryTarget.berry.golden
+          ? 'Press E to pick the Golden Blackberry.'
+          : 'Press E to pick this blackberry.';
+      }
+
       const targetPlant = this.findChapterElevenTargetPlant(point);
       if (targetPlant) {
         const config = CHAPTER_ELEVEN_CROP_CONFIGS[targetPlant.seedId];
+        if (config.cropId === 'blackberry' && targetPlant.mature) {
+          return 'Blackberry bush is ready. Aim the center plus at one berry and press E.';
+        }
         return targetPlant.mature
           ? `Press E to harvest ${targetPlant.golden ? 'Golden ' : ''}${config.label}.`
           : `${config.label} is growing.`;
