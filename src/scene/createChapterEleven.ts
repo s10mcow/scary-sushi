@@ -52,6 +52,9 @@ const skinMaterial = new MeshStandardMaterial({ color: 0xc98f64, roughness: 0.62
 const shirtMaterial = new MeshStandardMaterial({ color: 0x4f83c4, roughness: 0.74 });
 const pantsMaterial = new MeshStandardMaterial({ color: 0x2d3558, roughness: 0.78 });
 const hairMaterial = new MeshStandardMaterial({ color: 0x3d2417, roughness: 0.8 });
+const gardenSuitMaterial = new MeshStandardMaterial({ color: 0x4f7a37, roughness: 0.84 });
+const girlGardenSuitMaterial = new MeshStandardMaterial({ color: 0x6b8f3f, roughness: 0.82 });
+const girlHairMaterial = new MeshStandardMaterial({ color: 0x6b3a1f, roughness: 0.82 });
 const faceMaterial = new MeshStandardMaterial({ color: 0x1b140f, roughness: 0.55 });
 const eyeWhiteMaterial = new MeshStandardMaterial({ color: 0xf2f0e8, roughness: 0.5 });
 const lipMaterial = new MeshStandardMaterial({ color: 0x7d322d, roughness: 0.68 });
@@ -262,10 +265,36 @@ export function createChapterEleven(): ChapterElevenData {
   addBox(person, 'Chapter 11 stand person left leg', [0.22, 0.82, 0.18], [-0.08, 0.43, -0.15], pantsMaterial);
   addBox(person, 'Chapter 11 stand person right leg', [0.22, 0.82, 0.18], [-0.08, 0.43, 0.15], pantsMaterial);
   addBox(person, 'Chapter 11 stand person shoes', [0.28, 0.12, 0.52], [0.03, 0.08, 0], standDarkWoodMaterial);
+  const addGardeningSuitDetails = (
+    target: Group,
+    workerLocalX: number,
+    material: MeshStandardMaterial,
+    prefix: string,
+  ): void => {
+    addBox(target, `${prefix} gardening suit front apron`, [0.055, 0.7, 0.34], [workerLocalX + 0.325, 1.17, 0], material);
+    addBox(target, `${prefix} gardening suit left strap`, [0.06, 0.55, 0.045], [workerLocalX + 0.348, 1.47, -0.12], material).rotation.z = 0.13;
+    addBox(target, `${prefix} gardening suit right strap`, [0.06, 0.55, 0.045], [workerLocalX + 0.348, 1.47, 0.12], material).rotation.z = 0.13;
+    addBox(target, `${prefix} gardening suit waist band`, [0.065, 0.08, 0.42], [workerLocalX + 0.34, 0.93, 0], material);
+    addBox(target, `${prefix} gardening suit small pocket`, [0.07, 0.18, 0.16], [workerLocalX + 0.372, 1.14, 0], standDarkWoodMaterial);
+    addBox(target, `${prefix} gardening glove left`, [0.18, 0.055, 0.16], [workerLocalX + 0.66, 0.75, -0.48], material);
+    addBox(target, `${prefix} gardening glove right`, [0.18, 0.055, 0.16], [workerLocalX + 0.66, 0.75, 0.48], material);
+  };
+  addGardeningSuitDetails(person, 0, gardenSuitMaterial, 'Chapter 11 boy worker');
   person.rotation.y = 0;
   stand.add(person);
   root.add(stand);
   addCollider(colliders, -53.46, 11.34, 1.55, 3.02);
+
+  const girlStand = stand.clone(true);
+  girlStand.name = 'Chapter 11 second old fashioned garden stand with girl worker';
+  girlStand.position.set(-52.82, 0, -2.42);
+  addGardeningSuitDetails(girlStand, -1.18, girlGardenSuitMaterial, 'Chapter 11 girl worker');
+  addBox(girlStand, 'Chapter 11 girl worker long back hair', [0.16, 0.54, 0.46], [-1.22, 1.72, 0], girlHairMaterial);
+  addBox(girlStand, 'Chapter 11 girl worker left long hair side', [0.12, 0.46, 0.1], [-0.98, 1.66, -0.24], girlHairMaterial).rotation.z = -0.08;
+  addBox(girlStand, 'Chapter 11 girl worker right long hair side', [0.12, 0.46, 0.1], [-0.98, 1.66, 0.24], girlHairMaterial).rotation.z = -0.08;
+  addBox(girlStand, 'Chapter 11 girl worker garden hat brim', [0.08, 0.05, 0.72], [-0.87, 2.03, 0], dirtFenceMaterial);
+  root.add(girlStand);
+  addCollider(colliders, -52.82, -2.42, 1.55, 3.02);
 
   const addBrickPath = (pathStart: Vector3, pathEnd: Vector3): void => {
     const pathVector = pathEnd.clone().sub(pathStart);
