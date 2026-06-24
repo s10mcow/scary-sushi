@@ -460,7 +460,7 @@ const CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS = 5;
 const CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS = 10;
 const CHAPTER_ELEVEN_PEACH_REGROW_SECONDS = 10;
 const CHAPTER_ELEVEN_GOLDEN_CHANCE = 0.035;
-const CHAPTER_ELEVEN_PET_EGG_COST = 10000;
+const CHAPTER_ELEVEN_PET_EGG_COST = 5000;
 const CHAPTER_ELEVEN_PET_EGG_HATCH_SECONDS = 60;
 const CHAPTER_ELEVEN_PET_SHOP_X = -2.61;
 const CHAPTER_ELEVEN_PET_SHOP_Z = 52.33;
@@ -9078,7 +9078,30 @@ export class Game {
     let closestDistance = Infinity;
     this.chapterElevenPlants.forEach((plant) => {
       const distance = Math.hypot(plant.x - point.x, plant.z - point.z);
-      if (distance < closestDistance && distance <= CHAPTER_ELEVEN_PLANT_INTERACT_RANGE) {
+      const interactRange = Math.max(
+        CHAPTER_ELEVEN_PLANT_INTERACT_RANGE,
+        this.getChapterElevenPlantFootprintRadius(plant.seedId) + 0.78,
+      );
+      if (distance < closestDistance && distance <= interactRange) {
+        closest = plant;
+        closestDistance = distance;
+      }
+    });
+    return closest;
+  }
+
+  private findNearbyChapterElevenPickablePlant(): ChapterElevenPlanting | null {
+    const playerPosition = this.player.getPosition();
+    let closest: ChapterElevenPlanting | null = null;
+    let closestDistance = Infinity;
+    this.chapterElevenPlants.forEach((plant) => {
+      if (!this.isChapterElevenPickableFruitCrop(plant.cropId) || plant.stage !== 'mature') {
+        return;
+      }
+
+      const distance = Math.hypot(plant.x - playerPosition.x, plant.z - playerPosition.z);
+      const interactRange = this.getChapterElevenPlantFootprintRadius(plant.seedId) + 1.35;
+      if (distance < closestDistance && distance <= interactRange) {
         closest = plant;
         closestDistance = distance;
       }
@@ -9241,7 +9264,17 @@ export class Game {
     }
 
     if (this.isChapterElevenPickableFruitCrop(config.cropId)) {
-      this.pushStatus(`Aim the center plus at a ${config.label.toLowerCase()} on the plant, then press E to pick it.`, 2.2);
+      const nextFruitIndex = plant.pickableFruits?.findIndex((fruit) => fruit.visible) ?? -1;
+      if (nextFruitIndex >= 0 && plant.pickableFruits?.[nextFruitIndex]) {
+        this.harvestChapterElevenPickableFruit({
+          plant,
+          fruit: plant.pickableFruits[nextFruitIndex],
+          index: nextFruitIndex,
+        });
+        return;
+      }
+
+      this.pushStatus(`${config.label} has no ripe fruit right now. Wait for more to grow back.`, 2.2);
       return;
     }
 
@@ -9501,7 +9534,7 @@ export class Game {
       return;
     }
 
-    const targetPlant = this.findChapterElevenTargetPlant(point);
+    const targetPlant = this.findChapterElevenTargetPlant(point) ?? this.findNearbyChapterElevenPickablePlant();
     if (targetPlant) {
       this.harvestChapterElevenPlant(targetPlant);
       return;
@@ -22179,11 +22212,11 @@ export class Game {
         return `Press E to pick this ${label}.`;
       }
 
-      const targetPlant = this.findChapterElevenTargetPlant(point);
+      const targetPlant = this.findChapterElevenTargetPlant(point) ?? this.findNearbyChapterElevenPickablePlant();
       if (targetPlant) {
         const config = CHAPTER_ELEVEN_CROP_CONFIGS[targetPlant.seedId];
         if (this.isChapterElevenPickableFruitCrop(config.cropId) && targetPlant.mature) {
-          return `${config.label} plant is ready. Aim the center plus at one fruit and press E.`;
+          return `${config.label} plant is ready. Press E to pick the next ripe fruit.`;
         }
         return targetPlant.mature
           ? `Press E to harvest ${targetPlant.golden ? 'Golden ' : ''}${config.label}.`
