@@ -64,7 +64,7 @@ import { createChapterEight, type ChapterEightData } from '../scene/createChapte
 import { createChapterNine, type ChapterNineData, type ChapterNineJumpscareEvent } from '../scene/createChapterNine';
 import { createChapterTen, type ChapterTenData } from '../scene/createChapterTen';
 import { createChapterEleven, type ChapterElevenData, type ChapterElevenDirtPatch } from '../scene/createChapterEleven';
-import { createChapterTwelve, type ChapterTwelveData } from '../scene/createChapterTwelve';
+import { createChapterTwelve, type ChapterTwelveData, type ChapterTwelveEventCue } from '../scene/createChapterTwelve';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -4006,7 +4006,9 @@ export class Game {
         true,
       );
       this.chapterTwelve.update(deltaSeconds, effectiveMovement);
+      this.playChapterTwelveEventCue(this.chapterTwelve.consumeEventCue());
       this.player.teleport(this.chapterTwelve.getDriverCameraPosition());
+      this.player.lookToward(this.chapterTwelve.getDriverLookTarget(), 0.22);
     } else {
       this.player.update(
         deltaSeconds,
@@ -4018,6 +4020,10 @@ export class Game {
         chapterNineTrampolineBeforeMove ? 1.8 : this.chapterSixActive ? 1.34 : 1,
         playerMovementOptions,
       );
+    }
+    if (this.chapterTwelveActive && !this.chapterTwelve.isDriving()) {
+      this.chapterTwelve.update(deltaSeconds);
+      this.playChapterTwelveEventCue(this.chapterTwelve.consumeEventCue());
     }
     if (this.chapterFiveActive && (this.chapterFive.isInteriorMode() || this.chapterFive.isSurfaceMode())) {
       this.camera.getWorldDirection(this.chapterFiveAimDirection).normalize();
@@ -6664,6 +6670,36 @@ export class Game {
   private playOfficeDoorToggleSound(_doorId: 'left' | 'right', open: boolean): void {
     this.stopOfficeDoorSound();
     this.gameplaySfxAudio.playSecurityDoor(open);
+  }
+
+  private playChapterTwelveEventCue(cue: ChapterTwelveEventCue | null): void {
+    if (!cue) {
+      return;
+    }
+
+    this.gameplaySfxAudio.resume();
+    switch (cue) {
+      case 'mud-grind':
+        this.gameplaySfxAudio.playBallPitDive();
+        this.gameplaySfxAudio.playPrizeWheelClick(0.65);
+        break;
+      case 'mud-splash':
+        this.gameplaySfxAudio.playBallPitDive();
+        this.gameplaySfxAudio.playRunningWater(0.42);
+        break;
+      case 'tree-smash':
+        this.gameplaySfxAudio.playSecurityDoorCrash();
+        break;
+      case 'chain':
+        this.gameplaySfxAudio.playPrizeWheelClick(0.95);
+        break;
+      case 'repair':
+        this.gameplaySfxAudio.playPrinterPrint();
+        this.gameplaySfxAudio.playSmallPanel(true);
+        break;
+      default:
+        break;
+    }
   }
 
   private updateOfficeDoorSoundPlayback(): void {
@@ -16547,6 +16583,7 @@ export class Game {
 
     if (this.chapterTwelveActive) {
       const result = this.chapterTwelve.interact(this.player.getPosition());
+      this.playChapterTwelveEventCue(this.chapterTwelve.consumeEventCue());
       if (result.cameraPosition) {
         this.player.teleport(result.cameraPosition);
       }
@@ -22169,12 +22206,12 @@ export class Game {
 
     if (this.chapterTwelveActive) {
       if (this.chapterTwelve.isDriving()) {
-        return 'Driving the Ford F250 Super Duty. Use W/S to drive, A/D to steer, Shift for more speed, and E to get out.';
+        return `Driving. ${this.chapterTwelve.getDrivingStatus()}. Use W/S to drive, A/D to steer, Shift for more speed, and E to get out.`;
       }
       if (this.chapterTwelve.isNearTruck(this.player.getPosition())) {
-        return 'Press E to get in the Ford F250 Super Duty and drive through the mud.';
+        return 'Press E to use the F250, tow truck, tow chain, or garage repair button.';
       }
-      return 'Chapter 12: The Truck Game loaded. Walk to the Ford F250 Super Duty, press E, and drive around the muddy field.';
+      return 'Chapter 12: The Truck Game loaded. Drive the F250, use the tow truck chain if you get stuck, and repair engine damage at the garage.';
     }
 
     if (this.chapterEightActive) {

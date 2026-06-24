@@ -7,6 +7,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   SphereGeometry,
+  TorusGeometry,
   Vector3,
 } from 'three';
 
@@ -24,12 +25,43 @@ export interface ChapterTwelveData {
   interact(playerPosition: Vector3): { message: string; cameraPosition?: Vector3; lookTarget?: Vector3 };
   getDriverCameraPosition(target?: Vector3): Vector3;
   getDriverLookTarget(target?: Vector3): Vector3;
+  getSpeedMph(): number;
+  getDrivingStatus(): string;
+  consumeEventCue(): ChapterTwelveEventCue | null;
   update(deltaSeconds: number, input?: MovementState): void;
   reset(): void;
 }
 
-const FIELD_HALF_SIZE = 94;
+const FIELD_HALF_SIZE = 150;
 const TRUCK_INTERACT_DISTANCE = 4.4;
+const TOW_CHAIN_INTERACT_DISTANCE = 4.8;
+const GARAGE_BUTTON_INTERACT_DISTANCE = 5.2;
+
+export type ChapterTwelveEventCue = 'mud-grind' | 'mud-splash' | 'tree-smash' | 'chain' | 'repair';
+
+interface MudZone {
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  rotationY: number;
+  sinkDepth: number;
+}
+
+type ChapterTwelveVehicleId = 'f250' | 'tow';
+
+interface ChapterTwelveVehicle {
+  id: ChapterTwelveVehicleId;
+  label: string;
+  root: Group;
+  wheels: Mesh[];
+  collider: CollisionBox;
+  spawn: Vector3;
+  spawnRotationY: number;
+  speed: number;
+  stuckAmount: number;
+  damaged: boolean;
+}
 
 function createMudTexture(): CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -81,6 +113,13 @@ const truckDarkPaintMaterial = new MeshStandardMaterial({ color: 0x10213a, rough
 const truckChromeMaterial = new MeshStandardMaterial({ color: 0xc8c4b8, roughness: 0.28, metalness: 0.7 });
 const truckGlassMaterial = new MeshStandardMaterial({ color: 0x8cb9d0, roughness: 0.2, metalness: 0.05, transparent: true, opacity: 0.58 });
 const blackTrimMaterial = new MeshStandardMaterial({ color: 0x080808, roughness: 0.58, metalness: 0.08 });
+const interiorMaterial = new MeshStandardMaterial({ color: 0x262421, roughness: 0.82, metalness: 0.04 });
+const seatMaterial = new MeshStandardMaterial({ color: 0x3a342d, roughness: 0.86 });
+const chainMaterial = new MeshStandardMaterial({ color: 0x8c8d87, roughness: 0.32, metalness: 0.84 });
+const garageMaterial = new MeshStandardMaterial({ color: 0x8b8a82, roughness: 0.72 });
+const garageRoofMaterial = new MeshStandardMaterial({ color: 0x55585a, roughness: 0.68, metalness: 0.18 });
+const redButtonMaterial = new MeshStandardMaterial({ color: 0xc91f1f, roughness: 0.38, emissive: 0x3a0505, emissiveIntensity: 0.18 });
+const towPaintMaterial = new MeshStandardMaterial({ color: 0xbe6e23, roughness: 0.48, metalness: 0.18 });
 const amberMarkerMaterial = new MeshStandardMaterial({ color: 0xffa23a, roughness: 0.32, emissive: 0xff8a16, emissiveIntensity: 0.32 });
 const tireMaterial = new MeshStandardMaterial({ color: 0x101010, roughness: 0.84 });
 const headlightMaterial = new MeshStandardMaterial({ color: 0xfff6d1, roughness: 0.28, emissive: 0xffe2a1, emissiveIntensity: 0.35 });
@@ -180,7 +219,7 @@ function addMudClump(root: Group, localX: number, localZ: number, scale: number)
   root.add(clump);
 }
 
-function addMudPatch(root: Group, name: string, x: number, z: number, width: number, depth: number, rotationY = 0): void {
+function addMudPatch(root: Group, mudZones: MudZone[], name: string, x: number, z: number, width: number, depth: number, rotationY = 0, sinkDepth = 1): void {
   const patchGroup = new Group();
   patchGroup.name = name;
   patchGroup.position.set(x, 0, z);
@@ -242,6 +281,7 @@ function addMudPatch(root: Group, name: string, x: number, z: number, width: num
   }
 
   root.add(patchGroup);
+  mudZones.push({ x, z, width, depth, rotationY, sinkDepth });
 }
 
 function addMudJump(root: Group, x: number, z: number, rotationY: number, scale = 1): void {
@@ -299,6 +339,61 @@ function addTruckWheel(truck: Group, x: number, z: number): Mesh {
   return tire;
 }
 
+function addWindowFrame(root: Group, name: string, size: [number, number, number], position: [number, number, number], rotationY = 0): void {
+  const [width, height, depth] = size;
+  const top = addBox(root, `${name} top frame`, [width, 0.045, depth], [position[0], position[1] + height * 0.5, position[2]], blackTrimMaterial);
+  const bottom = addBox(root, `${name} bottom frame`, [width, 0.045, depth], [position[0], position[1] - height * 0.5, position[2]], blackTrimMaterial);
+  const left = addBox(root, `${name} left frame`, [0.045, height, depth], [position[0] - width * 0.5, position[1], position[2]], blackTrimMaterial);
+  const right = addBox(root, `${name} right frame`, [0.045, height, depth], [position[0] + width * 0.5, position[1], position[2]], blackTrimMaterial);
+  [top, bottom, left, right].forEach((part) => {
+    part.rotation.y = rotationY;
+  });
+}
+
+function addTruckInterior(root: Group): void {
+  addBox(root, 'Ford F250 black interior floor pan', [2.5, 0.08, 1.55], [0, 1.52, -0.72], interiorMaterial);
+  addBox(root, 'Ford F250 black cab ceiling liner', [2.5, 0.08, 1.72], [0, 2.86, -0.72], interiorMaterial);
+  addBox(root, 'Ford F250 center console between two seats', [0.28, 0.32, 0.82], [0, 1.82, -0.52], interiorMaterial);
+  [-0.58, 0.58].forEach((x, index) => {
+    const seat = new Group();
+    seat.name = index === 0 ? 'Ford F250 driver seat' : 'Ford F250 passenger seat';
+    seat.position.set(x, 1.58, -0.44);
+    addBox(seat, 'dark cloth truck seat cushion', [0.54, 0.18, 0.64], [0, 0.05, 0], seatMaterial);
+    const back = addBox(seat, 'dark cloth truck seat back', [0.54, 0.68, 0.16], [0, 0.42, 0.29], seatMaterial);
+    back.rotation.x = -0.18;
+    addBox(seat, 'truck seat headrest', [0.36, 0.18, 0.12], [0, 0.86, 0.34], seatMaterial);
+    root.add(seat);
+  });
+  addBox(root, 'Ford F250 dashboard', [2.22, 0.34, 0.28], [0, 1.92, -1.5], interiorMaterial);
+  addBox(root, 'Ford F250 gauge cluster', [0.48, 0.18, 0.045], [-0.5, 2.0, -1.66], blackTrimMaterial);
+  const steeringWheel = new Mesh(new TorusGeometry(0.24, 0.025, 8, 24), blackTrimMaterial);
+  steeringWheel.name = 'Ford F250 round steering wheel';
+  steeringWheel.position.set(-0.52, 2.0, -1.36);
+  steeringWheel.rotation.x = Math.PI / 2.7;
+  steeringWheel.castShadow = true;
+  root.add(steeringWheel);
+  const steeringColumn = new Mesh(new CylinderGeometry(0.035, 0.045, 0.34, 10), blackTrimMaterial);
+  steeringColumn.name = 'Ford F250 steering column';
+  steeringColumn.position.set(-0.52, 1.88, -1.45);
+  steeringColumn.rotation.x = Math.PI / 2.6;
+  root.add(steeringColumn);
+}
+
+function addTowHooks(root: Group, frontZ: number, rearZ: number): void {
+  [
+    ['front', frontZ, 0xffd66d],
+    ['rear', rearZ, 0xcfd2d1],
+  ].forEach(([label, z, color]) => {
+    const material = new MeshStandardMaterial({ color: color as number, roughness: 0.38, metalness: 0.72 });
+    const hook = new Mesh(new TorusGeometry(0.17, 0.027, 8, 18, Math.PI * 1.4), material);
+    hook.name = `Chapter 12 ${label} bumper tow hook`;
+    hook.position.set(0, 0.86, z as number);
+    hook.rotation.x = Math.PI / 2;
+    hook.castShadow = true;
+    root.add(hook);
+  });
+}
+
 function createFordF250(): { root: Group; wheels: Mesh[] } {
   const truck = new Group();
   truck.name = 'Chapter 12 Ford F250 Super Duty mud truck';
@@ -323,6 +418,12 @@ function createFordF250(): { root: Group; wheels: Mesh[] } {
   addBox(truck, 'Ford F250 driver rear side window', [0.08, 0.58, 0.56], [-1.44, 2.2, -0.42], truckGlassMaterial);
   addBox(truck, 'Ford F250 passenger front side window', [0.08, 0.62, 0.62], [1.44, 2.22, -1.12], truckGlassMaterial);
   addBox(truck, 'Ford F250 passenger rear side window', [0.08, 0.58, 0.56], [1.44, 2.2, -0.42], truckGlassMaterial);
+  addWindowFrame(truck, 'Ford F250 windshield', [2.54, 0.82, 0.055], [0, 2.38, -1.775]);
+  addWindowFrame(truck, 'Ford F250 rear cab window', [2.34, 0.68, 0.055], [0, 2.31, 0.305]);
+  [-1, 1].forEach((side) => {
+    addWindowFrame(truck, side < 0 ? 'Ford F250 driver side front window' : 'Ford F250 passenger side front window', [0.08, 0.7, 0.72], [side * 1.49, 2.22, -1.12], side > 0 ? 0 : 0);
+    addWindowFrame(truck, side < 0 ? 'Ford F250 driver side rear window' : 'Ford F250 passenger side rear window', [0.08, 0.66, 0.66], [side * 1.49, 2.2, -0.42], side > 0 ? 0 : 0);
+  });
   addBox(truck, 'Ford F250 side mirror left', [0.12, 0.28, 0.36], [-1.72, 2.02, -1.58], truckChromeMaterial);
   addBox(truck, 'Ford F250 side mirror right', [0.12, 0.28, 0.36], [1.72, 2.02, -1.58], truckChromeMaterial);
   addBox(truck, 'Ford F250 left chrome running board', [0.22, 0.14, 2.34], [-1.86, 0.88, -0.55], truckChromeMaterial);
@@ -331,6 +432,12 @@ function createFordF250(): { root: Group; wheels: Mesh[] } {
   addBox(truck, 'Ford F250 driver rear door seam', [0.04, 0.88, 0.05], [-1.69, 1.7, -0.16], blackTrimMaterial);
   addBox(truck, 'Ford F250 passenger front door seam', [0.04, 0.9, 0.05], [1.69, 1.72, -1.45], blackTrimMaterial);
   addBox(truck, 'Ford F250 passenger rear door seam', [0.04, 0.88, 0.05], [1.69, 1.7, -0.16], blackTrimMaterial);
+  [-1, 1].forEach((side) => {
+    addBox(truck, 'Ford F250 lower body crease', [0.04, 0.055, 2.95], [side * 1.72, 1.38, -0.68], truckChromeMaterial);
+    addBox(truck, 'Ford F250 bed side crease', [0.04, 0.055, 1.86], [side * 1.72, 1.62, 1.72], truckChromeMaterial);
+    addBox(truck, 'Ford F250 door handle', [0.06, 0.1, 0.28], [side * 1.77, 1.78, -1.03], truckChromeMaterial);
+    addBox(truck, 'Ford F250 rear door handle', [0.06, 0.1, 0.25], [side * 1.77, 1.76, -0.26], truckChromeMaterial);
+  });
   addBox(truck, 'Ford F250 left front fender flare', [0.18, 0.34, 1.18], [-1.76, 1.08, -2.16], blackTrimMaterial);
   addBox(truck, 'Ford F250 right front fender flare', [0.18, 0.34, 1.18], [1.76, 1.08, -2.16], blackTrimMaterial);
   addBox(truck, 'Ford F250 left rear fender flare', [0.18, 0.34, 1.18], [-1.76, 1.08, 2.02], blackTrimMaterial);
@@ -370,14 +477,113 @@ function createFordF250(): { root: Group; wheels: Mesh[] } {
     addTruckWheel(truck, -1.62, 2.02),
     addTruckWheel(truck, 1.62, 2.02),
   ];
+  addTruckInterior(truck);
+  addTowHooks(truck, -3.35, 3.18);
 
   return { root: truck, wheels };
+}
+
+function createTowTruck(): { root: Group; wheels: Mesh[]; chain: Group; hook: Group } {
+  const truck = new Group();
+  truck.name = 'Chapter 12 orange tow truck with rear crane and chain';
+  truck.position.set(FIELD_HALF_SIZE - 28, 0, FIELD_HALF_SIZE - 30);
+  truck.rotation.y = -2.35;
+
+  addBox(truck, 'Tow truck heavy frame', [3.2, 0.78, 5.3], [0, 1.05, 0], towPaintMaterial);
+  addBox(truck, 'Tow truck cab', [2.75, 1.42, 1.8], [0, 1.95, -1.45], towPaintMaterial);
+  addBox(truck, 'Tow truck flat rear deck', [3.0, 0.24, 2.6], [0, 1.55, 1.35], blackTrimMaterial);
+  addBox(truck, 'Tow truck front chrome bumper', [3.28, 0.28, 0.3], [0, 0.88, -2.85], truckChromeMaterial);
+  addBox(truck, 'Tow truck rear tow bumper', [3.18, 0.28, 0.3], [0, 0.9, 2.72], truckChromeMaterial);
+  addBox(truck, 'Tow truck windshield', [2.24, 0.64, 0.08], [0, 2.2, -2.05], truckGlassMaterial).rotation.x = -0.16;
+  addBox(truck, 'Tow truck left side window', [0.08, 0.56, 0.58], [-1.41, 2.1, -1.38], truckGlassMaterial);
+  addBox(truck, 'Tow truck right side window', [0.08, 0.56, 0.58], [1.41, 2.1, -1.38], truckGlassMaterial);
+  addTruckInterior(truck);
+  addTowHooks(truck, -3.02, 2.95);
+
+  const boom = new Group();
+  boom.name = 'Tow truck small rear crane boom';
+  boom.position.set(0, 2.08, 1.4);
+  const boomPost = new Mesh(new CylinderGeometry(0.09, 0.12, 1.28, 10), truckChromeMaterial);
+  boomPost.name = 'Tow truck crane upright';
+  boomPost.position.y = 0.58;
+  boomPost.castShadow = true;
+  const boomArm = addBox(boom, 'Tow truck angled crane arm', [0.2, 0.18, 2.15], [0, 1.16, 0.92], truckChromeMaterial);
+  boomArm.rotation.x = -0.42;
+  boom.add(boomPost);
+  truck.add(boom);
+
+  const chain = new Group();
+  chain.name = 'Tow truck hanging realistic chain tow rope';
+  for (let index = 0; index < 18; index += 1) {
+    const link = new Mesh(new TorusGeometry(0.11, 0.018, 6, 14), chainMaterial);
+    link.name = 'Tow chain oval metal link';
+    link.position.set(0, -index * 0.09, index * 0.055);
+    link.scale.set(0.62, 1, 1.28);
+    link.rotation.set(index % 2 === 0 ? Math.PI / 2 : 0, 0, index % 2 === 0 ? 0 : Math.PI / 2);
+    link.castShadow = true;
+    chain.add(link);
+  }
+  chain.position.set(0, 3.08, 2.52);
+  truck.add(chain);
+
+  const hook = new Group();
+  hook.name = 'Tow chain large hook';
+  const hookMesh = new Mesh(new TorusGeometry(0.18, 0.028, 8, 18, Math.PI * 1.35), chainMaterial);
+  hookMesh.name = 'Tow truck chain curved hook';
+  hookMesh.rotation.x = Math.PI / 2;
+  hookMesh.castShadow = true;
+  hook.add(hookMesh);
+  hook.position.set(0, 1.45, 3.1);
+  truck.add(hook);
+
+  const wheels = [
+    addTruckWheel(truck, -1.54, -1.95),
+    addTruckWheel(truck, 1.54, -1.95),
+    addTruckWheel(truck, -1.54, 1.72),
+    addTruckWheel(truck, 1.54, 1.72),
+  ];
+
+  return { root: truck, wheels, chain, hook };
+}
+
+function addGarage(root: Group, colliders: CollisionBox[]): { buttonPosition: Vector3; bayCenter: Vector3 } {
+  const garage = new Group();
+  garage.name = 'Chapter 12 corner repair garage';
+  garage.position.set(-FIELD_HALF_SIZE + 26, 0, FIELD_HALF_SIZE - 28);
+  garage.rotation.y = 0.18;
+  addBox(garage, 'Garage concrete back wall', [13, 4.5, 0.32], [0, 2.25, 4.6], garageMaterial);
+  addBox(garage, 'Garage left wall', [0.32, 4.5, 9.4], [-6.35, 2.25, 0], garageMaterial);
+  addBox(garage, 'Garage right wall', [0.32, 4.5, 9.4], [6.35, 2.25, 0], garageMaterial);
+  addBox(garage, 'Garage low roof', [13.6, 0.38, 9.8], [0, 4.72, 0], garageRoofMaterial);
+  addBox(garage, 'Garage concrete floor', [12.6, 0.16, 9.1], [0, 0.02, 0], new MeshStandardMaterial({ color: 0x77716b, roughness: 0.82 }));
+  addBox(garage, 'Garage red repair button post', [0.22, 1.18, 0.22], [-5.15, 0.66, -3.7], blackTrimMaterial);
+  addBox(garage, 'Garage red repair button', [0.58, 0.24, 0.18], [-5.15, 1.3, -3.55], redButtonMaterial);
+  const sign = new Mesh(new BoxGeometry(4.8, 0.9, 0.08), createTextMaterial('REPAIR GARAGE', 512, 128));
+  sign.name = 'Repair garage sign';
+  sign.position.set(0, 3.4, 4.42);
+  garage.add(sign);
+  root.add(garage);
+
+  const wallPositions = [
+    garage.localToWorld(new Vector3(0, 0, 4.6)),
+    garage.localToWorld(new Vector3(-6.35, 0, 0)),
+    garage.localToWorld(new Vector3(6.35, 0, 0)),
+  ];
+  addCollider(colliders, wallPositions[0].x, wallPositions[0].z, 6.7, 0.25, garage.rotation.y);
+  addCollider(colliders, wallPositions[1].x, wallPositions[1].z, 0.25, 4.9, garage.rotation.y);
+  addCollider(colliders, wallPositions[2].x, wallPositions[2].z, 0.25, 4.9, garage.rotation.y);
+  return {
+    buttonPosition: garage.localToWorld(new Vector3(-5.15, 1.3, -3.55)),
+    bayCenter: garage.localToWorld(new Vector3(0, 0, -0.6)),
+  };
 }
 
 export function createChapterTwelve(): ChapterTwelveData {
   const root = new Group();
   root.name = 'Chapter 12: The Truck Game';
   const colliders: CollisionBox[] = [];
+  const mudZones: MudZone[] = [];
+  const treeCenters: Array<{ x: number; z: number; radius: number }> = [];
 
   const ground = new Mesh(new BoxGeometry(FIELD_HALF_SIZE * 2, 0.12, FIELD_HALF_SIZE * 2), grassMaterial);
   ground.name = 'Chapter 12 big open grassy field';
@@ -385,64 +591,181 @@ export function createChapterTwelve(): ChapterTwelveData {
   ground.receiveShadow = true;
   root.add(ground);
 
-  addMudPatch(root, 'Chapter 12 main open mud pit', 0, 0, 82, 62, 0.05);
-  addMudPatch(root, 'Chapter 12 left muddy truck trail', -36, -16, 22, 92, -0.33);
-  addMudPatch(root, 'Chapter 12 right muddy truck trail', 36, 15, 24, 88, 0.38);
-  addMudPatch(root, 'Chapter 12 rear muddy straightaway', 0, -46, 96, 16, 0.02);
-  addMudPatch(root, 'Chapter 12 front muddy straightaway', 4, 48, 92, 18, -0.08);
+  addMudPatch(root, mudZones, 'Chapter 12 main open mud pit', 0, 0, 104, 78, 0.05, 1.15);
+  addMudPatch(root, mudZones, 'Chapter 12 left muddy truck trail', -58, -18, 28, 136, -0.33, 0.95);
+  addMudPatch(root, mudZones, 'Chapter 12 right muddy truck trail', 58, 20, 30, 130, 0.38, 0.98);
+  addMudPatch(root, mudZones, 'Chapter 12 rear muddy straightaway', 0, -76, 138, 20, 0.02, 0.72);
+  addMudPatch(root, mudZones, 'Chapter 12 front muddy straightaway', 4, 82, 134, 22, -0.08, 0.76);
+  addMudPatch(root, mudZones, 'Chapter 12 deep corner bog', -92, 78, 34, 42, 0.28, 1.55);
+  addMudPatch(root, mudZones, 'Chapter 12 watery hydroplane mud stretch', 86, -76, 52, 28, -0.16, 0.58);
 
-  addMudJump(root, -24, -18, 0.22, 1.05);
-  addMudJump(root, 25, 18, -0.42, 1.12);
-  addMudJump(root, -2, 42, 0.05, 0.92);
-  addMudJump(root, 30, -43, -0.2, 0.96);
+  addMudJump(root, -28, -20, 0.22, 1.05);
+  addMudJump(root, 35, 22, -0.42, 1.12);
+  addMudJump(root, -2, 58, 0.05, 0.92);
+  addMudJump(root, 44, -60, -0.2, 0.96);
+  addMudJump(root, -68, -64, 0.45, 0.94);
 
   const truck = createFordF250();
   root.add(truck.root);
+  const towTruck = createTowTruck();
+  root.add(towTruck.root);
+  const garage = addGarage(root, colliders);
 
   const treePositions: Array<[number, number, number]> = [];
-  for (let index = 0; index < 18; index += 1) {
-    const t = index / 18;
+  for (let index = 0; index < 28; index += 1) {
+    const t = index / 28;
     treePositions.push([-FIELD_HALF_SIZE + 4 + Math.sin(index * 1.7) * 2.4, -FIELD_HALF_SIZE + 10 + t * (FIELD_HALF_SIZE * 2 - 20), 0.8 + (index % 4) * 0.08]);
     treePositions.push([FIELD_HALF_SIZE - 4 + Math.cos(index * 1.4) * 2.4, -FIELD_HALF_SIZE + 10 + t * (FIELD_HALF_SIZE * 2 - 20), 0.84 + (index % 3) * 0.1]);
   }
-  for (let index = 0; index < 12; index += 1) {
-    const t = index / 12;
+  for (let index = 0; index < 20; index += 1) {
+    const t = index / 20;
     treePositions.push([-FIELD_HALF_SIZE + 14 + t * (FIELD_HALF_SIZE * 2 - 28), -FIELD_HALF_SIZE + 4 + Math.cos(index * 1.9) * 2.2, 0.9]);
     treePositions.push([-FIELD_HALF_SIZE + 14 + t * (FIELD_HALF_SIZE * 2 - 28), FIELD_HALF_SIZE - 4 + Math.sin(index * 1.2) * 2.2, 0.94]);
   }
-  treePositions.forEach(([x, z, scale]) => addTree(root, colliders, x, z, scale));
+  for (let index = 0; index < 18; index += 1) {
+    treePositions.push([
+      -110 + Math.sin(index * 1.22) * 24,
+      -98 + index * 9.5 + Math.cos(index * 0.83) * 5,
+      0.76 + (index % 5) * 0.07,
+    ]);
+  }
+  treePositions.forEach(([x, z, scale]) => {
+    addTree(root, colliders, x, z, scale);
+    treeCenters.push({ x, z, radius: 0.9 * scale });
+  });
 
   addCollider(colliders, 0, -FIELD_HALF_SIZE, FIELD_HALF_SIZE, 1);
   addCollider(colliders, 0, FIELD_HALF_SIZE, FIELD_HALF_SIZE, 1);
   addCollider(colliders, -FIELD_HALF_SIZE, 0, 1, FIELD_HALF_SIZE);
   addCollider(colliders, FIELD_HALF_SIZE, 0, 1, FIELD_HALF_SIZE);
-  const truckCollider: CollisionBox = { centerX: truck.root.position.x, centerZ: truck.root.position.z, halfWidth: 1.9, halfDepth: 3.2, rotationY: truck.root.rotation.y };
-  colliders.push(truckCollider);
+  const f250Collider: CollisionBox = { centerX: truck.root.position.x, centerZ: truck.root.position.z, halfWidth: 1.9, halfDepth: 3.2, rotationY: truck.root.rotation.y };
+  const towCollider: CollisionBox = { centerX: towTruck.root.position.x, centerZ: towTruck.root.position.z, halfWidth: 1.9, halfDepth: 3.0, rotationY: towTruck.root.rotation.y };
+  colliders.push(f250Collider, towCollider);
 
   const spawn = new Vector3(-14, GAME_CONFIG.player.height, 14);
   const lookTarget = new Vector3(-8, GAME_CONFIG.player.height * 0.9, 9);
   const velocity = new Vector3();
   let driving = false;
-  let speed = 0;
+  let activeVehicle: ChapterTwelveVehicleId = 'f250';
+  let towChainHeld = false;
+  let towChainAttached = false;
+  let repairTimer = 0;
+  let lastEventMessage = '';
+  let eventMessageTimer = 0;
+  let pendingEventCue: ChapterTwelveEventCue | null = null;
 
-  const updateTruckCollider = (): void => {
-    truckCollider.centerX = truck.root.position.x;
-    truckCollider.centerZ = truck.root.position.z;
-    truckCollider.rotationY = truck.root.rotation.y;
-    truckCollider.enabled = !driving;
+  const vehicles: Record<ChapterTwelveVehicleId, ChapterTwelveVehicle> = {
+    f250: {
+      id: 'f250',
+      label: 'Ford F250 Super Duty',
+      root: truck.root,
+      wheels: truck.wheels,
+      collider: f250Collider,
+      spawn: new Vector3(-8, 0, 9),
+      spawnRotationY: -0.28,
+      speed: 0,
+      stuckAmount: 0,
+      damaged: false,
+    },
+    tow: {
+      id: 'tow',
+      label: 'tow truck',
+      root: towTruck.root,
+      wheels: towTruck.wheels,
+      collider: towCollider,
+      spawn: new Vector3(FIELD_HALF_SIZE - 28, 0, FIELD_HALF_SIZE - 30),
+      spawnRotationY: -2.35,
+      speed: 0,
+      stuckAmount: 0,
+      damaged: false,
+    },
   };
 
-  const getLocalWorldPosition = (x: number, y: number, z: number, target = new Vector3()): Vector3 => {
+  const getActiveVehicle = (): ChapterTwelveVehicle => vehicles[activeVehicle];
+
+  const setEventMessage = (message: string, duration = 2.8, cue: ChapterTwelveEventCue | null = null): void => {
+    if (eventMessageTimer > 0 && lastEventMessage === message) {
+      return;
+    }
+    lastEventMessage = message;
+    eventMessageTimer = duration;
+    if (cue) {
+      pendingEventCue = cue;
+    }
+  };
+
+  const updateVehicleCollider = (vehicle: ChapterTwelveVehicle): void => {
+    vehicle.collider.centerX = vehicle.root.position.x;
+    vehicle.collider.centerZ = vehicle.root.position.z;
+    vehicle.collider.rotationY = vehicle.root.rotation.y;
+    vehicle.collider.enabled = !(driving && activeVehicle === vehicle.id);
+  };
+
+  const updateAllVehicleColliders = (): void => {
+    updateVehicleCollider(vehicles.f250);
+    updateVehicleCollider(vehicles.tow);
+  };
+
+  const getLocalWorldPosition = (vehicle: ChapterTwelveVehicle, x: number, y: number, z: number, target = new Vector3()): Vector3 => {
     target.set(x, y, z);
-    return truck.root.localToWorld(target);
+    return vehicle.root.localToWorld(target);
   };
 
-  const clampTruckToField = (): void => {
-    truck.root.position.x = MathUtils.clamp(truck.root.position.x, -FIELD_HALF_SIZE + 7, FIELD_HALF_SIZE - 7);
-    truck.root.position.z = MathUtils.clamp(truck.root.position.z, -FIELD_HALF_SIZE + 7, FIELD_HALF_SIZE - 7);
+  const clampVehicleToField = (vehicle: ChapterTwelveVehicle): void => {
+    vehicle.root.position.x = MathUtils.clamp(vehicle.root.position.x, -FIELD_HALF_SIZE + 7, FIELD_HALF_SIZE - 7);
+    vehicle.root.position.z = MathUtils.clamp(vehicle.root.position.z, -FIELD_HALF_SIZE + 7, FIELD_HALF_SIZE - 7);
   };
 
-  updateTruckCollider();
+  const getMudDepthAt = (x: number, z: number): number => {
+    let depth = 0;
+    mudZones.forEach((zone) => {
+      const dx = x - zone.x;
+      const dz = z - zone.z;
+      const cos = Math.cos(-zone.rotationY);
+      const sin = Math.sin(-zone.rotationY);
+      const localX = dx * cos - dz * sin;
+      const localZ = dx * sin + dz * cos;
+      if (Math.abs(localX) <= zone.width * 0.5 && Math.abs(localZ) <= zone.depth * 0.5) {
+        const centerFalloff = 1 - Math.max(Math.abs(localX) / (zone.width * 0.5), Math.abs(localZ) / (zone.depth * 0.5)) * 0.32;
+        depth = Math.max(depth, zone.sinkDepth * MathUtils.clamp(centerFalloff, 0.38, 1));
+      }
+    });
+    return depth;
+  };
+
+  const getDistanceToTowChain = (playerPosition: Vector3): number => playerPosition.distanceTo(towTruck.hook.getWorldPosition(new Vector3()));
+  const getDistanceToGarageButton = (playerPosition: Vector3): number => playerPosition.distanceTo(garage.buttonPosition);
+
+  const resetVehicle = (vehicle: ChapterTwelveVehicle): void => {
+    vehicle.root.position.copy(vehicle.spawn);
+    vehicle.root.rotation.set(0, vehicle.spawnRotationY, 0);
+    vehicle.speed = 0;
+    vehicle.stuckAmount = 0;
+    vehicle.damaged = false;
+    updateVehicleCollider(vehicle);
+  };
+
+  const applyTowPull = (deltaSeconds: number): void => {
+    if (!towChainAttached || activeVehicle !== 'tow' || !driving) {
+      return;
+    }
+
+    const f250 = vehicles.f250;
+    const tow = vehicles.tow;
+    const towRear = getLocalWorldPosition(tow, 0, 0, 3.05);
+    const toTow = towRear.clone().sub(f250.root.position);
+    const distance = Math.hypot(toTow.x, toTow.z);
+    if (distance > 5.4) {
+      const pullStep = Math.min(distance - 5.2, Math.max(0.3, Math.abs(tow.speed)) * deltaSeconds * 0.58);
+      f250.root.position.x += (toTow.x / distance) * pullStep;
+      f250.root.position.z += (toTow.z / distance) * pullStep;
+      f250.root.rotation.y = MathUtils.lerp(f250.root.rotation.y, Math.atan2(-toTow.x, -toTow.z), 0.05);
+      f250.stuckAmount = Math.max(0, f250.stuckAmount - deltaSeconds * 0.65);
+      updateVehicleCollider(f250);
+    }
+  };
+
+  updateAllVehicleColliders();
 
   return {
     root,
@@ -453,68 +776,186 @@ export function createChapterTwelve(): ChapterTwelveData {
       return driving;
     },
     isNearTruck(playerPosition: Vector3): boolean {
-      return playerPosition.distanceTo(truck.root.position) <= TRUCK_INTERACT_DISTANCE;
+      return playerPosition.distanceTo(vehicles.f250.root.position) <= TRUCK_INTERACT_DISTANCE
+        || playerPosition.distanceTo(vehicles.tow.root.position) <= TRUCK_INTERACT_DISTANCE
+        || getDistanceToTowChain(playerPosition) <= TOW_CHAIN_INTERACT_DISTANCE
+        || getDistanceToGarageButton(playerPosition) <= GARAGE_BUTTON_INTERACT_DISTANCE;
     },
     interact(playerPosition: Vector3): { message: string; cameraPosition?: Vector3; lookTarget?: Vector3 } {
       if (driving) {
+        const vehicle = getActiveVehicle();
         driving = false;
-        speed = 0;
-        updateTruckCollider();
+        vehicle.speed = 0;
+        updateVehicleCollider(vehicle);
         return {
-          message: 'You climb out of the Ford F250 Super Duty.',
-          cameraPosition: getLocalWorldPosition(-3.25, GAME_CONFIG.player.height, 0.35),
-          lookTarget: truck.root.position.clone().add(new Vector3(0, 1.4, 0)),
+          message: `You climb out of the ${vehicle.label}.`,
+          cameraPosition: getLocalWorldPosition(vehicle, -3.25, GAME_CONFIG.player.height, 0.35),
+          lookTarget: vehicle.root.position.clone().add(new Vector3(0, 1.4, 0)),
         };
       }
 
-      if (playerPosition.distanceTo(truck.root.position) > TRUCK_INTERACT_DISTANCE) {
-        return { message: 'Move closer to the Ford F250 Super Duty, then press E to get in.' };
+      if (getDistanceToGarageButton(playerPosition) <= GARAGE_BUTTON_INTERACT_DISTANCE) {
+        const f250 = vehicles.f250;
+        if (f250.root.position.distanceTo(garage.bayCenter) > 11) {
+          return { message: 'Park the Ford F250 inside the garage bay, then press E on the red button.' };
+        }
+        repairTimer = 10;
+        setEventMessage('The garage starts hammering and drilling. Repairing the F250...', 10, 'repair');
+        return { message: 'Repair started. Hammers and drills work for 10 seconds.' };
       }
 
+      if (getDistanceToTowChain(playerPosition) <= TOW_CHAIN_INTERACT_DISTANCE && !towChainHeld && !towChainAttached) {
+        towChainHeld = true;
+        towTruck.chain.visible = false;
+        pendingEventCue = 'chain';
+        return { message: 'You pick up the tow chain. Bring the hook to the stuck F250 and press E to attach it.' };
+      }
+
+      if (towChainHeld && playerPosition.distanceTo(vehicles.f250.root.position) <= TRUCK_INTERACT_DISTANCE + 1.8) {
+        towChainHeld = false;
+        towChainAttached = true;
+        towTruck.chain.visible = true;
+        pendingEventCue = 'chain';
+        return { message: 'The chain hooks onto the F250 bumper. Drive the tow truck forward to pull it out.' };
+      }
+
+      const f250Distance = playerPosition.distanceTo(vehicles.f250.root.position);
+      const towDistance = playerPosition.distanceTo(vehicles.tow.root.position);
+      if (towDistance <= TRUCK_INTERACT_DISTANCE && towDistance < f250Distance) {
+        activeVehicle = 'tow';
+      } else if (f250Distance <= TRUCK_INTERACT_DISTANCE) {
+        activeVehicle = 'f250';
+      } else {
+        return { message: 'Move closer to the F250, tow truck, tow chain, or garage repair button.' };
+      }
+
+      const vehicle = getActiveVehicle();
       driving = true;
-      updateTruckCollider();
+      updateAllVehicleColliders();
       return {
-        message: 'You get in the Ford F250 Super Duty. Use W/S to drive, A/D to steer, and E to get out.',
-        cameraPosition: getLocalWorldPosition(-0.48, 2.28, -0.78),
-        lookTarget: getLocalWorldPosition(-0.48, 2.15, -9),
+        message: `You get in the ${vehicle.label}. Use W/S to drive, A/D to steer, Shift for more speed, and E to get out.`,
+        cameraPosition: getLocalWorldPosition(vehicle, -0.48, 2.28, -0.78),
+        lookTarget: getLocalWorldPosition(vehicle, -0.48, 2.15, -9),
       };
     },
     getDriverCameraPosition(target = new Vector3()): Vector3 {
-      return getLocalWorldPosition(-0.48, 2.28, -0.78, target);
+      return getLocalWorldPosition(getActiveVehicle(), -0.48, 2.28, -0.78, target);
     },
     getDriverLookTarget(target = new Vector3()): Vector3 {
-      return getLocalWorldPosition(-0.48, 2.1, -9, target);
+      return getLocalWorldPosition(getActiveVehicle(), -0.48, 2.1, -9, target);
+    },
+    getSpeedMph(): number {
+      return Math.round(Math.abs(getActiveVehicle().speed) * 3.1);
+    },
+    getDrivingStatus(): string {
+      const vehicle = getActiveVehicle();
+      const parts = [`Speed: ${Math.round(Math.abs(vehicle.speed) * 3.1)} MPH`];
+      if (vehicle.damaged) {
+        parts.push('engine damaged');
+      }
+      if (vehicle.stuckAmount > 0.72) {
+        parts.push('stuck in mud');
+      } else if (vehicle.stuckAmount > 0.28) {
+        parts.push('sinking in mud');
+      }
+      if (towChainHeld) {
+        parts.push('holding tow chain');
+      }
+      if (towChainAttached) {
+        parts.push('tow chain attached');
+      }
+      if (repairTimer > 0) {
+        parts.push(`repairing ${Math.ceil(repairTimer)}s`);
+      }
+      if (eventMessageTimer > 0 && lastEventMessage) {
+        parts.push(lastEventMessage);
+      }
+      return parts.join(' / ');
+    },
+    consumeEventCue(): ChapterTwelveEventCue | null {
+      const cue = pendingEventCue;
+      pendingEventCue = null;
+      return cue;
     },
     update(deltaSeconds: number, input: MovementState = { forward: 0, strafe: 0, sprint: false }): void {
-      if (driving) {
-        const acceleration = input.forward * (input.forward >= 0 ? 13 : 8.5);
-        speed += acceleration * deltaSeconds;
-        speed *= Math.pow(0.32, deltaSeconds);
-        speed = MathUtils.clamp(speed, -7.5, input.sprint ? 18 : 13);
-        if (Math.abs(input.forward) < 0.01 && Math.abs(speed) < 0.08) {
-          speed = 0;
+      eventMessageTimer = Math.max(0, eventMessageTimer - deltaSeconds);
+      if (repairTimer > 0) {
+        repairTimer = Math.max(0, repairTimer - deltaSeconds);
+        if (repairTimer === 0) {
+          vehicles.f250.damaged = false;
+          vehicles.f250.stuckAmount = 0;
+          setEventMessage('The garage repair is finished. The F250 engine runs normally again.', 4, 'repair');
         }
-
-        const steerStrength = MathUtils.clamp(Math.abs(speed) / 9, 0.18, 1);
-        truck.root.rotation.y -= input.strafe * steerStrength * Math.sign(speed || 1) * 1.25 * deltaSeconds;
-        velocity.set(-Math.sin(truck.root.rotation.y), 0, -Math.cos(truck.root.rotation.y)).multiplyScalar(speed * deltaSeconds);
-        truck.root.position.add(velocity);
-        clampTruckToField();
-
-        truck.wheels.forEach((wheel) => {
-          wheel.rotation.x += speed * deltaSeconds * 1.85;
-        });
-        updateTruckCollider();
       }
 
-      truck.root.position.y = 0.04 + Math.sin(performance.now() * 0.004) * MathUtils.clamp(Math.abs(speed) / 90, 0, 0.035);
+      if (driving) {
+        const vehicle = getActiveVehicle();
+        const mudDepth = getMudDepthAt(vehicle.root.position.x, vehicle.root.position.z);
+        const speedMph = Math.abs(vehicle.speed) * 3.1;
+        const hydroplaning = mudDepth > 0.2 && speedMph >= 60;
+        if (mudDepth > 0.2 && !hydroplaning) {
+          vehicle.stuckAmount = MathUtils.clamp(vehicle.stuckAmount + deltaSeconds * mudDepth * Math.max(0.22, 1 - Math.abs(vehicle.speed) / 18), 0, 1.35);
+        } else {
+          vehicle.stuckAmount = Math.max(0, vehicle.stuckAmount - deltaSeconds * (hydroplaning ? 0.45 : 0.2));
+        }
+
+        const stuckDrag = MathUtils.clamp(vehicle.stuckAmount, 0, 1);
+        const damageScale = vehicle.damaged ? 0.35 : 1;
+        const acceleration = input.forward * (input.forward >= 0 ? 18 : 10.5) * damageScale * (1 - stuckDrag * 0.78);
+        vehicle.speed += acceleration * deltaSeconds;
+        vehicle.speed *= Math.pow(mudDepth > 0 ? (hydroplaning ? 0.76 : 0.22 + (1 - stuckDrag) * 0.36) : 0.46, deltaSeconds);
+        vehicle.speed = MathUtils.clamp(vehicle.speed, -8, input.sprint ? 28 : 21);
+        if (Math.abs(input.forward) < 0.01 && Math.abs(vehicle.speed) < 0.08) {
+          vehicle.speed = 0;
+        }
+
+        if (mudDepth > 0.2 && Math.abs(input.forward) > 0.1 && vehicle.stuckAmount > 0.55) {
+          setEventMessage('Tires grind and spin. Mud splatters around the truck.', 0.6, 'mud-grind');
+        } else if (hydroplaning) {
+          setEventMessage('The tires skim across the wet mud with a big splash.', 0.7, 'mud-splash');
+        }
+
+        const steerStrength = MathUtils.clamp(Math.abs(vehicle.speed) / 11, 0.16, 1);
+        vehicle.root.rotation.y -= input.strafe * steerStrength * Math.sign(vehicle.speed || 1) * 1.18 * deltaSeconds;
+        velocity.set(-Math.sin(vehicle.root.rotation.y), 0, -Math.cos(vehicle.root.rotation.y)).multiplyScalar(vehicle.speed * deltaSeconds);
+        vehicle.root.position.add(velocity);
+        clampVehicleToField(vehicle);
+
+        treeCenters.forEach((tree) => {
+          const distance = Math.hypot(vehicle.root.position.x - tree.x, vehicle.root.position.z - tree.z);
+          if (distance < tree.radius + 1.25 && Math.abs(vehicle.speed) > 5) {
+            vehicle.damaged = true;
+            vehicle.speed *= -0.16;
+            setEventMessage('Smash! The truck hit a tree and the engine is damaged.', 4, 'tree-smash');
+          }
+        });
+
+        vehicle.wheels.forEach((wheel) => {
+          wheel.rotation.x += vehicle.speed * deltaSeconds * 1.85;
+        });
+        updateVehicleCollider(vehicle);
+        applyTowPull(deltaSeconds);
+      }
+
+      Object.values(vehicles).forEach((vehicle) => {
+        const mudDepth = getMudDepthAt(vehicle.root.position.x, vehicle.root.position.z);
+        const sink = Math.min(0.46, vehicle.stuckAmount * 0.32 + mudDepth * 0.08);
+        const rumble = Math.sin(performance.now() * 0.004 + (vehicle.id === 'tow' ? 2 : 0)) * MathUtils.clamp(Math.abs(vehicle.speed) / 90, 0, 0.04);
+        vehicle.root.position.y = 0.04 - sink + rumble;
+      });
     },
     reset(): void {
       driving = false;
-      speed = 0;
-      truck.root.position.set(-8, 0, 9);
-      truck.root.rotation.set(0, -0.28, 0);
-      updateTruckCollider();
+      activeVehicle = 'f250';
+      towChainHeld = false;
+      towChainAttached = false;
+      towTruck.chain.visible = true;
+      repairTimer = 0;
+      lastEventMessage = '';
+      eventMessageTimer = 0;
+      pendingEventCue = null;
+      resetVehicle(vehicles.f250);
+      resetVehicle(vehicles.tow);
     },
   };
 }
