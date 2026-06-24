@@ -2135,6 +2135,7 @@ select {
 .hud__chapter-seven-cookie-picker,
 .hud__chapter-seven-trading,
 .hud__chapter-eleven-seed-shop,
+.hud__chapter-eleven-sell-menu,
 .hud__tablet-cameras,
 .hud__tablet-camera-title,
 .hud__chapter-card,
@@ -2742,6 +2743,18 @@ select {
   transform: translate(-50%, -47%) scale(0.98);
 }
 
+.hud__chapter-eleven-sell-menu {
+  left: 50%;
+  top: 50%;
+  z-index: 12;
+  width: min(34rem, calc(100% - 2rem));
+  padding: 1.35rem;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transform: translate(-50%, -47%) scale(0.98);
+}
+
 .hud__chapter-seven-trading[data-active="true"] {
   opacity: 1;
   pointer-events: auto;
@@ -2749,6 +2762,12 @@ select {
 }
 
 .hud__chapter-eleven-seed-shop[data-active="true"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.hud__chapter-eleven-sell-menu[data-active="true"] {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, -50%) scale(1);
@@ -2767,6 +2786,13 @@ select {
 }
 
 .hud__chapter-eleven-seed-shop .hud__chapter-seven-trading-options {
+  max-height: min(25rem, 56vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.25rem;
+}
+
+.hud__chapter-eleven-sell-menu .hud__chapter-seven-trading-options {
   max-height: min(25rem, 56vh);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -2798,6 +2824,14 @@ select {
 .hud__chapter-seven-trade:hover {
   background: linear-gradient(180deg, #fffbea, #f0c65f);
   border-color: rgba(126, 66, 20, 0.58);
+}
+
+.hud__chapter-eleven-sell-menu .hud__chapter-seven-trade[data-selected="true"] {
+  border-color: rgba(32, 126, 69, 0.68);
+  background: linear-gradient(180deg, #e9ffe9, #7ddc83);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 0.45rem 1rem rgba(30, 110, 52, 0.22);
 }
 
 .hud__chapter-seven-trade:disabled {
@@ -5182,6 +5216,7 @@ select {
   .hud__chapter-seven-cookie-picker,
   .hud__chapter-seven-trading,
   .hud__chapter-eleven-seed-shop,
+  .hud__chapter-eleven-sell-menu,
   .hud__chapter-seven-timer,
   .hud__tablet-cameras {
     left: 1rem;

@@ -127,6 +127,8 @@ import { PlayerController, type PlayerMovementOptions } from '../systems/player/
 import { ZombieController } from '../systems/zombie/ZombieController';
 import {
   createHud,
+  type ChapterElevenSellAction,
+  type ChapterElevenSellItemView,
   type ChapterElevenSeedId,
   type ChapterElevenSeedShopItemView,
   type HudChapterId,
@@ -1528,6 +1530,9 @@ export class Game {
   private chapterSevenCookiePickerOpen = false;
   private chapterSevenGrandpaTradingOpen = false;
   private chapterElevenSeedShopOpen = false;
+  private chapterElevenSellMenuOpen = false;
+  private chapterElevenSellChoosing = false;
+  private readonly chapterElevenSellSelectedCrops = new Set<ChapterElevenCropId>();
   private chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
   private readonly chapterElevenSeedInventory = new Map<ChapterElevenSeedId, number>();
   private chapterElevenSeedHotbar: Array<ChapterElevenSeedId | null> = Array.from({ length: 9 }, () => null);
@@ -1935,6 +1940,7 @@ export class Game {
     this.hud.onChapterSevenCookieTargetSelect(this.handleChapterSevenCookieTargetSelect);
     this.hud.onChapterSevenGrandpaTrade(this.handleChapterSevenGrandpaTrade);
     this.hud.onChapterElevenSeedPurchase(this.handleChapterElevenSeedPurchase);
+    this.hud.onChapterElevenSellAction(this.handleChapterElevenSellAction);
     this.hud.onCuratorSave(this.handleCuratorSave);
     this.player.controls.addEventListener('lock', this.handleLockChange);
     this.player.controls.addEventListener('unlock', this.handleLockChange);
@@ -2211,8 +2217,8 @@ export class Game {
     }
 
     const clickedMenu = event.target instanceof Element
-      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop');
-    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen) {
+      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-sell-menu');
+    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen || this.chapterElevenSellMenuOpen) {
       if (clickedMenu) {
         return;
       }
@@ -2224,10 +2230,11 @@ export class Game {
       this.chapterSevenCookiePickerOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenSellMenuOpen = false;
       this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop')) {
+    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-sell-menu')) {
       return;
     }
 
@@ -3019,6 +3026,7 @@ export class Game {
       this.officeModeMenuOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenSellMenuOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -3047,6 +3055,7 @@ export class Game {
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenSellMenuOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -3076,6 +3085,7 @@ export class Game {
       this.officeModeMenuOpen = false;
       this.chapterSevenCookiePickerOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenSellMenuOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -3105,6 +3115,42 @@ export class Game {
       this.officeModeMenuOpen = false;
       this.chapterSevenCookiePickerOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
+      this.chapterElevenSellMenuOpen = false;
+    }
+
+    if (open && this.player.isLocked()) {
+      this.syncHud();
+      this.player.controls.unlock();
+      return;
+    }
+
+    this.syncHud();
+  }
+
+  private setChapterElevenSellMenuOpen(open: boolean): void {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+      open = false;
+    }
+
+    if (this.chapterElevenSellMenuOpen === open) {
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenSellMenuOpen = open;
+    if (open) {
+      this.chapterMenuOpen = false;
+      this.curatorToolOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+      this.chapterSevenCookiePickerOpen = false;
+      this.chapterSevenGrandpaTradingOpen = false;
+      this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenSellChoosing = false;
+      this.chapterElevenSellSelectedCrops.clear();
+    } else {
+      this.chapterElevenSellChoosing = false;
+      this.chapterElevenSellSelectedCrops.clear();
     }
 
     if (open && this.player.isLocked()) {
@@ -8721,6 +8767,9 @@ export class Game {
       this.chapterElevenSelectedSeedId = null;
       this.chapterElevenSelectedCropId = null;
       this.chapterElevenSelectedPetEggType = null;
+      this.chapterElevenSellMenuOpen = false;
+      this.chapterElevenSellChoosing = false;
+      this.chapterElevenSellSelectedCrops.clear();
       this.chapterElevenHeldSeedAnchor.visible = false;
       if (this.chapterElevenHeldSeedModel) {
         this.chapterElevenHeldSeedAnchor.remove(this.chapterElevenHeldSeedModel);
@@ -9217,6 +9266,110 @@ export class Game {
     this.syncHud();
   }
 
+  private getChapterElevenSellMenuItems(): ChapterElevenSellItemView[] {
+    const items: ChapterElevenSellItemView[] = [];
+    this.chapterElevenCropInventory.forEach((count, cropId) => {
+      if (count <= 0) {
+        return;
+      }
+
+      const sellableCrop = this.getChapterElevenSellableCrop(cropId);
+      if (!sellableCrop) {
+        return;
+      }
+
+      items.push({
+        id: cropId,
+        label: sellableCrop.label,
+        count,
+        value: sellableCrop.value,
+      });
+    });
+    return items.sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  private sellChapterElevenSelectedCrops(cropIds: Set<ChapterElevenCropId> | null): void {
+    let total = 0;
+    const soldLabels: string[] = [];
+    const soldCropIds: ChapterElevenCropId[] = [];
+
+    this.chapterElevenCropInventory.forEach((count, cropId) => {
+      if (count <= 0 || (cropIds && !cropIds.has(cropId))) {
+        return;
+      }
+
+      const sellableCrop = this.getChapterElevenSellableCrop(cropId);
+      if (!sellableCrop) {
+        return;
+      }
+
+      total += sellableCrop.value * count;
+      soldLabels.push(`${sellableCrop.label} x${count}`);
+      soldCropIds.push(cropId);
+    });
+
+    if (total <= 0) {
+      this.pushStatus('You have no selected fruit, vegetables, or grown plants to sell.', 2.4);
+      this.syncHud();
+      return;
+    }
+
+    soldCropIds.forEach((cropId) => {
+      this.chapterElevenCropInventory.delete(cropId);
+      this.chapterElevenSellSelectedCrops.delete(cropId);
+    });
+    if (this.chapterElevenSelectedCropId && !this.chapterElevenCropInventory.has(this.chapterElevenSelectedCropId)) {
+      this.chapterElevenSelectedCropId = null;
+    }
+
+    this.chapterElevenMoney += total;
+    this.setChapterElevenSellMenuOpen(false);
+    this.pushStatus(`Sold ${soldLabels.join(', ')} for $${total}. Money: $${this.chapterElevenMoney}.`, 3.2);
+    this.syncHud();
+    this.player.lock();
+  }
+
+  private readonly handleChapterElevenSellAction = (action: ChapterElevenSellAction): void => {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenSellMenuOpen) {
+      return;
+    }
+
+    if (action.type === 'exit') {
+      this.setChapterElevenSellMenuOpen(false);
+      this.player.lock();
+      return;
+    }
+
+    if (action.type === 'sell-all') {
+      this.sellChapterElevenSelectedCrops(null);
+      return;
+    }
+
+    if (action.type === 'choose-plants') {
+      this.chapterElevenSellChoosing = true;
+      this.chapterElevenSellSelectedCrops.clear();
+      this.syncHud();
+      return;
+    }
+
+    if (action.type === 'toggle-crop') {
+      const cropId = action.cropId as ChapterElevenCropId;
+      if ((this.chapterElevenCropInventory.get(cropId) ?? 0) <= 0 || !this.getChapterElevenSellableCrop(cropId)) {
+        return;
+      }
+
+      if (this.chapterElevenSellSelectedCrops.has(cropId)) {
+        this.chapterElevenSellSelectedCrops.delete(cropId);
+      } else {
+        this.chapterElevenSellSelectedCrops.add(cropId);
+      }
+      this.syncHud();
+      return;
+    }
+
+    this.sellChapterElevenSelectedCrops(this.chapterElevenSellSelectedCrops);
+  };
+
   private handleChapterElevenInteract(): void {
     if (this.isNearChapterElevenSeedShop()) {
       this.setChapterElevenSeedShopOpen(true);
@@ -9230,6 +9383,11 @@ export class Game {
     }
 
     if (this.isNearChapterElevenSellStand()) {
+      if (this.chapterElevenTwoActive) {
+        this.setChapterElevenSellMenuOpen(true);
+        this.pushStatus('The Grow-a-Garden Two sell menu opens.', 2.2);
+        return;
+      }
       this.sellChapterElevenCrops();
       return;
     }
@@ -15731,6 +15889,13 @@ export class Game {
       this.chapterElevenMoney,
       this.getChapterElevenSeedShopItems(),
     );
+    this.hud.setChapterElevenSellMenu(
+      this.chapterElevenActive && this.chapterElevenTwoActive && this.chapterElevenSellMenuOpen,
+      this.chapterElevenMoney,
+      this.getChapterElevenSellMenuItems(),
+      this.chapterElevenSellChoosing,
+      Array.from(this.chapterElevenSellSelectedCrops),
+    );
     const chapterSevenPhaseSecondsLeft = this.getChapterSevenPhaseSecondsLeft();
     this.hud.setChapterSevenPhaseTimer(
       this.chapterSevenActive,
@@ -16599,6 +16764,13 @@ export class Game {
       if (result) {
         this.gameplaySfxAudio.playSmallPanel(result.active ?? false);
         this.pushStatus(result.message, 2.2);
+      }
+      return;
+    }
+
+    if (this.chapterElevenActive && this.chapterElevenTwoActive) {
+      if (this.chapterElevenSelectedSeedId) {
+        this.plantChapterElevenSeed(this.getChapterElevenAimGroundPoint());
       }
       return;
     }
@@ -21896,7 +22068,9 @@ export class Game {
       }
 
       if (this.isNearChapterElevenSellStand()) {
-        return 'Press E at the Sell stand to sell harvested crops or refund seeds for a little less than they cost.';
+        return this.chapterElevenTwoActive
+          ? 'Press E at the Sell stand to choose plants, sell all, or exit.'
+          : 'Press E at the Sell stand to sell harvested crops or refund seeds for a little less than they cost.';
       }
 
       const point = this.getChapterElevenAimGroundPoint();
@@ -21922,7 +22096,7 @@ export class Game {
           return `Press E to place the ${this.getChapterElevenPetLabel(this.chapterElevenSelectedPetEggType)} Egg on your farm.`;
         }
         return this.chapterElevenSelectedSeedId
-          ? 'Press E to plant the held seed in this dirt patch.'
+          ? (this.chapterElevenTwoActive ? 'Left click to plant the held seed in this dirt patch.' : 'Press E to plant the held seed in this dirt patch.')
           : 'Select a seed from the hotbar, then press E on dirt to plant.';
       }
 
@@ -28908,6 +29082,9 @@ export class Game {
       enemy.root.visible = false;
     });
     this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenSellMenuOpen = false;
+    this.chapterElevenSellChoosing = false;
+    this.chapterElevenSellSelectedCrops.clear();
     this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
     this.clearChapterElevenGardenState(true);
     this.setPlacementToolActive(true);
@@ -28985,6 +29162,9 @@ export class Game {
     this.resetOfficeTabletState();
     this.clearChapterElevenGardenState(true);
     this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenSellMenuOpen = false;
+    this.chapterElevenSellChoosing = false;
+    this.chapterElevenSellSelectedCrops.clear();
     this.chapterTwoSeatId = null;
     this.chapterTwoClimb = null;
     this.chapterTwoSlide = null;
