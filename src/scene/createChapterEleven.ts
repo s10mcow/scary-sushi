@@ -392,8 +392,15 @@ export function createChapterEleven(): ChapterElevenData {
     addBox(targetStand, `Chapter 11 ${label.toLowerCase()} sign left post`, [0.08, 0.68, 0.08], [1.46, 2.92, -1.26], standDarkWoodMaterial);
     addBox(targetStand, `Chapter 11 ${label.toLowerCase()} sign right post`, [0.08, 0.68, 0.08], [1.46, 2.92, 1.26], standDarkWoodMaterial);
   };
+  const petEggsStand = stand.clone(true);
+  petEggsStand.name = 'Chapter 11 pet eggs old fashioned garden stand';
+  petEggsStand.position.set(-2.61, 0, 52.33);
+  root.add(petEggsStand);
+  addCollider(colliders, -2.61, 52.33, 1.55, 3.02);
+
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'buy seats');
+  addStandLabel(petEggsStand, 'Pet Eggs');
 
   const addSeedPacketPile = (x: number, y: number, z: number): void => {
     const packetPile = new Group();
