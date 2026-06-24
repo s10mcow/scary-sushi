@@ -1451,7 +1451,7 @@ export function createHud(host: HTMLElement): HudController {
     {
       id: 'chapter-11' as const,
       label: 'Chapter 11: Grow a garden',
-      body: 'A big open grass field with no trees, logs, tall grass, or props yet.',
+      body: 'Walk, plant your seeds in your garden.',
     },
     {
       id: 'zombie-fps' as const,

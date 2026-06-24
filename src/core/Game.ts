@@ -13448,8 +13448,8 @@ export class Game {
       return {
         eyebrow: 'Chapter Eleven',
         title: 'Grow a garden',
-        summary: 'Walk around a big open grassy field with no trees, logs, tall grass, or props yet.',
-        buttonText: 'Enter The Field',
+        summary: 'Walk, plant your seeds in your garden.',
+        buttonText: 'Enter the garden',
       };
     }
 
@@ -26518,7 +26518,7 @@ export class Game {
     this.officeModeMenuOpen = false;
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter 11: Grow a garden';
-    this.chapterCardBody = 'A big open grassy field with no trees, logs, tall grass, or props yet.';
+    this.chapterCardBody = 'Walk, plant your seeds in your garden.';
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
