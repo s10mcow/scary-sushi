@@ -127,6 +127,8 @@ import { PlayerController, type PlayerMovementOptions } from '../systems/player/
 import { ZombieController } from '../systems/zombie/ZombieController';
 import {
   createHud,
+  type ChapterElevenEquipmentId,
+  type ChapterElevenEquipmentShopItemView,
   type ChapterElevenSellAction,
   type ChapterElevenSellItemView,
   type ChapterElevenSeedId,
@@ -220,7 +222,20 @@ const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = 2.61;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_Z = 52.33;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE = 5.5;
-const CHAPTER_ELEVEN_VINE_STICK_COST = 25;
+const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
+  id: ChapterElevenEquipmentId;
+  label: string;
+  cost: number;
+  description: string;
+}> = [
+  { id: 'vine-stick', label: 'Vine Stick', cost: 25, description: 'Place by vine seeds, or aim at a plant to remove it.' },
+  { id: 'hoe', label: 'Hoe', cost: 20, description: 'Aim at a planted crop to dig it up.' },
+  { id: 'water-bucket', label: 'Water Bucket', cost: 30, description: 'Water one crop so it grows faster.' },
+  { id: 'sprinkler', label: 'Sprinkler', cost: 75, description: 'Place it on dirt to constantly water nearby crops.' },
+  { id: 'fertilizer', label: 'Fertilizer', cost: 40, description: 'Boost one crop faster than water.' },
+];
+const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 4.25;
+const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   id: ChapterElevenSeedId;
   label: string;
@@ -283,7 +298,6 @@ type ChapterElevenHotbarItem =
   | { kind: 'pet-egg'; id: ChapterElevenPetType }
   | { kind: 'equipment'; id: ChapterElevenEquipmentId };
 type ChapterElevenPetType = 'rabbit' | 'dog' | 'cow' | 'dinosaur';
-type ChapterElevenEquipmentId = 'vine-stick';
 
 interface ChapterElevenCropConfig {
   seedId: ChapterElevenSeedId;
@@ -312,6 +326,13 @@ interface ChapterElevenPlanting {
 }
 
 interface ChapterElevenVineStick {
+  root: Group;
+  x: number;
+  z: number;
+  patch: ChapterElevenDirtPatch;
+}
+
+interface ChapterElevenSprinkler {
   root: Group;
   x: number;
   z: number;
@@ -1588,6 +1609,7 @@ export class Game {
   private chapterSevenCookiePickerOpen = false;
   private chapterSevenGrandpaTradingOpen = false;
   private chapterElevenSeedShopOpen = false;
+  private chapterElevenEquipmentShopOpen = false;
   private chapterElevenSellMenuOpen = false;
   private chapterElevenSellChoosing = false;
   private readonly chapterElevenSellSelectedCrops = new Set<ChapterElevenCropId>();
@@ -1602,6 +1624,7 @@ export class Game {
   private chapterElevenSelectedEquipmentId: ChapterElevenEquipmentId | null = null;
   private readonly chapterElevenPlants: ChapterElevenPlanting[] = [];
   private readonly chapterElevenVineSticks: ChapterElevenVineStick[] = [];
+  private readonly chapterElevenSprinklers: ChapterElevenSprinkler[] = [];
   private readonly chapterElevenCropInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenPetEggInventory = new Map<ChapterElevenPetType, number>();
   private readonly chapterElevenEquipmentInventory = new Map<ChapterElevenEquipmentId, number>();
@@ -2004,6 +2027,7 @@ export class Game {
     this.hud.onChapterSevenCookieTargetSelect(this.handleChapterSevenCookieTargetSelect);
     this.hud.onChapterSevenGrandpaTrade(this.handleChapterSevenGrandpaTrade);
     this.hud.onChapterElevenSeedPurchase(this.handleChapterElevenSeedPurchase);
+    this.hud.onChapterElevenEquipmentPurchase(this.handleChapterElevenEquipmentPurchase);
     this.hud.onChapterElevenSellAction(this.handleChapterElevenSellAction);
     this.hud.onCuratorSave(this.handleCuratorSave);
     this.player.controls.addEventListener('lock', this.handleLockChange);
@@ -2169,10 +2193,11 @@ export class Game {
     }
 
     if (event.code === 'KeyE') {
-      if (this.chapterElevenActive && (this.chapterElevenSeedShopOpen || this.chapterElevenSellMenuOpen)) {
+      if (this.chapterElevenActive && (this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSellMenuOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         this.setChapterElevenSeedShopOpen(false);
+        this.setChapterElevenEquipmentShopOpen(false);
         this.setChapterElevenSellMenuOpen(false);
         this.player.lock();
         this.pushStatus('Menu closed.', 1.2);
@@ -2291,8 +2316,8 @@ export class Game {
     }
 
     const clickedMenu = event.target instanceof Element
-      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-sell-menu');
-    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen || this.chapterElevenSellMenuOpen) {
+      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-sell-menu');
+    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSellMenuOpen) {
       if (clickedMenu) {
         return;
       }
@@ -2304,11 +2329,12 @@ export class Game {
       this.chapterSevenCookiePickerOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
       this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-sell-menu')) {
+    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-sell-menu')) {
       return;
     }
 
@@ -3100,6 +3126,7 @@ export class Game {
       this.officeModeMenuOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
     }
 
@@ -3129,6 +3156,7 @@ export class Game {
       this.officeJumpscareMenuOpen = false;
       this.officeModeMenuOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
     }
 
@@ -3159,6 +3187,7 @@ export class Game {
       this.officeModeMenuOpen = false;
       this.chapterSevenCookiePickerOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
     }
 
@@ -3189,6 +3218,38 @@ export class Game {
       this.officeModeMenuOpen = false;
       this.chapterSevenCookiePickerOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
+      this.chapterElevenEquipmentShopOpen = false;
+      this.chapterElevenSellMenuOpen = false;
+    }
+
+    if (open && this.player.isLocked()) {
+      this.syncHud();
+      this.player.controls.unlock();
+      return;
+    }
+
+    this.syncHud();
+  }
+
+  private setChapterElevenEquipmentShopOpen(open: boolean): void {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+      open = false;
+    }
+
+    if (this.chapterElevenEquipmentShopOpen === open) {
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenEquipmentShopOpen = open;
+    if (open) {
+      this.chapterMenuOpen = false;
+      this.curatorToolOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+      this.chapterSevenCookiePickerOpen = false;
+      this.chapterSevenGrandpaTradingOpen = false;
+      this.chapterElevenSeedShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
     }
 
@@ -3220,6 +3281,7 @@ export class Game {
       this.chapterSevenCookiePickerOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellChoosing = false;
       this.chapterElevenSellSelectedCrops.clear();
     } else {
@@ -7928,7 +7990,7 @@ export class Game {
       return `${this.getChapterElevenPetLabel(item.id)} Egg`;
     }
     if (item.kind === 'equipment') {
-      return item.id === 'vine-stick' ? 'Vine Stick' : 'Equipment';
+      return this.getChapterElevenEquipmentItem(item.id)?.label ?? 'Equipment';
     }
     return this.getChapterElevenCropLabel(item.id);
   }
@@ -8216,6 +8278,44 @@ export class Game {
       twine.position.set(-0.1, 0.28, -0.01);
       twine.rotation.set(Math.PI / 2, 0.1, -0.35);
       root.add(stick, twine);
+    } else if (equipmentId === 'hoe') {
+      const handle = new Mesh(new CylinderGeometry(0.025, 0.035, 0.78, 8), new MeshStandardMaterial({ color: 0x7a4d28, roughness: 0.86 }));
+      handle.name = 'Held garden hoe wooden handle';
+      handle.position.set(-0.05, 0.13, -0.02);
+      handle.rotation.set(0.5, 0.08, -0.4);
+      const blade = new Mesh(new BoxGeometry(0.34, 0.055, 0.12), new MeshStandardMaterial({ color: 0x707070, roughness: 0.55, metalness: 0.35 }));
+      blade.name = 'Held garden hoe metal blade';
+      blade.position.set(-0.18, 0.43, -0.02);
+      blade.rotation.z = -0.4;
+      root.add(handle, blade);
+    } else if (equipmentId === 'water-bucket') {
+      const bucket = new Mesh(new CylinderGeometry(0.16, 0.13, 0.22, 18), new MeshStandardMaterial({ color: 0x6f8790, roughness: 0.56, metalness: 0.22 }));
+      bucket.name = 'Held water bucket';
+      bucket.position.set(-0.04, 0.04, -0.02);
+      const water = new Mesh(new CircleGeometry(0.13, 20), new MeshStandardMaterial({ color: 0x5fb7e8, roughness: 0.28, transparent: true, opacity: 0.72, side: DoubleSide }));
+      water.name = 'Held water bucket blue water';
+      water.position.set(-0.04, 0.16, -0.02);
+      water.rotation.x = -Math.PI / 2;
+      root.add(bucket, water);
+    } else if (equipmentId === 'sprinkler') {
+      const base = new Mesh(new CylinderGeometry(0.12, 0.16, 0.1, 18), new MeshStandardMaterial({ color: 0x52666c, roughness: 0.58, metalness: 0.28 }));
+      base.name = 'Held sprinkler base';
+      base.position.set(-0.04, 0.02, -0.02);
+      const stem = new Mesh(new CylinderGeometry(0.03, 0.035, 0.26, 10), new MeshStandardMaterial({ color: 0x6c7f84, roughness: 0.54, metalness: 0.35 }));
+      stem.position.set(-0.04, 0.2, -0.02);
+      const head = new Mesh(new BoxGeometry(0.34, 0.05, 0.08), new MeshStandardMaterial({ color: 0x46565b, roughness: 0.5, metalness: 0.35 }));
+      head.position.set(-0.04, 0.35, -0.02);
+      root.add(base, stem, head);
+    } else if (equipmentId === 'fertilizer') {
+      const bag = new Mesh(new BoxGeometry(0.32, 0.42, 0.08), new MeshStandardMaterial({ color: 0xe1c66b, roughness: 0.82 }));
+      bag.name = 'Held fertilizer bag';
+      bag.position.set(-0.04, 0.08, -0.02);
+      bag.rotation.z = -0.1;
+      const label = new Mesh(new BoxGeometry(0.24, 0.12, 0.01), new MeshStandardMaterial({ color: 0x3f7d31, roughness: 0.72 }));
+      label.name = 'Held fertilizer green label';
+      label.position.set(-0.04, 0.1, -0.066);
+      label.rotation.z = -0.1;
+      root.add(bag, label);
     }
 
     root.scale.setScalar(1.14);
@@ -8237,6 +8337,8 @@ export class Game {
       || !this.player.isLocked()
       || this.chapterMenuOpen
       || this.chapterElevenSeedShopOpen
+      || this.chapterElevenEquipmentShopOpen
+      || this.chapterElevenSellMenuOpen
       || this.placementToolActive
       || !heldKey
       || (this.chapterElevenSelectedSeedId !== null && (this.chapterElevenSeedInventory.get(this.chapterElevenSelectedSeedId) ?? 0) <= 0)
@@ -9038,9 +9140,21 @@ export class Game {
       return;
     }
 
+    this.chapterElevenSprinklers.forEach((sprinkler) => {
+      sprinkler.root.rotation.y += deltaSeconds * 2.8;
+    });
+
     this.chapterElevenPlants.forEach((plant) => {
       const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
       plant.age += deltaSeconds;
+      if (!plant.mature) {
+        const sprinklerCount = this.chapterElevenSprinklers.filter((sprinkler) => (
+          Math.hypot(sprinkler.x - plant.x, sprinkler.z - plant.z) <= CHAPTER_ELEVEN_SPRINKLER_RADIUS
+        )).length;
+        if (sprinklerCount > 0) {
+          plant.age += deltaSeconds * (CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER + Math.min(2, sprinklerCount - 1) * 0.35);
+        }
+      }
       const nextStage: ChapterElevenPlantStage = plant.age >= config.matureSeconds
         ? 'mature'
         : plant.age >= config.babySeconds
@@ -9352,8 +9466,14 @@ export class Game {
         stick.root.parent.remove(stick.root);
       }
     });
+    this.chapterElevenSprinklers.forEach((sprinkler) => {
+      if (sprinkler.root.parent) {
+        sprinkler.root.parent.remove(sprinkler.root);
+      }
+    });
     this.chapterElevenPlants.length = 0;
     this.chapterElevenVineSticks.length = 0;
+    this.chapterElevenSprinklers.length = 0;
     this.chapterElevenPlacedPetEggs.length = 0;
     this.chapterElevenPets.length = 0;
     this.chapterElevenCropInventory.clear();
@@ -9370,6 +9490,7 @@ export class Game {
       this.chapterElevenSelectedPetEggType = null;
       this.chapterElevenSelectedEquipmentId = null;
       this.chapterElevenPetEggsBought = 0;
+      this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
       this.chapterElevenSellChoosing = false;
       this.chapterElevenSellSelectedCrops.clear();
@@ -9418,24 +9539,45 @@ export class Game {
     ) <= CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE;
   }
 
-  private buyChapterElevenVineStick(): void {
-    if (this.chapterElevenMoney < CHAPTER_ELEVEN_VINE_STICK_COST) {
-      this.pushStatus(`Vine Sticks cost $${CHAPTER_ELEVEN_VINE_STICK_COST}. You need more money.`, 2.4);
+  private getChapterElevenEquipmentItem(equipmentId: ChapterElevenEquipmentId) {
+    return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.find((item) => item.id === equipmentId) ?? null;
+  }
+
+  private getChapterElevenEquipmentShopItems(): ChapterElevenEquipmentShopItemView[] {
+    return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.map((item) => ({
+      ...item,
+      enabled: this.chapterElevenMoney >= item.cost,
+    }));
+  }
+
+  private readonly handleChapterElevenEquipmentPurchase = (equipmentId: ChapterElevenEquipmentId): void => {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenEquipmentShopOpen) {
       return;
     }
 
-    this.chapterElevenMoney -= CHAPTER_ELEVEN_VINE_STICK_COST;
-    this.chapterElevenEquipmentInventory.set('vine-stick', (this.chapterElevenEquipmentInventory.get('vine-stick') ?? 0) + 1);
+    const item = this.getChapterElevenEquipmentItem(equipmentId);
+    if (!item) {
+      return;
+    }
+
+    if (this.chapterElevenMoney < item.cost) {
+      this.pushStatus(`You need $${item.cost - this.chapterElevenMoney} more for ${item.label}.`, 2.4);
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenMoney -= item.cost;
+    this.chapterElevenEquipmentInventory.set(equipmentId, (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) + 1);
     this.chapterElevenSelectedSeedId = null;
     this.chapterElevenSelectedCropId = null;
     this.chapterElevenSelectedPetEggType = null;
-    this.chapterElevenSelectedEquipmentId = 'vine-stick';
+    this.chapterElevenSelectedEquipmentId = equipmentId;
     this.placementToolActive = false;
     this.placementPreview.visible = false;
     const hotbarSlot = this.getCurrentChapterElevenHotbarSlot();
-    this.pushStatus(`Bought a Vine Stick for $${CHAPTER_ELEVEN_VINE_STICK_COST}. It is in hotbar slot ${hotbarSlot}.`, 2.8);
+    this.pushStatus(`Bought ${item.label}. It is in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 2.8);
     this.syncHud();
-  }
+  };
 
   private chooseChapterElevenPetEggType(purchaseNumber: number): ChapterElevenPetType {
     const roll = Math.random();
@@ -9680,6 +9822,55 @@ export class Game {
     return root;
   }
 
+  private createChapterElevenSprinklerWorldModel(): Group {
+    const root = new Group();
+    root.name = 'Chapter 11 placed sprinkler';
+    const metalMaterial = new MeshStandardMaterial({ color: 0x607178, roughness: 0.55, metalness: 0.34 });
+    const waterMaterial = new MeshStandardMaterial({ color: 0x79c8ff, roughness: 0.24, transparent: true, opacity: 0.55 });
+    const base = new Mesh(new CylinderGeometry(0.18, 0.24, 0.12, 20), metalMaterial);
+    base.name = 'Chapter 11 sprinkler round base';
+    base.position.y = 0.14;
+    const stem = new Mesh(new CylinderGeometry(0.035, 0.04, 0.38, 10), metalMaterial);
+    stem.name = 'Chapter 11 sprinkler upright stem';
+    stem.position.y = 0.38;
+    const head = new Mesh(new BoxGeometry(0.48, 0.06, 0.1), metalMaterial);
+    head.name = 'Chapter 11 sprinkler spinning head';
+    head.position.y = 0.6;
+    const waterA = new Mesh(new CylinderGeometry(0.01, 0.018, 1.55, 8), waterMaterial);
+    waterA.name = 'Chapter 11 sprinkler water stream';
+    waterA.position.set(0.52, 0.53, 0);
+    waterA.rotation.z = Math.PI / 2.8;
+    const waterB = waterA.clone();
+    waterB.position.x = -0.52;
+    waterB.rotation.z = -Math.PI / 2.8;
+    root.add(base, stem, head, waterA, waterB);
+    return root;
+  }
+
+  private deleteChapterElevenPlant(plant: ChapterElevenPlanting): void {
+    if (plant.root.parent) {
+      plant.root.parent.remove(plant.root);
+    }
+    const index = this.chapterElevenPlants.indexOf(plant);
+    if (index >= 0) {
+      this.chapterElevenPlants.splice(index, 1);
+    }
+  }
+
+  private consumeChapterElevenEquipment(equipmentId: ChapterElevenEquipmentId): void {
+    const nextCount = Math.max(0, (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) - 1);
+    if (nextCount > 0) {
+      this.chapterElevenEquipmentInventory.set(equipmentId, nextCount);
+      return;
+    }
+
+    this.chapterElevenEquipmentInventory.delete(equipmentId);
+    if (this.chapterElevenSelectedEquipmentId === equipmentId) {
+      this.chapterElevenSelectedEquipmentId = null;
+      this.chapterElevenHeldSeedAnchor.visible = false;
+    }
+  }
+
   private findNearbyChapterElevenVineStick(x: number, z: number, maxDistance = 1.35): ChapterElevenVineStick | null {
     let closest: ChapterElevenVineStick | null = null;
     let closestDistance = Infinity;
@@ -9723,16 +9914,98 @@ export class Game {
       patch: { ...patch },
     });
 
-    const nextCount = Math.max(0, (this.chapterElevenEquipmentInventory.get('vine-stick') ?? 0) - 1);
-    if (nextCount > 0) {
-      this.chapterElevenEquipmentInventory.set('vine-stick', nextCount);
-    } else {
-      this.chapterElevenEquipmentInventory.delete('vine-stick');
-      this.chapterElevenSelectedEquipmentId = null;
-    }
+    this.consumeChapterElevenEquipment('vine-stick');
     this.pushStatus('Vine Stick placed. Plant vine seeds close to it.', 2.4);
     this.syncHud();
     return true;
+  }
+
+  private placeChapterElevenSprinkler(point: Vector3): boolean {
+    if (this.chapterElevenSelectedEquipmentId !== 'sprinkler' || (this.chapterElevenEquipmentInventory.get('sprinkler') ?? 0) <= 0) {
+      return false;
+    }
+
+    const patch = this.getChapterElevenDirtPatchAt(point);
+    if (!patch) {
+      this.pushStatus('Place sprinklers inside a dirt patch.', 2.2);
+      return true;
+    }
+
+    const root = this.createChapterElevenSprinklerWorldModel();
+    root.position.set(
+      MathUtils.clamp(point.x, patch.centerX - patch.halfWidth + 0.65, patch.centerX + patch.halfWidth - 0.65),
+      0,
+      MathUtils.clamp(point.z, patch.centerZ - patch.halfDepth + 0.65, patch.centerZ + patch.halfDepth - 0.65),
+    );
+    this.chapterEleven.root.add(root);
+    this.chapterElevenSprinklers.push({
+      root,
+      x: root.position.x,
+      z: root.position.z,
+      patch: { ...patch },
+    });
+    this.consumeChapterElevenEquipment('sprinkler');
+    this.pushStatus('Sprinkler placed. Nearby plants will keep growing faster.', 2.6);
+    this.syncHud();
+    return true;
+  }
+
+  private useChapterElevenEquipment(point: Vector3): boolean {
+    const equipmentId = this.chapterElevenSelectedEquipmentId;
+    if (!equipmentId || (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) <= 0) {
+      return false;
+    }
+
+    if (equipmentId === 'sprinkler') {
+      return this.placeChapterElevenSprinkler(point);
+    }
+
+    const targetPlant = this.findChapterElevenTargetPlant(point);
+    if (equipmentId === 'vine-stick') {
+      if (targetPlant) {
+        this.deleteChapterElevenPlant(targetPlant);
+        this.pushStatus('Vine Stick knocked out that plant.', 2.1);
+        this.syncHud();
+        return true;
+      }
+      return this.placeChapterElevenVineStick(point);
+    }
+
+    if (equipmentId === 'hoe') {
+      if (!targetPlant) {
+        this.pushStatus('Aim the hoe at a planted crop to dig it up.', 2.1);
+        return true;
+      }
+      this.deleteChapterElevenPlant(targetPlant);
+      this.pushStatus('Hoe dug up the plant.', 2.1);
+      this.syncHud();
+      return true;
+    }
+
+    if (equipmentId === 'water-bucket') {
+      if (!targetPlant) {
+        this.pushStatus('Aim the water bucket at a planted crop to water it.', 2.1);
+        return true;
+      }
+      targetPlant.age += 8;
+      this.pushStatus('Watered the plant. It will grow faster.', 2.1);
+      this.syncHud();
+      return true;
+    }
+
+    if (equipmentId === 'fertilizer') {
+      if (!targetPlant) {
+        this.pushStatus('Aim fertilizer at a planted crop to boost it.', 2.1);
+        return true;
+      }
+      targetPlant.age += 18;
+      this.consumeChapterElevenEquipment('fertilizer');
+      this.pushStatus('Fertilizer boosted the plant faster than water.', 2.3);
+      this.syncHud();
+      return true;
+    }
+
+    return false;
   }
 
   private placeChapterElevenPetEgg(point: Vector3): boolean {
@@ -10246,7 +10519,8 @@ export class Game {
     }
 
     if (this.isNearChapterElevenEquipmentStand()) {
-      this.buyChapterElevenVineStick();
+      this.setChapterElevenEquipmentShopOpen(true);
+      this.pushStatus('The Equipment shop opens.', 2.2);
       return;
     }
 
@@ -10261,7 +10535,7 @@ export class Game {
     }
 
     const point = this.getChapterElevenAimGroundPoint();
-    if (this.placeChapterElevenVineStick(point)) {
+    if (this.useChapterElevenEquipment(point)) {
       return;
     }
 
@@ -16761,6 +17035,11 @@ export class Game {
       this.chapterElevenMoney,
       this.getChapterElevenSeedShopItems(),
     );
+    this.hud.setChapterElevenEquipmentShop(
+      this.chapterElevenActive && this.chapterElevenTwoActive && this.chapterElevenEquipmentShopOpen,
+      this.chapterElevenMoney,
+      this.getChapterElevenEquipmentShopItems(),
+    );
     this.hud.setChapterElevenSellMenu(
       this.chapterElevenActive && this.chapterElevenTwoActive && this.chapterElevenSellMenuOpen,
       this.chapterElevenMoney,
@@ -17643,7 +17922,7 @@ export class Game {
 
     if (this.chapterElevenActive && this.chapterElevenTwoActive) {
       if (this.chapterElevenSelectedEquipmentId) {
-        this.placeChapterElevenVineStick(this.getChapterElevenAimGroundPoint());
+        this.useChapterElevenEquipment(this.getChapterElevenAimGroundPoint());
         return;
       }
       if (this.chapterElevenSelectedSeedId) {
@@ -22948,7 +23227,7 @@ export class Game {
       }
 
       if (this.isNearChapterElevenEquipmentStand()) {
-        return `Press E by the Equipment seller to buy a Vine Stick for $${CHAPTER_ELEVEN_VINE_STICK_COST}.`;
+        return 'Press E by the Equipment seller to buy tools.';
       }
 
       if (this.isNearChapterElevenSellStand()) {
@@ -22977,7 +23256,19 @@ export class Game {
 
       if (this.getChapterElevenDirtPatchAt(point)) {
         if (this.chapterElevenSelectedEquipmentId === 'vine-stick') {
-          return 'Left click or press E to place the Vine Stick in this dirt patch.';
+          return 'Left click or press E to place the Vine Stick here, or aim at a plant to remove it.';
+        }
+        if (this.chapterElevenSelectedEquipmentId === 'sprinkler') {
+          return 'Left click or press E to place the Sprinkler in this dirt patch.';
+        }
+        if (this.chapterElevenSelectedEquipmentId === 'hoe') {
+          return 'Aim at a plant and left click or press E to dig it up.';
+        }
+        if (this.chapterElevenSelectedEquipmentId === 'water-bucket') {
+          return 'Aim at a plant and left click or press E to water it.';
+        }
+        if (this.chapterElevenSelectedEquipmentId === 'fertilizer') {
+          return 'Aim at a plant and left click or press E to fertilize it.';
         }
         if (this.chapterElevenSelectedPetEggType) {
           return `Press E to place the ${this.getChapterElevenPetLabel(this.chapterElevenSelectedPetEggType)} Egg on your farm.`;
@@ -28337,6 +28628,7 @@ export class Game {
     this.chapterNine.reset();
     this.chapterTen.reset();
     this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenEquipmentShopOpen = false;
     this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
     this.clearChapterElevenGardenState(true);
     this.zombieMode.reset();
@@ -29212,6 +29504,7 @@ export class Game {
     this.chapterSevenOvenHidden = false;
     this.chapterSevenSwingSeated = false;
     this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenEquipmentShopOpen = false;
     this.chapterSeven.setSwingOccupied(false);
     this.chapterFourBoxHeldAnchor.visible = false;
     this.chapterFourBoxHideAnchor.visible = false;
@@ -29597,6 +29890,7 @@ export class Game {
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
     this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenEquipmentShopOpen = false;
     this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
     this.clearChapterElevenGardenState(true);
     this.resetChapterFourPurpleJumpscare();
@@ -29969,6 +30263,7 @@ export class Game {
       enemy.root.visible = false;
     });
     this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenEquipmentShopOpen = false;
     this.chapterElevenSellMenuOpen = false;
     this.chapterElevenSellChoosing = false;
     this.chapterElevenSellSelectedCrops.clear();
@@ -30049,6 +30344,7 @@ export class Game {
     this.resetOfficeTabletState();
     this.clearChapterElevenGardenState(true);
     this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenEquipmentShopOpen = false;
     this.chapterElevenSellMenuOpen = false;
     this.chapterElevenSellChoosing = false;
     this.chapterElevenSellSelectedCrops.clear();

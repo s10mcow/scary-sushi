@@ -2135,6 +2135,7 @@ select {
 .hud__chapter-seven-cookie-picker,
 .hud__chapter-seven-trading,
 .hud__chapter-eleven-seed-shop,
+.hud__chapter-eleven-equipment-shop,
 .hud__chapter-eleven-sell-menu,
 .hud__tablet-cameras,
 .hud__tablet-camera-title,
@@ -2731,7 +2732,8 @@ select {
   transform: translate(-50%, -47%) scale(0.98);
 }
 
-.hud__chapter-eleven-seed-shop {
+.hud__chapter-eleven-seed-shop,
+.hud__chapter-eleven-equipment-shop {
   left: 50%;
   top: 50%;
   z-index: 12;
@@ -2761,7 +2763,8 @@ select {
   transform: translate(-50%, -50%) scale(1);
 }
 
-.hud__chapter-eleven-seed-shop[data-active="true"] {
+.hud__chapter-eleven-seed-shop[data-active="true"],
+.hud__chapter-eleven-equipment-shop[data-active="true"] {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, -50%) scale(1);
@@ -2785,7 +2788,8 @@ select {
   gap: 0.75rem;
 }
 
-.hud__chapter-eleven-seed-shop .hud__chapter-seven-trading-options {
+.hud__chapter-eleven-seed-shop .hud__chapter-seven-trading-options,
+.hud__chapter-eleven-equipment-shop .hud__chapter-seven-trading-options {
   max-height: min(25rem, 56vh);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -5216,6 +5220,7 @@ select {
   .hud__chapter-seven-cookie-picker,
   .hud__chapter-seven-trading,
   .hud__chapter-eleven-seed-shop,
+  .hud__chapter-eleven-equipment-shop,
   .hud__chapter-eleven-sell-menu,
   .hud__chapter-seven-timer,
   .hud__tablet-cameras {

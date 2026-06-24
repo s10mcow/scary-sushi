@@ -98,6 +98,7 @@ export interface HudController {
   onChapterSevenCookieTargetSelect(handler: (target: number) => void): void;
   onChapterSevenGrandpaTrade(handler: (tradeId: ChapterSevenGrandpaTradeId) => void): void;
   onChapterElevenSeedPurchase(handler: (seedId: ChapterElevenSeedId) => void): void;
+  onChapterElevenEquipmentPurchase(handler: (equipmentId: ChapterElevenEquipmentId) => void): void;
   onChapterElevenSellAction(handler: (action: ChapterElevenSellAction) => void): void;
   onCuratorSave(handler: (slotLabel: string, summary: string) => void): void;
   setTheme(theme: 'default' | 'doom'): void;
@@ -115,6 +116,7 @@ export interface HudController {
   setChapterSevenCookiePicker(active: boolean, currentTarget: number): void;
   setChapterSevenTrading(active: boolean, cookies: number, trades: ChapterSevenGrandpaTradeView[]): void;
   setChapterElevenSeedShop(active: boolean, money: number, items: ChapterElevenSeedShopItemView[]): void;
+  setChapterElevenEquipmentShop(active: boolean, money: number, items: ChapterElevenEquipmentShopItemView[]): void;
   setChapterElevenSellMenu(active: boolean, money: number, items: ChapterElevenSellItemView[], choosing: boolean, selectedIds: string[]): void;
   setChapterElevenSeedHotbar(active: boolean, slots: HotbarSlotView[]): void;
   setMoney(value: number): void;
@@ -185,6 +187,13 @@ export type ChapterElevenSeedId =
   | 'vine-seeds'
   | 'cactus-seeds';
 
+export type ChapterElevenEquipmentId =
+  | 'vine-stick'
+  | 'hoe'
+  | 'water-bucket'
+  | 'sprinkler'
+  | 'fertilizer';
+
 export interface ChapterSevenGrandpaTradeView {
   id: ChapterSevenGrandpaTradeId;
   label: string;
@@ -202,6 +211,14 @@ export interface ChapterElevenSeedShopItemView {
   enabled: boolean;
   stock?: number;
   restockSeconds?: number;
+}
+
+export interface ChapterElevenEquipmentShopItemView {
+  id: ChapterElevenEquipmentId;
+  label: string;
+  cost: number;
+  description: string;
+  enabled: boolean;
 }
 
 export type ChapterElevenSellAction =
@@ -564,6 +581,7 @@ export function createHud(host: HTMLElement): HudController {
   let chapterSevenCookieTargetSelectHandler: ((target: number) => void) | null = null;
   let chapterSevenGrandpaTradeHandler: ((tradeId: ChapterSevenGrandpaTradeId) => void) | null = null;
   let chapterElevenSeedPurchaseHandler: ((seedId: ChapterElevenSeedId) => void) | null = null;
+  let chapterElevenEquipmentPurchaseHandler: ((equipmentId: ChapterElevenEquipmentId) => void) | null = null;
   let chapterElevenSellActionHandler: ((action: ChapterElevenSellAction) => void) | null = null;
 
   const backdrop = document.createElement('div');
@@ -1209,6 +1227,23 @@ export function createHud(host: HTMLElement): HudController {
   chapterElevenSeedShopOptions.className = 'hud__chapter-seven-trading-options';
 
   chapterElevenSeedShop.append(chapterElevenSeedShopTitle, chapterElevenSeedShopMoney, chapterElevenSeedShopOptions);
+
+  const chapterElevenEquipmentShop = document.createElement('section');
+  chapterElevenEquipmentShop.className = 'hud__chapter-eleven-equipment-shop';
+  chapterElevenEquipmentShop.dataset.active = 'false';
+
+  const chapterElevenEquipmentShopTitle = document.createElement('h2');
+  chapterElevenEquipmentShopTitle.className = 'hud__chapter-seven-cookie-picker-title';
+  chapterElevenEquipmentShopTitle.textContent = 'Equipment';
+
+  const chapterElevenEquipmentShopMoney = document.createElement('p');
+  chapterElevenEquipmentShopMoney.className = 'hud__chapter-seven-trading-cookies';
+  chapterElevenEquipmentShopMoney.textContent = 'Money: $50';
+
+  const chapterElevenEquipmentShopOptions = document.createElement('div');
+  chapterElevenEquipmentShopOptions.className = 'hud__chapter-seven-trading-options';
+
+  chapterElevenEquipmentShop.append(chapterElevenEquipmentShopTitle, chapterElevenEquipmentShopMoney, chapterElevenEquipmentShopOptions);
 
   const chapterElevenSellMenu = document.createElement('section');
   chapterElevenSellMenu.className = 'hud__chapter-eleven-sell-menu';
@@ -2101,6 +2136,7 @@ export function createHud(host: HTMLElement): HudController {
     chapterSevenCookiePicker,
     chapterSevenTrading,
     chapterElevenSeedShop,
+    chapterElevenEquipmentShop,
     chapterElevenSellMenu,
     crosshair,
     moneyPanel,
@@ -2738,6 +2774,9 @@ export function createHud(host: HTMLElement): HudController {
     onChapterElevenSeedPurchase(handler): void {
       chapterElevenSeedPurchaseHandler = handler;
     },
+    onChapterElevenEquipmentPurchase(handler): void {
+      chapterElevenEquipmentPurchaseHandler = handler;
+    },
     onChapterElevenSellAction(handler): void {
       chapterElevenSellActionHandler = handler;
     },
@@ -2881,6 +2920,44 @@ export function createHud(host: HTMLElement): HudController {
         rows.push(button);
       });
       chapterElevenSeedShopOptions.replaceChildren(...rows);
+    },
+    setChapterElevenEquipmentShop(active, money, items): void {
+      chapterElevenEquipmentShop.dataset.active = String(active);
+      const safeMoney = Math.max(0, Math.floor(money));
+      chapterElevenEquipmentShopMoney.textContent = `Money: $${safeMoney}`;
+      const rows = items.map((item) => {
+        const button = document.createElement('button');
+        button.className = 'hud__chapter-seven-trade';
+        button.type = 'button';
+        button.disabled = !item.enabled;
+        button.dataset.equipment = item.id;
+        const title = document.createElement('span');
+        title.className = 'hud__chapter-seven-trade-title';
+        title.textContent = `${item.label} $${item.cost}`;
+        const description = document.createElement('span');
+        description.className = 'hud__chapter-seven-trade-description';
+        description.textContent = item.enabled
+          ? item.description
+          : `Need $${Math.max(0, item.cost - safeMoney)} more / ${item.description}`;
+        button.append(title, description);
+        let purchaseHandled = false;
+        const handlePurchasePointer = (event: Event): void => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (purchaseHandled || button.disabled) {
+            return;
+          }
+
+          purchaseHandled = true;
+          chapterElevenEquipmentPurchaseHandler?.(item.id);
+        };
+        button.addEventListener('pointerdown', handlePurchasePointer);
+        button.addEventListener('mousedown', handlePurchasePointer);
+        button.addEventListener('touchstart', handlePurchasePointer, { passive: false });
+        button.addEventListener('click', handlePurchasePointer);
+        return button;
+      });
+      chapterElevenEquipmentShopOptions.replaceChildren(...rows);
     },
     setChapterElevenSellMenu(active, money, items, choosing, selectedIds): void {
       chapterElevenSellMenu.dataset.active = String(active);
