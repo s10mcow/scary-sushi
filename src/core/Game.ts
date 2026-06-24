@@ -314,6 +314,7 @@ interface ChapterElevenPlacedPetEgg {
   x: number;
   z: number;
   hatchTimer: number;
+  homePatch: ChapterElevenDirtPatch;
 }
 
 interface ChapterElevenPet {
@@ -325,6 +326,7 @@ interface ChapterElevenPet {
   targetX: number;
   targetZ: number;
   actionTimer: number;
+  homePatch: ChapterElevenDirtPatch;
 }
 
 const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCropConfig> = {
@@ -8749,19 +8751,53 @@ export class Game {
       targetX: egg.x,
       targetZ: egg.z,
       actionTimer: 4 + Math.random() * 4,
+      homePatch: egg.homePatch,
     });
     this.pushStatus(`${this.getChapterElevenPetLabel(egg.petType)} Egg hatched.`, 2.6);
   }
 
+  private isPointInChapterElevenPatch(x: number, z: number, patch: ChapterElevenDirtPatch, margin = 0): boolean {
+    return x >= patch.centerX - patch.halfWidth + margin
+      && x <= patch.centerX + patch.halfWidth - margin
+      && z >= patch.centerZ - patch.halfDepth + margin
+      && z <= patch.centerZ + patch.halfDepth - margin;
+  }
+
+  private clampChapterElevenPointToPatch(x: number, z: number, patch: ChapterElevenDirtPatch, margin = 0.55): { x: number; z: number } {
+    return {
+      x: MathUtils.clamp(x, patch.centerX - patch.halfWidth + margin, patch.centerX + patch.halfWidth - margin),
+      z: MathUtils.clamp(z, patch.centerZ - patch.halfDepth + margin, patch.centerZ + patch.halfDepth - margin),
+    };
+  }
+
   private chooseChapterElevenPetTarget(pet: ChapterElevenPet): void {
-    const bounds = this.chapterEleven.fieldBounds;
-    pet.targetX = MathUtils.clamp(pet.x + (Math.random() - 0.5) * 11, bounds.minX + 3, bounds.maxX - 3);
-    pet.targetZ = MathUtils.clamp(pet.z + (Math.random() - 0.5) * 11, bounds.minZ + 3, bounds.maxZ - 3);
+    const target = this.clampChapterElevenPointToPatch(
+      pet.x + (Math.random() - 0.5) * 7,
+      pet.z + (Math.random() - 0.5) * 7,
+      pet.homePatch,
+      0.75,
+    );
+    pet.targetX = target.x;
+    pet.targetZ = target.z;
+  }
+
+  private findChapterElevenRabbitCarrotTarget(pet: ChapterElevenPet): ChapterElevenPlanting | null {
+    if (pet.petType !== 'rabbit') {
+      return null;
+    }
+
+    return this.chapterElevenPlants
+      .filter((plant) => (
+        plant.cropId === 'carrot'
+        && plant.mature
+        && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
+      ))
+      .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0] ?? null;
   }
 
   private updateChapterElevenPetAction(pet: ChapterElevenPet): void {
     if (pet.petType === 'rabbit') {
-      const carrot = this.chapterElevenPlants.find((plant) => plant.cropId === 'carrot' && plant.mature);
+      const carrot = this.findChapterElevenRabbitCarrotTarget(pet);
       if (carrot) {
         this.addChapterElevenCropToInventory(carrot.golden ? 'golden-carrot' : 'carrot');
         this.chapterEleven.root.remove(carrot.root);
@@ -8773,7 +8809,7 @@ export class Game {
 
     if (pet.petType === 'dog') {
       const plant = this.chapterElevenPlants
-        .filter((candidate) => !candidate.mature)
+        .filter((candidate) => !candidate.mature && this.isPointInChapterElevenPatch(candidate.x, candidate.z, pet.homePatch, 0.1))
         .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0];
       if (plant) {
         plant.age += 8;
@@ -8784,7 +8820,11 @@ export class Game {
 
     const radius = pet.petType === 'dinosaur' ? 1.15 : 0.72;
     const trampled = this.chapterElevenPlants
-      .filter((plant) => plant.mature && Math.hypot(plant.x - pet.x, plant.z - pet.z) <= radius)
+      .filter((plant) => (
+        plant.mature
+        && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
+        && Math.hypot(plant.x - pet.x, plant.z - pet.z) <= radius
+      ))
       .slice(0, pet.petType === 'dinosaur' ? 2 : 1);
     trampled.forEach((plant) => this.trampleChapterElevenPlantIntoInventory(plant));
     if (trampled.length > 0) {
@@ -8808,17 +8848,30 @@ export class Game {
     }
 
     this.chapterElevenPets.forEach((pet) => {
+      const rabbitCarrot = this.findChapterElevenRabbitCarrotTarget(pet);
+      if (rabbitCarrot) {
+        pet.targetX = rabbitCarrot.x;
+        pet.targetZ = rabbitCarrot.z;
+      }
+
       const toTarget = new Vector3(pet.targetX - pet.x, 0, pet.targetZ - pet.z);
       const distance = Math.hypot(toTarget.x, toTarget.z);
       if (distance < 0.25) {
+        if (rabbitCarrot) {
+          this.updateChapterElevenPetAction(pet);
+          pet.actionTimer = 5 + Math.random() * 2;
+        }
         this.chooseChapterElevenPetTarget(pet);
       } else {
-        const speed = pet.petType === 'dinosaur' ? 1.1 : pet.petType === 'rabbit' ? 1.45 : 1.25;
+        const speed = rabbitCarrot ? 2.45 : pet.petType === 'dinosaur' ? 1.1 : pet.petType === 'rabbit' ? 1.45 : 1.25;
         const step = Math.min(distance, speed * deltaSeconds);
         pet.x += (toTarget.x / distance) * step;
         pet.z += (toTarget.z / distance) * step;
+        const clamped = this.clampChapterElevenPointToPatch(pet.x, pet.z, pet.homePatch, 0.42);
+        pet.x = clamped.x;
+        pet.z = clamped.z;
         pet.root.position.set(pet.x, 0, pet.z);
-        pet.root.rotation.y = Math.atan2(toTarget.x, toTarget.z) + Math.PI / 2;
+        pet.root.rotation.y = Math.atan2(-toTarget.z, toTarget.x);
       }
 
       pet.actionTimer -= deltaSeconds;
@@ -8955,6 +9008,8 @@ export class Game {
     const bodyColor = petType === 'rabbit' ? 0xe9e4d8 : petType === 'dog' ? 0xa56b3c : petType === 'cow' ? 0xf0eadf : 0x6e9d55;
     const bodyMaterial = new MeshStandardMaterial({ color: bodyColor, roughness: 0.72 });
     const darkMaterial = new MeshStandardMaterial({ color: petType === 'cow' ? 0x1c1814 : 0x2a1c12, roughness: 0.8 });
+    const noseMaterial = new MeshStandardMaterial({ color: petType === 'rabbit' ? 0xe7a8b0 : 0x17110d, roughness: 0.7 });
+    const pawMaterial = new MeshStandardMaterial({ color: petType === 'rabbit' ? 0xd8d1c5 : petType === 'dog' ? 0x7b4a2c : petType === 'cow' ? 0x201a15 : 0x4f773f, roughness: 0.84 });
     const body = new Mesh(new SphereGeometry(petType === 'dinosaur' ? 0.36 : 0.28, 18, 12), bodyMaterial);
     body.position.y = petType === 'dinosaur' ? 0.48 : 0.36;
     body.scale.set(petType === 'dinosaur' ? 1.45 : 1.2, 0.72, 0.8);
@@ -8969,12 +9024,31 @@ export class Game {
       eye.position.set(0.49, petType === 'dinosaur' ? 0.67 : 0.5, z);
       root.add(eye);
     });
+    const nose = new Mesh(new SphereGeometry(petType === 'cow' ? 0.08 : 0.05, 10, 8), noseMaterial);
+    nose.name = `Chapter 11 ${this.getChapterElevenPetLabel(petType)} nose`;
+    nose.position.set(0.53, petType === 'dinosaur' ? 0.6 : 0.43, 0);
+    nose.scale.set(1.05, 0.68, petType === 'cow' ? 1.45 : 1);
+    root.add(nose);
     if (petType === 'rabbit') {
       [-0.07, 0.07].forEach((z) => {
         const ear = new Mesh(new BoxGeometry(0.06, 0.34, 0.045), bodyMaterial);
         ear.position.set(0.34, 0.78, z);
         ear.rotation.z = -0.14;
         root.add(ear);
+        const innerEar = new Mesh(new BoxGeometry(0.025, 0.24, 0.018), new MeshStandardMaterial({ color: 0xe7b3bb, roughness: 0.75 }));
+        innerEar.position.set(0.375, 0.79, z);
+        innerEar.rotation.z = -0.14;
+        root.add(innerEar);
+      });
+      const tail = new Mesh(new SphereGeometry(0.095, 12, 8), bodyMaterial);
+      tail.name = 'Chapter 11 rabbit round tail';
+      tail.position.set(-0.34, 0.39, 0);
+      root.add(tail);
+      [-0.05, 0.05].forEach((z) => {
+        const whisker = new Mesh(new BoxGeometry(0.18, 0.008, 0.008), darkMaterial);
+        whisker.position.set(0.58, 0.45, z);
+        whisker.rotation.y = z < 0 ? 0.24 : -0.24;
+        root.add(whisker);
       });
     } else if (petType === 'dog') {
       [-0.18, 0.18].forEach((z) => {
@@ -8983,6 +9057,16 @@ export class Game {
         ear.rotation.z = 0.25;
         root.add(ear);
       });
+      const snout = new Mesh(new SphereGeometry(0.105, 12, 8), new MeshStandardMaterial({ color: 0x8a5836, roughness: 0.76 }));
+      snout.name = 'Chapter 11 dog rounded snout';
+      snout.position.set(0.5, 0.42, 0);
+      snout.scale.set(1.35, 0.68, 1);
+      root.add(snout);
+      const tail = new Mesh(new CylinderGeometry(0.025, 0.035, 0.34, 8), bodyMaterial);
+      tail.name = 'Chapter 11 dog raised tail';
+      tail.position.set(-0.42, 0.5, 0);
+      tail.rotation.z = -0.75;
+      root.add(tail);
     } else if (petType === 'cow') {
       [[-0.18, -0.22], [0.18, 0.22]].forEach(([z, hornZ]) => {
         const spot = new Mesh(new SphereGeometry(0.12, 10, 8), darkMaterial);
@@ -8994,6 +9078,16 @@ export class Game {
         horn.rotation.z = -Math.PI / 2;
         root.add(horn);
       });
+      const udder = new Mesh(new SphereGeometry(0.1, 12, 8), new MeshStandardMaterial({ color: 0xe8b0b5, roughness: 0.76 }));
+      udder.name = 'Chapter 11 cow small udder';
+      udder.position.set(-0.12, 0.22, 0);
+      udder.scale.set(1, 0.52, 1.28);
+      root.add(udder);
+      const tail = new Mesh(new CylinderGeometry(0.018, 0.026, 0.38, 8), darkMaterial);
+      tail.name = 'Chapter 11 cow tail';
+      tail.position.set(-0.45, 0.48, 0);
+      tail.rotation.z = -0.55;
+      root.add(tail);
     } else {
       for (let index = 0; index < 5; index += 1) {
         const plate = new Mesh(new ConeGeometry(0.055, 0.18, 5), new MeshStandardMaterial({ color: 0x3f6d35, roughness: 0.78 }));
@@ -9001,11 +9095,19 @@ export class Game {
         plate.rotation.x = Math.PI / 2;
         root.add(plate);
       }
+      const tail = new Mesh(new ConeGeometry(0.12, 0.58, 10), bodyMaterial);
+      tail.name = 'Chapter 11 dinosaur tapered tail';
+      tail.position.set(-0.62, 0.43, 0);
+      tail.rotation.z = Math.PI / 2;
+      root.add(tail);
     }
     [-0.22, 0.22].forEach((x) => [-0.16, 0.16].forEach((z) => {
       const leg = new Mesh(new CylinderGeometry(0.035, 0.045, 0.24, 8), darkMaterial);
       leg.position.set(x, 0.16, z);
-      root.add(leg);
+      const paw = new Mesh(new SphereGeometry(0.055, 10, 6), pawMaterial);
+      paw.position.set(x + 0.03, 0.035, z);
+      paw.scale.set(1.3, 0.36, 0.95);
+      root.add(leg, paw);
     }));
     return root;
   }
@@ -9036,6 +9138,7 @@ export class Game {
       x: root.position.x,
       z: root.position.z,
       hatchTimer: CHAPTER_ELEVEN_PET_EGG_HATCH_SECONDS,
+      homePatch: { ...patch },
     });
     this.chapterElevenNextPetId += 1;
     const nextCount = Math.max(0, (this.chapterElevenPetEggInventory.get(petType) ?? 0) - 1);
