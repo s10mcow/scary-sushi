@@ -112,6 +112,7 @@ export interface HudController {
   setChapterSevenCookiePicker(active: boolean, currentTarget: number): void;
   setChapterSevenTrading(active: boolean, cookies: number, trades: ChapterSevenGrandpaTradeView[]): void;
   setChapterElevenSeedShop(active: boolean, money: number, items: ChapterElevenSeedShopItemView[]): void;
+  setChapterElevenSeedHotbar(active: boolean, slots: HotbarSlotView[]): void;
   setMoney(value: number): void;
   setChapterSevenPhaseTimer(active: boolean, phase: 'day' | 'night', secondsLeft: number, urgent: boolean): void;
   setChapterMenu(active: boolean, currentChapter: HudChapterId): void;
@@ -1308,6 +1309,38 @@ export function createHud(host: HTMLElement): HudController {
 
   hotbar.append(hotbarLabel, ...hotbarSlots.map((slot) => slot.root));
 
+  const chapterElevenSeedHotbar = document.createElement('section');
+  chapterElevenSeedHotbar.className = 'hud__chapter-eleven-hotbar';
+  chapterElevenSeedHotbar.dataset.active = 'false';
+
+  const chapterElevenSeedHotbarLabel = document.createElement('p');
+  chapterElevenSeedHotbarLabel.className = 'hud__label hud__label--hotbar';
+  chapterElevenSeedHotbarLabel.textContent = 'Seed Hotbar';
+
+  const chapterElevenSeedHotbarSlots = Array.from({ length: 10 }, (_, index) => {
+    const slot = document.createElement('div');
+    slot.className = 'hud__slot hud__chapter-eleven-hotbar-slot';
+    slot.dataset.filled = 'false';
+    slot.dataset.selected = 'false';
+
+    const indexText = document.createElement('span');
+    indexText.className = 'hud__slot-index';
+    indexText.textContent = String(index + 1);
+
+    const valueText = document.createElement('span');
+    valueText.className = 'hud__slot-value';
+    valueText.textContent = 'Empty';
+
+    const countText = document.createElement('span');
+    countText.className = 'hud__slot-count';
+    countText.textContent = 'x0';
+
+    slot.append(indexText, valueText, countText);
+    return { root: slot, valueText, countText };
+  });
+
+  chapterElevenSeedHotbar.append(chapterElevenSeedHotbarLabel, ...chapterElevenSeedHotbarSlots.map((slot) => slot.root));
+
   let minecraftInventoryActionHandler: ((action: MinecraftInventoryAction) => void) | null = null;
   const minecraftInventory = document.createElement('section');
   minecraftInventory.className = 'hud__minecraft-inventory';
@@ -2020,6 +2053,7 @@ export function createHud(host: HTMLElement): HudController {
     statusPanel,
     crouchInstructions,
     hotbar,
+    chapterElevenSeedHotbar,
     minecraftInventory,
     placementTool,
     microphoneTool,
@@ -3122,6 +3156,17 @@ export function createHud(host: HTMLElement): HudController {
         slot.root.dataset.image = String(Boolean(imageUrl));
         slot.image.hidden = !imageUrl;
         slot.image.src = imageUrl ?? '';
+        slot.valueText.textContent = value?.label ?? 'Empty';
+        slot.countText.textContent = `x${value?.filled ? value.count : 0}`;
+      });
+    },
+    setChapterElevenSeedHotbar(active, slots): void {
+      chapterElevenSeedHotbar.dataset.active = String(active);
+      chapterElevenSeedHotbarSlots.forEach((slot, index) => {
+        const value = slots[index];
+        slot.root.dataset.filled = String(Boolean(value?.filled));
+        slot.root.dataset.selected = String(Boolean(value?.selected));
+        slot.root.dataset.item = value?.filled && value.type ? value.type : '';
         slot.valueText.textContent = value?.label ?? 'Empty';
         slot.countText.textContent = `x${value?.filled ? value.count : 0}`;
       });

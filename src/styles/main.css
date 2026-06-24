@@ -2170,6 +2170,32 @@ select {
     filter 120ms ease;
 }
 
+.hud__chapter-eleven-hotbar {
+  position: absolute;
+  left: 50%;
+  bottom: 1.6rem;
+  z-index: 9;
+  display: grid;
+  width: min(70rem, calc(100% - 2rem));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.28rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(0.6rem);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.hud__chapter-eleven-hotbar[data-active="true"] {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.hud__chapter-eleven-hotbar-slot {
+  min-height: 4.45rem;
+}
+
 .hud__minecraft-inventory {
   position: absolute;
   left: 50%;

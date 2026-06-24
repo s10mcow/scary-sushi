@@ -14008,6 +14008,7 @@ export class Game {
         : `${Math.max(0, Math.ceil(OFFICE_VENT_TOXICITY_GRACE_SECONDS - this.officeVentToxicitySeconds))}s`,
     );
     this.hud.setHotbar(hideChapterFourInventory ? [] : this.getHotbarSlots());
+    this.hud.setChapterElevenSeedHotbar(this.chapterElevenActive, this.chapterElevenActive ? this.getHotbarSlots() : []);
     this.hud.setJumpscare(this.getHudJumpScareVariant(), this.getHudJumpScareIntensity());
     const nightModeAttack = this.getNightModeAttackHudState();
     this.hud.setNightModeAttack(
