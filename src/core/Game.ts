@@ -1106,6 +1106,7 @@ export class Game {
   private readonly chapterSixHeldItemAnchor = new Group();
   private readonly chapterSixPettingArmAnchor = new Group();
   private readonly chapterEightHeldItemAnchor = new Group();
+  private readonly chapterElevenHeldSeedAnchor = new Group();
   private readonly placementToolAnchor = new Group();
   private readonly microphoneSoundToolAnchor = new Group();
   private readonly placementMarkerRoot = new Group();
@@ -1167,6 +1168,8 @@ export class Game {
   private chapterEightHeldItem: ChapterEightHeldItem = 'coordinate-tool';
   private chapterEightHeldItemModel: Group | null = null;
   private chapterEightHeldItemModelType: ChapterEightHeldItem | null = null;
+  private chapterElevenHeldSeedModel: Group | null = null;
+  private chapterElevenHeldSeedModelType: ChapterElevenSeedId | null = null;
   private chapterEightKnifeAttackMode: 'slash' | 'stab' | null = null;
   private chapterEightKnifeAttackTimer = 0;
   private chapterNineJumpscare: { event: ChapterNineJumpscareEvent; elapsed: number; duration: number } | null = null;
@@ -1600,6 +1603,10 @@ export class Game {
     this.paintbrushAnchor.rotation.set(-0.08, -0.32, 0.12);
     this.paintbrushAnchor.visible = false;
     this.createPaintbrushModel();
+    this.camera.add(this.chapterElevenHeldSeedAnchor);
+    this.chapterElevenHeldSeedAnchor.position.set(0.43, -0.38, -0.66);
+    this.chapterElevenHeldSeedAnchor.rotation.set(-0.18, -0.34, 0.12);
+    this.chapterElevenHeldSeedAnchor.visible = false;
     this.camera.add(this.chapterFourBoxHeldAnchor);
     this.chapterFourBoxHeldAnchor.position.set(0.36, -0.46, -0.64);
     this.chapterFourBoxHeldAnchor.rotation.set(0.08, -0.22, 0.06);
@@ -3258,7 +3265,7 @@ export class Game {
     }
 
     const hotbarSlot = this.input.consumeHotbarSlot();
-    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive) && hotbarSlot) {
+    if (!jumpscareLocked && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen && (this.officeChapterActive || this.chapterFourActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterElevenActive) && hotbarSlot) {
       if (this.officeChapterActive && this.officeTabletCameraFeedActive) {
         this.selectOfficeTabletCameraBySlot(hotbarSlot);
       } else if (this.chapterNineActive) {
@@ -3292,6 +3299,8 @@ export class Game {
         this.selectChapterSevenHotbarSlot(hotbarSlot);
       } else if (this.chapterEightActive) {
         this.selectChapterEightHotbarSlot(hotbarSlot);
+      } else if (this.chapterElevenActive) {
+        this.selectChapterElevenHotbarSlot(hotbarSlot);
       } else {
         this.handleOfficeHotbarSlot(hotbarSlot);
       }
@@ -3320,6 +3329,8 @@ export class Game {
         this.setPlacementToolActive(chapterNineHeldItem === 'coordinate-tool');
         this.setMicrophoneSoundToolActive(chapterNineHeldItem === 'mic-sound');
         this.syncHud();
+      } else if (this.chapterElevenActive) {
+        this.cycleChapterElevenHotbarItem(itemCycle);
       } else if (this.zombieModeActive) {
         this.cycleZombieWeapon(itemCycle);
       } else if (this.doomModeActive) {
@@ -3966,6 +3977,7 @@ export class Game {
     this.updateChapterSixHeldItemDisplay(deltaSeconds);
     this.updateChapterSixPettingArmDisplay(deltaSeconds);
     this.updateChapterEightHeldItemDisplay(deltaSeconds);
+    this.updateChapterElevenHeldSeedDisplay(deltaSeconds);
     this.updateMicrophoneSoundToolDisplay();
     this.updatePaintbrushTool(deltaSeconds);
     this.updateOfficeTabletDisplay();
@@ -5626,6 +5638,8 @@ export class Game {
       this.chapterFourBoxHideAnchor.visible = false;
       this.chapterFourBoxWideAnchor.visible = false;
       this.chapterFourBoxWorldAnchor.visible = false;
+      this.chapterElevenSelectedSeedId = null;
+      this.chapterElevenHeldSeedAnchor.visible = false;
     }
     if (!active) {
       this.placementPreview.visible = false;
@@ -7243,6 +7257,209 @@ export class Game {
       case 'empty':
         return 'Empty hands';
     }
+  }
+
+  private selectChapterElevenHotbarSlot(slot: number): void {
+    if (slot === 1) {
+      this.chapterElevenSelectedSeedId = null;
+      this.setPlacementToolActive(true);
+      this.chapterElevenHeldSeedAnchor.visible = false;
+      this.pushStatus('Coordinate Tool equipped.', 1.4);
+      this.syncHud();
+      return;
+    }
+
+    const seedId = this.chapterElevenSeedHotbar[slot - 2] ?? null;
+    if (!seedId || (this.chapterElevenSeedInventory.get(seedId) ?? 0) <= 0) {
+      this.chapterElevenSelectedSeedId = null;
+      this.placementToolActive = false;
+      this.placementPreview.visible = false;
+      this.chapterElevenHeldSeedAnchor.visible = false;
+      this.pushStatus(`Hotbar slot ${slot} is empty. Buy seeds from the Buy Seeds stand first.`, 1.8);
+      this.syncHud();
+      return;
+    }
+
+    const item = this.getChapterElevenSeedItem(seedId);
+    this.chapterElevenSelectedSeedId = seedId;
+    this.placementToolActive = false;
+    this.placementPreview.visible = false;
+    this.pushStatus(`${item?.singularLabel ?? 'Seed packet'} equipped from hotbar slot ${slot}.`, 1.8);
+    this.syncHud();
+  }
+
+  private getCurrentChapterElevenHotbarSlot(): number {
+    if (this.placementToolActive && this.chapterElevenSelectedSeedId === null) {
+      return 1;
+    }
+
+    if (this.chapterElevenSelectedSeedId) {
+      const index = this.chapterElevenSeedHotbar.findIndex((seedId) => seedId === this.chapterElevenSelectedSeedId);
+      if (index >= 0) {
+        return index + 2;
+      }
+    }
+
+    return 0;
+  }
+
+  private cycleChapterElevenHotbarItem(direction: number): void {
+    const slots = [
+      1,
+      ...this.chapterElevenSeedHotbar
+        .map((seedId, index) => (seedId && (this.chapterElevenSeedInventory.get(seedId) ?? 0) > 0 ? index + 2 : 0))
+        .filter((slot) => slot > 0),
+    ];
+    if (slots.length <= 1) {
+      this.selectChapterElevenHotbarSlot(1);
+      return;
+    }
+
+    const currentIndex = Math.max(0, slots.indexOf(this.getCurrentChapterElevenHotbarSlot()));
+    const nextIndex = (currentIndex + Math.sign(direction) + slots.length) % slots.length;
+    this.selectChapterElevenHotbarSlot(slots[nextIndex] ?? 1);
+  }
+
+  private getChapterElevenSeedItem(seedId: ChapterElevenSeedId) {
+    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.find((candidate) => candidate.id === seedId) ?? null;
+  }
+
+  private createChapterElevenSeedPacketTexture(label: string, color: string): CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 320;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#fff6c9';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = color;
+      context.fillRect(0, 0, canvas.width, 76);
+      context.fillStyle = '#3d2b16';
+      context.font = '900 34px Trebuchet MS, sans-serif';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('SEEDS', canvas.width / 2, 38);
+      context.fillStyle = '#2a2618';
+      context.font = '900 30px Trebuchet MS, sans-serif';
+      const words = label.split(/\s+/);
+      const lines: string[] = [];
+      let line = '';
+      words.forEach((word) => {
+        const next = line ? `${line} ${word}` : word;
+        if (context.measureText(next).width > 210 && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = next;
+        }
+      });
+      if (line) {
+        lines.push(line);
+      }
+      lines.slice(0, 3).forEach((text, index) => {
+        context.fillText(text, canvas.width / 2, 130 + index * 36);
+      });
+      context.fillStyle = '#6b4a28';
+      [92, 128, 166, 204].forEach((seedX, index) => {
+        context.beginPath();
+        context.ellipse(seedX, 248 + (index % 2) * 18, 10, 16, 0.4, 0, Math.PI * 2);
+        context.fill();
+      });
+      context.strokeStyle = 'rgba(84, 63, 35, 0.55)';
+      context.lineWidth = 8;
+      context.strokeRect(8, 8, canvas.width - 16, canvas.height - 16);
+    }
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  private createChapterElevenHeldSeedModel(seedId: ChapterElevenSeedId): Group {
+    const root = new Group();
+    const handMaterial = new MeshStandardMaterial({ color: 0xd5a17b, roughness: 0.84 });
+    const sleeveMaterial = new MeshStandardMaterial({ color: 0x3d5633, roughness: 0.9 });
+    const hand = new Mesh(new BoxGeometry(0.18, 0.12, 0.2), handMaterial);
+    hand.position.set(0.1, -0.22, 0.04);
+    const sleeve = new Mesh(new BoxGeometry(0.16, 0.34, 0.18), sleeveMaterial);
+    sleeve.position.set(0.18, -0.43, 0.08);
+    root.add(hand, sleeve);
+
+    const item = this.getChapterElevenSeedItem(seedId);
+    if (seedId === 'nut-seeds') {
+      const nutMaterial = new MeshStandardMaterial({
+        color: 0x8b5a2b,
+        roughness: 0.82,
+        metalness: 0.01,
+      });
+      const nut = new Mesh(new SphereGeometry(0.22, 24, 16), nutMaterial);
+      nut.name = 'Held huge nut seed';
+      nut.position.set(-0.02, 0.02, -0.02);
+      nut.scale.set(1.16, 0.86, 0.94);
+      const seam = new Mesh(new TorusGeometry(0.18, 0.012, 8, 28), new MeshStandardMaterial({
+        color: 0x5d371d,
+        roughness: 0.9,
+      }));
+      seam.position.copy(nut.position);
+      seam.rotation.set(Math.PI / 2, 0.2, 0.1);
+      root.add(nut, seam);
+      root.scale.setScalar(1.14);
+      return root;
+    }
+
+    const packetColor = seedId === 'carrot-seeds'
+      ? '#e87922'
+      : seedId === 'strawberry'
+        ? '#d74352'
+        : seedId === 'blackberry-bush'
+          ? '#52326f'
+          : seedId === 'blueberry-seeds'
+            ? '#3d6fc0'
+            : seedId === 'raspberry-seeds'
+              ? '#b83368'
+              : seedId === 'peat-seeds'
+                ? '#805533'
+                : '#889d4d';
+    const packetTexture = this.createChapterElevenSeedPacketTexture(item?.singularLabel ?? 'Seed packet', packetColor);
+    const packet = new Mesh(new BoxGeometry(0.42, 0.56, 0.035), new MeshStandardMaterial({
+      map: packetTexture,
+      roughness: 0.78,
+      metalness: 0.01,
+    }));
+    packet.name = `Held ${item?.singularLabel ?? 'seed'} packet`;
+    packet.position.set(-0.03, 0.02, -0.02);
+    packet.rotation.set(-0.18, 0.08, -0.12);
+    root.add(packet);
+    root.scale.setScalar(1.1);
+    return root;
+  }
+
+  private updateChapterElevenHeldSeedDisplay(deltaSeconds: number): void {
+    if (
+      !this.chapterElevenActive
+      || !this.player.isLocked()
+      || this.chapterMenuOpen
+      || this.chapterElevenSeedShopOpen
+      || this.placementToolActive
+      || !this.chapterElevenSelectedSeedId
+      || (this.chapterElevenSeedInventory.get(this.chapterElevenSelectedSeedId) ?? 0) <= 0
+    ) {
+      this.chapterElevenHeldSeedAnchor.visible = false;
+      return;
+    }
+
+    if (this.chapterElevenHeldSeedModelType !== this.chapterElevenSelectedSeedId || !this.chapterElevenHeldSeedModel) {
+      if (this.chapterElevenHeldSeedModel) {
+        this.chapterElevenHeldSeedAnchor.remove(this.chapterElevenHeldSeedModel);
+      }
+      this.chapterElevenHeldSeedModelType = this.chapterElevenSelectedSeedId;
+      this.chapterElevenHeldSeedModel = this.createChapterElevenHeldSeedModel(this.chapterElevenSelectedSeedId);
+      this.chapterElevenHeldSeedAnchor.add(this.chapterElevenHeldSeedModel);
+    }
+
+    const bob = Math.sin((this.elapsed + deltaSeconds) * 6.2) * 0.012;
+    this.chapterElevenHeldSeedAnchor.visible = true;
+    this.chapterElevenHeldSeedAnchor.position.set(0.43, -0.38 + bob, -0.66);
+    this.chapterElevenHeldSeedAnchor.rotation.set(-0.18 + bob * 0.4, -0.34, 0.12);
   }
 
   private setChapterFourBoxHeld(held: boolean, showStatus = true): void {
@@ -26415,6 +26632,12 @@ export class Game {
     this.chapterElevenSeedInventory.clear();
     this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
     this.chapterElevenSelectedSeedId = null;
+    this.chapterElevenHeldSeedAnchor.visible = false;
+    if (this.chapterElevenHeldSeedModel) {
+      this.chapterElevenHeldSeedAnchor.remove(this.chapterElevenHeldSeedModel);
+    }
+    this.chapterElevenHeldSeedModel = null;
+    this.chapterElevenHeldSeedModelType = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
