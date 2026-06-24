@@ -240,7 +240,8 @@ type ChapterElevenCropId =
   | 'golden-nut'
   | 'blueberry'
   | 'raspberry'
-  | 'peach';
+  | 'peach'
+  | 'golden-peach';
 type ChapterElevenPlantStage = 'planted' | 'baby' | 'mature';
 
 interface ChapterElevenCropConfig {
@@ -265,14 +266,20 @@ interface ChapterElevenPlanting {
   stage: ChapterElevenPlantStage;
   mature: boolean;
   golden: boolean;
-  blackberryBerries?: ChapterElevenBlackberryBerry[];
+  pickableFruits?: ChapterElevenPickableFruit[];
 }
 
-interface ChapterElevenBlackberryBerry {
+interface ChapterElevenPickableFruit {
   offset: Vector3;
   visible: boolean;
   golden: boolean;
+  goldenChance: number;
   regrowTimer: number;
+  regrowSeconds: number;
+  cropId: ChapterElevenCropId;
+  goldenCropId?: ChapterElevenCropId;
+  label: string;
+  goldenLabel?: string;
   mesh: Mesh | null;
 }
 
@@ -375,6 +382,9 @@ const CHAPTER_ELEVEN_PLANT_MIN_DISTANCE = 1.12;
 const CHAPTER_ELEVEN_PLANT_INTERACT_RANGE = 1.25;
 const CHAPTER_ELEVEN_BLACKBERRY_COUNT = 5;
 const CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS = 5;
+const CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS = 5;
+const CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS = 10;
+const CHAPTER_ELEVEN_PEACH_REGROW_SECONDS = 10;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -7649,8 +7659,85 @@ export class Game {
     }
   }
 
-  private createChapterElevenBlackberryBerries(): ChapterElevenBlackberryBerry[] {
-    const offsets = [
+  private isChapterElevenPickableFruitCrop(cropId: ChapterElevenCropId): boolean {
+    return cropId === 'blackberry'
+      || cropId === 'strawberry'
+      || cropId === 'raspberry'
+      || cropId === 'blueberry'
+      || cropId === 'pumpkin'
+      || cropId === 'peach';
+  }
+
+  private createChapterElevenPickableFruits(cropId: ChapterElevenCropId): ChapterElevenPickableFruit[] {
+    const makeFruit = (
+      offset: Vector3,
+      label: string,
+      regrowSeconds: number,
+      goldenChance = 0,
+      goldenCropId?: ChapterElevenCropId,
+      goldenLabel?: string,
+    ): ChapterElevenPickableFruit => ({
+      offset,
+      visible: true,
+      golden: Math.random() < goldenChance,
+      goldenChance,
+      regrowTimer: 0,
+      regrowSeconds,
+      cropId,
+      goldenCropId,
+      label,
+      goldenLabel,
+      mesh: null,
+    });
+
+    if (cropId === 'strawberry') {
+      return [
+        makeFruit(new Vector3(0.24, 0.38, 0.08), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(-0.18, 0.45, -0.12), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(0.02, 0.56, -0.2), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(-0.28, 0.34, 0.18), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(0.28, 0.52, 0.2), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS),
+      ];
+    }
+
+    if (cropId === 'raspberry') {
+      return [
+        makeFruit(new Vector3(0.3, 0.42, 0.05), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(-0.22, 0.48, -0.12), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(0.08, 0.6, -0.25), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(-0.08, 0.36, 0.22), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(0.24, 0.66, 0.18), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+      ];
+    }
+
+    if (cropId === 'blueberry') {
+      return [
+        makeFruit(new Vector3(0.28, 0.4, 0.06), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(-0.24, 0.5, -0.1), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(0.06, 0.62, -0.23), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(-0.1, 0.36, 0.24), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+        makeFruit(new Vector3(0.22, 0.58, 0.2), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
+      ];
+    }
+
+    if (cropId === 'pumpkin') {
+      return [
+        makeFruit(new Vector3(0, 0.34, 0), 'Pumpkin', CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS),
+        makeFruit(new Vector3(0.42, 0.26, -0.25), 'Pumpkin', CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS),
+        makeFruit(new Vector3(-0.38, 0.25, 0.28), 'Pumpkin', CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS),
+      ];
+    }
+
+    if (cropId === 'peach') {
+      return [
+        makeFruit(new Vector3(0.32, 1.16, 0.08), 'Peach', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, 0.1, 'golden-peach', 'Golden Peach'),
+        makeFruit(new Vector3(-0.28, 1.28, -0.12), 'Peach', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, 0.1, 'golden-peach', 'Golden Peach'),
+        makeFruit(new Vector3(0.06, 1.42, -0.32), 'Peach', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, 0.1, 'golden-peach', 'Golden Peach'),
+        makeFruit(new Vector3(-0.08, 1.02, 0.28), 'Peach', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, 0.1, 'golden-peach', 'Golden Peach'),
+      ];
+    }
+
+    const blackberryOffsets = [
       new Vector3(0.3, 0.42, 0.05),
       new Vector3(-0.22, 0.48, -0.12),
       new Vector3(0.08, 0.6, -0.25),
@@ -7658,13 +7745,84 @@ export class Game {
       new Vector3(0.24, 0.66, 0.18),
     ];
 
-    return offsets.slice(0, CHAPTER_ELEVEN_BLACKBERRY_COUNT).map((offset, index) => ({
-      offset,
-      visible: true,
-      golden: index === 0 && Math.random() < 0.16,
-      regrowTimer: 0,
-      mesh: null,
-    }));
+    return blackberryOffsets.slice(0, CHAPTER_ELEVEN_BLACKBERRY_COUNT)
+      .map((offset, index) => makeFruit(
+        offset,
+        'Blackberry',
+        CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS,
+        index === 0 ? 0.16 : 0.12,
+        'golden-blackberry',
+        'Golden Blackberry',
+      ));
+  }
+
+  private addChapterElevenPickableFruitMeshes(plant: ChapterElevenPlanting): void {
+    if (!plant.pickableFruits) {
+      return;
+    }
+
+    const materials = {
+      blackberry: new MeshStandardMaterial({ color: 0x1b0c26, roughness: 0.56, metalness: 0.02 }),
+      goldenBlackberry: new MeshStandardMaterial({ color: 0xf2c84b, roughness: 0.42, metalness: 0.28 }),
+      strawberry: new MeshStandardMaterial({ color: 0xd73535, roughness: 0.62 }),
+      raspberry: new MeshStandardMaterial({ color: 0xc93668, roughness: 0.62 }),
+      blueberry: new MeshStandardMaterial({ color: 0x2b5ab4, roughness: 0.62 }),
+      pumpkin: new MeshStandardMaterial({ color: 0xd87522, roughness: 0.78 }),
+      peach: new MeshStandardMaterial({ color: 0xf2a36f, roughness: 0.64 }),
+      goldenPeach: new MeshStandardMaterial({ color: 0xf2ca4d, roughness: 0.42, metalness: 0.22 }),
+      stem: new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }),
+      strawberryLeaf: new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }),
+    };
+
+    plant.pickableFruits.forEach((fruitState, index) => {
+      fruitState.mesh = null;
+      if (!fruitState.visible) {
+        return;
+      }
+
+      let fruit: Mesh;
+      if (fruitState.cropId === 'pumpkin') {
+        fruit = new Mesh(new SphereGeometry(0.26, 24, 14), materials.pumpkin);
+        fruit.scale.set(1.22, 0.82, 1.04);
+        const stem = new Mesh(new CylinderGeometry(0.035, 0.05, 0.15, 8), materials.stem);
+        stem.name = 'Chapter 11 pickable pumpkin stem';
+        stem.position.copy(fruitState.offset).add(new Vector3(0, 0.22, 0));
+        stem.castShadow = true;
+        plant.root.add(stem);
+      } else if (fruitState.cropId === 'strawberry') {
+        fruit = new Mesh(new SphereGeometry(0.075, 14, 10), materials.strawberry);
+        fruit.scale.set(0.9, 1.15, 0.86);
+        const leafCap = new Mesh(new ConeGeometry(0.045, 0.06, 6), materials.strawberryLeaf);
+        leafCap.name = 'Chapter 11 strawberry tiny green top';
+        leafCap.position.copy(fruitState.offset).add(new Vector3(0, 0.065, 0));
+        leafCap.rotation.x = Math.PI;
+        leafCap.castShadow = true;
+        plant.root.add(leafCap);
+      } else if (fruitState.cropId === 'peach') {
+        fruit = new Mesh(
+          new SphereGeometry(fruitState.golden ? 0.095 : 0.085, 14, 10),
+          fruitState.golden ? materials.goldenPeach : materials.peach,
+        );
+        fruit.scale.set(1.02, 0.94, 0.98);
+      } else if (fruitState.cropId === 'raspberry') {
+        fruit = new Mesh(new SphereGeometry(0.055, 12, 8), materials.raspberry);
+      } else if (fruitState.cropId === 'blueberry') {
+        fruit = new Mesh(new SphereGeometry(0.055, 12, 8), materials.blueberry);
+      } else {
+        fruit = new Mesh(
+          new SphereGeometry(fruitState.golden ? 0.062 : 0.052, 12, 8),
+          fruitState.golden ? materials.goldenBlackberry : materials.blackberry,
+        );
+      }
+
+      fruit.name = `Chapter 11 pickable ${fruitState.golden ? fruitState.goldenLabel ?? fruitState.label : fruitState.label}`;
+      fruit.userData.chapterElevenPlantId = plant.id;
+      fruit.userData.chapterElevenFruitIndex = index;
+      fruit.position.copy(fruitState.offset);
+      fruit.castShadow = true;
+      plant.root.add(fruit);
+      fruitState.mesh = fruit;
+    });
   }
 
   private rebuildChapterElevenPlantVisual(plant: ChapterElevenPlanting): void {
@@ -7729,6 +7887,67 @@ export class Game {
       return;
     }
 
+    if (
+      config.cropId === 'strawberry'
+      || config.cropId === 'blackberry'
+      || config.cropId === 'raspberry'
+      || config.cropId === 'blueberry'
+    ) {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const leafMaterial = new MeshStandardMaterial({
+        color: config.cropId === 'strawberry' ? 0x2d7f33 : 0x1f5f2d,
+        roughness: 0.88,
+      });
+      const darkLeafMaterial = new MeshStandardMaterial({
+        color: config.cropId === 'strawberry' ? 0x1f5f29 : 0x174521,
+        roughness: 0.9,
+      });
+      const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.86 });
+      const thornMaterial = new MeshStandardMaterial({ color: 0xd9c39b, roughness: 0.72 });
+      const bushClusters: Array<[number, number, number, number, number, number]> = [
+        [0, 0.4, 0, 0.52, 0.72, 0.48],
+        [-0.2, 0.34, 0.06, 0.42, 0.58, 0.38],
+        [0.22, 0.36, -0.08, 0.44, 0.62, 0.4],
+        [0.03, 0.52, -0.18, 0.36, 0.48, 0.34],
+      ];
+      bushClusters.forEach(([x, y, z, scaleX, scaleY, scaleZ], index) => {
+        const cluster = new Mesh(new SphereGeometry(0.46, 18, 12), index % 2 === 0 ? leafMaterial : darkLeafMaterial);
+        cluster.name = `Chapter 11 ${config.label.toLowerCase()} bush leaf cluster`;
+        cluster.position.set(x, y, z);
+        cluster.scale.set(scaleX, scaleY, scaleZ);
+        cluster.castShadow = true;
+        cluster.receiveShadow = true;
+        plant.root.add(cluster);
+      });
+      if (config.cropId === 'blackberry' || config.cropId === 'raspberry') {
+        const caneAngles = [-0.52, -0.2, 0.18, 0.48];
+        caneAngles.forEach((rotationZ, index) => {
+          const cane = new Mesh(new CylinderGeometry(0.025, 0.04, 0.85, 8), stemMaterial);
+          cane.name = `Chapter 11 ${config.label.toLowerCase()} thorn cane`;
+          cane.position.set((index - 1.5) * 0.12, 0.42, index % 2 === 0 ? 0.08 : -0.08);
+          cane.rotation.z = rotationZ;
+          cane.rotation.x = index % 2 === 0 ? 0.16 : -0.12;
+          cane.castShadow = true;
+          plant.root.add(cane);
+        });
+
+        for (let index = 0; index < 18; index += 1) {
+          const angle = index * 1.2;
+          const thorn = new Mesh(new ConeGeometry(0.018, 0.11, 6), thornMaterial);
+          thorn.name = `Chapter 11 ${config.label.toLowerCase()} sharp thorn`;
+          thorn.position.set(Math.cos(angle) * 0.28, 0.22 + (index % 5) * 0.12, Math.sin(angle) * 0.2);
+          thorn.rotation.set(Math.PI / 2 + (index % 2) * 0.32, angle, 0);
+          thorn.castShadow = true;
+          plant.root.add(thorn);
+        }
+      }
+      this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
     if (config.cropId === 'mushroom') {
       const stemMaterial = new MeshStandardMaterial({ color: 0xf1dec7, roughness: 0.72 });
       const capMaterial = new MeshStandardMaterial({ color: 0xb9433f, roughness: 0.68 });
@@ -7764,6 +7983,10 @@ export class Game {
     }
 
     if (config.cropId === 'pumpkin') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
       const vineMaterial = new MeshStandardMaterial({ color: 0x2b7d32, roughness: 0.86 });
       const vineSegments: Array<[number, number, number, number]> = [
         [0, 0.13, 0, 0],
@@ -7784,128 +8007,40 @@ export class Game {
         plant.root.add(vine);
       });
       this.addChapterElevenLeafCluster(plant.root, 9, 0.24, 0.34);
-
-      const pumpkinMaterial = new MeshStandardMaterial({ color: 0xd87522, roughness: 0.78 });
-      const stemMaterial = new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 });
-      const pumpkinOffsets: Array<[number, number, number, number]> = [
-        [0.0, 0.34, 0.0, 0.34],
-        [0.42, 0.26, -0.25, 0.25],
-        [-0.38, 0.25, 0.28, 0.23],
-      ];
-      pumpkinOffsets.forEach(([pumpkinX, pumpkinY, pumpkinZ, radius], index) => {
-        const pumpkin = new Mesh(new SphereGeometry(radius, 24, 14), pumpkinMaterial);
-        pumpkin.name = 'Chapter 11 mature pumpkin on permanent vine';
-        pumpkin.position.set(pumpkinX, pumpkinY, pumpkinZ);
-        pumpkin.scale.set(1.25, 0.82, 1.05);
-        pumpkin.castShadow = true;
-        pumpkin.receiveShadow = true;
-        const stem = new Mesh(new CylinderGeometry(0.035, 0.05, 0.16, 8), stemMaterial);
-        stem.name = 'Chapter 11 pumpkin short stem';
-        stem.position.set(pumpkinX, pumpkinY + radius * 0.78, pumpkinZ);
-        stem.rotation.z = index % 2 === 0 ? 0.1 : -0.1;
-        stem.castShadow = true;
-        plant.root.add(pumpkin, stem);
-      });
+      this.addChapterElevenPickableFruitMeshes(plant);
       return;
     }
 
-    if (config.cropId === 'blackberry') {
-      if (!plant.blackberryBerries || plant.blackberryBerries.length === 0) {
-        plant.blackberryBerries = this.createChapterElevenBlackberryBerries();
+    if (config.cropId === 'peach') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
 
-      const leafMaterial = new MeshStandardMaterial({ color: 0x1f5f2d, roughness: 0.88 });
-      const darkLeafMaterial = new MeshStandardMaterial({ color: 0x174521, roughness: 0.9 });
-      const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.86 });
-      const thornMaterial = new MeshStandardMaterial({ color: 0xd9c39b, roughness: 0.72 });
-      const berryMaterial = new MeshStandardMaterial({ color: 0x1b0c26, roughness: 0.56, metalness: 0.02 });
-      const goldenBerryMaterial = new MeshStandardMaterial({ color: 0xf2c84b, roughness: 0.42, metalness: 0.28 });
-
-      const bushClusters: Array<[number, number, number, number, number, number]> = [
-        [0, 0.4, 0, 0.52, 0.72, 0.48],
-        [-0.2, 0.34, 0.06, 0.42, 0.58, 0.38],
-        [0.22, 0.36, -0.08, 0.44, 0.62, 0.4],
-        [0.03, 0.52, -0.18, 0.36, 0.48, 0.34],
+      const trunkMaterial = new MeshStandardMaterial({ color: 0x6e4227, roughness: 0.9 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x2f7d35, roughness: 0.86 });
+      const darkLeafMaterial = new MeshStandardMaterial({ color: 0x235f2a, roughness: 0.9 });
+      const trunk = new Mesh(new CylinderGeometry(0.12, 0.18, 1.1, 12), trunkMaterial);
+      trunk.name = 'Chapter 11 peach tree trunk';
+      trunk.position.y = 0.62;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      plant.root.add(trunk);
+      const canopyParts: Array<[number, number, number, number, number, number]> = [
+        [0, 1.35, 0, 0.72, 0.62, 0.68],
+        [-0.34, 1.18, 0.12, 0.48, 0.42, 0.44],
+        [0.34, 1.2, -0.12, 0.5, 0.44, 0.46],
+        [0.04, 1.55, -0.16, 0.44, 0.38, 0.42],
       ];
-      bushClusters.forEach(([x, y, z, scaleX, scaleY, scaleZ], index) => {
-        const cluster = new Mesh(new SphereGeometry(0.46, 18, 12), index % 2 === 0 ? leafMaterial : darkLeafMaterial);
-        cluster.name = 'Chapter 11 thorny blackberry bush leaf cluster';
-        cluster.position.set(x, y, z);
-        cluster.scale.set(scaleX, scaleY, scaleZ);
-        cluster.castShadow = true;
-        cluster.receiveShadow = true;
-        plant.root.add(cluster);
+      canopyParts.forEach(([x, y, z, scaleX, scaleY, scaleZ], index) => {
+        const canopy = new Mesh(new SphereGeometry(0.62, 20, 14), index % 2 === 0 ? leafMaterial : darkLeafMaterial);
+        canopy.name = 'Chapter 11 peach tree leaf canopy';
+        canopy.position.set(x, y, z);
+        canopy.scale.set(scaleX, scaleY, scaleZ);
+        canopy.castShadow = true;
+        canopy.receiveShadow = true;
+        plant.root.add(canopy);
       });
-
-      const caneAngles = [-0.52, -0.2, 0.18, 0.48];
-      caneAngles.forEach((rotationZ, index) => {
-        const cane = new Mesh(new CylinderGeometry(0.025, 0.04, 0.85, 8), stemMaterial);
-        cane.name = 'Chapter 11 blackberry thorn cane';
-        cane.position.set((index - 1.5) * 0.12, 0.42, index % 2 === 0 ? 0.08 : -0.08);
-        cane.rotation.z = rotationZ;
-        cane.rotation.x = index % 2 === 0 ? 0.16 : -0.12;
-        cane.castShadow = true;
-        plant.root.add(cane);
-      });
-
-      for (let index = 0; index < 18; index += 1) {
-        const angle = index * 1.2;
-        const thorn = new Mesh(new ConeGeometry(0.018, 0.11, 6), thornMaterial);
-        thorn.name = 'Chapter 11 blackberry sharp thorn';
-        thorn.position.set(Math.cos(angle) * 0.28, 0.22 + (index % 5) * 0.12, Math.sin(angle) * 0.2);
-        thorn.rotation.set(Math.PI / 2 + (index % 2) * 0.32, angle, 0);
-        thorn.castShadow = true;
-        plant.root.add(thorn);
-      }
-
-      plant.blackberryBerries.forEach((berryState, index) => {
-        berryState.mesh = null;
-        if (!berryState.visible) {
-          return;
-        }
-
-        const berry = new Mesh(
-          new SphereGeometry(berryState.golden ? 0.062 : 0.052, 12, 8),
-          berryState.golden ? goldenBerryMaterial : berryMaterial,
-        );
-        berry.name = 'Chapter 11 pickable blackberry berry ball';
-        berry.userData.chapterElevenPlantId = plant.id;
-        berry.userData.chapterElevenBlackberryIndex = index;
-        berry.position.copy(berryState.offset);
-        berry.castShadow = true;
-        plant.root.add(berry);
-        berryState.mesh = berry;
-      });
-      return;
-    }
-
-    if (config.regrows || config.cropId === 'peach') {
-      const bushMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'peach' ? 0x3d8a3d : 0x2f6f32,
-        roughness: 0.84,
-      });
-      const bush = new Mesh(new SphereGeometry(config.cropId === 'peach' ? 0.42 : 0.34, 18, 12), bushMaterial);
-      bush.name = `Chapter 11 mature ${config.label.toLowerCase()} plant`;
-      bush.position.y = config.cropId === 'peach' ? 0.52 : 0.38;
-      bush.scale.set(1.25, config.cropId === 'peach' ? 1.4 : 0.85, 1.1);
-      bush.castShadow = true;
-      plant.root.add(bush);
-      const fruitColor = config.cropId === 'blueberry'
-        ? 0x2b5ab4
-        : config.cropId === 'raspberry'
-          ? 0xc93668
-          : 0xf2a36f;
-      for (let index = 0; index < (config.cropId === 'peach' ? 5 : 9); index += 1) {
-        const fruit = new Mesh(new SphereGeometry(config.cropId === 'peach' ? 0.085 : 0.045, 10, 8), new MeshStandardMaterial({
-          color: fruitColor,
-          roughness: 0.64,
-        }));
-        const angle = index * 1.87;
-        fruit.name = `Chapter 11 visible ${config.label.toLowerCase()} fruit`;
-        fruit.position.set(Math.cos(angle) * 0.28, 0.42 + (index % 3) * 0.11, Math.sin(angle) * 0.23);
-        fruit.castShadow = true;
-        plant.root.add(fruit);
-      }
+      this.addChapterElevenPickableFruitMeshes(plant);
       return;
     }
 
@@ -7986,29 +8121,29 @@ export class Game {
         this.rebuildChapterElevenPlantVisual(plant);
       }
 
-      if (plant.stage === 'mature' && config.cropId === 'blackberry') {
-        if (!plant.blackberryBerries || plant.blackberryBerries.length === 0) {
-          plant.blackberryBerries = this.createChapterElevenBlackberryBerries();
+      if (plant.stage === 'mature' && this.isChapterElevenPickableFruitCrop(config.cropId)) {
+        if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+          plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
           this.rebuildChapterElevenPlantVisual(plant);
           return;
         }
 
-        let berriesChanged = false;
-        plant.blackberryBerries.forEach((berry) => {
-          if (berry.visible) {
+        let fruitsChanged = false;
+        plant.pickableFruits.forEach((fruit) => {
+          if (fruit.visible) {
             return;
           }
 
-          berry.regrowTimer -= deltaSeconds;
-          if (berry.regrowTimer <= 0) {
-            berry.visible = true;
-            berry.regrowTimer = 0;
-            berry.golden = Math.random() < 0.12;
-            berriesChanged = true;
+          fruit.regrowTimer -= deltaSeconds;
+          if (fruit.regrowTimer <= 0) {
+            fruit.visible = true;
+            fruit.regrowTimer = 0;
+            fruit.golden = Math.random() < fruit.goldenChance;
+            fruitsChanged = true;
           }
         });
 
-        if (berriesChanged) {
+        if (fruitsChanged) {
           this.rebuildChapterElevenPlantVisual(plant);
         }
       }
@@ -8085,21 +8220,21 @@ export class Game {
     return closest;
   }
 
-  private findChapterElevenTargetBlackberryBerry(): { plant: ChapterElevenPlanting; berry: ChapterElevenBlackberryBerry; index: number } | null {
-    const berryMeshes: Mesh[] = [];
+  private findChapterElevenTargetPickableFruit(): { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number } | null {
+    const fruitMeshes: Mesh[] = [];
     this.chapterElevenPlants.forEach((plant) => {
-      if (plant.cropId !== 'blackberry' || plant.stage !== 'mature' || !plant.blackberryBerries) {
+      if (!this.isChapterElevenPickableFruitCrop(plant.cropId) || plant.stage !== 'mature' || !plant.pickableFruits) {
         return;
       }
 
-      plant.blackberryBerries.forEach((berry) => {
-        if (berry.visible && berry.mesh) {
-          berryMeshes.push(berry.mesh);
+      plant.pickableFruits.forEach((fruit) => {
+        if (fruit.visible && fruit.mesh) {
+          fruitMeshes.push(fruit.mesh);
         }
       });
     });
 
-    if (berryMeshes.length === 0) {
+    if (fruitMeshes.length === 0) {
       return null;
     }
 
@@ -8108,45 +8243,45 @@ export class Game {
     this.placementRaycaster.near = 0.08;
     this.placementRaycaster.far = GAME_CONFIG.player.interactionRange + 2.2;
     this.placementRaycaster.set(this.placementRayOrigin, this.placementRayDirection);
-    const intersections = this.placementRaycaster.intersectObjects(berryMeshes, false);
+    const intersections = this.placementRaycaster.intersectObjects(fruitMeshes, false);
     for (const hit of intersections) {
       const plantId = hit.object.userData.chapterElevenPlantId;
-      const berryIndex = hit.object.userData.chapterElevenBlackberryIndex;
-      if (typeof plantId !== 'number' || typeof berryIndex !== 'number') {
+      const fruitIndex = hit.object.userData.chapterElevenFruitIndex;
+      if (typeof plantId !== 'number' || typeof fruitIndex !== 'number') {
         continue;
       }
 
       const plant = this.chapterElevenPlants.find((candidate) => candidate.id === plantId);
-      const berry = plant?.blackberryBerries?.[berryIndex] ?? null;
-      if (plant && berry?.visible) {
-        return { plant, berry, index: berryIndex };
+      const fruit = plant?.pickableFruits?.[fruitIndex] ?? null;
+      if (plant && fruit?.visible) {
+        return { plant, fruit, index: fruitIndex };
       }
     }
 
-    let closestTarget: { plant: ChapterElevenPlanting; berry: ChapterElevenBlackberryBerry; index: number; aimDistance: number } | null = null;
-    const berryWorldPosition = new Vector3();
+    let closestTarget: { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number; aimDistance: number } | null = null;
+    const fruitWorldPosition = new Vector3();
     for (const plant of this.chapterElevenPlants) {
-      if (plant.cropId !== 'blackberry' || plant.stage !== 'mature' || !plant.blackberryBerries) {
+      if (!this.isChapterElevenPickableFruitCrop(plant.cropId) || plant.stage !== 'mature' || !plant.pickableFruits) {
         continue;
       }
 
-      for (let index = 0; index < plant.blackberryBerries.length; index += 1) {
-        const berry = plant.blackberryBerries[index];
-        if (!berry.visible || !berry.mesh) {
+      for (let index = 0; index < plant.pickableFruits.length; index += 1) {
+        const fruit = plant.pickableFruits[index];
+        if (!fruit.visible || !fruit.mesh) {
           continue;
         }
 
-        berry.mesh.getWorldPosition(berryWorldPosition);
-        const toBerry = berryWorldPosition.clone().sub(this.placementRayOrigin);
-        const along = toBerry.dot(this.placementRayDirection);
+        fruit.mesh.getWorldPosition(fruitWorldPosition);
+        const toFruit = fruitWorldPosition.clone().sub(this.placementRayOrigin);
+        const along = toFruit.dot(this.placementRayDirection);
         if (along < 0.1 || along > this.placementRaycaster.far) {
           continue;
         }
 
         const closestPoint = this.placementRayOrigin.clone().addScaledVector(this.placementRayDirection, along);
-        const aimDistance = closestPoint.distanceTo(berryWorldPosition);
+        const aimDistance = closestPoint.distanceTo(fruitWorldPosition);
         if (aimDistance <= 0.22 && (!closestTarget || aimDistance < closestTarget.aimDistance)) {
-          closestTarget = { plant, berry, index, aimDistance };
+          closestTarget = { plant, fruit, index, aimDistance };
         }
       }
     }
@@ -8154,7 +8289,7 @@ export class Game {
     if (closestTarget) {
       return {
         plant: closestTarget.plant,
-        berry: closestTarget.berry,
+        fruit: closestTarget.fruit,
         index: closestTarget.index,
       };
     }
@@ -8232,8 +8367,8 @@ export class Game {
       return;
     }
 
-    if (config.cropId === 'blackberry') {
-      this.pushStatus('Aim the center plus at a blackberry on the bush, then press E to pick it.', 2.2);
+    if (this.isChapterElevenPickableFruitCrop(config.cropId)) {
+      this.pushStatus(`Aim the center plus at a ${config.label.toLowerCase()} on the plant, then press E to pick it.`, 2.2);
       return;
     }
 
@@ -8254,13 +8389,14 @@ export class Game {
     this.syncHud();
   }
 
-  private harvestChapterElevenBlackberryBerry(target: { plant: ChapterElevenPlanting; berry: ChapterElevenBlackberryBerry; index: number }): void {
-    target.berry.visible = false;
-    target.berry.regrowTimer = CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS;
-    const cropId: ChapterElevenCropId = target.berry.golden ? 'golden-blackberry' : 'blackberry';
+  private harvestChapterElevenPickableFruit(target: { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number }): void {
+    target.fruit.visible = false;
+    target.fruit.regrowTimer = target.fruit.regrowSeconds;
+    const cropId: ChapterElevenCropId = target.fruit.golden && target.fruit.goldenCropId ? target.fruit.goldenCropId : target.fruit.cropId;
     this.chapterElevenCropInventory.set(cropId, (this.chapterElevenCropInventory.get(cropId) ?? 0) + 1);
     this.rebuildChapterElevenPlantVisual(target.plant);
-    this.pushStatus(target.berry.golden ? 'Golden Blackberry picked. Another berry will regrow soon.' : 'Blackberry picked. Another berry will regrow soon.', 2.2);
+    const label = target.fruit.golden && target.fruit.goldenLabel ? target.fruit.goldenLabel : target.fruit.label;
+    this.pushStatus(`${label} picked. Another one will regrow soon.`, 2.2);
     this.syncHud();
   }
 
@@ -8281,6 +8417,12 @@ export class Game {
       if (cropId === 'golden-blackberry') {
         total += CHAPTER_ELEVEN_CROP_CONFIGS['blackberry-bush'].sellValue * 2 * count;
         soldLabels.push(`Golden Blackberries x${count}`);
+        return;
+      }
+
+      if (cropId === 'golden-peach') {
+        total += CHAPTER_ELEVEN_CROP_CONFIGS['peach-seeds'].sellValue * 2 * count;
+        soldLabels.push(`Golden Peaches x${count}`);
         return;
       }
 
@@ -8317,9 +8459,9 @@ export class Game {
     }
 
     const point = this.getChapterElevenAimGroundPoint();
-    const blackberryTarget = this.findChapterElevenTargetBlackberryBerry();
-    if (blackberryTarget) {
-      this.harvestChapterElevenBlackberryBerry(blackberryTarget);
+    const fruitTarget = this.findChapterElevenTargetPickableFruit();
+    if (fruitTarget) {
+      this.harvestChapterElevenPickableFruit(fruitTarget);
       return;
     }
 
@@ -19081,6 +19223,10 @@ export class Game {
             return count === 1 ? 'Golden Blackberry' : `Golden Blackberries x${count}`;
           }
 
+          if (cropId === 'golden-peach') {
+            return count === 1 ? 'Golden Peach' : `Golden Peaches x${count}`;
+          }
+
           const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
           return config ? (count === 1 ? config.label : `${config.pluralLabel} x${count}`) : null;
         })
@@ -19603,6 +19749,14 @@ export class Game {
           if (cropId === 'golden-blackberry') {
             return {
               label: count === 1 ? 'Golden Blackberry' : 'Golden Blackberries',
+              count,
+              filled: true,
+              type: cropId,
+            };
+          }
+          if (cropId === 'golden-peach') {
+            return {
+              label: count === 1 ? 'Golden Peach' : 'Golden Peaches',
               count,
               filled: true,
               type: cropId,
@@ -20965,18 +21119,17 @@ export class Game {
       }
 
       const point = this.getChapterElevenAimGroundPoint();
-      const blackberryTarget = this.findChapterElevenTargetBlackberryBerry();
-      if (blackberryTarget) {
-        return blackberryTarget.berry.golden
-          ? 'Press E to pick the Golden Blackberry.'
-          : 'Press E to pick this blackberry.';
+      const fruitTarget = this.findChapterElevenTargetPickableFruit();
+      if (fruitTarget) {
+        const label = fruitTarget.fruit.golden && fruitTarget.fruit.goldenLabel ? fruitTarget.fruit.goldenLabel : fruitTarget.fruit.label;
+        return `Press E to pick this ${label}.`;
       }
 
       const targetPlant = this.findChapterElevenTargetPlant(point);
       if (targetPlant) {
         const config = CHAPTER_ELEVEN_CROP_CONFIGS[targetPlant.seedId];
-        if (config.cropId === 'blackberry' && targetPlant.mature) {
-          return 'Blackberry bush is ready. Aim the center plus at one berry and press E.';
+        if (this.isChapterElevenPickableFruitCrop(config.cropId) && targetPlant.mature) {
+          return `${config.label} plant is ready. Aim the center plus at one fruit and press E.`;
         }
         return targetPlant.mature
           ? `Press E to harvest ${targetPlant.golden ? 'Golden ' : ''}${config.label}.`
