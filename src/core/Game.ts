@@ -243,6 +243,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   cost: number;
   section: ChapterElevenSeedShopItemView['section'];
   maxStock?: number;
+  copyOnly?: boolean;
 }> = [
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 10, section: 'cheap', maxStock: 9 },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 20, section: 'cheap', maxStock: 6 },
@@ -256,9 +257,9 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 300, section: 'expensive', maxStock: 2 },
   { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 350, section: 'expensive', maxStock: 2 },
   { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 250, section: 'expensive', maxStock: 3 },
-  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 650, section: 'expensive', maxStock: 1 },
-  { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2 },
-  { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1 },
+  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 650, section: 'expensive', maxStock: 1, copyOnly: true },
+  { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
+  { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1, copyOnly: true },
 ];
 type ChapterElevenCropId =
   | 'carrot'
@@ -3327,7 +3328,7 @@ export class Game {
   }
 
   private restockChapterElevenSeedShop(): void {
-    CHAPTER_ELEVEN_SEED_SHOP_ITEMS.forEach((item) => {
+    this.getChapterElevenSeedShopCatalog().forEach((item) => {
       this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenSeedMaxStock(item.id));
     });
     this.chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
@@ -3347,7 +3348,7 @@ export class Game {
   }
 
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
-    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.map((item) => {
+    return this.getChapterElevenSeedShopCatalog().map((item) => {
       const stock = this.getChapterElevenSeedStock(item.id);
       const stocked = !this.chapterElevenTwoActive || stock > 0;
       return {
@@ -3364,7 +3365,7 @@ export class Game {
       return;
     }
 
-    const item = CHAPTER_ELEVEN_SEED_SHOP_ITEMS.find((candidate) => candidate.id === seedId);
+    const item = this.getChapterElevenSeedShopCatalog().find((candidate) => candidate.id === seedId);
     if (!item) {
       return;
     }
@@ -7898,6 +7899,10 @@ export class Game {
     return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.find((candidate) => candidate.id === seedId) ?? null;
   }
 
+  private getChapterElevenSeedShopCatalog() {
+    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.filter((item) => this.chapterElevenTwoActive || !item.copyOnly);
+  }
+
   private getChapterElevenHotbarItems(): ChapterElevenHotbarItem[] {
     const items: ChapterElevenHotbarItem[] = [];
     this.chapterElevenPetEggInventory.forEach((count, petType) => {
@@ -8740,6 +8745,7 @@ export class Game {
 
   private rebuildChapterElevenPlantVisual(plant: ChapterElevenPlanting): void {
     this.clearChapterElevenPlantVisual(plant);
+    plant.root.scale.setScalar(1);
 
     const spotRadius = this.getChapterElevenPlantedSpotRadius(plant.seedId);
     const spot = new Mesh(new CircleGeometry(spotRadius, 28), new MeshStandardMaterial({
@@ -8865,6 +8871,9 @@ export class Game {
         }
       }
       this.addChapterElevenPickableFruitMeshes(plant);
+      if (this.chapterElevenTwoActive) {
+        plant.root.scale.setScalar(1.28);
+      }
       return;
     }
 
@@ -9074,6 +9083,9 @@ export class Game {
         plant.root.add(canopy);
       });
       this.addChapterElevenPickableFruitMeshes(plant);
+      if (this.chapterElevenTwoActive && config.cropId === 'apple') {
+        plant.root.scale.setScalar(1.36);
+      }
       return;
     }
 
@@ -10336,23 +10348,9 @@ export class Game {
       : null;
   }
 
-  private getChapterElevenSeedSellValue(seedId: ChapterElevenSeedId): number {
-    const item = this.getChapterElevenSeedItem(seedId);
-    if (!item) {
-      return 0;
-    }
-
-    return Math.max(1, Math.floor(item.cost * 0.8));
-  }
-
-  private hasChapterElevenSeedsInInventory(): boolean {
-    return Array.from(this.chapterElevenSeedInventory.values()).some((count) => count > 0);
-  }
-
   private sellChapterElevenCrops(): void {
     let total = 0;
     const soldLabels: string[] = [];
-    let soldAnySeeds = false;
     this.chapterElevenCropInventory.forEach((count, cropId) => {
       if (count <= 0) {
         return;
@@ -10366,40 +10364,15 @@ export class Game {
       total += sellableCrop.value * count;
       soldLabels.push(`${sellableCrop.label} x${count}`);
     });
-    this.chapterElevenSeedInventory.forEach((count, seedId) => {
-      if (count <= 0) {
-        return;
-      }
-
-      const item = this.getChapterElevenSeedItem(seedId);
-      const seedSellValue = this.getChapterElevenSeedSellValue(seedId);
-      if (!item || seedSellValue <= 0) {
-        return;
-      }
-
-      total += seedSellValue * count;
-      soldAnySeeds = true;
-      soldLabels.push(`${count === 1 ? item.singularLabel : item.label} x${count}`);
-    });
 
     if (total <= 0) {
-      this.pushStatus(
-        this.hasChapterElevenSeedsInInventory()
-          ? 'The Sell stand cannot price those seeds right now.'
-          : 'You have no fruit, vegetables, or grown plants to sell yet.',
-        2.6,
-      );
+      this.pushStatus('You have no fruit, vegetables, or grown plants to sell yet. Seeds and equipment do not sell here.', 2.6);
       return;
     }
 
     this.chapterElevenMoney += total;
     this.chapterElevenCropInventory.clear();
     this.chapterElevenSelectedCropId = null;
-    if (soldAnySeeds) {
-      this.chapterElevenSeedInventory.clear();
-      this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
-      this.chapterElevenSelectedSeedId = null;
-    }
     this.pushStatus(`Sold ${soldLabels.join(', ')} for $${total}. Money: $${this.chapterElevenMoney}.`, 3.2);
     this.syncHud();
   }
@@ -16676,7 +16649,9 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
-      return this.chapterEleven.colliders;
+      return this.chapterElevenTwoActive
+        ? [...this.chapterEleven.colliders, ...this.chapterEleven.copyOnlyColliders]
+        : this.chapterEleven.colliders;
     }
 
     if (this.chapterTwelveActive) {
@@ -21364,7 +21339,7 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
-      const seedInventory = CHAPTER_ELEVEN_SEED_SHOP_ITEMS
+      const seedInventory = this.getChapterElevenSeedShopCatalog()
         .map((item) => {
           const count = this.chapterElevenSeedInventory.get(item.id) ?? 0;
           return count > 0 ? (count === 1 ? item.singularLabel : `${item.label} x${count}`) : null;
@@ -30199,6 +30174,7 @@ export class Game {
     this.chapterNine.root.visible = false;
     this.chapterTen.root.visible = false;
     this.chapterEleven.reset();
+    this.chapterEleven.equipmentStand.visible = copyMode;
     this.chapterEleven.root.visible = true;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;

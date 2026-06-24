@@ -2980,13 +2980,21 @@ export function createHud(host: HTMLElement): HudController {
         body.className = 'hud__chapter-seven-trade-description';
         body.textContent = description;
         button.append(title, body);
-        button.addEventListener('click', (event) => {
+        let actionHandled = false;
+        const handleActionPointer = (event: Event): void => {
           event.preventDefault();
           event.stopPropagation();
-          if (!button.disabled) {
-            chapterElevenSellActionHandler?.(action);
+          if (actionHandled || button.disabled) {
+            return;
           }
-        });
+
+          actionHandled = true;
+          chapterElevenSellActionHandler?.(action);
+        };
+        button.addEventListener('pointerdown', handleActionPointer);
+        button.addEventListener('mousedown', handleActionPointer);
+        button.addEventListener('touchstart', handleActionPointer, { passive: false });
+        button.addEventListener('click', handleActionPointer);
         return button;
       };
 

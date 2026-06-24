@@ -17,7 +17,9 @@ import type { CollisionBox } from '../types/world';
 export interface ChapterElevenData {
   root: Group;
   colliders: CollisionBox[];
+  copyOnlyColliders: CollisionBox[];
   dirtPatches: ChapterElevenDirtPatch[];
+  equipmentStand: Group;
   fieldBounds: {
     minX: number;
     maxX: number;
@@ -175,6 +177,7 @@ export function createChapterEleven(): ChapterElevenData {
   const root = new Group();
   root.name = 'Chapter 11: Grow a garden';
   const colliders: CollisionBox[] = [];
+  const copyOnlyColliders: CollisionBox[] = [];
   const dirtPatches: ChapterElevenDirtPatch[] = [];
 
   const grass = new Mesh(new BoxGeometry(FIELD_WIDTH, 0.12, FIELD_DEPTH), grassMaterial);
@@ -429,8 +432,9 @@ export function createChapterEleven(): ChapterElevenData {
   equipmentStand.name = 'Chapter 11 equipment old fashioned garden stand';
   equipmentStand.position.set(2.61, 0, 52.33);
   equipmentStand.rotation.y = Math.PI / 2;
+  equipmentStand.visible = false;
   root.add(equipmentStand);
-  addCollider(colliders, 2.61, 52.33, 3.02, 1.55);
+  addCollider(copyOnlyColliders, 2.61, 52.33, 3.02, 1.55);
 
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'Buy Seeds');
@@ -630,7 +634,9 @@ export function createChapterEleven(): ChapterElevenData {
   return {
     root,
     colliders,
+    copyOnlyColliders,
     dirtPatches,
+    equipmentStand,
     fieldBounds: {
       minX: -halfWidth,
       maxX: halfWidth,
