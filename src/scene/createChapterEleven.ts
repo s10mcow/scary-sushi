@@ -66,6 +66,8 @@ const pathStoneLightMaterial = new MeshStandardMaterial({ color: 0xd8d6cd, rough
 const pathDirtBaseMaterial = new MeshStandardMaterial({ color: 0xb8945f, roughness: 0.98 });
 const carrotMaterial = new MeshStandardMaterial({ color: 0xe87920, roughness: 0.74 });
 const carrotLeafMaterial = new MeshStandardMaterial({ color: 0x2f8b35, roughness: 0.82 });
+const petEggMaterial = new MeshStandardMaterial({ color: 0xf0a3c9, roughness: 0.62 });
+const petEggSpotMaterial = new MeshStandardMaterial({ color: 0x7a3ca8, roughness: 0.7 });
 
 function createStandLabelMaterial(label: string): MeshStandardMaterial {
   const canvas = document.createElement('canvas');
@@ -395,12 +397,46 @@ export function createChapterEleven(): ChapterElevenData {
   const petEggsStand = stand.clone(true);
   petEggsStand.name = 'Chapter 11 pet eggs old fashioned garden stand';
   petEggsStand.position.set(-2.61, 0, 52.33);
+  petEggsStand.rotation.y = Math.PI / 2;
   root.add(petEggsStand);
-  addCollider(colliders, -2.61, 52.33, 1.55, 3.02);
+  addCollider(colliders, -2.61, 52.33, 3.02, 1.55);
 
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'buy seats');
   addStandLabel(petEggsStand, 'Pet Eggs');
+
+  const addPetEggDisplay = (x: number, y: number, z: number): void => {
+    const eggGroup = new Group();
+    eggGroup.name = 'Chapter 11 big pink pet egg with purple spots';
+    eggGroup.position.set(x, y, z);
+    const egg = new Mesh(new SphereGeometry(0.32, 24, 16), petEggMaterial);
+    egg.name = 'Chapter 11 big pink pet egg';
+    egg.position.y = 0.34;
+    egg.scale.set(0.82, 1.22, 0.82);
+    egg.castShadow = true;
+    egg.receiveShadow = true;
+    eggGroup.add(egg);
+
+    const spots: Array<[number, number, number, number]> = [
+      [0.02, 0.56, -0.25, 0.08],
+      [0.18, 0.36, -0.19, 0.065],
+      [-0.14, 0.28, -0.22, 0.055],
+      [-0.2, 0.48, 0.02, 0.06],
+      [0.11, 0.2, 0.22, 0.05],
+      [0.0, 0.7, 0.06, 0.045],
+    ];
+    spots.forEach(([spotX, spotY, spotZ, radius], index) => {
+      const spot = new Mesh(new SphereGeometry(radius, 12, 8), petEggSpotMaterial);
+      spot.name = 'Chapter 11 purple pet egg spot';
+      spot.position.set(spotX, spotY, spotZ);
+      spot.scale.set(1, 0.34, 0.9);
+      spot.rotation.x = index % 2 === 0 ? 0.24 : -0.18;
+      spot.castShadow = true;
+      eggGroup.add(spot);
+    });
+    root.add(eggGroup);
+  };
+  addPetEggDisplay(-1.93, 1.03, 53.95);
 
   const addSeedPacketPile = (x: number, y: number, z: number): void => {
     const packetPile = new Group();
