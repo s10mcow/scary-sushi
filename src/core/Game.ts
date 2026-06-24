@@ -216,25 +216,34 @@ const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
 const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
 const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
 const CHAPTER_ELEVEN_STARTING_MONEY = 50;
+const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
+const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = 2.61;
+const CHAPTER_ELEVEN_EQUIPMENT_STALL_Z = 52.33;
+const CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE = 5.5;
+const CHAPTER_ELEVEN_VINE_STICK_COST = 25;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   id: ChapterElevenSeedId;
   label: string;
   singularLabel: string;
   cost: number;
   section: ChapterElevenSeedShopItemView['section'];
+  maxStock?: number;
 }> = [
-  { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 10, section: 'cheap' },
-  { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 20, section: 'cheap' },
-  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 40, section: 'cheap' },
-  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 50, section: 'cheap' },
-  { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 10, section: 'cheap' },
-  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 100, section: 'expensive' },
-  { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 500, section: 'expensive' },
-  { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 200, section: 'expensive' },
-  { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 300, section: 'expensive' },
-  { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 300, section: 'expensive' },
-  { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 350, section: 'expensive' },
-  { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 250, section: 'expensive' },
+  { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 10, section: 'cheap', maxStock: 9 },
+  { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 20, section: 'cheap', maxStock: 6 },
+  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 40, section: 'cheap', maxStock: 5 },
+  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 50, section: 'cheap', maxStock: 4 },
+  { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 10, section: 'cheap', maxStock: 7 },
+  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 100, section: 'expensive', maxStock: 3 },
+  { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 500, section: 'expensive', maxStock: 1 },
+  { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 200, section: 'expensive', maxStock: 3 },
+  { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 300, section: 'expensive', maxStock: 2 },
+  { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 300, section: 'expensive', maxStock: 2 },
+  { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 350, section: 'expensive', maxStock: 2 },
+  { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 250, section: 'expensive', maxStock: 3 },
+  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 650, section: 'expensive', maxStock: 1 },
+  { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2 },
+  { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1 },
 ];
 type ChapterElevenCropId =
   | 'carrot'
@@ -252,6 +261,9 @@ type ChapterElevenCropId =
   | 'apple'
   | 'tomato'
   | 'pepper'
+  | 'dragon-fruit'
+  | 'vine-fruit'
+  | 'cactus'
   | 'golden-carrot'
   | 'golden-mushroom'
   | 'golden-strawberry'
@@ -260,13 +272,18 @@ type ChapterElevenCropId =
   | 'golden-raspberry'
   | 'golden-apple'
   | 'golden-tomato'
-  | 'golden-pepper';
+  | 'golden-pepper'
+  | 'golden-dragon-fruit'
+  | 'golden-vine-fruit'
+  | 'golden-cactus';
 type ChapterElevenPlantStage = 'planted' | 'baby' | 'mature';
 type ChapterElevenHotbarItem =
   | { kind: 'seed'; id: ChapterElevenSeedId }
   | { kind: 'crop'; id: ChapterElevenCropId }
-  | { kind: 'pet-egg'; id: ChapterElevenPetType };
+  | { kind: 'pet-egg'; id: ChapterElevenPetType }
+  | { kind: 'equipment'; id: ChapterElevenEquipmentId };
 type ChapterElevenPetType = 'rabbit' | 'dog' | 'cow' | 'dinosaur';
+type ChapterElevenEquipmentId = 'vine-stick';
 
 interface ChapterElevenCropConfig {
   seedId: ChapterElevenSeedId;
@@ -291,6 +308,14 @@ interface ChapterElevenPlanting {
   mature: boolean;
   golden: boolean;
   pickableFruits?: ChapterElevenPickableFruit[];
+  hasVineStick?: boolean;
+}
+
+interface ChapterElevenVineStick {
+  root: Group;
+  x: number;
+  z: number;
+  patch: ChapterElevenDirtPatch;
 }
 
 interface ChapterElevenPickableFruit {
@@ -449,6 +474,36 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     sellValue: 60,
     babySeconds: 5,
     matureSeconds: 16,
+    regrows: true,
+  },
+  'dragon-fruit-seeds': {
+    seedId: 'dragon-fruit-seeds',
+    cropId: 'dragon-fruit',
+    label: 'Dragon Fruit',
+    pluralLabel: 'Dragon Fruits',
+    sellValue: 900,
+    babySeconds: 18,
+    matureSeconds: 78,
+    regrows: true,
+  },
+  'vine-seeds': {
+    seedId: 'vine-seeds',
+    cropId: 'vine-fruit',
+    label: 'Vine Fruit',
+    pluralLabel: 'Vine Fruits',
+    sellValue: 700,
+    babySeconds: 16,
+    matureSeconds: 70,
+    regrows: true,
+  },
+  'cactus-seeds': {
+    seedId: 'cactus-seeds',
+    cropId: 'cactus',
+    label: 'Cactus Fruit',
+    pluralLabel: 'Cactus Fruits',
+    sellValue: 800,
+    babySeconds: 20,
+    matureSeconds: 86,
     regrows: true,
   },
 };
@@ -1539,12 +1594,17 @@ export class Game {
   private chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
   private readonly chapterElevenSeedInventory = new Map<ChapterElevenSeedId, number>();
   private chapterElevenSeedHotbar: Array<ChapterElevenSeedId | null> = Array.from({ length: 9 }, () => null);
+  private readonly chapterElevenSeedShopStock = new Map<ChapterElevenSeedId, number>();
+  private chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
   private chapterElevenSelectedSeedId: ChapterElevenSeedId | null = null;
   private chapterElevenSelectedCropId: ChapterElevenCropId | null = null;
   private chapterElevenSelectedPetEggType: ChapterElevenPetType | null = null;
+  private chapterElevenSelectedEquipmentId: ChapterElevenEquipmentId | null = null;
   private readonly chapterElevenPlants: ChapterElevenPlanting[] = [];
+  private readonly chapterElevenVineSticks: ChapterElevenVineStick[] = [];
   private readonly chapterElevenCropInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenPetEggInventory = new Map<ChapterElevenPetType, number>();
+  private readonly chapterElevenEquipmentInventory = new Map<ChapterElevenEquipmentId, number>();
   private readonly chapterElevenPlacedPetEggs: ChapterElevenPlacedPetEgg[] = [];
   private readonly chapterElevenPets: ChapterElevenPet[] = [];
   private chapterElevenNextPlantId = 1;
@@ -2109,6 +2169,16 @@ export class Game {
     }
 
     if (event.code === 'KeyE') {
+      if (this.chapterElevenActive && (this.chapterElevenSeedShopOpen || this.chapterElevenSellMenuOpen)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.setChapterElevenSeedShopOpen(false);
+        this.setChapterElevenSellMenuOpen(false);
+        this.player.lock();
+        this.pushStatus('Menu closed.', 1.2);
+        return;
+      }
+
       const chapterFiveMonitor = this.chapterFiveActive ? this.chapterFive.getMonitorState() : null;
       if (
         this.chapterFiveActive
@@ -3178,11 +3248,53 @@ export class Game {
     ) <= CHAPTER_ELEVEN_SEED_SHOP_RANGE;
   }
 
+  private getChapterElevenSeedMaxStock(seedId: ChapterElevenSeedId): number {
+    return this.getChapterElevenSeedItem(seedId)?.maxStock ?? 99;
+  }
+
+  private getChapterElevenSeedStock(seedId: ChapterElevenSeedId): number {
+    if (!this.chapterElevenTwoActive) {
+      return this.getChapterElevenSeedMaxStock(seedId);
+    }
+
+    if (!this.chapterElevenSeedShopStock.has(seedId)) {
+      this.chapterElevenSeedShopStock.set(seedId, this.getChapterElevenSeedMaxStock(seedId));
+    }
+
+    return this.chapterElevenSeedShopStock.get(seedId) ?? 0;
+  }
+
+  private restockChapterElevenSeedShop(): void {
+    CHAPTER_ELEVEN_SEED_SHOP_ITEMS.forEach((item) => {
+      this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenSeedMaxStock(item.id));
+    });
+    this.chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
+  }
+
+  private updateChapterElevenSeedShopStock(deltaSeconds: number): void {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+      return;
+    }
+
+    this.chapterElevenSeedShopRestockTimer -= deltaSeconds;
+    if (this.chapterElevenSeedShopRestockTimer <= 0) {
+      this.restockChapterElevenSeedShop();
+      this.pushStatus('The Buy Seeds stand restocked.', 2.2);
+      this.syncHud();
+    }
+  }
+
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
-    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.map((item) => ({
-      ...item,
-      enabled: this.chapterElevenMoney >= item.cost,
-    }));
+    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.map((item) => {
+      const stock = this.getChapterElevenSeedStock(item.id);
+      const stocked = !this.chapterElevenTwoActive || stock > 0;
+      return {
+        ...item,
+        enabled: this.chapterElevenMoney >= item.cost && stocked,
+        stock: this.chapterElevenTwoActive ? stock : undefined,
+        restockSeconds: this.chapterElevenTwoActive ? this.chapterElevenSeedShopRestockTimer : undefined,
+      };
+    });
   }
 
   private readonly handleChapterElevenSeedPurchase = (seedId: ChapterElevenSeedId): void => {
@@ -3201,6 +3313,12 @@ export class Game {
       return;
     }
 
+    if (this.chapterElevenTwoActive && this.getChapterElevenSeedStock(seedId) <= 0) {
+      this.pushStatus(`${item.label} are sold out until the next restock.`, 2.4);
+      this.syncHud();
+      return;
+    }
+
     const hotbarSlot = this.putChapterElevenSeedInHotbar(seedId);
     if (!hotbarSlot) {
       this.pushStatus('Your seed hotbar is full. Make room before buying more seeds.', 2.6);
@@ -3209,10 +3327,11 @@ export class Game {
     }
 
     this.chapterElevenMoney -= item.cost;
-    this.chapterElevenSeedShopOpen = false;
+    if (this.chapterElevenTwoActive) {
+      this.chapterElevenSeedShopStock.set(seedId, Math.max(0, this.getChapterElevenSeedStock(seedId) - 1));
+    }
     this.pushStatus(`Bought ${item.singularLabel}. It is in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 3.2);
     this.syncHud();
-    this.player.lock();
   };
 
   private putChapterElevenSeedInHotbar(seedId: ChapterElevenSeedId): number | null {
@@ -3233,6 +3352,9 @@ export class Game {
     this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
     this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
     this.chapterElevenSelectedSeedId = seedId;
+    this.chapterElevenSelectedCropId = null;
+    this.chapterElevenSelectedPetEggType = null;
+    this.chapterElevenSelectedEquipmentId = null;
     this.placementToolActive = false;
     this.placementPreview.visible = false;
     this.chapterElevenHeldSeedAnchor.visible = false;
@@ -4255,6 +4377,7 @@ export class Game {
       this.chapterEleven.update(deltaSeconds, this.player.getPosition());
       this.updateChapterElevenPlants(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
+      this.updateChapterElevenSeedShopStock(deltaSeconds);
     } else if (this.chapterTwelveActive && !this.chapterTwelve.isDriving()) {
       this.chapterTwelve.update(deltaSeconds);
     } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive) {
@@ -7644,6 +7767,7 @@ export class Game {
       this.chapterElevenSelectedSeedId = null;
       this.chapterElevenSelectedCropId = null;
       this.chapterElevenSelectedPetEggType = null;
+      this.chapterElevenSelectedEquipmentId = null;
       this.setPlacementToolActive(true);
       this.chapterElevenHeldSeedAnchor.visible = false;
       this.pushStatus('Coordinate Tool equipped.', 1.4);
@@ -7656,6 +7780,7 @@ export class Game {
       this.chapterElevenSelectedSeedId = null;
       this.chapterElevenSelectedCropId = null;
       this.chapterElevenSelectedPetEggType = null;
+      this.chapterElevenSelectedEquipmentId = null;
       this.placementToolActive = false;
       this.placementPreview.visible = false;
       this.chapterElevenHeldSeedAnchor.visible = false;
@@ -7667,6 +7792,7 @@ export class Game {
     this.chapterElevenSelectedSeedId = item.kind === 'seed' ? item.id : null;
     this.chapterElevenSelectedCropId = item.kind === 'crop' ? item.id : null;
     this.chapterElevenSelectedPetEggType = item.kind === 'pet-egg' ? item.id : null;
+    this.chapterElevenSelectedEquipmentId = item.kind === 'equipment' ? item.id : null;
     this.placementToolActive = false;
     this.placementPreview.visible = false;
     this.pushStatus(`${this.getChapterElevenHotbarItemLabel(item)} equipped from hotbar slot ${slot}.`, 1.8);
@@ -7674,7 +7800,7 @@ export class Game {
   }
 
   private getCurrentChapterElevenHotbarSlot(): number {
-    if (this.placementToolActive && this.chapterElevenSelectedSeedId === null && this.chapterElevenSelectedCropId === null && this.chapterElevenSelectedPetEggType === null) {
+    if (this.placementToolActive && this.chapterElevenSelectedSeedId === null && this.chapterElevenSelectedCropId === null && this.chapterElevenSelectedPetEggType === null && this.chapterElevenSelectedEquipmentId === null) {
       return 1;
     }
 
@@ -7682,6 +7808,7 @@ export class Game {
       (item.kind === 'seed' && item.id === this.chapterElevenSelectedSeedId)
       || (item.kind === 'crop' && item.id === this.chapterElevenSelectedCropId)
       || (item.kind === 'pet-egg' && item.id === this.chapterElevenSelectedPetEggType)
+      || (item.kind === 'equipment' && item.id === this.chapterElevenSelectedEquipmentId)
     ));
     if (selectedIndex >= 0) {
       return selectedIndex + 2;
@@ -7714,6 +7841,11 @@ export class Game {
     this.chapterElevenPetEggInventory.forEach((count, petType) => {
       if (count > 0) {
         items.push({ kind: 'pet-egg', id: petType });
+      }
+    });
+    this.chapterElevenEquipmentInventory.forEach((count, equipmentId) => {
+      if (count > 0) {
+        items.push({ kind: 'equipment', id: equipmentId });
       }
     });
     this.chapterElevenSeedHotbar.forEach((seedId) => {
@@ -7777,6 +7909,12 @@ export class Game {
         return 'golden-tomato';
       case 'pepper':
         return 'golden-pepper';
+      case 'dragon-fruit':
+        return 'golden-dragon-fruit';
+      case 'vine-fruit':
+        return 'golden-vine-fruit';
+      case 'cactus':
+        return 'golden-cactus';
       default:
         return null;
     }
@@ -7788,6 +7926,9 @@ export class Game {
     }
     if (item.kind === 'pet-egg') {
       return `${this.getChapterElevenPetLabel(item.id)} Egg`;
+    }
+    if (item.kind === 'equipment') {
+      return item.id === 'vine-stick' ? 'Vine Stick' : 'Equipment';
     }
     return this.getChapterElevenCropLabel(item.id);
   }
@@ -7890,9 +8031,15 @@ export class Game {
                   ? '#d84435'
                   : seedId === 'tomato-seeds'
                     ? '#c83d30'
-                    : seedId === 'pepper-seeds'
-                      ? '#a92d24'
-                      : '#889d4d';
+                  : seedId === 'pepper-seeds'
+                    ? '#a92d24'
+                    : seedId === 'dragon-fruit-seeds'
+                      ? '#d9367c'
+                      : seedId === 'vine-seeds'
+                        ? '#6d42bd'
+                        : seedId === 'cactus-seeds'
+                          ? '#4b9a42'
+                          : '#889d4d';
     const packetTexture = this.createChapterElevenSeedPacketTexture(item?.singularLabel ?? 'Seed packet', packetColor);
     const packet = new Mesh(new BoxGeometry(0.42, 0.56, 0.035), new MeshStandardMaterial({
       map: packetTexture,
@@ -8014,6 +8161,12 @@ export class Game {
             ? 0xd7392e
             : baseCrop === 'pumpkin'
               ? 0xd87522
+              : baseCrop === 'dragon-fruit'
+                ? 0xd9367c
+                : baseCrop === 'vine-fruit'
+                  ? 0x6d42bd
+                  : baseCrop === 'cactus'
+                    ? 0xe45b76
               : baseCrop === 'peach'
                 ? 0xf2a36f
                 : 0xc6a16f;
@@ -8045,6 +8198,30 @@ export class Game {
     return root;
   }
 
+  private createChapterElevenHeldEquipmentModel(equipmentId: ChapterElevenEquipmentId): Group {
+    const root = new Group();
+    const hand = new Mesh(new BoxGeometry(0.18, 0.12, 0.2), new MeshStandardMaterial({ color: 0xd5a17b, roughness: 0.84 }));
+    hand.position.set(0.1, -0.22, 0.04);
+    root.add(hand);
+
+    if (equipmentId === 'vine-stick') {
+      const stickMaterial = new MeshStandardMaterial({ color: 0x8a5a2f, roughness: 0.9 });
+      const stick = new Mesh(new CylinderGeometry(0.035, 0.045, 0.78, 8), stickMaterial);
+      stick.name = 'Held vine stick';
+      stick.position.set(-0.04, 0.14, -0.02);
+      stick.rotation.set(0.45, 0.08, -0.35);
+      stick.castShadow = true;
+      const twine = new Mesh(new TorusGeometry(0.07, 0.01, 6, 18), new MeshStandardMaterial({ color: 0xdbc58e, roughness: 0.86 }));
+      twine.name = 'Held vine stick twine wrap';
+      twine.position.set(-0.1, 0.28, -0.01);
+      twine.rotation.set(Math.PI / 2, 0.1, -0.35);
+      root.add(stick, twine);
+    }
+
+    root.scale.setScalar(1.14);
+    return root;
+  }
+
   private updateChapterElevenHeldSeedDisplay(deltaSeconds: number): void {
     const heldKey = this.chapterElevenSelectedSeedId
       ? `seed:${this.chapterElevenSelectedSeedId}`
@@ -8052,7 +8229,9 @@ export class Game {
         ? `crop:${this.chapterElevenSelectedCropId}`
         : this.chapterElevenSelectedPetEggType
           ? `pet-egg:${this.chapterElevenSelectedPetEggType}`
-          : null;
+          : this.chapterElevenSelectedEquipmentId
+            ? `equipment:${this.chapterElevenSelectedEquipmentId}`
+            : null;
     if (
       !this.chapterElevenActive
       || !this.player.isLocked()
@@ -8063,6 +8242,7 @@ export class Game {
       || (this.chapterElevenSelectedSeedId !== null && (this.chapterElevenSeedInventory.get(this.chapterElevenSelectedSeedId) ?? 0) <= 0)
       || (this.chapterElevenSelectedCropId !== null && (this.chapterElevenCropInventory.get(this.chapterElevenSelectedCropId) ?? 0) <= 0)
       || (this.chapterElevenSelectedPetEggType !== null && (this.chapterElevenPetEggInventory.get(this.chapterElevenSelectedPetEggType) ?? 0) <= 0)
+      || (this.chapterElevenSelectedEquipmentId !== null && (this.chapterElevenEquipmentInventory.get(this.chapterElevenSelectedEquipmentId) ?? 0) <= 0)
     ) {
       this.chapterElevenHeldSeedAnchor.visible = false;
       return;
@@ -8077,7 +8257,9 @@ export class Game {
         ? this.createChapterElevenHeldSeedModel(this.chapterElevenSelectedSeedId)
         : this.chapterElevenSelectedCropId
           ? this.createChapterElevenHeldCropModel(this.chapterElevenSelectedCropId)
-          : this.createChapterElevenHeldPetEggModel(this.chapterElevenSelectedPetEggType as ChapterElevenPetType);
+          : this.chapterElevenSelectedPetEggType
+            ? this.createChapterElevenHeldPetEggModel(this.chapterElevenSelectedPetEggType)
+            : this.createChapterElevenHeldEquipmentModel(this.chapterElevenSelectedEquipmentId as ChapterElevenEquipmentId);
       this.chapterElevenHeldSeedAnchor.add(this.chapterElevenHeldSeedModel);
     }
 
@@ -8114,7 +8296,10 @@ export class Game {
       || cropId === 'peach'
       || cropId === 'apple'
       || cropId === 'tomato'
-      || cropId === 'pepper';
+      || cropId === 'pepper'
+      || cropId === 'dragon-fruit'
+      || cropId === 'vine-fruit'
+      || cropId === 'cactus';
   }
 
   private createChapterElevenPickableFruits(cropId: ChapterElevenCropId): ChapterElevenPickableFruit[] {
@@ -8188,6 +8373,31 @@ export class Game {
       ];
     }
 
+    if (cropId === 'dragon-fruit') {
+      return [
+        makeFruit(new Vector3(0.28, 0.62, 0.02), 'Dragon Fruit', 14, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+        makeFruit(new Vector3(-0.22, 0.72, -0.16), 'Dragon Fruit', 14, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+        makeFruit(new Vector3(0.04, 0.88, 0.2), 'Dragon Fruit', 14, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+      ];
+    }
+
+    if (cropId === 'vine-fruit') {
+      return [
+        makeFruit(new Vector3(0.18, 1.0, 0.05), 'Vine Fruit', 12, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
+        makeFruit(new Vector3(-0.16, 1.22, -0.06), 'Vine Fruit', 12, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
+        makeFruit(new Vector3(0.12, 1.44, -0.12), 'Vine Fruit', 12, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
+        makeFruit(new Vector3(-0.12, 1.62, 0.12), 'Vine Fruit', 12, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
+      ];
+    }
+
+    if (cropId === 'cactus') {
+      return [
+        makeFruit(new Vector3(0.18, 0.76, 0.03), 'Cactus Fruit', 16, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
+        makeFruit(new Vector3(-0.16, 1.0, -0.08), 'Cactus Fruit', 16, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
+        makeFruit(new Vector3(0.05, 1.24, 0.12), 'Cactus Fruit', 16, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
+      ];
+    }
+
     if (cropId === 'pumpkin') {
       return [
         makeFruit(new Vector3(0, 0.34, 0), 'Pumpkin', CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pumpkin', 'Golden Pumpkin'),
@@ -8246,6 +8456,9 @@ export class Game {
       blueberry: new MeshStandardMaterial({ color: 0x2b5ab4, roughness: 0.62 }),
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
       pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
+      dragonFruit: new MeshStandardMaterial({ color: 0xd9367c, roughness: 0.58 }),
+      vineFruit: new MeshStandardMaterial({ color: 0x6d42bd, roughness: 0.58 }),
+      cactusFruit: new MeshStandardMaterial({ color: 0xe45b76, roughness: 0.64 }),
       pumpkin: new MeshStandardMaterial({ color: 0xd87522, roughness: 0.78 }),
       peach: new MeshStandardMaterial({ color: 0xf2a36f, roughness: 0.64 }),
       goldenPeach: new MeshStandardMaterial({ color: 0xf2ca4d, roughness: 0.42, metalness: 0.22 }),
@@ -8316,6 +8529,30 @@ export class Game {
         stem.rotation.z = index % 2 === 0 ? -0.18 : 0.14;
         stem.castShadow = true;
         plant.root.add(stem);
+      } else if (fruitState.cropId === 'dragon-fruit') {
+        fruit = new Mesh(new SphereGeometry(0.095, 16, 10), fruitState.golden ? materials.genericGold : materials.dragonFruit);
+        fruit.scale.set(1.08, 0.92, 0.96);
+        for (let spikeIndex = 0; spikeIndex < 5; spikeIndex += 1) {
+          const angle = (spikeIndex / 5) * Math.PI * 2;
+          const spike = new Mesh(new ConeGeometry(0.018, 0.09, 5), materials.strawberryLeaf);
+          spike.name = 'Chapter 11 dragon fruit green scale';
+          spike.position.copy(fruitState.offset).add(new Vector3(Math.cos(angle) * 0.08, 0.02 + (spikeIndex % 2) * 0.025, Math.sin(angle) * 0.065));
+          spike.rotation.set(Math.PI / 2, angle, 0);
+          spike.castShadow = true;
+          plant.root.add(spike);
+        }
+      } else if (fruitState.cropId === 'vine-fruit') {
+        fruit = new Mesh(new SphereGeometry(0.07, 14, 10), fruitState.golden ? materials.genericGold : materials.vineFruit);
+        fruit.scale.set(1.05, 0.92, 0.9);
+        const stem = new Mesh(new CylinderGeometry(0.01, 0.014, 0.08, 6), materials.stem);
+        stem.name = 'Chapter 11 vine fruit short stem';
+        stem.position.copy(fruitState.offset).add(new Vector3(0, 0.075, 0));
+        stem.rotation.z = index % 2 === 0 ? 0.22 : -0.16;
+        stem.castShadow = true;
+        plant.root.add(stem);
+      } else if (fruitState.cropId === 'cactus') {
+        fruit = new Mesh(new SphereGeometry(0.075, 14, 10), fruitState.golden ? materials.genericGold : materials.cactusFruit);
+        fruit.scale.set(0.94, 1.12, 0.9);
       } else if (fruitState.cropId === 'raspberry') {
         fruit = new Mesh(new SphereGeometry(0.055, 12, 8), fruitState.golden ? materials.genericGold : materials.raspberry);
       } else if (fruitState.cropId === 'blueberry') {
@@ -8349,6 +8586,10 @@ export class Game {
       case 'peach':
       case 'apple':
         return 0.82;
+      case 'dragon-fruit':
+      case 'vine-fruit':
+      case 'cactus':
+        return 0.74;
       case 'blackberry':
       case 'raspberry':
       case 'blueberry':
@@ -8376,6 +8617,10 @@ export class Game {
       case 'peach':
       case 'apple':
         return 0.42;
+      case 'dragon-fruit':
+      case 'vine-fruit':
+      case 'cactus':
+        return 0.4;
       case 'blackberry':
       case 'raspberry':
       case 'blueberry':
@@ -8464,17 +8709,18 @@ export class Game {
       || config.cropId === 'raspberry'
       || config.cropId === 'blueberry'
       || config.cropId === 'tomato'
+      || config.cropId === 'dragon-fruit'
     ) {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
 
       const leafMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x2d7f33 : 0x1f5f2d,
+        color: config.cropId === 'strawberry' || config.cropId === 'tomato' || config.cropId === 'dragon-fruit' ? 0x2d7f33 : 0x1f5f2d,
         roughness: 0.88,
       });
       const darkLeafMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x1f5f29 : 0x174521,
+        color: config.cropId === 'strawberry' || config.cropId === 'tomato' || config.cropId === 'dragon-fruit' ? 0x1f5f29 : 0x174521,
         roughness: 0.9,
       });
       const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.86 });
@@ -8515,6 +8761,73 @@ export class Game {
           thorn.castShadow = true;
           plant.root.add(thorn);
         }
+      }
+      this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
+    if (config.cropId === 'vine-fruit') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const vineMaterial = new MeshStandardMaterial({ color: 0x236f2e, roughness: 0.84 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x319644, roughness: 0.82 });
+      const supportMaterial = new MeshStandardMaterial({ color: 0x8a5a2f, roughness: 0.9 });
+      const support = new Mesh(new CylinderGeometry(0.05, 0.06, 1.55, 8), supportMaterial);
+      support.name = 'Chapter 11 vine fruit support stick in plant';
+      support.position.y = 0.82;
+      support.castShadow = true;
+      plant.root.add(support);
+      for (let index = 0; index < 6; index += 1) {
+        const segment = new Mesh(new CylinderGeometry(0.025, 0.032, 0.48, 8), vineMaterial);
+        segment.name = 'Chapter 11 climbing vine segment';
+        segment.position.set(Math.sin(index * 0.9) * 0.14, 0.28 + index * 0.22, Math.cos(index * 0.9) * 0.11);
+        segment.rotation.z = index % 2 === 0 ? 0.42 : -0.36;
+        segment.rotation.x = 0.18;
+        segment.castShadow = true;
+        plant.root.add(segment);
+        const leaf = new Mesh(new SphereGeometry(0.12, 12, 8), leafMaterial);
+        leaf.name = 'Chapter 11 climbing vine leaf';
+        leaf.position.set(segment.position.x + 0.08 * (index % 2 === 0 ? 1 : -1), segment.position.y + 0.08, segment.position.z);
+        leaf.scale.set(1.25, 0.28, 0.72);
+        leaf.rotation.z = index % 2 === 0 ? 0.34 : -0.34;
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      }
+      this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
+    if (config.cropId === 'cactus') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const cactusMaterial = new MeshStandardMaterial({ color: 0x3f8e3f, roughness: 0.9 });
+      const thornMaterial = new MeshStandardMaterial({ color: 0xf0dfbb, roughness: 0.74 });
+      const trunk = new Mesh(new CylinderGeometry(0.19, 0.23, 1.35, 12), cactusMaterial);
+      trunk.name = 'Chapter 11 mature cactus main stalk';
+      trunk.position.y = 0.72;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      plant.root.add(trunk);
+      [[-0.25, 0.84, -0.1, -0.55], [0.24, 0.94, 0.12, 0.52]].forEach(([x, y, z, rotationZ]) => {
+        const arm = new Mesh(new CylinderGeometry(0.09, 0.11, 0.62, 10), cactusMaterial);
+        arm.name = 'Chapter 11 mature cactus raised arm';
+        arm.position.set(x, y, z);
+        arm.rotation.z = rotationZ;
+        arm.castShadow = true;
+        plant.root.add(arm);
+      });
+      for (let index = 0; index < 22; index += 1) {
+        const angle = index * 1.07;
+        const thorn = new Mesh(new ConeGeometry(0.012, 0.08, 5), thornMaterial);
+        thorn.name = 'Chapter 11 cactus tiny thorn';
+        thorn.position.set(Math.cos(angle) * 0.2, 0.18 + (index % 7) * 0.16, Math.sin(angle) * 0.18);
+        thorn.rotation.set(Math.PI / 2, angle, 0);
+        thorn.castShadow = true;
+        plant.root.add(thorn);
       }
       this.addChapterElevenPickableFruitMeshes(plant);
       return;
@@ -9034,7 +9347,13 @@ export class Game {
         pet.root.parent.remove(pet.root);
       }
     });
+    this.chapterElevenVineSticks.forEach((stick) => {
+      if (stick.root.parent) {
+        stick.root.parent.remove(stick.root);
+      }
+    });
     this.chapterElevenPlants.length = 0;
+    this.chapterElevenVineSticks.length = 0;
     this.chapterElevenPlacedPetEggs.length = 0;
     this.chapterElevenPets.length = 0;
     this.chapterElevenCropInventory.clear();
@@ -9043,10 +9362,13 @@ export class Game {
     if (clearSeeds) {
       this.chapterElevenSeedInventory.clear();
       this.chapterElevenPetEggInventory.clear();
+      this.chapterElevenEquipmentInventory.clear();
       this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
+      this.restockChapterElevenSeedShop();
       this.chapterElevenSelectedSeedId = null;
       this.chapterElevenSelectedCropId = null;
       this.chapterElevenSelectedPetEggType = null;
+      this.chapterElevenSelectedEquipmentId = null;
       this.chapterElevenPetEggsBought = 0;
       this.chapterElevenSellMenuOpen = false;
       this.chapterElevenSellChoosing = false;
@@ -9082,6 +9404,37 @@ export class Game {
       playerPosition.x - CHAPTER_ELEVEN_PET_SHOP_X,
       playerPosition.z - CHAPTER_ELEVEN_PET_SHOP_Z,
     ) <= CHAPTER_ELEVEN_PET_SHOP_RANGE;
+  }
+
+  private isNearChapterElevenEquipmentStand(): boolean {
+    if (!this.chapterElevenActive) {
+      return false;
+    }
+
+    const playerPosition = this.player.getPosition();
+    return Math.hypot(
+      playerPosition.x - CHAPTER_ELEVEN_EQUIPMENT_STALL_X,
+      playerPosition.z - CHAPTER_ELEVEN_EQUIPMENT_STALL_Z,
+    ) <= CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE;
+  }
+
+  private buyChapterElevenVineStick(): void {
+    if (this.chapterElevenMoney < CHAPTER_ELEVEN_VINE_STICK_COST) {
+      this.pushStatus(`Vine Sticks cost $${CHAPTER_ELEVEN_VINE_STICK_COST}. You need more money.`, 2.4);
+      return;
+    }
+
+    this.chapterElevenMoney -= CHAPTER_ELEVEN_VINE_STICK_COST;
+    this.chapterElevenEquipmentInventory.set('vine-stick', (this.chapterElevenEquipmentInventory.get('vine-stick') ?? 0) + 1);
+    this.chapterElevenSelectedSeedId = null;
+    this.chapterElevenSelectedCropId = null;
+    this.chapterElevenSelectedPetEggType = null;
+    this.chapterElevenSelectedEquipmentId = 'vine-stick';
+    this.placementToolActive = false;
+    this.placementPreview.visible = false;
+    const hotbarSlot = this.getCurrentChapterElevenHotbarSlot();
+    this.pushStatus(`Bought a Vine Stick for $${CHAPTER_ELEVEN_VINE_STICK_COST}. It is in hotbar slot ${hotbarSlot}.`, 2.8);
+    this.syncHud();
   }
 
   private chooseChapterElevenPetEggType(purchaseNumber: number): ChapterElevenPetType {
@@ -9133,6 +9486,7 @@ export class Game {
     this.chapterElevenSelectedSeedId = null;
     this.chapterElevenSelectedCropId = null;
     this.chapterElevenSelectedPetEggType = petType;
+    this.chapterElevenSelectedEquipmentId = null;
     this.placementToolActive = false;
     this.placementPreview.visible = false;
     const hotbarSlot = this.getCurrentChapterElevenHotbarSlot();
@@ -9298,6 +9652,87 @@ export class Game {
       root.add(leg, paw);
     }));
     return root;
+  }
+
+  private createChapterElevenVineStickWorldModel(): Group {
+    const root = new Group();
+    root.name = 'Chapter 11 placed vine stick';
+    const stickMaterial = new MeshStandardMaterial({ color: 0x8a5a2f, roughness: 0.9 });
+    const twineMaterial = new MeshStandardMaterial({ color: 0xdbc58e, roughness: 0.86 });
+    const stick = new Mesh(new CylinderGeometry(0.055, 0.07, 1.45, 8), stickMaterial);
+    stick.name = 'Chapter 11 vine stick upright wooden support';
+    stick.position.y = 0.8;
+    stick.rotation.z = 0.04;
+    stick.castShadow = true;
+    stick.receiveShadow = true;
+    const tip = new Mesh(new ConeGeometry(0.075, 0.18, 8), stickMaterial);
+    tip.name = 'Chapter 11 vine stick pointed top';
+    tip.position.y = 1.6;
+    tip.castShadow = true;
+    const ropeA = new Mesh(new TorusGeometry(0.13, 0.012, 6, 22), twineMaterial);
+    ropeA.name = 'Chapter 11 vine stick twine loop low';
+    ropeA.position.y = 0.82;
+    ropeA.rotation.x = Math.PI / 2;
+    const ropeB = ropeA.clone();
+    ropeB.name = 'Chapter 11 vine stick twine loop high';
+    ropeB.position.y = 1.16;
+    root.add(stick, tip, ropeA, ropeB);
+    return root;
+  }
+
+  private findNearbyChapterElevenVineStick(x: number, z: number, maxDistance = 1.35): ChapterElevenVineStick | null {
+    let closest: ChapterElevenVineStick | null = null;
+    let closestDistance = Infinity;
+    this.chapterElevenVineSticks.forEach((stick) => {
+      const distance = Math.hypot(stick.x - x, stick.z - z);
+      if (distance <= maxDistance && distance < closestDistance) {
+        closest = stick;
+        closestDistance = distance;
+      }
+    });
+    return closest;
+  }
+
+  private placeChapterElevenVineStick(point: Vector3): boolean {
+    if (this.chapterElevenSelectedEquipmentId !== 'vine-stick' || (this.chapterElevenEquipmentInventory.get('vine-stick') ?? 0) <= 0) {
+      return false;
+    }
+
+    const patch = this.getChapterElevenDirtPatchAt(point);
+    if (!patch) {
+      this.pushStatus('Place Vine Sticks inside a dirt patch.', 2.2);
+      return true;
+    }
+
+    if (this.findNearbyChapterElevenVineStick(point.x, point.z, 1.05)) {
+      this.pushStatus('That Vine Stick is too close to another one.', 2.1);
+      return true;
+    }
+
+    const root = this.createChapterElevenVineStickWorldModel();
+    root.position.set(
+      MathUtils.clamp(point.x, patch.centerX - patch.halfWidth + 0.55, patch.centerX + patch.halfWidth - 0.55),
+      0,
+      MathUtils.clamp(point.z, patch.centerZ - patch.halfDepth + 0.55, patch.centerZ + patch.halfDepth - 0.55),
+    );
+    this.chapterEleven.root.add(root);
+    this.chapterElevenVineSticks.push({
+      root,
+      x: root.position.x,
+      z: root.position.z,
+      patch: { ...patch },
+    });
+
+    const nextCount = Math.max(0, (this.chapterElevenEquipmentInventory.get('vine-stick') ?? 0) - 1);
+    if (nextCount > 0) {
+      this.chapterElevenEquipmentInventory.set('vine-stick', nextCount);
+    } else {
+      this.chapterElevenEquipmentInventory.delete('vine-stick');
+      this.chapterElevenSelectedEquipmentId = null;
+    }
+    this.pushStatus('Vine Stick placed. Plant vine seeds close to it.', 2.4);
+    this.syncHud();
+    return true;
   }
 
   private placeChapterElevenPetEgg(point: Vector3): boolean {
@@ -9505,6 +9940,12 @@ export class Game {
       return;
     }
 
+    const vineStick = seedId === 'vine-seeds' ? this.findNearbyChapterElevenVineStick(point.x, point.z) : null;
+    if (seedId === 'vine-seeds' && !vineStick) {
+      this.pushStatus('Vine seeds need a Vine Stick placed close by first.', 2.6);
+      return;
+    }
+
     const newPlantRadius = this.getChapterElevenPlantFootprintRadius(seedId);
     const tooClose = this.chapterElevenPlants.some((plant) => {
       const existingRadius = this.getChapterElevenPlantFootprintRadius(plant.seedId);
@@ -9537,6 +9978,7 @@ export class Game {
       stage: 'planted',
       mature: false,
       golden: !this.isChapterElevenPickableFruitCrop(config.cropId) && Math.random() < CHAPTER_ELEVEN_GOLDEN_CHANCE,
+      hasVineStick: Boolean(vineStick),
     };
     root.userData.chapterElevenDogFertilized = false;
     this.chapterElevenNextPlantId += 1;
@@ -9746,10 +10188,8 @@ export class Game {
     }
 
     this.chapterElevenMoney += total;
-    this.setChapterElevenSellMenuOpen(false);
     this.pushStatus(`Sold ${soldLabels.join(', ')} for $${total}. Money: $${this.chapterElevenMoney}.`, 3.2);
     this.syncHud();
-    this.player.lock();
   }
 
   private readonly handleChapterElevenSellAction = (action: ChapterElevenSellAction): void => {
@@ -9805,6 +10245,11 @@ export class Game {
       return;
     }
 
+    if (this.isNearChapterElevenEquipmentStand()) {
+      this.buyChapterElevenVineStick();
+      return;
+    }
+
     if (this.isNearChapterElevenSellStand()) {
       if (this.chapterElevenTwoActive) {
         this.setChapterElevenSellMenuOpen(true);
@@ -9816,6 +10261,10 @@ export class Game {
     }
 
     const point = this.getChapterElevenAimGroundPoint();
+    if (this.placeChapterElevenVineStick(point)) {
+      return;
+    }
+
     if (this.placeChapterElevenPetEgg(point)) {
       return;
     }
@@ -17193,6 +17642,10 @@ export class Game {
     }
 
     if (this.chapterElevenActive && this.chapterElevenTwoActive) {
+      if (this.chapterElevenSelectedEquipmentId) {
+        this.placeChapterElevenVineStick(this.getChapterElevenAimGroundPoint());
+        return;
+      }
       if (this.chapterElevenSelectedSeedId) {
         this.plantChapterElevenSeed(this.getChapterElevenAimGroundPoint());
       }
@@ -21137,7 +21590,9 @@ export class Game {
           ? this.chapterElevenSeedInventory.get(item.id) ?? 0
           : item.kind === 'crop'
             ? this.chapterElevenCropInventory.get(item.id) ?? 0
-            : this.chapterElevenPetEggInventory.get(item.id) ?? 0;
+            : item.kind === 'pet-egg'
+              ? this.chapterElevenPetEggInventory.get(item.id) ?? 0
+              : this.chapterElevenEquipmentInventory.get(item.id) ?? 0;
         return {
           label: this.getChapterElevenHotbarItemLabel(item),
           count,
@@ -21145,7 +21600,8 @@ export class Game {
           type: item.kind === 'pet-egg' ? `${item.id}-egg` : item.id,
           selected: (item.kind === 'seed' && item.id === this.chapterElevenSelectedSeedId)
             || (item.kind === 'crop' && item.id === this.chapterElevenSelectedCropId)
-            || (item.kind === 'pet-egg' && item.id === this.chapterElevenSelectedPetEggType),
+            || (item.kind === 'pet-egg' && item.id === this.chapterElevenSelectedPetEggType)
+            || (item.kind === 'equipment' && item.id === this.chapterElevenSelectedEquipmentId),
         };
       });
       const emptySlots = Array.from({ length: Math.max(0, 9 - gardenSlots.length) }, () => ({
@@ -22491,9 +22947,13 @@ export class Game {
         return `Press E by the Pet Eggs seller to get a random pet egg for $${CHAPTER_ELEVEN_PET_EGG_COST}.`;
       }
 
+      if (this.isNearChapterElevenEquipmentStand()) {
+        return `Press E by the Equipment seller to buy a Vine Stick for $${CHAPTER_ELEVEN_VINE_STICK_COST}.`;
+      }
+
       if (this.isNearChapterElevenSellStand()) {
         return this.chapterElevenTwoActive
-          ? 'Press E at the Sell stand to choose plants, sell all, or exit.'
+          ? 'Press E at the Sell stand to choose plants or sell all. Press E again to close the menu.'
           : 'Press E at the Sell stand to sell harvested crops or refund seeds for a little less than they cost.';
       }
 
@@ -22516,6 +22976,9 @@ export class Game {
       }
 
       if (this.getChapterElevenDirtPatchAt(point)) {
+        if (this.chapterElevenSelectedEquipmentId === 'vine-stick') {
+          return 'Left click or press E to place the Vine Stick in this dirt patch.';
+        }
         if (this.chapterElevenSelectedPetEggType) {
           return `Press E to place the ${this.getChapterElevenPetLabel(this.chapterElevenSelectedPetEggType)} Egg on your farm.`;
         }

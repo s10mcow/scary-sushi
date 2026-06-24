@@ -180,7 +180,10 @@ export type ChapterElevenSeedId =
   | 'peach-seeds'
   | 'apple-tree-seeds'
   | 'tomato-seeds'
-  | 'pepper-seeds';
+  | 'pepper-seeds'
+  | 'dragon-fruit-seeds'
+  | 'vine-seeds'
+  | 'cactus-seeds';
 
 export interface ChapterSevenGrandpaTradeView {
   id: ChapterSevenGrandpaTradeId;
@@ -197,6 +200,8 @@ export interface ChapterElevenSeedShopItemView {
   cost: number;
   section: 'cheap' | 'expensive';
   enabled: boolean;
+  stock?: number;
+  restockSeconds?: number;
 }
 
 export type ChapterElevenSellAction =
@@ -2848,9 +2853,15 @@ export function createHud(host: HTMLElement): HudController {
         title.textContent = `${item.label} $${item.cost}`;
         const description = document.createElement('span');
         description.className = 'hud__chapter-seven-trade-description';
+        const stockText = typeof item.stock === 'number' ? `Stock: ${item.stock}` : 'Available';
+        const restockText = typeof item.restockSeconds === 'number' && item.restockSeconds > 0
+          ? ` / restocks in ${Math.ceil(item.restockSeconds)}s`
+          : '';
         description.textContent = item.enabled
-          ? 'Available'
-          : `Need $${Math.max(0, item.cost - safeMoney)} more`;
+          ? `${stockText}${restockText}`
+          : typeof item.stock === 'number' && item.stock <= 0
+            ? `Sold out${restockText}`
+            : `Need $${Math.max(0, item.cost - safeMoney)} more${restockText}`;
         button.append(title, description);
         let purchaseHandled = false;
         const handlePurchasePointer = (event: Event): void => {
@@ -2903,7 +2914,6 @@ export function createHud(host: HTMLElement): HudController {
       };
 
       const rows: HTMLElement[] = [
-        makeActionButton('Exit', 'Close this sell menu.', { type: 'exit' }),
         makeActionButton('Sell all', 'Sell every harvested fruit, vegetable, and grown plant in your inventory.', { type: 'sell-all' }, items.length === 0),
         makeActionButton('Choose plants', 'Pick certain plants from your inventory before selling.', { type: 'choose-plants' }, items.length === 0),
       ];

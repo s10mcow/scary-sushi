@@ -425,9 +425,17 @@ export function createChapterEleven(): ChapterElevenData {
   root.add(petEggsStand);
   addCollider(colliders, -2.61, 52.33, 3.02, 1.55);
 
+  const equipmentStand = stand.clone(true);
+  equipmentStand.name = 'Chapter 11 equipment old fashioned garden stand';
+  equipmentStand.position.set(2.61, 0, 52.33);
+  equipmentStand.rotation.y = Math.PI / 2;
+  root.add(equipmentStand);
+  addCollider(colliders, 2.61, 52.33, 3.02, 1.55);
+
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'Buy Seeds');
   addStandLabel(petEggsStand, 'Pet Eggs');
+  addStandLabel(equipmentStand, 'Equipment');
 
   const addPetEggDisplay = (x: number, y: number, z: number): void => {
     const eggGroup = new Group();
