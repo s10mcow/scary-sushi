@@ -745,6 +745,27 @@ export function createHud(host: HTMLElement): HudController {
 
   meterPanel.append(healthMeter.root, staminaMeter.root, toxicityMeter.root);
 
+  const moneyPanel = document.createElement('section');
+  moneyPanel.className = 'hud__money';
+
+  const moneyIcon = document.createElement('span');
+  moneyIcon.className = 'hud__money-icon';
+  moneyIcon.textContent = '$';
+
+  const moneyText = document.createElement('div');
+  moneyText.className = 'hud__money-text';
+
+  const moneyLabel = document.createElement('p');
+  moneyLabel.className = 'hud__label';
+  moneyLabel.textContent = 'Money';
+
+  const moneyValue = document.createElement('p');
+  moneyValue.className = 'hud__money-value';
+  moneyValue.textContent = '$200';
+
+  moneyText.append(moneyLabel, moneyValue);
+  moneyPanel.append(moneyIcon, moneyText);
+
   const storyNotice = document.createElement('section');
   storyNotice.className = 'hud__story';
   storyNotice.dataset.active = 'false';
@@ -1954,6 +1975,7 @@ export function createHud(host: HTMLElement): HudController {
     chapterSevenCookiePicker,
     chapterSevenTrading,
     crosshair,
+    moneyPanel,
     meterPanel,
     statusPanel,
     crouchInstructions,
