@@ -211,7 +211,7 @@ const START_IN_CHAPTER_ELEVEN = true;
 const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
 const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
 const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
-const CHAPTER_ELEVEN_STARTING_MONEY = 200;
+const CHAPTER_ELEVEN_STARTING_MONEY = 100;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   id: ChapterElevenSeedId;
   label: string;
@@ -1290,6 +1290,7 @@ export class Game {
   private chapterElevenSeedShopOpen = false;
   private chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
   private readonly chapterElevenSeedInventory = new Map<ChapterElevenSeedId, number>();
+  private chapterElevenSelectedSeedId: ChapterElevenSeedId | null = null;
   private chapterSevenHasBirdCageKey = false;
   private chapterSevenHeldItem: ChapterSevenHeldItem = null;
   private chapterSevenLongerNightUses = 0;
@@ -2885,8 +2886,9 @@ export class Game {
 
     this.chapterElevenMoney -= item.cost;
     this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
+    this.chapterElevenSelectedSeedId = seedId;
     this.chapterElevenSeedShopOpen = false;
-    this.pushStatus(`Bought ${item.label}. Money left: $${this.chapterElevenMoney}.`, 2.4);
+    this.pushStatus(`Bought ${item.singularLabel}. It is in your hotbar. Money left: $${this.chapterElevenMoney}.`, 2.8);
     this.syncHud();
     this.player.lock();
   };
@@ -18444,15 +18446,18 @@ export class Game {
     if (this.chapterElevenActive) {
       const seedSlots = CHAPTER_ELEVEN_SEED_SHOP_ITEMS
         .map((item) => ({
+          id: item.id,
           label: item.label,
           singularLabel: item.singularLabel,
           count: this.chapterElevenSeedInventory.get(item.id) ?? 0,
         }))
         .filter((item) => item.count > 0)
         .map((item) => ({
-          label: item.count > 1 ? `${item.label} x${item.count}` : item.singularLabel,
+          label: item.count > 1 ? item.label : item.singularLabel,
           count: item.count,
           filled: true,
+          type: item.id,
+          selected: item.id === this.chapterElevenSelectedSeedId,
         }));
       return [
         coordinateToolSlot,
@@ -26385,6 +26390,7 @@ export class Game {
     this.chapterElevenSeedShopOpen = false;
     this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
     this.chapterElevenSeedInventory.clear();
+    this.chapterElevenSelectedSeedId = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
