@@ -31,11 +31,49 @@ export interface ChapterTwelveData {
 const FIELD_HALF_SIZE = 94;
 const TRUCK_INTERACT_DISTANCE = 4.4;
 
+function createMudTexture(): CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext('2d');
+  if (context) {
+    context.fillStyle = '#55341f';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    for (let index = 0; index < 620; index += 1) {
+      const x = (index * 47) % canvas.width;
+      const y = (index * 83) % canvas.height;
+      const radius = 2 + ((index * 19) % 12);
+      const shade = 28 + ((index * 31) % 42);
+      context.fillStyle = `rgba(${shade + 22}, ${shade + 12}, ${shade + 4}, ${0.18 + (index % 5) * 0.035})`;
+      context.beginPath();
+      context.ellipse(x, y, radius * 1.8, radius, (index % 9) * 0.37, 0, Math.PI * 2);
+      context.fill();
+    }
+    for (let index = 0; index < 80; index += 1) {
+      const x = (index * 91) % canvas.width;
+      const y = (index * 37) % canvas.height;
+      context.strokeStyle = `rgba(23, 14, 9, ${0.22 + (index % 4) * 0.05})`;
+      context.lineWidth = 1 + (index % 3);
+      context.beginPath();
+      context.moveTo(x, y);
+      context.bezierCurveTo(x + 18, y + 8, x - 14, y + 28, x + 24, y + 38);
+      context.stroke();
+    }
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  texture.repeat.set(6, 6);
+  return texture;
+}
+
 const grassMaterial = new MeshStandardMaterial({ color: 0x2e642f, roughness: 0.96 });
-const mudMaterial = new MeshStandardMaterial({ color: 0x5d3823, roughness: 0.98 });
-const wetMudMaterial = new MeshStandardMaterial({ color: 0x2f2019, roughness: 0.64, metalness: 0.04 });
-const rutMaterial = new MeshStandardMaterial({ color: 0x231711, roughness: 0.7 });
-const rampMaterial = new MeshStandardMaterial({ color: 0x6f4529, roughness: 0.95 });
+const mudMaterial = new MeshStandardMaterial({ color: 0x654028, map: createMudTexture(), roughness: 0.9 });
+const mudEdgeMaterial = new MeshStandardMaterial({ color: 0x4d2f1e, map: createMudTexture(), roughness: 0.94 });
+const wetMudMaterial = new MeshStandardMaterial({ color: 0x261913, roughness: 0.38, metalness: 0.02 });
+const rutMaterial = new MeshStandardMaterial({ color: 0x1d120d, roughness: 0.56, metalness: 0.03 });
+const mudPuddleMaterial = new MeshStandardMaterial({ color: 0x1a120f, roughness: 0.18, metalness: 0.04, transparent: true, opacity: 0.86 });
+const mudClumpMaterial = new MeshStandardMaterial({ color: 0x3f291b, roughness: 0.98 });
+const rampMaterial = new MeshStandardMaterial({ color: 0x674026, map: createMudTexture(), roughness: 0.92 });
 const barkMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.92 });
 const leafMaterial = new MeshStandardMaterial({ color: 0x1f512d, roughness: 0.88 });
 const truckPaintMaterial = new MeshStandardMaterial({ color: 0x1b3458, roughness: 0.42, metalness: 0.22 });
@@ -111,26 +149,99 @@ function addTree(root: Group, colliders: CollisionBox[], x: number, z: number, s
   addCollider(colliders, x, z, 0.38 * scale, 0.38 * scale);
 }
 
-function addMudPatch(root: Group, name: string, x: number, z: number, width: number, depth: number, rotationY = 0): void {
-  const patch = new Mesh(new BoxGeometry(width, 0.08, depth), mudMaterial);
-  patch.name = name;
-  patch.position.set(x, 0.015, z);
-  patch.rotation.y = rotationY;
-  patch.receiveShadow = true;
-  root.add(patch);
+function addFlatMudOval(
+  root: Group,
+  name: string,
+  localX: number,
+  localZ: number,
+  radiusX: number,
+  radiusZ: number,
+  material: MeshStandardMaterial,
+  y = 0.045,
+): Mesh {
+  const oval = new Mesh(new CylinderGeometry(1, 1, 0.035, 28), material);
+  oval.name = name;
+  oval.position.set(localX, y, localZ);
+  oval.scale.set(radiusX, 1, radiusZ);
+  oval.receiveShadow = true;
+  oval.castShadow = true;
+  root.add(oval);
+  return oval;
+}
 
-  for (let index = 0; index < 11; index += 1) {
-    const rut = new Mesh(new BoxGeometry(width * 0.06, 0.035, depth * 0.18), index % 3 === 0 ? wetMudMaterial : rutMaterial);
-    rut.name = 'Chapter 12 muddy truck tire rut';
-    rut.position.set(
-      x + Math.sin(index * 1.25) * width * 0.28 + (index % 2 === 0 ? width * 0.2 : -width * 0.2),
-      0.075,
-      z - depth * 0.42 + index * depth * 0.084,
-    );
-    rut.rotation.y = rotationY + (index % 2 === 0 ? 0.04 : -0.04);
-    rut.receiveShadow = true;
-    root.add(rut);
+function addMudClump(root: Group, localX: number, localZ: number, scale: number): void {
+  const clump = new Mesh(new SphereGeometry(0.34, 10, 6), mudClumpMaterial);
+  clump.name = 'Chapter 12 raised sloppy mud clump';
+  clump.position.set(localX, 0.12 + scale * 0.035, localZ);
+  clump.scale.set(1.5 * scale, 0.22 * scale, 0.86 * scale);
+  clump.rotation.y = localX * 0.13 + localZ * 0.07;
+  clump.castShadow = true;
+  clump.receiveShadow = true;
+  root.add(clump);
+}
+
+function addMudPatch(root: Group, name: string, x: number, z: number, width: number, depth: number, rotationY = 0): void {
+  const patchGroup = new Group();
+  patchGroup.name = name;
+  patchGroup.position.set(x, 0, z);
+  patchGroup.rotation.y = rotationY;
+
+  const patch = new Mesh(new BoxGeometry(width, 0.06, depth), mudMaterial);
+  patch.name = `${name} slick uneven mud base`;
+  patch.position.set(0, 0.018, 0);
+  patch.receiveShadow = true;
+  patchGroup.add(patch);
+
+  const edgeCount = Math.max(12, Math.round(depth / 7));
+  for (let index = 0; index < edgeCount; index += 1) {
+    const t = edgeCount === 1 ? 0 : index / (edgeCount - 1);
+    const localZ = -depth * 0.48 + t * depth + Math.sin(index * 1.91) * depth * 0.018;
+    const wobble = Math.sin(index * 2.37) * width * 0.08;
+    const blobWidth = width * (0.12 + (index % 4) * 0.018);
+    const blobDepth = depth * (0.035 + (index % 3) * 0.008);
+    addFlatMudOval(patchGroup, 'Chapter 12 sloppy irregular mud edge', -width * 0.5 + wobble, localZ, blobWidth, blobDepth, mudEdgeMaterial, 0.052);
+    addFlatMudOval(patchGroup, 'Chapter 12 sloppy irregular mud edge', width * 0.5 - wobble * 0.7, localZ + Math.cos(index * 1.45) * depth * 0.012, blobWidth * 1.12, blobDepth, mudEdgeMaterial, 0.052);
   }
+
+  const rutCount = Math.max(10, Math.round(depth / 8));
+  for (let index = 0; index < rutCount; index += 1) {
+    const localZ = -depth * 0.43 + index * (depth * 0.86 / Math.max(1, rutCount - 1));
+    const bend = Math.sin(index * 1.18) * width * 0.08;
+    [-0.23, 0.23].forEach((side, sideIndex) => {
+      const rut = new Mesh(new BoxGeometry(width * 0.105, 0.034, depth * 0.105), sideIndex === 0 && index % 3 === 0 ? wetMudMaterial : rutMaterial);
+      rut.name = 'Chapter 12 deep sloppy tire rut filled with wet mud';
+      rut.position.set(width * side + bend, 0.08, localZ);
+      rut.rotation.y = Math.sin(index * 0.77) * 0.08;
+      rut.receiveShadow = true;
+      patchGroup.add(rut);
+    });
+  }
+
+  const puddleCount = Math.max(5, Math.round((width * depth) / 780));
+  for (let index = 0; index < puddleCount; index += 1) {
+    const localX = Math.sin(index * 2.41) * width * 0.28 + (index % 2 === 0 ? -width * 0.12 : width * 0.12);
+    const localZ = -depth * 0.34 + ((index * 0.31) % 1) * depth * 0.68;
+    const puddle = addFlatMudOval(
+      patchGroup,
+      'Chapter 12 glossy standing water puddle in mud',
+      localX,
+      localZ,
+      width * (0.08 + (index % 3) * 0.018),
+      depth * (0.025 + (index % 4) * 0.006),
+      mudPuddleMaterial,
+      0.094,
+    );
+    puddle.rotation.y = index * 0.42;
+  }
+
+  const clumpCount = Math.max(12, Math.round((width * depth) / 260));
+  for (let index = 0; index < clumpCount; index += 1) {
+    const localX = Math.sin(index * 1.79) * width * 0.43;
+    const localZ = -depth * 0.46 + ((index * 0.173) % 1) * depth * 0.92;
+    addMudClump(patchGroup, localX, localZ, 0.55 + (index % 5) * 0.16);
+  }
+
+  root.add(patchGroup);
 }
 
 function addMudJump(root: Group, x: number, z: number, rotationY: number, scale = 1): void {
@@ -141,6 +252,33 @@ function addMudJump(root: Group, x: number, z: number, rotationY: number, scale 
   const ramp = addBox(jump, 'Chapter 12 sloped mud jump ramp', [8.4 * scale, 0.55 * scale, 7.2 * scale], [0, 0.36 * scale, 0], rampMaterial);
   ramp.rotation.x = -0.15;
   addBox(jump, 'Chapter 12 wet mud jump lip', [8.4 * scale, 0.38 * scale, 1.1 * scale], [0, 0.78 * scale, -3.05 * scale], wetMudMaterial).rotation.x = -0.15;
+  for (let index = 0; index < 12; index += 1) {
+    const clump = new Mesh(new SphereGeometry(0.28 * scale, 8, 5), mudClumpMaterial);
+    clump.name = 'Chapter 12 mud jump loose wet clump';
+    clump.position.set(
+      Math.sin(index * 1.73) * 3.4 * scale,
+      (0.72 + (index % 4) * 0.035) * scale,
+      (-2.7 + index * 0.42) * scale,
+    );
+    clump.scale.set(1.7, 0.24, 0.82);
+    clump.rotation.y = index * 0.51;
+    clump.castShadow = true;
+    clump.receiveShadow = true;
+    jump.add(clump);
+  }
+  for (let index = 0; index < 4; index += 1) {
+    const puddle = addFlatMudOval(
+      jump,
+      'Chapter 12 shiny puddle sitting on truck jump',
+      -2.9 * scale + index * 1.95 * scale,
+      (index % 2 === 0 ? -1.8 : 1.05) * scale,
+      0.68 * scale,
+      0.34 * scale,
+      mudPuddleMaterial,
+      0.86 * scale,
+    );
+    puddle.rotation.y = index * 0.62;
+  }
   root.add(jump);
 }
 
