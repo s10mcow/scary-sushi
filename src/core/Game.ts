@@ -1842,7 +1842,18 @@ export class Game {
       return;
     }
 
-    if ((event.code !== 'KeyB' && event.code !== 'KeyJ' && event.code !== 'KeyK' && event.code !== 'KeyZ' && event.code !== 'KeyX' && event.code !== 'KeyT' && event.code !== 'KeyE' && event.code !== 'KeyY') || event.repeat) {
+    if ((event.code !== 'KeyB' && event.code !== 'KeyC' && event.code !== 'KeyJ' && event.code !== 'KeyK' && event.code !== 'KeyZ' && event.code !== 'KeyX' && event.code !== 'KeyT' && event.code !== 'KeyE' && event.code !== 'KeyY') || event.repeat) {
+      return;
+    }
+
+    if (event.code === 'KeyC') {
+      if (!this.chapterElevenActive) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.addChapterElevenDebugSeedToHotbar();
       return;
     }
 
@@ -2892,29 +2903,59 @@ export class Game {
       return;
     }
 
+    const hotbarSlot = this.putChapterElevenSeedInHotbar(seedId);
+    if (!hotbarSlot) {
+      this.pushStatus('Your seed hotbar is full. Make room before buying more seeds.', 2.6);
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenMoney -= item.cost;
+    this.chapterElevenSeedShopOpen = false;
+    this.pushStatus(`Bought ${item.singularLabel}. It is in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 3.2);
+    this.syncHud();
+    this.player.lock();
+  };
+
+  private putChapterElevenSeedInHotbar(seedId: ChapterElevenSeedId): number | null {
+    const item = this.getChapterElevenSeedItem(seedId);
+    if (!item) {
+      return null;
+    }
+
     let hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === seedId);
     if (hotbarIndex < 0) {
       hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === null);
     }
 
     if (hotbarIndex < 0) {
-      this.pushStatus('Your seed hotbar is full. Make room before buying more seeds.', 2.6);
+      return null;
+    }
+
+    this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
+    this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
+    this.chapterElevenSelectedSeedId = seedId;
+    this.placementToolActive = false;
+    this.placementPreview.visible = false;
+    this.chapterElevenHeldSeedAnchor.visible = false;
+    return hotbarIndex + 2;
+  }
+
+  private addChapterElevenDebugSeedToHotbar(): void {
+    const seedId: ChapterElevenSeedId = 'carrot-seeds';
+    const item = this.getChapterElevenSeedItem(seedId);
+    const hotbarSlot = this.putChapterElevenSeedInHotbar(seedId);
+    if (!item || !hotbarSlot) {
+      this.pushStatus('Your seed hotbar is full. Make room before adding a seed.', 2.4);
       this.syncHud();
       return;
     }
 
-    this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
-    this.chapterElevenMoney -= item.cost;
-    const seedCount = (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1;
-    this.chapterElevenSeedInventory.set(seedId, seedCount);
-    this.chapterElevenSelectedSeedId = seedId;
-    this.placementToolActive = false;
-    this.placementPreview.visible = false;
     this.chapterElevenSeedShopOpen = false;
-    this.pushStatus(`Bought ${item.singularLabel}. It is in hotbar slot ${hotbarIndex + 2}. Money left: $${this.chapterElevenMoney}.`, 3.2);
+    this.pushStatus(`${item.singularLabel} added to hotbar slot ${hotbarSlot}. Press ${hotbarSlot} to hold it.`, 2.8);
     this.syncHud();
     this.player.lock();
-  };
+  }
 
   private getChapterSevenGrandpaTrades(): ChapterSevenGrandpaTradeView[] {
     return [
