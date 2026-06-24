@@ -17,11 +17,19 @@ import type { CollisionBox } from '../types/world';
 export interface ChapterElevenData {
   root: Group;
   colliders: CollisionBox[];
+  dirtPatches: ChapterElevenDirtPatch[];
   spawn: Vector3;
   lookTarget: Vector3;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number, playerPosition: Vector3): void;
   reset(): void;
+}
+
+export interface ChapterElevenDirtPatch {
+  centerX: number;
+  centerZ: number;
+  halfWidth: number;
+  halfDepth: number;
 }
 
 const FIELD_WIDTH = 120;
@@ -161,6 +169,7 @@ export function createChapterEleven(): ChapterElevenData {
   const root = new Group();
   root.name = 'Chapter 11: Grow a garden';
   const colliders: CollisionBox[] = [];
+  const dirtPatches: ChapterElevenDirtPatch[] = [];
 
   const grass = new Mesh(new BoxGeometry(FIELD_WIDTH, 0.12, FIELD_DEPTH), grassMaterial);
   grass.name = 'Chapter 11 open grass field';
@@ -174,6 +183,13 @@ export function createChapterEleven(): ChapterElevenData {
   const halfDepth = FIELD_DEPTH / 2;
 
   const addDirtPatch = (centerX: number, centerZ: number, width: number, depth: number): void => {
+    dirtPatches.push({
+      centerX,
+      centerZ,
+      halfWidth: width / 2,
+      halfDepth: depth / 2,
+    });
+
     const patch = new Mesh(new BoxGeometry(width, 0.035, depth), dirtMaterial);
     patch.name = 'Chapter 11 fenced brown dirt patch';
     patch.position.set(centerX, 0.005, centerZ);
@@ -600,6 +616,7 @@ export function createChapterEleven(): ChapterElevenData {
   return {
     root,
     colliders,
+    dirtPatches,
     spawn,
     lookTarget,
     getSupportedFloorY(_position: Vector3): number | null {

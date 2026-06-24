@@ -63,7 +63,7 @@ import { createChapterSeven, type ChapterSevenData } from '../scene/createChapte
 import { createChapterEight, type ChapterEightData } from '../scene/createChapterEight';
 import { createChapterNine, type ChapterNineData, type ChapterNineJumpscareEvent } from '../scene/createChapterNine';
 import { createChapterTen, type ChapterTenData } from '../scene/createChapterTen';
-import { createChapterEleven, type ChapterElevenData } from '../scene/createChapterEleven';
+import { createChapterEleven, type ChapterElevenData, type ChapterElevenDirtPatch } from '../scene/createChapterEleven';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -229,6 +229,140 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 300, section: 'expensive' },
   { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 300, section: 'expensive' },
 ];
+type ChapterElevenCropId =
+  | 'carrot'
+  | 'mushroom'
+  | 'strawberry'
+  | 'blackberry'
+  | 'pumpkin'
+  | 'nut'
+  | 'golden-nut'
+  | 'blueberry'
+  | 'raspberry'
+  | 'peach';
+type ChapterElevenPlantStage = 'planted' | 'baby' | 'mature';
+
+interface ChapterElevenCropConfig {
+  seedId: ChapterElevenSeedId;
+  cropId: ChapterElevenCropId;
+  label: string;
+  pluralLabel: string;
+  sellValue: number;
+  babySeconds: number;
+  matureSeconds: number;
+  regrows: boolean;
+}
+
+interface ChapterElevenPlanting {
+  id: number;
+  seedId: ChapterElevenSeedId;
+  cropId: ChapterElevenCropId;
+  root: Group;
+  x: number;
+  z: number;
+  age: number;
+  stage: ChapterElevenPlantStage;
+  mature: boolean;
+  golden: boolean;
+}
+
+const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCropConfig> = {
+  'carrot-seeds': {
+    seedId: 'carrot-seeds',
+    cropId: 'carrot',
+    label: 'Carrot',
+    pluralLabel: 'Carrots',
+    sellValue: 10,
+    babySeconds: 3,
+    matureSeconds: 10,
+    regrows: false,
+  },
+  mushroom: {
+    seedId: 'mushroom',
+    cropId: 'mushroom',
+    label: 'Mushroom',
+    pluralLabel: 'Mushrooms',
+    sellValue: 20,
+    babySeconds: 3,
+    matureSeconds: 10,
+    regrows: false,
+  },
+  strawberry: {
+    seedId: 'strawberry',
+    cropId: 'strawberry',
+    label: 'Strawberry',
+    pluralLabel: 'Strawberries',
+    sellValue: 40,
+    babySeconds: 3,
+    matureSeconds: 10,
+    regrows: false,
+  },
+  'blackberry-bush': {
+    seedId: 'blackberry-bush',
+    cropId: 'blackberry',
+    label: 'Blackberry',
+    pluralLabel: 'Blackberries',
+    sellValue: 50,
+    babySeconds: 6,
+    matureSeconds: 18,
+    regrows: true,
+  },
+  'pumpkin-seeds': {
+    seedId: 'pumpkin-seeds',
+    cropId: 'pumpkin',
+    label: 'Pumpkin',
+    pluralLabel: 'Pumpkins',
+    sellValue: 100,
+    babySeconds: 4,
+    matureSeconds: 14,
+    regrows: false,
+  },
+  'nut-seeds': {
+    seedId: 'nut-seeds',
+    cropId: 'nut',
+    label: 'Nut',
+    pluralLabel: 'Nuts',
+    sellValue: 500,
+    babySeconds: 20,
+    matureSeconds: 60,
+    regrows: false,
+  },
+  'blueberry-seeds': {
+    seedId: 'blueberry-seeds',
+    cropId: 'blueberry',
+    label: 'Blueberry',
+    pluralLabel: 'Blueberries',
+    sellValue: 200,
+    babySeconds: 5,
+    matureSeconds: 15,
+    regrows: true,
+  },
+  'raspberry-seeds': {
+    seedId: 'raspberry-seeds',
+    cropId: 'raspberry',
+    label: 'Raspberry',
+    pluralLabel: 'Raspberries',
+    sellValue: 300,
+    babySeconds: 5,
+    matureSeconds: 15,
+    regrows: true,
+  },
+  'peach-seeds': {
+    seedId: 'peach-seeds',
+    cropId: 'peach',
+    label: 'Peach',
+    pluralLabel: 'Peaches',
+    sellValue: 200,
+    babySeconds: 8,
+    matureSeconds: 24,
+    regrows: false,
+  },
+};
+const CHAPTER_ELEVEN_SELL_STAND_X = -53.46;
+const CHAPTER_ELEVEN_SELL_STAND_Z = 11.34;
+const CHAPTER_ELEVEN_SELL_STAND_RANGE = 5.5;
+const CHAPTER_ELEVEN_PLANT_MIN_DISTANCE = 1.12;
+const CHAPTER_ELEVEN_PLANT_INTERACT_RANGE = 1.25;
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -1295,6 +1429,9 @@ export class Game {
   private readonly chapterElevenSeedInventory = new Map<ChapterElevenSeedId, number>();
   private chapterElevenSeedHotbar: Array<ChapterElevenSeedId | null> = Array.from({ length: 9 }, () => null);
   private chapterElevenSelectedSeedId: ChapterElevenSeedId | null = null;
+  private readonly chapterElevenPlants: ChapterElevenPlanting[] = [];
+  private readonly chapterElevenCropInventory = new Map<ChapterElevenCropId, number>();
+  private chapterElevenNextPlantId = 1;
   private chapterSevenHasBirdCageKey = false;
   private chapterSevenHeldItem: ChapterSevenHeldItem = null;
   private chapterSevenLongerNightUses = 0;
@@ -3921,6 +4058,7 @@ export class Game {
       this.chapterTen.update(deltaSeconds);
     } else if (this.chapterElevenActive) {
       this.chapterEleven.update(deltaSeconds, this.player.getPosition());
+      this.updateChapterElevenPlants(deltaSeconds);
     } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
@@ -7474,6 +7612,367 @@ export class Game {
     this.chapterElevenHeldSeedAnchor.visible = true;
     this.chapterElevenHeldSeedAnchor.position.set(0.43, -0.38 + bob, -0.66);
     this.chapterElevenHeldSeedAnchor.rotation.set(-0.18 + bob * 0.4, -0.34, 0.12);
+  }
+
+  private clearChapterElevenPlantVisual(plant: ChapterElevenPlanting): void {
+    while (plant.root.children.length > 0) {
+      plant.root.remove(plant.root.children[0]);
+    }
+  }
+
+  private addChapterElevenLeafCluster(root: Group, count: number, height: number, radius: number): void {
+    const leafMaterial = new MeshStandardMaterial({ color: 0x2f8b35, roughness: 0.82 });
+    for (let index = 0; index < count; index += 1) {
+      const leaf = new Mesh(new BoxGeometry(0.055, height, 0.035), leafMaterial);
+      const angle = (index / count) * Math.PI * 2;
+      leaf.position.set(Math.cos(angle) * radius, 0.11 + height * 0.32, Math.sin(angle) * radius);
+      leaf.rotation.set(0.44, angle, 0.24);
+      leaf.castShadow = true;
+      root.add(leaf);
+    }
+  }
+
+  private rebuildChapterElevenPlantVisual(plant: ChapterElevenPlanting): void {
+    this.clearChapterElevenPlantVisual(plant);
+
+    const spot = new Mesh(new CircleGeometry(0.46, 28), new MeshStandardMaterial({
+      color: 0xb9814a,
+      roughness: 0.98,
+      side: DoubleSide,
+    }));
+    spot.name = 'Chapter 11 planted lighter brown seed circle';
+    spot.rotation.x = -Math.PI / 2;
+    spot.position.y = 0.082;
+    spot.receiveShadow = true;
+    plant.root.add(spot);
+
+    if (plant.stage === 'planted') {
+      return;
+    }
+
+    const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
+    if (plant.stage === 'baby') {
+      this.addChapterElevenLeafCluster(plant.root, 4, config.cropId === 'nut' ? 0.26 : 0.18, 0.06);
+      return;
+    }
+
+    if (config.cropId === 'carrot') {
+      const carrot = new Mesh(new ConeGeometry(0.13, 0.58, 16), new MeshStandardMaterial({ color: 0xe87920, roughness: 0.74 }));
+      carrot.name = 'Chapter 11 mature carrot crop';
+      carrot.position.set(0, 0.28, 0);
+      carrot.rotation.z = Math.PI;
+      carrot.castShadow = true;
+      plant.root.add(carrot);
+      this.addChapterElevenLeafCluster(plant.root, 7, 0.32, 0.08);
+      return;
+    }
+
+    if (config.cropId === 'mushroom') {
+      const stem = new Mesh(new CylinderGeometry(0.055, 0.08, 0.32, 12), new MeshStandardMaterial({ color: 0xf1dec7, roughness: 0.72 }));
+      stem.name = 'Chapter 11 mature mushroom stem';
+      stem.position.y = 0.23;
+      const cap = new Mesh(new SphereGeometry(0.2, 18, 10), new MeshStandardMaterial({ color: 0xb34b43, roughness: 0.68 }));
+      cap.name = 'Chapter 11 mature mushroom cap';
+      cap.position.y = 0.42;
+      cap.scale.set(1.15, 0.42, 1.15);
+      plant.root.add(stem, cap);
+      return;
+    }
+
+    if (config.regrows || config.cropId === 'peach') {
+      const bushMaterial = new MeshStandardMaterial({
+        color: config.cropId === 'peach' ? 0x3d8a3d : 0x2f6f32,
+        roughness: 0.84,
+      });
+      const bush = new Mesh(new SphereGeometry(config.cropId === 'peach' ? 0.42 : 0.34, 18, 12), bushMaterial);
+      bush.name = `Chapter 11 mature ${config.label.toLowerCase()} plant`;
+      bush.position.y = config.cropId === 'peach' ? 0.52 : 0.38;
+      bush.scale.set(1.25, config.cropId === 'peach' ? 1.4 : 0.85, 1.1);
+      bush.castShadow = true;
+      plant.root.add(bush);
+      const fruitColor = config.cropId === 'blackberry'
+        ? 0x24112b
+        : config.cropId === 'blueberry'
+          ? 0x2b5ab4
+          : config.cropId === 'raspberry'
+            ? 0xc93668
+            : 0xf2a36f;
+      for (let index = 0; index < (config.cropId === 'peach' ? 5 : 9); index += 1) {
+        const fruit = new Mesh(new SphereGeometry(config.cropId === 'peach' ? 0.085 : 0.045, 10, 8), new MeshStandardMaterial({
+          color: fruitColor,
+          roughness: 0.64,
+        }));
+        const angle = index * 1.87;
+        fruit.name = `Chapter 11 visible ${config.label.toLowerCase()} fruit`;
+        fruit.position.set(Math.cos(angle) * 0.28, 0.42 + (index % 3) * 0.11, Math.sin(angle) * 0.23);
+        fruit.castShadow = true;
+        plant.root.add(fruit);
+      }
+      return;
+    }
+
+    if (config.cropId === 'pumpkin') {
+      const pumpkin = new Mesh(new SphereGeometry(0.34, 24, 14), new MeshStandardMaterial({ color: 0xd87522, roughness: 0.78 }));
+      pumpkin.name = 'Chapter 11 mature pumpkin crop';
+      pumpkin.position.y = 0.34;
+      pumpkin.scale.set(1.25, 0.82, 1.05);
+      const stem = new Mesh(new CylinderGeometry(0.04, 0.055, 0.18, 8), new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }));
+      stem.position.y = 0.66;
+      plant.root.add(pumpkin, stem);
+      return;
+    }
+
+    const nutMaterial = new MeshStandardMaterial({
+      color: plant.golden ? 0xf1c84b : 0xc6a16f,
+      roughness: plant.golden ? 0.42 : 0.78,
+      metalness: plant.golden ? 0.35 : 0.02,
+    });
+    const nut = new Mesh(new SphereGeometry(0.36, 24, 16), nutMaterial);
+    nut.name = plant.golden ? 'Chapter 11 mature golden nut crop' : 'Chapter 11 mature big nut crop';
+    nut.position.y = 0.38;
+    nut.scale.set(1.12, 0.86, 0.96);
+    nut.castShadow = true;
+    const seam = new Mesh(new TorusGeometry(0.29, 0.014, 8, 32), new MeshStandardMaterial({
+      color: plant.golden ? 0x8f6818 : 0x7b5632,
+      roughness: 0.8,
+    }));
+    seam.position.y = 0.38;
+    seam.rotation.set(Math.PI / 2, 0.12, 0.08);
+    plant.root.add(nut, seam);
+  }
+
+  private updateChapterElevenPlants(deltaSeconds: number): void {
+    if (!this.chapterElevenActive) {
+      return;
+    }
+
+    this.chapterElevenPlants.forEach((plant) => {
+      const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
+      plant.age += deltaSeconds;
+      const nextStage: ChapterElevenPlantStage = plant.age >= config.matureSeconds
+        ? 'mature'
+        : plant.age >= config.babySeconds
+          ? 'baby'
+          : 'planted';
+      if (plant.stage !== nextStage) {
+        plant.stage = nextStage;
+        plant.mature = nextStage === 'mature';
+        this.rebuildChapterElevenPlantVisual(plant);
+      }
+    });
+  }
+
+  private clearChapterElevenGardenState(clearSeeds: boolean): void {
+    this.chapterElevenPlants.forEach((plant) => {
+      if (plant.root.parent) {
+        plant.root.parent.remove(plant.root);
+      }
+    });
+    this.chapterElevenPlants.length = 0;
+    this.chapterElevenCropInventory.clear();
+    this.chapterElevenNextPlantId = 1;
+    if (clearSeeds) {
+      this.chapterElevenSeedInventory.clear();
+      this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
+      this.chapterElevenSelectedSeedId = null;
+      this.chapterElevenHeldSeedAnchor.visible = false;
+      if (this.chapterElevenHeldSeedModel) {
+        this.chapterElevenHeldSeedAnchor.remove(this.chapterElevenHeldSeedModel);
+      }
+      this.chapterElevenHeldSeedModel = null;
+      this.chapterElevenHeldSeedModelType = null;
+    }
+  }
+
+  private isNearChapterElevenSellStand(): boolean {
+    if (!this.chapterElevenActive) {
+      return false;
+    }
+
+    const playerPosition = this.player.getPosition();
+    return Math.hypot(
+      playerPosition.x - CHAPTER_ELEVEN_SELL_STAND_X,
+      playerPosition.z - CHAPTER_ELEVEN_SELL_STAND_Z,
+    ) <= CHAPTER_ELEVEN_SELL_STAND_RANGE;
+  }
+
+  private getChapterElevenAimGroundPoint(): Vector3 {
+    const origin = this.camera.getWorldPosition(new Vector3());
+    const direction = this.camera.getWorldDirection(new Vector3()).normalize();
+    if (direction.y < -0.08) {
+      const t = (0.09 - origin.y) / direction.y;
+      if (t > 0 && t < 18) {
+        return origin.add(direction.multiplyScalar(t));
+      }
+    }
+
+    const playerPosition = this.player.getPosition();
+    return playerPosition.add(direction.setY(0).normalize().multiplyScalar(1.25));
+  }
+
+  private getChapterElevenDirtPatchAt(point: Vector3): ChapterElevenDirtPatch | null {
+    return this.chapterEleven.dirtPatches.find((patch) => (
+      point.x >= patch.centerX - patch.halfWidth + 0.42
+      && point.x <= patch.centerX + patch.halfWidth - 0.42
+      && point.z >= patch.centerZ - patch.halfDepth + 0.42
+      && point.z <= patch.centerZ + patch.halfDepth - 0.42
+    )) ?? null;
+  }
+
+  private findChapterElevenTargetPlant(point: Vector3): ChapterElevenPlanting | null {
+    let closest: ChapterElevenPlanting | null = null;
+    let closestDistance = Infinity;
+    this.chapterElevenPlants.forEach((plant) => {
+      const distance = Math.hypot(plant.x - point.x, plant.z - point.z);
+      if (distance < closestDistance && distance <= CHAPTER_ELEVEN_PLANT_INTERACT_RANGE) {
+        closest = plant;
+        closestDistance = distance;
+      }
+    });
+    return closest;
+  }
+
+  private decrementChapterElevenSelectedSeed(seedId: ChapterElevenSeedId): void {
+    const nextCount = Math.max(0, (this.chapterElevenSeedInventory.get(seedId) ?? 0) - 1);
+    if (nextCount > 0) {
+      this.chapterElevenSeedInventory.set(seedId, nextCount);
+      return;
+    }
+
+    this.chapterElevenSeedInventory.delete(seedId);
+    this.chapterElevenSeedHotbar = this.chapterElevenSeedHotbar.map((slotSeedId) => (slotSeedId === seedId ? null : slotSeedId));
+    if (this.chapterElevenSelectedSeedId === seedId) {
+      this.chapterElevenSelectedSeedId = null;
+      this.chapterElevenHeldSeedAnchor.visible = false;
+    }
+  }
+
+  private plantChapterElevenSeed(point: Vector3): void {
+    const seedId = this.chapterElevenSelectedSeedId;
+    if (!seedId || (this.chapterElevenSeedInventory.get(seedId) ?? 0) <= 0) {
+      this.pushStatus('Hold a seed packet from your hotbar, aim at dirt, then press E to plant it.', 2.4);
+      return;
+    }
+
+    const patch = this.getChapterElevenDirtPatchAt(point);
+    if (!patch) {
+      this.pushStatus('Seeds can only be planted in the brown dirt patches.', 2.2);
+      return;
+    }
+
+    const tooClose = this.chapterElevenPlants.some((plant) => Math.hypot(plant.x - point.x, plant.z - point.z) < CHAPTER_ELEVEN_PLANT_MIN_DISTANCE);
+    if (tooClose) {
+      this.pushStatus('Plant that seed a little farther away from the other crop.', 2.1);
+      return;
+    }
+
+    const config = CHAPTER_ELEVEN_CROP_CONFIGS[seedId];
+    const root = new Group();
+    root.name = `Chapter 11 planted ${config.label}`;
+    root.position.set(
+      MathUtils.clamp(point.x, patch.centerX - patch.halfWidth + 0.65, patch.centerX + patch.halfWidth - 0.65),
+      0,
+      MathUtils.clamp(point.z, patch.centerZ - patch.halfDepth + 0.65, patch.centerZ + patch.halfDepth - 0.65),
+    );
+    const plant: ChapterElevenPlanting = {
+      id: this.chapterElevenNextPlantId,
+      seedId,
+      cropId: config.cropId,
+      root,
+      x: root.position.x,
+      z: root.position.z,
+      age: 0,
+      stage: 'planted',
+      mature: false,
+      golden: seedId === 'nut-seeds' && Math.random() < 0.2,
+    };
+    this.chapterElevenNextPlantId += 1;
+    this.rebuildChapterElevenPlantVisual(plant);
+    this.chapterEleven.root.add(root);
+    this.chapterElevenPlants.push(plant);
+    this.decrementChapterElevenSelectedSeed(seedId);
+    this.pushStatus(`${config.label} planted. It will sprout soon.`, 2.4);
+    this.syncHud();
+  }
+
+  private harvestChapterElevenPlant(plant: ChapterElevenPlanting): void {
+    const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
+    if (!plant.mature) {
+      this.pushStatus(`${config.label} is still growing.`, 1.8);
+      return;
+    }
+
+    const inventoryCropId: ChapterElevenCropId = plant.golden ? 'golden-nut' : config.cropId;
+    this.chapterElevenCropInventory.set(inventoryCropId, (this.chapterElevenCropInventory.get(inventoryCropId) ?? 0) + 1);
+
+    if (config.regrows) {
+      plant.age = config.babySeconds;
+      plant.stage = 'baby';
+      plant.mature = false;
+      this.rebuildChapterElevenPlantVisual(plant);
+      this.pushStatus(`${config.label} harvested. The plant stays and will grow more.`, 2.4);
+    } else {
+      this.chapterEleven.root.remove(plant.root);
+      this.chapterElevenPlants.splice(this.chapterElevenPlants.indexOf(plant), 1);
+      this.pushStatus(`${plant.golden ? 'Golden ' : ''}${config.label} harvested. Take it to the Sell stand.`, 2.4);
+    }
+    this.syncHud();
+  }
+
+  private sellChapterElevenCrops(): void {
+    let total = 0;
+    const soldLabels: string[] = [];
+    this.chapterElevenCropInventory.forEach((count, cropId) => {
+      if (count <= 0) {
+        return;
+      }
+
+      if (cropId === 'golden-nut') {
+        total += CHAPTER_ELEVEN_CROP_CONFIGS['nut-seeds'].sellValue * 2 * count;
+        soldLabels.push(`Golden Nuts x${count}`);
+        return;
+      }
+
+      const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
+      if (!config) {
+        return;
+      }
+
+      total += config.sellValue * count;
+      soldLabels.push(`${config.pluralLabel} x${count}`);
+    });
+
+    if (total <= 0) {
+      this.pushStatus('You have no harvested crops to sell yet.', 2.1);
+      return;
+    }
+
+    this.chapterElevenMoney += total;
+    this.chapterElevenCropInventory.clear();
+    this.pushStatus(`Sold ${soldLabels.join(', ')} for $${total}. Money: $${this.chapterElevenMoney}.`, 3.2);
+    this.syncHud();
+  }
+
+  private handleChapterElevenInteract(): void {
+    if (this.isNearChapterElevenSeedShop()) {
+      this.setChapterElevenSeedShopOpen(true);
+      this.pushStatus('The Buy Seeds shop opens.', 2.2);
+      return;
+    }
+
+    if (this.isNearChapterElevenSellStand()) {
+      this.sellChapterElevenCrops();
+      return;
+    }
+
+    const point = this.getChapterElevenAimGroundPoint();
+    const targetPlant = this.findChapterElevenTargetPlant(point);
+    if (targetPlant) {
+      this.harvestChapterElevenPlant(targetPlant);
+      return;
+    }
+
+    this.plantChapterElevenSeed(point);
   }
 
   private setChapterFourBoxHeld(held: boolean, showStatus = true): void {
@@ -14503,13 +15002,7 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
-      if (this.isNearChapterElevenSeedShop()) {
-        this.setChapterElevenSeedShopOpen(true);
-        this.pushStatus('The Buy Seeds shop opens.', 2.2);
-        return;
-      }
-
-      this.pushStatus('Move closer to the Buy Seeds stand and press E to shop.', 2.2);
+      this.handleChapterElevenInteract();
       return;
     }
 
@@ -18215,12 +18708,26 @@ export class Game {
           return count > 0 ? (count === 1 ? item.singularLabel : `${item.label} x${count}`) : null;
         })
         .filter((item): item is string => Boolean(item));
+      const cropInventory = Array.from(this.chapterElevenCropInventory.entries())
+        .map(([cropId, count]) => {
+          if (count <= 0) {
+            return null;
+          }
+
+          if (cropId === 'golden-nut') {
+            return count === 1 ? 'Golden Nut' : `Golden Nuts x${count}`;
+          }
+
+          const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
+          return config ? (count === 1 ? config.label : `${config.pluralLabel} x${count}`) : null;
+        })
+        .filter((item): item is string => Boolean(item));
       return [
-        `Inventory: Coordinate Tool${seedInventory.length > 0 ? `, ${seedInventory.join(', ')}` : ''}`,
+        `Inventory: Coordinate Tool${seedInventory.length > 0 ? `, ${seedInventory.join(', ')}` : ''}${cropInventory.length > 0 ? `, ${cropInventory.join(', ')}` : ''}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 11: Grow a garden',
         `Money: $${this.chapterElevenMoney}`,
-        'Press E at the Buy Seeds stand to open the seed shop.',
+        'Buy seeds at the Buy Seeds stand. Hold a seed, aim at a dirt patch, and press E to plant. Press E on mature crops to harvest, then sell crops at the Sell stand.',
       ].join('\n');
     }
 
@@ -20052,7 +20559,26 @@ export class Game {
         return 'Press E at the Buy Seeds stand to buy seeds.';
       }
 
-      return 'Chapter 11: Grow a garden loaded. A big open grass field is ready for garden building.';
+      if (this.isNearChapterElevenSellStand()) {
+        return 'Press E at the Sell stand to sell harvested crops.';
+      }
+
+      const point = this.getChapterElevenAimGroundPoint();
+      const targetPlant = this.findChapterElevenTargetPlant(point);
+      if (targetPlant) {
+        const config = CHAPTER_ELEVEN_CROP_CONFIGS[targetPlant.seedId];
+        return targetPlant.mature
+          ? `Press E to harvest ${targetPlant.golden ? 'Golden ' : ''}${config.label}.`
+          : `${config.label} is growing.`;
+      }
+
+      if (this.getChapterElevenDirtPatchAt(point)) {
+        return this.chapterElevenSelectedSeedId
+          ? 'Press E to plant the held seed in this dirt patch.'
+          : 'Select a seed from the hotbar, then press E on dirt to plant.';
+      }
+
+      return 'Chapter 11: Grow a garden loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.';
     }
 
     if (this.chapterEightActive) {
@@ -25385,6 +25911,9 @@ export class Game {
     this.chapterEight.reset();
     this.chapterNine.reset();
     this.chapterTen.reset();
+    this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
+    this.clearChapterElevenGardenState(true);
     this.zombieMode.reset();
     this.doomMode.reset();
     this.chapterTwoSeatId = null;
@@ -26644,15 +27173,7 @@ export class Game {
     this.chapterNineJumpscare = null;
     this.chapterElevenSeedShopOpen = false;
     this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
-    this.chapterElevenSeedInventory.clear();
-    this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
-    this.chapterElevenSelectedSeedId = null;
-    this.chapterElevenHeldSeedAnchor.visible = false;
-    if (this.chapterElevenHeldSeedModel) {
-      this.chapterElevenHeldSeedAnchor.remove(this.chapterElevenHeldSeedModel);
-    }
-    this.chapterElevenHeldSeedModel = null;
-    this.chapterElevenHeldSeedModelType = null;
+    this.clearChapterElevenGardenState(true);
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
     this.clearCameraToolState();
@@ -27019,10 +27540,13 @@ export class Game {
       enemy.applyDamage(9999);
       enemy.root.visible = false;
     });
+    this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
+    this.clearChapterElevenGardenState(true);
     this.setPlacementToolActive(true);
     this.player.teleport(this.chapterEleven.spawn);
     this.player.lookToward(this.chapterEleven.lookTarget, 1);
-    this.pushStatus('Chapter 11 loaded. The grow-a-garden field is empty grass for now.', 3.2);
+    this.pushStatus('Chapter 11 loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.', 3.2);
     this.resize();
   }
 
