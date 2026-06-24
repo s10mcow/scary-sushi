@@ -2,6 +2,7 @@ import {
   BoxGeometry,
   CanvasTexture,
   ConeGeometry,
+  DoubleSide,
   Group,
   Mesh,
   MeshStandardMaterial,
@@ -97,6 +98,7 @@ function createStandLabelMaterial(label: string): MeshStandardMaterial {
   return new MeshStandardMaterial({
     map: texture,
     roughness: 0.7,
+    side: DoubleSide,
   });
 }
 
@@ -511,9 +513,10 @@ export function createChapterEleven(): ChapterElevenData {
     const signRoot = new Group();
     signRoot.name = `Chapter 11 ${label} ground sign`;
     signRoot.position.set(x, 0, z);
+    addBox(signRoot, `Chapter 11 ${label} wooden sign board`, [2.62, 1.02, 0.12], [0, 1.55, 0], standWoodMaterial);
     const sign = new Mesh(new PlaneGeometry(2.45, 0.92), createStandLabelMaterial(label));
     sign.name = `Chapter 11 ${label} sign face`;
-    sign.position.set(0, 1.55, 0);
+    sign.position.set(0, 1.55, -0.07);
     sign.rotation.y = Math.PI;
     sign.castShadow = true;
     signRoot.add(sign);
