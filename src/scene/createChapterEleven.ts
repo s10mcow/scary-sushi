@@ -1,8 +1,10 @@
 import {
   BoxGeometry,
+  CanvasTexture,
   Group,
   Mesh,
   MeshStandardMaterial,
+  PlaneGeometry,
   SphereGeometry,
   Vector3,
 } from 'three';
@@ -61,6 +63,37 @@ const lipMaterial = new MeshStandardMaterial({ color: 0x7d322d, roughness: 0.68 
 const pathStoneMaterial = new MeshStandardMaterial({ color: 0x8f9290, roughness: 0.96 });
 const pathStoneLightMaterial = new MeshStandardMaterial({ color: 0xd8d6cd, roughness: 0.94 });
 const pathDirtBaseMaterial = new MeshStandardMaterial({ color: 0xb8945f, roughness: 0.98 });
+
+function createStandLabelMaterial(label: string): MeshStandardMaterial {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 192;
+  const context = canvas.getContext('2d');
+  if (context) {
+    const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#d9b071');
+    gradient.addColorStop(1, '#8b5a2d');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#3c2413';
+    context.lineWidth = 18;
+    context.strokeRect(14, 14, canvas.width - 28, canvas.height - 28);
+    context.strokeStyle = '#f4d89a';
+    context.lineWidth = 4;
+    context.strokeRect(34, 34, canvas.width - 68, canvas.height - 68);
+    context.fillStyle = '#201209';
+    context.font = label.length > 5 ? 'bold 72px Arial' : 'bold 92px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(label.toUpperCase(), canvas.width / 2, canvas.height / 2 + 4);
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return new MeshStandardMaterial({
+    map: texture,
+    roughness: 0.7,
+  });
+}
 
 function addCollider(
   colliders: CollisionBox[],
@@ -142,6 +175,8 @@ export function createChapterEleven(): ChapterElevenData {
   };
   addDirtPatch(-41.5, -39.85, 34, 38.7);
   addDirtPatch(-42.75, 40.45, 34, 38.7);
+  addDirtPatch(42.75, -40.45, 34, 38.7);
+  addDirtPatch(42.75, 40.45, 34, 38.7);
 
   const stand = new Group();
   stand.name = 'Chapter 11 old fashioned garden stand with worker';
@@ -298,6 +333,19 @@ export function createChapterEleven(): ChapterElevenData {
   root.add(girlStand);
   addCollider(colliders, -52.82, -2.42, 1.55, 3.02);
 
+  const addStandLabel = (targetStand: Group, label: string): void => {
+    const sign = new Mesh(new PlaneGeometry(2.85, 1.08), createStandLabelMaterial(label));
+    sign.name = `Chapter 11 ${label.toLowerCase()} stand roof sign`;
+    sign.position.set(1.5, 3.38, 0);
+    sign.rotation.y = Math.PI / 2;
+    sign.castShadow = true;
+    targetStand.add(sign);
+    addBox(targetStand, `Chapter 11 ${label.toLowerCase()} sign left post`, [0.08, 0.68, 0.08], [1.46, 2.92, -1.26], standDarkWoodMaterial);
+    addBox(targetStand, `Chapter 11 ${label.toLowerCase()} sign right post`, [0.08, 0.68, 0.08], [1.46, 2.92, 1.26], standDarkWoodMaterial);
+  };
+  addStandLabel(stand, 'sell');
+  addStandLabel(girlStand, 'buy seats');
+
   const addBrickPath = (pathStart: Vector3, pathEnd: Vector3): void => {
     const pathVector = pathEnd.clone().sub(pathStart);
     const pathLength = Math.hypot(pathVector.x, pathVector.z);
@@ -327,6 +375,8 @@ export function createChapterEleven(): ChapterElevenData {
   };
   addBrickPath(new Vector3(-25.09, 0.065, -40.86), new Vector3(-57.21, 0.065, -42.25));
   addBrickPath(new Vector3(-26.34, 0.065, 39.44), new Vector3(-58.46, 0.065, 38.05));
+  addBrickPath(new Vector3(25.09, 0.065, -40.86), new Vector3(57.21, 0.065, -42.25));
+  addBrickPath(new Vector3(26.34, 0.065, 39.44), new Vector3(58.46, 0.065, 38.05));
 
   const northFence = new Mesh(new BoxGeometry(FIELD_WIDTH + fenceThickness * 2, fenceHeight, fenceThickness), fenceMaterial);
   northFence.name = 'Chapter 11 north border fence';
