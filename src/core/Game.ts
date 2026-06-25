@@ -265,10 +265,8 @@ const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z = -18.2;
 const CHAPTER_ELEVEN_TRADER_X = 9.5;
 const CHAPTER_ELEVEN_TRADER_Z = -52;
 const CHAPTER_ELEVEN_TRADER_RANGE = 4.8;
-const CHAPTER_ELEVEN_TRADER_MIN_SECONDS = 80;
-const CHAPTER_ELEVEN_TRADER_MAX_SECONDS = 150;
-const CHAPTER_ELEVEN_EVENT_MIN_SECONDS = 70;
-const CHAPTER_ELEVEN_EVENT_MAX_SECONDS = 130;
+const CHAPTER_ELEVEN_DAY_SECONDS = 60;
+const CHAPTER_ELEVEN_NIGHT_SECONDS = 60;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   id: ChapterElevenSeedId;
   label: string;
@@ -1720,6 +1718,10 @@ export class Game {
   private readonly chapterElevenRainRoot = new Group();
   private readonly chapterElevenLightningRoot = new Group();
   private readonly chapterElevenTraderRoot = new Group();
+  private chapterElevenPhase: 'day' | 'night' = 'day';
+  private chapterElevenPhaseTimer = CHAPTER_ELEVEN_DAY_SECONDS;
+  private chapterElevenDayCount = 1;
+  private chapterElevenDailyEventUsed = false;
   private chapterElevenEvent: 'none' | 'rain' | 'lightning' = 'none';
   private chapterElevenEventTimer = 0;
   private chapterElevenNextEventTimer = 30;
@@ -4667,6 +4669,7 @@ export class Game {
       this.chapterTen.update(deltaSeconds);
     } else if (this.chapterElevenActive) {
       this.chapterEleven.update(deltaSeconds, this.player.getPosition());
+      this.updateChapterElevenDayNight(deltaSeconds);
       this.updateChapterElevenPlants(deltaSeconds);
       this.updateChapterElevenAutoHarvesters(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
@@ -9509,7 +9512,9 @@ export class Game {
   private startChapterElevenEvent(event: 'rain' | 'lightning'): void {
     this.chapterElevenEvent = event;
     this.chapterElevenEventTimer = event === 'rain' ? MathUtils.randFloat(45, 75) : MathUtils.randFloat(38, 62);
-    this.chapterElevenNextEventTimer = MathUtils.randFloat(CHAPTER_ELEVEN_EVENT_MIN_SECONDS, CHAPTER_ELEVEN_EVENT_MAX_SECONDS);
+    this.chapterElevenDailyEventUsed = true;
+    this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+    this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning';
     this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(2.5, 6) : 0;
     this.pushStatus(event === 'rain'
@@ -9522,6 +9527,72 @@ export class Game {
     this.chapterElevenEventTimer = 0;
     this.chapterElevenRainRoot.visible = false;
     this.chapterElevenLightningRoot.visible = false;
+  }
+
+  private scheduleChapterElevenDailyEvent(): void {
+    if (Math.random() < 0.45) {
+      this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+      return;
+    }
+
+    const eventDelay = MathUtils.randFloat(10, CHAPTER_ELEVEN_DAY_SECONDS - 8);
+    if (Math.random() < 0.68) {
+      this.chapterElevenNextEventTimer = eventDelay;
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+    } else {
+      this.chapterElevenNextTraderTimer = eventDelay;
+      this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+    }
+  }
+
+  private updateChapterElevenDayNight(deltaSeconds: number): void {
+    if (!this.chapterElevenTwoActive) {
+      this.chapterElevenPhase = 'day';
+      this.chapterElevenPhaseTimer = CHAPTER_ELEVEN_DAY_SECONDS;
+      this.chapterElevenDayCount = 1;
+      this.chapterElevenDailyEventUsed = false;
+      this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+      return;
+    }
+
+    this.chapterElevenPhaseTimer -= deltaSeconds;
+    if (this.chapterElevenPhaseTimer > 0) {
+      return;
+    }
+
+    if (this.chapterElevenPhase === 'day') {
+      this.chapterElevenPhase = 'night';
+      this.chapterElevenPhaseTimer = CHAPTER_ELEVEN_NIGHT_SECONDS;
+      this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+      this.stopChapterElevenEvent();
+      if (this.chapterElevenTraderVisible) {
+        this.chapterElevenTraderVisible = false;
+        this.chapterElevenTraderRoot.visible = false;
+        this.chapterElevenTraderShopOpen = false;
+        this.setChapterElevenSeedShopOpen(false);
+      }
+      this.pushStatus('Night started in Grow-a-Garden Two.', 2.4);
+    } else {
+      this.chapterElevenPhase = 'day';
+      this.chapterElevenPhaseTimer = CHAPTER_ELEVEN_DAY_SECONDS;
+      this.chapterElevenDayCount += 1;
+      this.chapterElevenDailyEventUsed = false;
+      this.scheduleChapterElevenDailyEvent();
+      this.pushStatus(`Day ${this.chapterElevenDayCount} started in Grow-a-Garden Two.`, 2.4);
+    }
+  }
+
+  private getChapterElevenNightBlend(): number {
+    if (!this.chapterElevenTwoActive || this.chapterElevenPhase === 'day') {
+      return 0;
+    }
+
+    const fadeIn = MathUtils.clamp((CHAPTER_ELEVEN_NIGHT_SECONDS - this.chapterElevenPhaseTimer) / 6, 0, 1);
+    const fadeOut = MathUtils.clamp(this.chapterElevenPhaseTimer / 6, 0, 1);
+    return Math.min(fadeIn, fadeOut);
   }
 
   private strikeChapterElevenLightning(): void {
@@ -9560,6 +9631,9 @@ export class Game {
       this.stopChapterElevenEvent();
       this.chapterElevenTraderRoot.visible = false;
       this.chapterElevenTraderVisible = false;
+      this.chapterElevenDailyEventUsed = false;
+      this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
       return;
     }
 
@@ -9585,9 +9659,13 @@ export class Game {
       }
     }
 
+    const canStartDailyEvent = this.chapterElevenPhase === 'day' && !this.chapterElevenDailyEventUsed;
     if (this.chapterElevenEvent === 'none') {
+      if (!canStartDailyEvent) {
+        this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+      }
       this.chapterElevenNextEventTimer -= deltaSeconds;
-      if (this.chapterElevenNextEventTimer <= 0) {
+      if (canStartDailyEvent && this.chapterElevenNextEventTimer <= 0) {
         this.startChapterElevenEvent(Math.random() < 0.62 ? 'rain' : 'lightning');
       }
     } else {
@@ -9613,19 +9691,22 @@ export class Game {
         this.chapterElevenTraderRoot.visible = false;
         this.chapterElevenTraderShopOpen = false;
         this.setChapterElevenSeedShopOpen(false);
-        this.chapterElevenNextTraderTimer = MathUtils.randFloat(CHAPTER_ELEVEN_TRADER_MIN_SECONDS, CHAPTER_ELEVEN_TRADER_MAX_SECONDS);
+        this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
         this.pushStatus('The Trader wandered away.', 2.2);
       }
-    } else {
+    } else if (canStartDailyEvent) {
       this.chapterElevenNextTraderTimer -= deltaSeconds;
-      const forcedArrival = this.chapterElevenNextTraderTimer <= 0;
-      const luckyArrival = this.chapterElevenNextTraderTimer < CHAPTER_ELEVEN_TRADER_MIN_SECONDS * 0.45 && Math.random() < deltaSeconds * 0.015;
-      if (forcedArrival || luckyArrival) {
+      if (this.chapterElevenNextTraderTimer <= 0) {
         this.chapterElevenTraderVisible = true;
         this.chapterElevenTraderTimer = MathUtils.randFloat(65, 95);
         this.chapterElevenTraderRoot.visible = true;
+        this.chapterElevenDailyEventUsed = true;
+        this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+        this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
         this.pushStatus('The Trader arrived with western seeds.', 3);
       }
+    } else {
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     }
   }
 
@@ -10092,11 +10173,19 @@ export class Game {
     this.chapterElevenAutoHarvestChestOpen = false;
     this.chapterElevenTraderShopOpen = false;
     this.stopChapterElevenEvent();
-    this.chapterElevenNextEventTimer = MathUtils.randFloat(28, 58);
     this.chapterElevenTraderVisible = false;
     this.chapterElevenTraderRoot.visible = false;
     this.chapterElevenTraderTimer = 0;
-    this.chapterElevenNextTraderTimer = MathUtils.randFloat(45, 75);
+    this.chapterElevenPhase = 'day';
+    this.chapterElevenPhaseTimer = CHAPTER_ELEVEN_DAY_SECONDS;
+    this.chapterElevenDayCount = 1;
+    this.chapterElevenDailyEventUsed = false;
+    if (this.chapterElevenTwoActive) {
+      this.scheduleChapterElevenDailyEvent();
+    } else {
+      this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+    }
     this.chapterElevenNextPlantId = 1;
     this.chapterElevenNextPetId = 1;
     if (clearSeeds) {
@@ -17508,19 +17597,20 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
-      this.lighting.ambient.intensity = 0.78;
-      this.lighting.hemisphere.intensity = 0.98;
+      const nightBlend = this.getChapterElevenNightBlend();
+      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.18, nightBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(0.98, 0.28, nightBlend);
       this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.65;
       this.lighting.flashlight.distance = 26;
 
       if (this.scene.background instanceof Color) {
-        this.scene.background.setHex(0x9fc8df);
+        this.scene.background.copy(new Color(0x9fc8df).lerp(new Color(0x070915), nightBlend));
       }
 
       if (this.scene.fog instanceof Fog) {
-        this.scene.fog.color.setHex(0xc1d6b8);
-        this.scene.fog.near = 92;
-        this.scene.fog.far = 300;
+        this.scene.fog.color.copy(new Color(0xc1d6b8).lerp(new Color(0x10131c), nightBlend));
+        this.scene.fog.near = MathUtils.lerp(92, 55, nightBlend);
+        this.scene.fog.far = MathUtils.lerp(300, 210, nightBlend);
       }
 
       return;
@@ -24227,8 +24317,11 @@ export class Game {
           : 'Select a seed from the hotbar, then press E on dirt to plant.';
       }
 
+      const growGardenTwoPhasePrompt = this.chapterElevenTwoActive
+        ? `Day ${this.chapterElevenDayCount} - ${this.chapterElevenPhase} (${Math.max(0, Math.ceil(this.chapterElevenPhaseTimer))}s left). `
+        : '';
       return this.chapterElevenTwoActive
-        ? 'Grow-a-Garden Two loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.'
+        ? `${growGardenTwoPhasePrompt}Grow-a-Garden Two loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.`
         : 'Chapter 11: Grow a garden loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.';
     }
 
@@ -31236,7 +31329,7 @@ export class Game {
     this.player.lookToward(this.chapterEleven.lookTarget, 1);
     this.pushStatus(
       copyMode
-        ? 'Grow-a-Garden Two loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.'
+        ? 'Grow-a-Garden Two loaded. Day 1 starts now. Day and night each last one minute.'
         : 'Chapter 11 loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.',
       3.2,
     );
