@@ -270,8 +270,10 @@ const CHAPTER_ELEVEN_AUTO_HARVESTER_DAYS = 10;
 const CHAPTER_ELEVEN_TRADER_X = 9.5;
 const CHAPTER_ELEVEN_TRADER_Z = -52;
 const CHAPTER_ELEVEN_TRADER_RANGE = 4.8;
-const CHAPTER_ELEVEN_DAY_SECONDS = 60;
-const CHAPTER_ELEVEN_NIGHT_SECONDS = 60;
+const CHAPTER_ELEVEN_COPY_DAY_SECONDS = 60;
+const CHAPTER_ELEVEN_COPY_NIGHT_SECONDS = 60;
+const CHAPTER_ELEVEN_NORMAL_DAY_SECONDS = 120;
+const CHAPTER_ELEVEN_NORMAL_NIGHT_SECONDS = 120;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   id: ChapterElevenSeedId;
   label: string;
@@ -297,7 +299,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'pineapple-seeds', label: 'Pineapple seeds', singularLabel: 'Pineapple seed', cost: 250, section: 'expensive', maxStock: 2, normalOnly: true },
   { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 350, section: 'expensive', maxStock: 2 },
   { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 350, section: 'expensive', maxStock: 3 },
-  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 650, section: 'expensive', maxStock: 1, copyOnly: true },
+  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 650, section: 'expensive', maxStock: 1 },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
   { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1, copyOnly: true },
   { id: 'corn-seeds', label: 'Western corn seeds', singularLabel: 'Western corn seed', cost: 750, section: 'expensive', maxStock: 2, copyOnly: true, traderOnly: true },
@@ -344,7 +346,8 @@ type ChapterElevenCropId =
   | 'sunset-melon'
   | 'golden-corn'
   | 'golden-desert-sage'
-  | 'golden-sunset-melon';
+  | 'golden-sunset-melon'
+  | `charged-${string}`;
 type ChapterElevenPlantStage = 'planted' | 'baby' | 'mature';
 type ChapterElevenHotbarItem =
   | { kind: 'seed'; id: ChapterElevenSeedId }
@@ -375,6 +378,7 @@ interface ChapterElevenPlanting {
   stage: ChapterElevenPlantStage;
   mature: boolean;
   golden: boolean;
+  charged: boolean;
   pickableFruits?: ChapterElevenPickableFruit[];
   hasVineStick?: boolean;
 }
@@ -412,6 +416,7 @@ interface ChapterElevenPickableFruit {
   offset: Vector3;
   visible: boolean;
   golden: boolean;
+  charged: boolean;
   goldenChance: number;
   regrowTimer: number;
   regrowSeconds: number;
@@ -1754,9 +1759,10 @@ export class Game {
   private readonly chapterElevenLightningRoot = new Group();
   private readonly chapterElevenTraderRoot = new Group();
   private chapterElevenPhase: 'day' | 'night' = 'day';
-  private chapterElevenPhaseTimer = CHAPTER_ELEVEN_DAY_SECONDS;
+  private chapterElevenPhaseTimer = CHAPTER_ELEVEN_COPY_DAY_SECONDS;
   private chapterElevenDayCount = 1;
   private chapterElevenDailyEventUsed = false;
+  private chapterElevenWeatherStreak = 0;
   private chapterElevenEvent: 'none' | 'rain' | 'lightning' = 'none';
   private chapterElevenEventTimer = 0;
   private chapterElevenNextEventTimer = 30;
@@ -8239,6 +8245,14 @@ export class Game {
   }
 
   private getChapterElevenCropLabel(cropId: ChapterElevenCropId): string {
+    if (cropId.startsWith('charged-golden-')) {
+      const base = cropId.replace('charged-golden-', '') as ChapterElevenCropId;
+      return `Golden Electric ${this.getChapterElevenCropLabel(base)}`;
+    }
+    if (cropId.startsWith('charged-')) {
+      const base = cropId.replace('charged-', '') as ChapterElevenCropId;
+      return `Electric ${this.getChapterElevenCropLabel(base)}`;
+    }
     if (cropId.startsWith('golden-')) {
       const base = cropId.replace('golden-', '') as ChapterElevenCropId;
       return `Golden ${this.getChapterElevenCropLabel(base)}`;
@@ -8292,6 +8306,16 @@ export class Game {
       default:
         return null;
     }
+  }
+
+  private getChapterElevenHarvestCropId(baseCropId: ChapterElevenCropId, golden: boolean, charged: boolean): ChapterElevenCropId {
+    if (charged && golden) {
+      return `charged-golden-${baseCropId}`;
+    }
+    if (charged) {
+      return `charged-${baseCropId}`;
+    }
+    return golden ? this.getChapterElevenGoldenCropId(baseCropId) ?? baseCropId : baseCropId;
   }
 
   private getChapterElevenHotbarItemLabel(item: ChapterElevenHotbarItem): string {
@@ -8778,6 +8802,22 @@ export class Game {
     }
   }
 
+  private addChapterElevenElectricityBeams(root: Group, offset: Vector3, radius: number, golden: boolean): void {
+    const beamMaterial = new MeshBasicMaterial({
+      color: golden ? 0xffe16a : 0x72d9ff,
+      transparent: true,
+      opacity: 0.86,
+    });
+    for (let index = 0; index < 6; index += 1) {
+      const angle = (index / 6) * Math.PI * 2;
+      const beam = new Mesh(new BoxGeometry(0.025, 0.025, radius), beamMaterial);
+      beam.name = golden ? 'Chapter 11 golden electric crop beam' : 'Chapter 11 blue electric crop beam';
+      beam.position.copy(offset).add(new Vector3(Math.cos(angle) * radius * 0.35, 0.05 + (index % 3) * 0.055, Math.sin(angle) * radius * 0.35));
+      beam.rotation.set(Math.PI / 2.7, angle, index % 2 === 0 ? 0.38 : -0.38);
+      root.add(beam);
+    }
+  }
+
   private isChapterElevenPickableFruitCrop(cropId: ChapterElevenCropId): boolean {
     return cropId === 'blackberry'
       || cropId === 'strawberry'
@@ -8818,6 +8858,7 @@ export class Game {
       offset,
       visible: true,
       golden: Math.random() < goldenChance,
+      charged: false,
       goldenChance,
       regrowTimer: 0,
       regrowSeconds,
@@ -8872,18 +8913,18 @@ export class Game {
 
     if (cropId === 'pepper') {
       return [
-        makeFruit(new Vector3(0.12, 0.54, 0.04), 'Pepper', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
-        makeFruit(new Vector3(-0.18, 0.48, 0.12), 'Pepper', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
-        makeFruit(new Vector3(0.26, 0.62, -0.14), 'Pepper', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
-        makeFruit(new Vector3(-0.06, 0.68, -0.18), 'Pepper', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(0.12, 0.54, 0.04), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(-0.18, 0.48, 0.12), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(0.26, 0.62, -0.14), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(-0.06, 0.68, -0.18), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
       ];
     }
 
     if (cropId === 'dragon-fruit') {
       return [
-        makeFruit(new Vector3(0.28, 0.62, 0.02), 'Dragon Fruit', regrow(14), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
-        makeFruit(new Vector3(-0.22, 0.72, -0.16), 'Dragon Fruit', regrow(14), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
-        makeFruit(new Vector3(0.04, 0.88, 0.2), 'Dragon Fruit', regrow(14), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+        makeFruit(new Vector3(0.24, 0.74, 0.02), 'Dragon Fruit', 5, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+        makeFruit(new Vector3(-0.22, 0.98, -0.16), 'Dragon Fruit', 5, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+        makeFruit(new Vector3(0.06, 1.22, 0.18), 'Dragon Fruit', 5, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
       ];
     }
 
@@ -8995,6 +9036,9 @@ export class Game {
       fruitState.mesh = null;
       if (!fruitState.visible) {
         return;
+      }
+      if (plant.charged) {
+        fruitState.charged = true;
       }
 
       let fruit: Mesh;
@@ -9123,6 +9167,9 @@ export class Game {
       fruit.position.copy(fruitState.offset);
       fruit.castShadow = true;
       plant.root.add(fruit);
+      if (fruitState.charged) {
+        this.addChapterElevenElectricityBeams(plant.root, fruitState.offset, fruitState.golden ? 0.52 : 0.42, fruitState.golden);
+      }
       fruitState.mesh = fruit;
     });
   }
@@ -9264,6 +9311,9 @@ export class Game {
       carrot.castShadow = true;
       plant.root.add(carrot);
       this.addChapterElevenLeafCluster(plant.root, 7, 0.32, 0.08);
+      if (plant.charged) {
+        this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.35, 0), plant.golden ? 0.5 : 0.38, plant.golden);
+      }
       return;
     }
 
@@ -9273,18 +9323,17 @@ export class Game {
       || config.cropId === 'raspberry'
       || config.cropId === 'blueberry'
       || config.cropId === 'tomato'
-      || config.cropId === 'dragon-fruit'
     ) {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
 
       const leafMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'strawberry' || config.cropId === 'tomato' || config.cropId === 'dragon-fruit' ? 0x2d7f33 : 0x1f5f2d,
+        color: config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x2d7f33 : 0x1f5f2d,
         roughness: 0.88,
       });
       const darkLeafMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'strawberry' || config.cropId === 'tomato' || config.cropId === 'dragon-fruit' ? 0x1f5f29 : 0x174521,
+        color: config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x1f5f29 : 0x174521,
         roughness: 0.9,
       });
       const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.86 });
@@ -9366,6 +9415,40 @@ export class Game {
       if (this.chapterElevenTwoActive) {
         plant.root.scale.set(1.2, 1.55, 1.2);
       }
+      return;
+    }
+
+    if (config.cropId === 'dragon-fruit') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const cactusMaterial = new MeshStandardMaterial({ color: 0x3d8f4a, roughness: 0.88 });
+      const thornMaterial = new MeshStandardMaterial({ color: 0xf0dfbb, roughness: 0.74 });
+      const trunk = new Mesh(new CylinderGeometry(0.16, 0.22, 1.42, 12), cactusMaterial);
+      trunk.name = 'Chapter 11 dragon fruit cactus main stalk';
+      trunk.position.y = 0.75;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      plant.root.add(trunk);
+      [[-0.26, 0.84, -0.08, -0.56], [0.24, 1.02, 0.1, 0.52]].forEach(([x, y, z, rotationZ]) => {
+        const arm = new Mesh(new CylinderGeometry(0.075, 0.1, 0.62, 10), cactusMaterial);
+        arm.name = 'Chapter 11 dragon fruit cactus raised arm';
+        arm.position.set(x, y, z);
+        arm.rotation.z = rotationZ;
+        arm.castShadow = true;
+        plant.root.add(arm);
+      });
+      for (let index = 0; index < 18; index += 1) {
+        const angle = index * 1.17;
+        const thorn = new Mesh(new ConeGeometry(0.011, 0.07, 5), thornMaterial);
+        thorn.name = 'Chapter 11 dragon fruit cactus tiny thorn';
+        thorn.position.set(Math.cos(angle) * 0.17, 0.18 + (index % 7) * 0.16, Math.sin(angle) * 0.15);
+        thorn.rotation.set(Math.PI / 2, angle, 0);
+        thorn.castShadow = true;
+        plant.root.add(thorn);
+      }
+      this.addChapterElevenPickableFruitMeshes(plant);
       return;
     }
 
@@ -9480,6 +9563,9 @@ export class Game {
         spot.castShadow = true;
         plant.root.add(spot);
       });
+      if (plant.charged) {
+        this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 1.0, 0), plant.golden ? 0.82 : 0.68, plant.golden);
+      }
       return;
     }
 
@@ -9592,6 +9678,9 @@ export class Game {
     seam.position.y = 0.38;
     seam.rotation.set(Math.PI / 2, 0.12, 0.08);
     plant.root.add(nut, seam);
+    if (plant.charged) {
+      this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.42, 0), plant.golden ? 0.62 : 0.48, plant.golden);
+    }
   }
 
   private constrainChapterElevenFieldPosition(): void {
@@ -9685,6 +9774,7 @@ export class Game {
             fruit.visible = true;
             fruit.regrowTimer = 0;
             fruit.golden = Math.random() < fruit.goldenChance;
+            fruit.charged = false;
             fruitsChanged = true;
           }
         });
@@ -9716,15 +9806,27 @@ export class Game {
     this.chapterElevenLightningRoot.visible = false;
   }
 
+  private getChapterElevenDaySeconds(): number {
+    return this.chapterElevenTwoActive ? CHAPTER_ELEVEN_COPY_DAY_SECONDS : CHAPTER_ELEVEN_NORMAL_DAY_SECONDS;
+  }
+
+  private getChapterElevenNightSeconds(): number {
+    return this.chapterElevenTwoActive ? CHAPTER_ELEVEN_COPY_NIGHT_SECONDS : CHAPTER_ELEVEN_NORMAL_NIGHT_SECONDS;
+  }
+
   private scheduleChapterElevenDailyEvent(): void {
-    if (Math.random() < 0.45) {
+    const daySeconds = this.getChapterElevenDaySeconds();
+    const weatherChance = this.chapterElevenTwoActive ? 0.38 : 0.23;
+    if (this.chapterElevenWeatherStreak >= 3 || Math.random() > weatherChance) {
+      this.chapterElevenWeatherStreak = 0;
       this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
       return;
     }
 
-    const eventDelay = MathUtils.randFloat(10, CHAPTER_ELEVEN_DAY_SECONDS - 8);
-    if (Math.random() < 0.68) {
+    this.chapterElevenWeatherStreak += 1;
+    const eventDelay = MathUtils.randFloat(14, Math.max(18, daySeconds - 14));
+    if (!this.chapterElevenTwoActive || Math.random() < 0.72) {
       this.chapterElevenNextEventTimer = eventDelay;
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     } else {
@@ -9734,9 +9836,9 @@ export class Game {
   }
 
   private updateChapterElevenDayNight(deltaSeconds: number): void {
-    if (!this.chapterElevenTwoActive) {
+    if (!this.chapterElevenActive) {
       this.chapterElevenPhase = 'day';
-      this.chapterElevenPhaseTimer = CHAPTER_ELEVEN_DAY_SECONDS;
+      this.chapterElevenPhaseTimer = this.getChapterElevenDaySeconds();
       this.chapterElevenDayCount = 1;
       this.chapterElevenDailyEventUsed = false;
       this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
@@ -9751,7 +9853,7 @@ export class Game {
 
     if (this.chapterElevenPhase === 'day') {
       this.chapterElevenPhase = 'night';
-      this.chapterElevenPhaseTimer = CHAPTER_ELEVEN_NIGHT_SECONDS;
+      this.chapterElevenPhaseTimer = this.getChapterElevenNightSeconds();
       this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
       this.stopChapterElevenEvent();
@@ -9761,23 +9863,24 @@ export class Game {
         this.chapterElevenTraderShopOpen = false;
         this.setChapterElevenSeedShopOpen(false);
       }
-      this.pushStatus('Night started in Grow-a-Garden Two.', 2.4);
+      this.pushStatus(this.chapterElevenTwoActive ? 'Night started in Grow-a-Garden Two.' : 'Night started in Grow a Garden.', 2.4);
     } else {
       this.chapterElevenPhase = 'day';
-      this.chapterElevenPhaseTimer = CHAPTER_ELEVEN_DAY_SECONDS;
+      this.chapterElevenPhaseTimer = this.getChapterElevenDaySeconds();
       this.chapterElevenDayCount += 1;
       this.chapterElevenDailyEventUsed = false;
       this.scheduleChapterElevenDailyEvent();
-      this.pushStatus(`Day ${this.chapterElevenDayCount} started in Grow-a-Garden Two.`, 2.4);
+      this.pushStatus(`Day ${this.chapterElevenDayCount} started in ${this.chapterElevenTwoActive ? 'Grow-a-Garden Two' : 'Grow a Garden'}.`, 2.4);
     }
   }
 
   private getChapterElevenNightBlend(): number {
-    if (!this.chapterElevenTwoActive || this.chapterElevenPhase === 'day') {
+    if (!this.chapterElevenActive || this.chapterElevenPhase === 'day') {
       return 0;
     }
 
-    const fadeIn = MathUtils.clamp((CHAPTER_ELEVEN_NIGHT_SECONDS - this.chapterElevenPhaseTimer) / 6, 0, 1);
+    const nightSeconds = this.getChapterElevenNightSeconds();
+    const fadeIn = MathUtils.clamp((nightSeconds - this.chapterElevenPhaseTimer) / 6, 0, 1);
     const fadeOut = MathUtils.clamp(this.chapterElevenPhaseTimer / 6, 0, 1);
     return Math.min(fadeIn, fadeOut);
   }
@@ -9799,9 +9902,9 @@ export class Game {
         return;
       }
 
-      plant.golden = true;
+      plant.charged = true;
       plant.pickableFruits?.forEach((fruit) => {
-        fruit.golden = true;
+        fruit.charged = true;
         fruit.visible = true;
         fruit.regrowTimer = 0;
       });
@@ -9814,7 +9917,7 @@ export class Game {
   }
 
   private updateChapterElevenEventsAndTrader(deltaSeconds: number): void {
-    if (!this.chapterElevenTwoActive) {
+    if (!this.chapterElevenActive) {
       this.stopChapterElevenEvent();
       this.chapterElevenTraderRoot.visible = false;
       this.chapterElevenTraderVisible = false;
@@ -9853,7 +9956,7 @@ export class Game {
       }
       this.chapterElevenNextEventTimer -= deltaSeconds;
       if (canStartDailyEvent && this.chapterElevenNextEventTimer <= 0) {
-        this.startChapterElevenEvent(Math.random() < 0.62 ? 'rain' : 'lightning');
+        this.startChapterElevenEvent(Math.random() < 0.5 ? 'rain' : 'lightning');
       }
     } else {
       this.chapterElevenEventTimer -= deltaSeconds;
@@ -9881,7 +9984,7 @@ export class Game {
         this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
         this.pushStatus('The Trader wandered away.', 2.2);
       }
-    } else if (canStartDailyEvent) {
+    } else if (this.chapterElevenTwoActive && canStartDailyEvent) {
       this.chapterElevenNextTraderTimer -= deltaSeconds;
       if (this.chapterElevenNextTraderTimer <= 0) {
         this.chapterElevenTraderVisible = true;
@@ -10019,7 +10122,7 @@ export class Game {
 
     target.fruit.visible = false;
     target.fruit.regrowTimer = target.fruit.regrowSeconds;
-    const cropId: ChapterElevenCropId = target.fruit.golden && target.fruit.goldenCropId ? target.fruit.goldenCropId : target.fruit.cropId;
+    const cropId = this.getChapterElevenHarvestCropId(target.fruit.cropId, target.fruit.golden, target.fruit.charged);
     this.rebuildChapterElevenPlantVisual(target.plant);
     harvester.cargoCropIds.push(cropId);
     harvester.totalHarvested += 1;
@@ -10123,11 +10226,11 @@ export class Game {
         if (!fruit.visible) {
           return;
         }
-        const cropId = fruit.golden && fruit.goldenCropId ? fruit.goldenCropId : fruit.cropId;
+        const cropId = this.getChapterElevenHarvestCropId(fruit.cropId, fruit.golden, fruit.charged);
         this.addChapterElevenCropToInventory(cropId);
       });
     } else {
-      this.addChapterElevenCropToInventory(plant.golden ? this.getChapterElevenGoldenCropId(plant.cropId) ?? plant.cropId : plant.cropId);
+      this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId(plant.cropId, plant.golden, plant.charged));
     }
 
     this.chapterEleven.root.remove(plant.root);
@@ -10241,7 +10344,7 @@ export class Game {
     if (pet.petType === 'rabbit') {
       const carrot = this.findChapterElevenRabbitCarrotTarget(pet);
       if (carrot) {
-        this.addChapterElevenCropToInventory(carrot.golden ? 'golden-carrot' : 'carrot');
+        this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId('carrot', carrot.golden, carrot.charged));
         this.chapterEleven.root.remove(carrot.root);
         this.chapterElevenPlants.splice(this.chapterElevenPlants.indexOf(carrot), 1);
         this.pushStatus('Your rabbit dug up a carrot for you.', 2.2);
@@ -10407,10 +10510,11 @@ export class Game {
     this.chapterElevenTraderRoot.visible = false;
     this.chapterElevenTraderTimer = 0;
     this.chapterElevenPhase = 'day';
-    this.chapterElevenPhaseTimer = CHAPTER_ELEVEN_DAY_SECONDS;
+    this.chapterElevenPhaseTimer = this.getChapterElevenDaySeconds();
     this.chapterElevenDayCount = 1;
     this.chapterElevenDailyEventUsed = false;
-    if (this.chapterElevenTwoActive) {
+    this.chapterElevenWeatherStreak = 0;
+    if (this.chapterElevenActive) {
       this.scheduleChapterElevenDailyEvent();
     } else {
       this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
@@ -11492,6 +11596,7 @@ export class Game {
       stage: 'planted',
       mature: false,
       golden: !this.isChapterElevenPickableFruitCrop(config.cropId) && Math.random() < CHAPTER_ELEVEN_GOLDEN_CHANCE,
+      charged: false,
       hasVineStick: Boolean(vineStick),
     };
     root.userData.chapterElevenDogFertilized = false;
@@ -11526,9 +11631,7 @@ export class Game {
       return;
     }
 
-    const inventoryCropId: ChapterElevenCropId = plant.golden
-      ? this.getChapterElevenGoldenCropId(config.cropId) ?? config.cropId
-      : config.cropId;
+    const inventoryCropId = this.getChapterElevenHarvestCropId(config.cropId, plant.golden, plant.charged);
     this.chapterElevenCropInventory.set(inventoryCropId, (this.chapterElevenCropInventory.get(inventoryCropId) ?? 0) + 1);
 
     if (config.regrows) {
@@ -11540,7 +11643,7 @@ export class Game {
     } else {
       this.chapterEleven.root.remove(plant.root);
       this.chapterElevenPlants.splice(this.chapterElevenPlants.indexOf(plant), 1);
-      this.pushStatus(`${plant.golden ? 'Golden ' : ''}${config.label} harvested. Take it to the Sell stand.`, 2.4);
+      this.pushStatus(`${this.getChapterElevenCropLabel(inventoryCropId)} harvested. Take it to the Sell stand.`, 2.4);
     }
     this.syncHud();
   }
@@ -11548,15 +11651,37 @@ export class Game {
   private harvestChapterElevenPickableFruit(target: { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number }): void {
     target.fruit.visible = false;
     target.fruit.regrowTimer = target.fruit.regrowSeconds;
-    const cropId: ChapterElevenCropId = target.fruit.golden && target.fruit.goldenCropId ? target.fruit.goldenCropId : target.fruit.cropId;
+    const cropId = this.getChapterElevenHarvestCropId(target.fruit.cropId, target.fruit.golden, target.fruit.charged);
     this.chapterElevenCropInventory.set(cropId, (this.chapterElevenCropInventory.get(cropId) ?? 0) + 1);
     this.rebuildChapterElevenPlantVisual(target.plant);
-    const label = target.fruit.golden && target.fruit.goldenLabel ? target.fruit.goldenLabel : target.fruit.label;
+    const label = this.getChapterElevenCropLabel(cropId);
     this.pushStatus(`${label} picked. Another one will regrow soon.`, 2.2);
     this.syncHud();
   }
 
   private getChapterElevenSellableCrop(cropId: ChapterElevenCropId): { label: string; value: number } | null {
+    if (cropId.startsWith('charged-golden-')) {
+      const baseCropId = cropId.replace('charged-golden-', '') as ChapterElevenCropId;
+      const baseConfig = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === baseCropId);
+      return baseConfig
+        ? {
+          label: `Golden Electric ${baseConfig.pluralLabel}`,
+          value: baseConfig.sellValue * 4,
+        }
+        : null;
+    }
+
+    if (cropId.startsWith('charged-')) {
+      const baseCropId = cropId.replace('charged-', '') as ChapterElevenCropId;
+      const baseConfig = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === baseCropId);
+      return baseConfig
+        ? {
+          label: `Electric ${baseConfig.pluralLabel}`,
+          value: baseConfig.sellValue * 2,
+        }
+        : null;
+    }
+
     if (cropId.startsWith('golden-')) {
       const baseCropId = cropId.replace('golden-', '') as ChapterElevenCropId;
       const baseConfig = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === baseCropId);
@@ -22649,12 +22774,8 @@ export class Game {
             return null;
           }
 
-          const baseCropId = (cropId.startsWith('golden-') ? cropId.replace('golden-', '') : cropId) as ChapterElevenCropId;
-          const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === baseCropId);
-          if (cropId.startsWith('golden-')) {
-            return config ? (count === 1 ? `Golden ${config.label}` : `Golden ${config.pluralLabel} x${count}`) : null;
-          }
-          return config ? (count === 1 ? config.label : `${config.pluralLabel} x${count}`) : null;
+          const label = this.getChapterElevenCropLabel(cropId);
+          return count === 1 ? label : `${label} x${count}`;
         })
         .filter((item): item is string => Boolean(item));
       const petEggInventory = Array.from(this.chapterElevenPetEggInventory.entries())
@@ -24515,7 +24636,7 @@ export class Game {
       const point = this.getChapterElevenAimGroundPoint();
       const fruitTarget = this.findChapterElevenTargetPickableFruit();
       if (fruitTarget) {
-        const label = fruitTarget.fruit.golden && fruitTarget.fruit.goldenLabel ? fruitTarget.fruit.goldenLabel : fruitTarget.fruit.label;
+        const label = this.getChapterElevenCropLabel(this.getChapterElevenHarvestCropId(fruitTarget.fruit.cropId, fruitTarget.fruit.golden, fruitTarget.fruit.charged));
         return `Press E to pick this ${label}.`;
       }
 
@@ -24526,7 +24647,7 @@ export class Game {
           return `${config.label} plant is ready. Press E to pick the next ripe fruit.`;
         }
         return targetPlant.mature
-          ? `Press E to harvest ${targetPlant.golden ? 'Golden ' : ''}${config.label}.`
+          ? `Press E to harvest ${this.getChapterElevenCropLabel(this.getChapterElevenHarvestCropId(config.cropId, targetPlant.golden, targetPlant.charged))}.`
           : `${config.label} is growing.`;
       }
 
@@ -24560,12 +24681,10 @@ export class Game {
           : 'Select a seed from the hotbar, then press E on dirt to plant.';
       }
 
-      const growGardenTwoPhasePrompt = this.chapterElevenTwoActive
-        ? `Day ${this.chapterElevenDayCount} - ${this.chapterElevenPhase} (${Math.max(0, Math.ceil(this.chapterElevenPhaseTimer))}s left). `
-        : '';
+      const growGardenPhasePrompt = `Day ${this.chapterElevenDayCount} - ${this.chapterElevenPhase} (${Math.max(0, Math.ceil(this.chapterElevenPhaseTimer))}s left). `;
       return this.chapterElevenTwoActive
-        ? `${growGardenTwoPhasePrompt}Grow-a-Garden Two loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.`
-        : 'Chapter 11: Grow a garden loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.';
+        ? `${growGardenPhasePrompt}Grow-a-Garden Two loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.`
+        : `${growGardenPhasePrompt}Chapter 11: Grow a garden loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.`;
     }
 
     if (this.chapterTwelveActive) {
