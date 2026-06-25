@@ -220,6 +220,8 @@ export interface ChapterElevenEquipmentShopItemView {
   cost: number;
   description: string;
   enabled: boolean;
+  stock?: number;
+  restockSeconds?: number;
 }
 
 export type ChapterElevenSellAction =
@@ -2937,9 +2939,15 @@ export function createHud(host: HTMLElement): HudController {
         title.textContent = `${item.label} $${item.cost}`;
         const description = document.createElement('span');
         description.className = 'hud__chapter-seven-trade-description';
+        const stockText = typeof item.stock === 'number' ? `Stock: ${item.stock}` : 'Available';
+        const restockText = typeof item.restockSeconds === 'number' && item.restockSeconds > 0
+          ? ` / restocks in ${Math.ceil(item.restockSeconds)}s`
+          : '';
         description.textContent = item.enabled
-          ? item.description
-          : `Need $${Math.max(0, item.cost - safeMoney)} more / ${item.description}`;
+          ? `${stockText}${restockText} / ${item.description}`
+          : typeof item.stock === 'number' && item.stock <= 0
+            ? `Sold out${restockText} / ${item.description}`
+            : `Need $${Math.max(0, item.cost - safeMoney)} more${restockText} / ${item.description}`;
         button.append(title, description);
         let purchaseHandled = false;
         const handlePurchasePointer = (event: Event): void => {

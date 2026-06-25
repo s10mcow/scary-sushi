@@ -246,13 +246,14 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   label: string;
   cost: number;
   description: string;
+  maxStock?: number;
 }> = [
-  { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.' },
-  { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.' },
-  { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.' },
-  { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.' },
-  { id: 'fertilizer', label: 'Fertilizer', cost: 180, description: 'Boost one crop faster than water.' },
-  { id: 'auto-harvester', label: 'Auto Harvester', cost: 20000, description: 'Place a drone that cuts ripe bush fruit and drops it by your farm sign.' },
+  { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.', maxStock: 4 },
+  { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.', maxStock: 5 },
+  { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5 },
+  { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.', maxStock: 2 },
+  { id: 'fertilizer', label: 'Fertilizer', cost: 180, description: 'Boost one crop faster than water.', maxStock: 4 },
+  { id: 'auto-harvester', label: 'Auto Harvester', cost: 20000, description: 'Place a drone that cuts ripe bush fruit and drops it by your farm sign.', maxStock: 1 },
 ];
 const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
@@ -1653,6 +1654,7 @@ export class Game {
   private readonly chapterElevenSeedInventory = new Map<ChapterElevenSeedId, number>();
   private chapterElevenSeedHotbar: Array<ChapterElevenSeedId | null> = Array.from({ length: 9 }, () => null);
   private readonly chapterElevenSeedShopStock = new Map<ChapterElevenSeedId, number>();
+  private readonly chapterElevenEquipmentShopStock = new Map<ChapterElevenEquipmentId, number>();
   private chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
   private chapterElevenSelectedSeedId: ChapterElevenSeedId | null = null;
   private chapterElevenSelectedCropId: ChapterElevenCropId | null = null;
@@ -1663,6 +1665,7 @@ export class Game {
   private readonly chapterElevenSprinklers: ChapterElevenSprinkler[] = [];
   private readonly chapterElevenAutoHarvesters: ChapterElevenAutoHarvester[] = [];
   private readonly chapterElevenAutoHarvestPileRoot = new Group();
+  private readonly chapterElevenAutoHarvestPileInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenCropInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenPetEggInventory = new Map<ChapterElevenPetType, number>();
   private readonly chapterElevenEquipmentInventory = new Map<ChapterElevenEquipmentId, number>();
@@ -3397,13 +3400,35 @@ export class Game {
     return this.getChapterElevenSeedItem(seedId)?.maxStock ?? 99;
   }
 
+  private getChapterElevenRandomShopStock(cost: number, maxStock: number): number {
+    const safeMaxStock = Math.max(0, Math.floor(maxStock));
+    if (safeMaxStock <= 0) {
+      return 0;
+    }
+
+    const costPressure = MathUtils.clamp(cost / 850, 0, 0.78);
+    const lowStockPressure = MathUtils.clamp((3 - Math.min(safeMaxStock, 3)) * 0.06, 0, 0.12);
+    const stockedChance = MathUtils.clamp(0.95 - costPressure - lowStockPressure, 0.12, 0.95);
+    if (Math.random() > stockedChance) {
+      return 0;
+    }
+
+    const upperShare = MathUtils.clamp(1 - costPressure * 0.45, 0.35, 1);
+    const upperStock = Math.max(1, Math.ceil(safeMaxStock * upperShare));
+    return MathUtils.randInt(1, upperStock);
+  }
+
   private getChapterElevenSeedStock(seedId: ChapterElevenSeedId): number {
     if (!this.chapterElevenTwoActive) {
       return this.getChapterElevenSeedMaxStock(seedId);
     }
 
     if (!this.chapterElevenSeedShopStock.has(seedId)) {
-      this.chapterElevenSeedShopStock.set(seedId, this.getChapterElevenSeedMaxStock(seedId));
+      const item = this.getChapterElevenSeedItem(seedId);
+      this.chapterElevenSeedShopStock.set(
+        seedId,
+        item ? this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenSeedMaxStock(seedId)) : 0,
+      );
     }
 
     return this.chapterElevenSeedShopStock.get(seedId) ?? 0;
@@ -3411,7 +3436,10 @@ export class Game {
 
   private restockChapterElevenSeedShop(): void {
     this.getChapterElevenSeedShopCatalog().forEach((item) => {
-      this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenSeedMaxStock(item.id));
+      this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenSeedMaxStock(item.id)));
+    });
+    CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.forEach((item) => {
+      this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenEquipmentMaxStock(item.id)));
     });
     this.chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
   }
@@ -3424,7 +3452,7 @@ export class Game {
     this.chapterElevenSeedShopRestockTimer -= deltaSeconds;
     if (this.chapterElevenSeedShopRestockTimer <= 0) {
       this.restockChapterElevenSeedShop();
-      this.pushStatus('The Buy Seeds stand restocked.', 2.2);
+      this.pushStatus('The Grow Garden shops restocked.', 2.2);
       this.syncHud();
     }
   }
@@ -8977,7 +9005,7 @@ export class Game {
       }
       this.addChapterElevenPickableFruitMeshes(plant);
       if (this.chapterElevenTwoActive) {
-        plant.root.scale.setScalar(1.28);
+        plant.root.scale.setScalar(1.58);
       }
       return;
     }
@@ -9012,6 +9040,9 @@ export class Game {
         plant.root.add(leaf);
       }
       this.addChapterElevenPickableFruitMeshes(plant);
+      if (this.chapterElevenTwoActive) {
+        plant.root.scale.set(1.2, 1.55, 1.2);
+      }
       return;
     }
 
@@ -9188,8 +9219,8 @@ export class Game {
         plant.root.add(canopy);
       });
       this.addChapterElevenPickableFruitMeshes(plant);
-      if (this.chapterElevenTwoActive && config.cropId === 'apple') {
-        plant.root.scale.setScalar(1.36);
+      if (this.chapterElevenTwoActive) {
+        plant.root.scale.setScalar(config.cropId === 'apple' ? 1.72 : 1.62);
       }
       return;
     }
@@ -9414,7 +9445,6 @@ export class Game {
     target.fruit.visible = false;
     target.fruit.regrowTimer = target.fruit.regrowSeconds;
     const cropId: ChapterElevenCropId = target.fruit.golden && target.fruit.goldenCropId ? target.fruit.goldenCropId : target.fruit.cropId;
-    this.addChapterElevenCropToInventory(cropId);
     this.rebuildChapterElevenPlantVisual(target.plant);
     harvester.cargoCropId = cropId;
     harvester.state = 'to-pile';
@@ -9769,6 +9799,7 @@ export class Game {
     this.chapterElevenAutoHarvesters.length = 0;
     this.chapterElevenAutoHarvestPileRoot.clear();
     this.chapterElevenAutoHarvestPileRoot.visible = false;
+    this.chapterElevenAutoHarvestPileInventory.clear();
     this.chapterElevenPlacedPetEggs.length = 0;
     this.chapterElevenPets.length = 0;
     this.chapterElevenCropInventory.clear();
@@ -9838,11 +9869,37 @@ export class Game {
     return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.find((item) => item.id === equipmentId) ?? null;
   }
 
+  private getChapterElevenEquipmentMaxStock(equipmentId: ChapterElevenEquipmentId): number {
+    return this.getChapterElevenEquipmentItem(equipmentId)?.maxStock ?? 99;
+  }
+
+  private getChapterElevenEquipmentStock(equipmentId: ChapterElevenEquipmentId): number {
+    if (!this.chapterElevenTwoActive) {
+      return this.getChapterElevenEquipmentMaxStock(equipmentId);
+    }
+
+    if (!this.chapterElevenEquipmentShopStock.has(equipmentId)) {
+      const item = this.getChapterElevenEquipmentItem(equipmentId);
+      this.chapterElevenEquipmentShopStock.set(
+        equipmentId,
+        item ? this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenEquipmentMaxStock(equipmentId)) : 0,
+      );
+    }
+
+    return this.chapterElevenEquipmentShopStock.get(equipmentId) ?? 0;
+  }
+
   private getChapterElevenEquipmentShopItems(): ChapterElevenEquipmentShopItemView[] {
-    return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.map((item) => ({
-      ...item,
-      enabled: this.chapterElevenMoney >= item.cost,
-    }));
+    return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.map((item) => {
+      const stock = this.getChapterElevenEquipmentStock(item.id);
+      const stocked = !this.chapterElevenTwoActive || stock > 0;
+      return {
+        ...item,
+        enabled: this.chapterElevenMoney >= item.cost && stocked,
+        stock: this.chapterElevenTwoActive ? stock : undefined,
+        restockSeconds: this.chapterElevenTwoActive ? this.chapterElevenSeedShopRestockTimer : undefined,
+      };
+    });
   }
 
   private readonly handleChapterElevenEquipmentPurchase = (equipmentId: ChapterElevenEquipmentId): void => {
@@ -9861,7 +9918,14 @@ export class Game {
       return;
     }
 
+    if (this.getChapterElevenEquipmentStock(equipmentId) <= 0) {
+      this.pushStatus(`${item.label} is sold out until the next restock.`, 2.4);
+      this.syncHud();
+      return;
+    }
+
     this.chapterElevenMoney -= item.cost;
+    this.chapterElevenEquipmentShopStock.set(equipmentId, Math.max(0, this.getChapterElevenEquipmentStock(equipmentId) - 1));
     this.chapterElevenEquipmentInventory.set(equipmentId, (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) + 1);
     this.chapterElevenSelectedSeedId = null;
     this.chapterElevenSelectedCropId = null;
@@ -10220,6 +10284,7 @@ export class Game {
   }
 
   private addChapterElevenAutoHarvestPileCrop(cropId: ChapterElevenCropId): void {
+    this.chapterElevenAutoHarvestPileInventory.set(cropId, (this.chapterElevenAutoHarvestPileInventory.get(cropId) ?? 0) + 1);
     this.chapterElevenAutoHarvestPileRoot.visible = true;
     while (this.chapterElevenAutoHarvestPileRoot.children.length >= 36) {
       this.chapterElevenAutoHarvestPileRoot.remove(this.chapterElevenAutoHarvestPileRoot.children[0]);
@@ -10231,6 +10296,55 @@ export class Game {
     mesh.position.set(Math.cos(angle) * radius, 0.08 + Math.floor(index / 16) * 0.08, Math.sin(angle) * radius);
     mesh.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
     this.chapterElevenAutoHarvestPileRoot.add(mesh);
+    this.syncHud();
+  }
+
+  private getChapterElevenAutoHarvestPileCount(): number {
+    let count = 0;
+    this.chapterElevenAutoHarvestPileInventory.forEach((value) => {
+      count += value;
+    });
+    return count;
+  }
+
+  private isNearChapterElevenAutoHarvestPile(): boolean {
+    if (!this.chapterElevenActive || this.getChapterElevenAutoHarvestPileCount() <= 0) {
+      return false;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const playerDistance = Math.hypot(
+      playerPosition.x - CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X,
+      playerPosition.z - CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z,
+    );
+    if (playerDistance <= 3.2) {
+      return true;
+    }
+
+    const aimPoint = this.getChapterElevenAimGroundPoint();
+    return Math.hypot(
+      aimPoint.x - CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X,
+      aimPoint.z - CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z,
+    ) <= 1.4;
+  }
+
+  private collectChapterElevenAutoHarvestPile(): boolean {
+    if (!this.isNearChapterElevenAutoHarvestPile()) {
+      return false;
+    }
+
+    const collectedLabels: string[] = [];
+    this.chapterElevenAutoHarvestPileInventory.forEach((count, cropId) => {
+      this.addChapterElevenCropToInventory(cropId, count);
+      const label = this.getChapterElevenCropLabel(cropId);
+      collectedLabels.push(count === 1 ? label : `${count} ${label}`);
+    });
+    this.chapterElevenAutoHarvestPileInventory.clear();
+    this.chapterElevenAutoHarvestPileRoot.clear();
+    this.chapterElevenAutoHarvestPileRoot.visible = false;
+    this.pushStatus(`Picked up Auto Harvester pile: ${collectedLabels.join(', ')}.`, 3.2);
+    this.syncHud();
+    return true;
   }
 
   private deleteChapterElevenPlant(plant: ChapterElevenPlanting): void {
@@ -10917,6 +11031,10 @@ export class Game {
         return;
       }
       this.sellChapterElevenCrops();
+      return;
+    }
+
+    if (this.collectChapterElevenAutoHarvestPile()) {
       return;
     }
 
@@ -23622,6 +23740,10 @@ export class Game {
         return this.chapterElevenTwoActive
           ? 'Press E at the Sell stand to choose plants or sell all. Press E again to close the menu.'
           : 'Press E at the Sell stand to sell harvested crops or refund seeds for a little less than they cost.';
+      }
+
+      if (this.isNearChapterElevenAutoHarvestPile()) {
+        return 'Press E to pick up the Auto Harvester crop pile.';
       }
 
       const point = this.getChapterElevenAimGroundPoint();
