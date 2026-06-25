@@ -10227,25 +10227,8 @@ export class Game {
 
   private strikeChapterElevenLightning(): void {
     const bounds = this.chapterEleven.fieldBounds;
-    let strikeX = MathUtils.randFloat(bounds.minX + 4, bounds.maxX - 4);
-    let strikeZ = MathUtils.randFloat(bounds.minZ + 4, bounds.maxZ - 4);
-    if (this.chapterElevenPlants.length > 0 && Math.random() < 0.24) {
-      const targetPlant = this.chapterElevenPlants[MathUtils.randInt(0, this.chapterElevenPlants.length - 1)];
-      strikeX = MathUtils.clamp(targetPlant.x + MathUtils.randFloat(-3.6, 3.6), bounds.minX + 4, bounds.maxX - 4);
-      strikeZ = MathUtils.clamp(targetPlant.z + MathUtils.randFloat(-3.6, 3.6), bounds.minZ + 4, bounds.maxZ - 4);
-    } else if (this.chapterEleven.dirtPatches.length > 0 && Math.random() < 0.32) {
-      const targetPatch = this.chapterEleven.dirtPatches[MathUtils.randInt(0, this.chapterEleven.dirtPatches.length - 1)];
-      strikeX = MathUtils.clamp(
-        targetPatch.centerX + MathUtils.randFloat(-targetPatch.halfWidth * 0.82, targetPatch.halfWidth * 0.82),
-        bounds.minX + 4,
-        bounds.maxX - 4,
-      );
-      strikeZ = MathUtils.clamp(
-        targetPatch.centerZ + MathUtils.randFloat(-targetPatch.halfDepth * 0.82, targetPatch.halfDepth * 0.82),
-        bounds.minZ + 4,
-        bounds.maxZ - 4,
-      );
-    }
+    const strikeX = MathUtils.randFloat(bounds.minX + 4, bounds.maxX - 4);
+    const strikeZ = MathUtils.randFloat(bounds.minZ + 4, bounds.maxZ - 4);
     this.chapterElevenLightningRoot.position.set(strikeX, 0, strikeZ);
     this.chapterElevenLightningRoot.visible = true;
     const flash = this.chapterElevenLightningRoot.children.find((child) => child instanceof PointLight) as PointLight | undefined;
