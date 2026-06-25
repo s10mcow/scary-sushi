@@ -11207,45 +11207,46 @@ export class Game {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
 
-      const trunkMaterial = new MeshStandardMaterial({ color: 0x7d633e, roughness: 0.92 });
-      const trunkBandMaterial = new MeshStandardMaterial({ color: 0x5d472b, roughness: 0.92 });
-      const leafMaterial = new MeshStandardMaterial({ color: 0x3f963b, roughness: 0.84 });
-      const darkLeafMaterial = new MeshStandardMaterial({ color: 0x2f7130, roughness: 0.88 });
-      const trunk = new Mesh(new CylinderGeometry(0.18, 0.26, 1.8, 12), trunkMaterial);
-      trunk.name = 'Chapter 11 banana tree thick soft trunk';
-      trunk.position.y = 0.92;
+      const trunkMaterial = new MeshStandardMaterial({ color: 0x8f7a4a, roughness: 0.9 });
+      const trunkBandMaterial = new MeshStandardMaterial({ color: 0x5f6335, roughness: 0.92 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x3f9b3a, roughness: 0.82 });
+      const darkLeafMaterial = new MeshStandardMaterial({ color: 0x276d2d, roughness: 0.88 });
+      const trunk = new Mesh(new CylinderGeometry(0.13, 0.19, 2.2, 14), trunkMaterial);
+      trunk.name = 'Chapter 11 banana tree tall palm-like trunk';
+      trunk.position.y = 1.12;
+      trunk.rotation.z = -0.035;
       trunk.castShadow = true;
       trunk.receiveShadow = true;
       plant.root.add(trunk);
 
-      for (let bandIndex = 0; bandIndex < 6; bandIndex += 1) {
-        const band = new Mesh(new TorusGeometry(0.19 + bandIndex * 0.006, 0.01, 6, 22), trunkBandMaterial);
-        band.name = 'Chapter 11 banana tree trunk band';
-        band.position.set(0, 0.28 + bandIndex * 0.25, 0);
+      for (let bandIndex = 0; bandIndex < 9; bandIndex += 1) {
+        const band = new Mesh(new TorusGeometry(0.126 + bandIndex * 0.004, 0.006, 5, 22), trunkBandMaterial);
+        band.name = 'Chapter 11 banana tree subtle trunk ring';
+        band.position.set(-0.015 + Math.sin(bandIndex * 0.75) * 0.018, 0.3 + bandIndex * 0.22, 0);
         band.rotation.set(Math.PI / 2, 0, bandIndex * 0.16);
-        band.scale.set(1, 0.82, 1);
+        band.scale.set(1, 0.72, 1);
         band.castShadow = true;
         plant.root.add(band);
       }
 
-      const crown = new Mesh(new SphereGeometry(0.18, 12, 8), darkLeafMaterial);
-      crown.name = 'Chapter 11 banana tree crown';
-      crown.position.y = 1.92;
-      crown.scale.set(1.2, 0.55, 1.2);
+      const crown = new Mesh(new SphereGeometry(0.16, 12, 8), darkLeafMaterial);
+      crown.name = 'Chapter 11 banana tree leafy crown center';
+      crown.position.set(-0.08, 2.26, 0);
+      crown.scale.set(1.32, 0.58, 1.32);
       crown.castShadow = true;
       plant.root.add(crown);
 
-      for (let leafIndex = 0; leafIndex < 9; leafIndex += 1) {
-        const angle = (leafIndex / 9) * Math.PI * 2;
-        const leaf = new Mesh(new BoxGeometry(0.34, 0.055, 1.32), leafIndex % 2 === 0 ? leafMaterial : darkLeafMaterial);
-        leaf.name = 'Chapter 11 banana tree huge broad leaf';
-        leaf.position.set(Math.cos(angle) * 0.42, 1.95 + (leafIndex % 2) * 0.04, Math.sin(angle) * 0.42);
-        leaf.rotation.set(0.34, angle, leafIndex % 2 === 0 ? 0.28 : -0.22);
+      for (let leafIndex = 0; leafIndex < 10; leafIndex += 1) {
+        const angle = (leafIndex / 10) * Math.PI * 2;
+        const leaf = new Mesh(new BoxGeometry(0.26, 0.045, 1.62), leafIndex % 2 === 0 ? leafMaterial : darkLeafMaterial);
+        leaf.name = 'Chapter 11 banana tree long palm frond';
+        leaf.position.set(-0.08 + Math.cos(angle) * 0.5, 2.2 + (leafIndex % 2) * 0.055, Math.sin(angle) * 0.5);
+        leaf.rotation.set(0.22, angle, leafIndex % 2 === 0 ? 0.34 : -0.28);
         leaf.castShadow = true;
         leaf.receiveShadow = true;
         plant.root.add(leaf);
 
-        const centerVein = new Mesh(new BoxGeometry(0.025, 0.065, 1.28), trunkBandMaterial);
+        const centerVein = new Mesh(new BoxGeometry(0.018, 0.058, 1.55), trunkBandMaterial);
         centerVein.name = 'Chapter 11 banana leaf center vein';
         centerVein.position.copy(leaf.position).add(new Vector3(Math.cos(angle) * 0.03, 0.01, Math.sin(angle) * 0.03));
         centerVein.rotation.copy(leaf.rotation);
@@ -11254,7 +11255,7 @@ export class Game {
       }
 
       this.addChapterElevenPickableFruitMeshes(plant);
-      plant.root.scale.setScalar(1.52);
+      plant.root.scale.setScalar(1.42);
       return;
     }
 
@@ -11272,9 +11273,15 @@ export class Game {
         color: config.cropId === 'lemon' ? 0x2d6928 : config.cropId === 'olive' ? 0x515f35 : 0x235f2a,
         roughness: 0.9,
       });
-      const trunk = new Mesh(new CylinderGeometry(0.12, 0.18, 1.1, 12), trunkMaterial);
+      const trunkHeight = config.cropId === 'lemon' ? 0.62 : config.cropId === 'olive' ? 1.0 : 1.1;
+      const trunk = new Mesh(new CylinderGeometry(
+        config.cropId === 'olive' ? 0.095 : config.cropId === 'lemon' ? 0.07 : 0.12,
+        config.cropId === 'olive' ? 0.15 : config.cropId === 'lemon' ? 0.12 : 0.18,
+        trunkHeight,
+        12,
+      ), trunkMaterial);
       trunk.name = `Chapter 11 ${config.label.toLowerCase()} tree trunk`;
-      trunk.position.y = 0.62;
+      trunk.position.y = trunkHeight * 0.5 + 0.06;
       trunk.castShadow = true;
       trunk.receiveShadow = true;
       plant.root.add(trunk);
@@ -11299,6 +11306,36 @@ export class Game {
             [0.34, 1.2, -0.12, 0.5, 0.44, 0.46],
             [0.04, 1.55, -0.16, 0.44, 0.38, 0.42],
           ];
+      const addBranch = (from: Vector3, to: Vector3, radius: number, name: string): void => {
+        const direction = to.clone().sub(from);
+        const length = direction.length();
+        if (length <= 0.01) {
+          return;
+        }
+        const branch = new Mesh(new CylinderGeometry(radius * 0.72, radius, length, 8), trunkMaterial);
+        branch.name = name;
+        branch.position.copy(from).add(to).multiplyScalar(0.5);
+        branch.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
+        branch.castShadow = true;
+        branch.receiveShadow = true;
+        plant.root.add(branch);
+      };
+      if (config.cropId === 'lemon') {
+        [
+          [new Vector3(0, 0.46, 0), new Vector3(-0.32, 0.92, 0.1), 0.038],
+          [new Vector3(0.02, 0.44, 0), new Vector3(0.34, 0.94, -0.1), 0.038],
+          [new Vector3(-0.02, 0.42, 0.02), new Vector3(0.02, 1.16, -0.16), 0.032],
+          [new Vector3(0, 0.36, -0.02), new Vector3(-0.14, 0.84, 0.28), 0.03],
+        ].forEach(([from, to, radius]) => addBranch(from as Vector3, to as Vector3, radius as number, 'Chapter 11 lemon bush woody branch'));
+      } else if (config.cropId === 'olive') {
+        [
+          [new Vector3(0, 0.76, 0), new Vector3(-0.36, 1.2, 0.16), 0.045],
+          [new Vector3(0.02, 0.78, 0), new Vector3(0.38, 1.22, -0.16), 0.045],
+          [new Vector3(0, 0.96, -0.02), new Vector3(0.08, 1.54, -0.16), 0.036],
+          [new Vector3(0, 0.68, 0.02), new Vector3(-0.08, 1.08, -0.28), 0.034],
+          [new Vector3(0.02, 0.9, 0), new Vector3(0.24, 1.36, 0.28), 0.03],
+        ].forEach(([from, to, radius]) => addBranch(from as Vector3, to as Vector3, radius as number, 'Chapter 11 olive tree twisting branch'));
+      }
       canopyParts.forEach(([x, y, z, scaleX, scaleY, scaleZ], index) => {
         const canopy = new Mesh(new SphereGeometry(0.62, 20, 14), index % 2 === 0 ? leafMaterial : darkLeafMaterial);
         canopy.name = `Chapter 11 ${config.label.toLowerCase()} tree leaf canopy`;
