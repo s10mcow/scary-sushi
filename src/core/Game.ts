@@ -129,6 +129,7 @@ import {
   createHud,
   type ChapterElevenEquipmentId,
   type ChapterElevenEquipmentShopItemView,
+  type ChapterElevenChestItemView,
   type ChapterElevenSellAction,
   type ChapterElevenSellItemView,
   type ChapterElevenSeedId,
@@ -146,6 +147,7 @@ import {
   type OfficeModeMenuStep,
   type OfficeJumpscareOptionView,
   type TabletCameraSlotView,
+  type HotbarSlotView,
 } from '../ui/createHud';
 import { isBlocked } from '../systems/collision/isBlocked';
 
@@ -259,7 +261,14 @@ const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_SPEED = 4.2;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X = -31.8;
-const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z = -20.2;
+const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z = -18.2;
+const CHAPTER_ELEVEN_TRADER_X = 9.5;
+const CHAPTER_ELEVEN_TRADER_Z = -52;
+const CHAPTER_ELEVEN_TRADER_RANGE = 4.8;
+const CHAPTER_ELEVEN_TRADER_MIN_SECONDS = 80;
+const CHAPTER_ELEVEN_TRADER_MAX_SECONDS = 150;
+const CHAPTER_ELEVEN_EVENT_MIN_SECONDS = 70;
+const CHAPTER_ELEVEN_EVENT_MAX_SECONDS = 130;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   id: ChapterElevenSeedId;
   label: string;
@@ -268,6 +277,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   section: ChapterElevenSeedShopItemView['section'];
   maxStock?: number;
   copyOnly?: boolean;
+  traderOnly?: boolean;
 }> = [
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 10, section: 'cheap', maxStock: 9 },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 20, section: 'cheap', maxStock: 6 },
@@ -284,6 +294,9 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 650, section: 'expensive', maxStock: 1, copyOnly: true },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
   { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1, copyOnly: true },
+  { id: 'corn-seeds', label: 'Western corn seeds', singularLabel: 'Western corn seed', cost: 750, section: 'expensive', maxStock: 2, copyOnly: true, traderOnly: true },
+  { id: 'desert-sage-seeds', label: 'Desert sage seeds', singularLabel: 'Desert sage seed', cost: 950, section: 'expensive', maxStock: 1, copyOnly: true, traderOnly: true },
+  { id: 'sunset-melon-seeds', label: 'Sunset melon seeds', singularLabel: 'Sunset melon seed', cost: 1250, section: 'expensive', maxStock: 1, copyOnly: true, traderOnly: true },
 ];
 type ChapterElevenCropId =
   | 'carrot'
@@ -315,7 +328,13 @@ type ChapterElevenCropId =
   | 'golden-pepper'
   | 'golden-dragon-fruit'
   | 'golden-vine-fruit'
-  | 'golden-cactus';
+  | 'golden-cactus'
+  | 'corn'
+  | 'desert-sage'
+  | 'sunset-melon'
+  | 'golden-corn'
+  | 'golden-desert-sage'
+  | 'golden-sunset-melon';
 type ChapterElevenPlantStage = 'planted' | 'baby' | 'mature';
 type ChapterElevenHotbarItem =
   | { kind: 'seed'; id: ChapterElevenSeedId }
@@ -459,7 +478,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'pumpkin',
     label: 'Pumpkin',
     pluralLabel: 'Pumpkins',
-    sellValue: 100,
+    sellValue: 140,
     babySeconds: 4,
     matureSeconds: 14,
     regrows: true,
@@ -469,7 +488,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'nut',
     label: 'Nut',
     pluralLabel: 'Nuts',
-    sellValue: 500,
+    sellValue: 700,
     babySeconds: 20,
     matureSeconds: 60,
     regrows: false,
@@ -479,7 +498,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'blueberry',
     label: 'Blueberry',
     pluralLabel: 'Blueberries',
-    sellValue: 200,
+    sellValue: 260,
     babySeconds: 5,
     matureSeconds: 15,
     regrows: true,
@@ -489,7 +508,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'raspberry',
     label: 'Raspberry',
     pluralLabel: 'Raspberries',
-    sellValue: 300,
+    sellValue: 360,
     babySeconds: 5,
     matureSeconds: 15,
     regrows: true,
@@ -499,7 +518,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'peach',
     label: 'Peach',
     pluralLabel: 'Peaches',
-    sellValue: 200,
+    sellValue: 360,
     babySeconds: 8,
     matureSeconds: 24,
     regrows: false,
@@ -509,7 +528,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'apple',
     label: 'Apple',
     pluralLabel: 'Apples',
-    sellValue: 20,
+    sellValue: 420,
     babySeconds: 8,
     matureSeconds: 24,
     regrows: false,
@@ -529,7 +548,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'pepper',
     label: 'Pepper',
     pluralLabel: 'Peppers',
-    sellValue: 60,
+    sellValue: 260,
     babySeconds: 5,
     matureSeconds: 16,
     regrows: true,
@@ -563,6 +582,36 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     babySeconds: 20,
     matureSeconds: 86,
     regrows: true,
+  },
+  'corn-seeds': {
+    seedId: 'corn-seeds',
+    cropId: 'corn',
+    label: 'Western Corn',
+    pluralLabel: 'Western Corn',
+    sellValue: 1200,
+    babySeconds: 18,
+    matureSeconds: 72,
+    regrows: false,
+  },
+  'desert-sage-seeds': {
+    seedId: 'desert-sage-seeds',
+    cropId: 'desert-sage',
+    label: 'Desert Sage',
+    pluralLabel: 'Desert Sage',
+    sellValue: 1600,
+    babySeconds: 20,
+    matureSeconds: 82,
+    regrows: false,
+  },
+  'sunset-melon-seeds': {
+    seedId: 'sunset-melon-seeds',
+    cropId: 'sunset-melon',
+    label: 'Sunset Melon',
+    pluralLabel: 'Sunset Melons',
+    sellValue: 2300,
+    babySeconds: 24,
+    matureSeconds: 96,
+    regrows: false,
   },
 };
 const CHAPTER_ELEVEN_SELL_STAND_X = -53.46;
@@ -1648,6 +1697,8 @@ export class Game {
   private chapterElevenSeedShopOpen = false;
   private chapterElevenEquipmentShopOpen = false;
   private chapterElevenSellMenuOpen = false;
+  private chapterElevenAutoHarvestChestOpen = false;
+  private chapterElevenTraderShopOpen = false;
   private chapterElevenSellChoosing = false;
   private readonly chapterElevenSellSelectedCrops = new Set<ChapterElevenCropId>();
   private chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
@@ -1666,6 +1717,16 @@ export class Game {
   private readonly chapterElevenAutoHarvesters: ChapterElevenAutoHarvester[] = [];
   private readonly chapterElevenAutoHarvestPileRoot = new Group();
   private readonly chapterElevenAutoHarvestPileInventory = new Map<ChapterElevenCropId, number>();
+  private readonly chapterElevenRainRoot = new Group();
+  private readonly chapterElevenLightningRoot = new Group();
+  private readonly chapterElevenTraderRoot = new Group();
+  private chapterElevenEvent: 'none' | 'rain' | 'lightning' = 'none';
+  private chapterElevenEventTimer = 0;
+  private chapterElevenNextEventTimer = 30;
+  private chapterElevenLightningStrikeTimer = 0;
+  private chapterElevenTraderVisible = false;
+  private chapterElevenTraderTimer = 0;
+  private chapterElevenNextTraderTimer = 55;
   private readonly chapterElevenCropInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenPetEggInventory = new Map<ChapterElevenPetType, number>();
   private readonly chapterElevenEquipmentInventory = new Map<ChapterElevenEquipmentId, number>();
@@ -1857,10 +1918,13 @@ export class Game {
     this.chapterTen = createChapterTen();
     this.chapterTen.root.visible = false;
     this.chapterEleven = createChapterEleven();
-    this.chapterElevenAutoHarvestPileRoot.name = 'Chapter 11 auto harvester fruit pile by farm sign';
+    this.chapterElevenAutoHarvestPileRoot.name = 'Chapter 11 auto harvester chest by farm sign';
     this.chapterElevenAutoHarvestPileRoot.position.set(CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X, 0, CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z);
-    this.chapterElevenAutoHarvestPileRoot.visible = false;
+    this.rebuildChapterElevenAutoHarvestChestModel();
+    this.chapterElevenAutoHarvestPileRoot.visible = true;
     this.chapterEleven.root.add(this.chapterElevenAutoHarvestPileRoot);
+    this.buildChapterElevenEventAndTraderModels();
+    this.chapterEleven.root.add(this.chapterElevenRainRoot, this.chapterElevenLightningRoot, this.chapterElevenTraderRoot);
     this.chapterEleven.root.visible = false;
     this.chapterTwelve = createChapterTwelve();
     this.chapterTwelve.root.visible = false;
@@ -2074,6 +2138,7 @@ export class Game {
     this.hud.onChapterElevenSeedPurchase(this.handleChapterElevenSeedPurchase);
     this.hud.onChapterElevenEquipmentPurchase(this.handleChapterElevenEquipmentPurchase);
     this.hud.onChapterElevenSellAction(this.handleChapterElevenSellAction);
+    this.hud.onChapterElevenChestAction(this.handleChapterElevenAutoHarvestChestAction);
     this.hud.onCuratorSave(this.handleCuratorSave);
     this.player.controls.addEventListener('lock', this.handleLockChange);
     this.player.controls.addEventListener('unlock', this.handleLockChange);
@@ -2241,12 +2306,13 @@ export class Game {
     }
 
     if (event.code === 'KeyE') {
-      if (this.chapterElevenActive && (this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSellMenuOpen)) {
+      if (this.chapterElevenActive && (this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSellMenuOpen || this.chapterElevenAutoHarvestChestOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         this.setChapterElevenSeedShopOpen(false);
         this.setChapterElevenEquipmentShopOpen(false);
         this.setChapterElevenSellMenuOpen(false);
+        this.setChapterElevenAutoHarvestChestOpen(false);
         this.player.lock();
         this.pushStatus('Menu closed.', 1.2);
         return;
@@ -2364,8 +2430,8 @@ export class Game {
     }
 
     const clickedMenu = event.target instanceof Element
-      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-sell-menu');
-    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSellMenuOpen) {
+      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest');
+    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSellMenuOpen || this.chapterElevenAutoHarvestChestOpen) {
       if (clickedMenu) {
         return;
       }
@@ -2379,10 +2445,11 @@ export class Game {
       this.chapterElevenSeedShopOpen = false;
       this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
+      this.chapterElevenAutoHarvestChestOpen = false;
       this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-sell-menu')) {
+    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest')) {
       return;
     }
 
@@ -3290,6 +3357,9 @@ export class Game {
     if (!this.chapterElevenActive) {
       open = false;
     }
+    if (!open) {
+      this.chapterElevenTraderShopOpen = false;
+    }
 
     if (this.chapterElevenSeedShopOpen === open) {
       this.syncHud();
@@ -3306,6 +3376,7 @@ export class Game {
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
+      this.chapterElevenAutoHarvestChestOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -3337,6 +3408,7 @@ export class Game {
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
+      this.chapterElevenAutoHarvestChestOpen = false;
     }
 
     if (open && this.player.isLocked()) {
@@ -3368,9 +3440,44 @@ export class Game {
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
       this.chapterElevenEquipmentShopOpen = false;
+      this.chapterElevenAutoHarvestChestOpen = false;
       this.chapterElevenSellChoosing = false;
       this.chapterElevenSellSelectedCrops.clear();
     } else {
+      this.chapterElevenSellChoosing = false;
+      this.chapterElevenSellSelectedCrops.clear();
+    }
+
+    if (open && this.player.isLocked()) {
+      this.syncHud();
+      this.player.controls.unlock();
+      return;
+    }
+
+    this.syncHud();
+  }
+
+  private setChapterElevenAutoHarvestChestOpen(open: boolean): void {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+      open = false;
+    }
+
+    if (this.chapterElevenAutoHarvestChestOpen === open) {
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenAutoHarvestChestOpen = open;
+    if (open) {
+      this.chapterMenuOpen = false;
+      this.curatorToolOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+      this.chapterSevenCookiePickerOpen = false;
+      this.chapterSevenGrandpaTradingOpen = false;
+      this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenEquipmentShopOpen = false;
+      this.chapterElevenSellMenuOpen = false;
       this.chapterElevenSellChoosing = false;
       this.chapterElevenSellSelectedCrops.clear();
     }
@@ -3396,6 +3503,18 @@ export class Game {
     ) <= CHAPTER_ELEVEN_SEED_SHOP_RANGE;
   }
 
+  private isNearChapterElevenTrader(): boolean {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenTraderVisible) {
+      return false;
+    }
+
+    const playerPosition = this.player.getPosition();
+    return Math.hypot(
+      playerPosition.x - CHAPTER_ELEVEN_TRADER_X,
+      playerPosition.z - CHAPTER_ELEVEN_TRADER_Z,
+    ) <= CHAPTER_ELEVEN_TRADER_RANGE;
+  }
+
   private getChapterElevenSeedMaxStock(seedId: ChapterElevenSeedId): number {
     return this.getChapterElevenSeedItem(seedId)?.maxStock ?? 99;
   }
@@ -3408,7 +3527,7 @@ export class Game {
 
     const costPressure = MathUtils.clamp(cost / 850, 0, 0.78);
     const lowStockPressure = MathUtils.clamp((3 - Math.min(safeMaxStock, 3)) * 0.06, 0, 0.12);
-    const stockedChance = MathUtils.clamp(0.95 - costPressure - lowStockPressure, 0.12, 0.95);
+    const stockedChance = MathUtils.clamp(0.95 - costPressure - lowStockPressure, 0.24, 0.95);
     if (Math.random() > stockedChance) {
       return 0;
     }
@@ -4552,6 +4671,7 @@ export class Game {
       this.updateChapterElevenAutoHarvesters(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
       this.updateChapterElevenSeedShopStock(deltaSeconds);
+      this.updateChapterElevenEventsAndTrader(deltaSeconds);
     } else if (this.chapterTwelveActive && !this.chapterTwelve.isDriving()) {
       this.chapterTwelve.update(deltaSeconds);
     } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive) {
@@ -8011,7 +8131,11 @@ export class Game {
   }
 
   private getChapterElevenSeedShopCatalog() {
-    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.filter((item) => this.chapterElevenTwoActive || !item.copyOnly);
+    if (this.chapterElevenTraderShopOpen) {
+      return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.filter((item) => item.traderOnly);
+    }
+
+    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.filter((item) => (this.chapterElevenTwoActive || !item.copyOnly) && !item.traderOnly);
   }
 
   private getChapterElevenHotbarItems(): ChapterElevenHotbarItem[] {
@@ -8093,6 +8217,12 @@ export class Game {
         return 'golden-vine-fruit';
       case 'cactus':
         return 'golden-cactus';
+      case 'corn':
+        return 'golden-corn';
+      case 'desert-sage':
+        return 'golden-desert-sage';
+      case 'sunset-melon':
+        return 'golden-sunset-melon';
       default:
         return null;
     }
@@ -8109,6 +8239,23 @@ export class Game {
       return this.getChapterElevenEquipmentItem(item.id)?.label ?? 'Equipment';
     }
     return this.getChapterElevenCropLabel(item.id);
+  }
+
+  private getChapterElevenHotbarItemCount(item: ChapterElevenHotbarItem): number {
+    if (item.kind === 'seed') {
+      return this.chapterElevenSeedInventory.get(item.id) ?? 0;
+    }
+    if (item.kind === 'crop') {
+      return this.chapterElevenCropInventory.get(item.id) ?? 0;
+    }
+    if (item.kind === 'pet-egg') {
+      return this.chapterElevenPetEggInventory.get(item.id) ?? 0;
+    }
+    return this.chapterElevenEquipmentInventory.get(item.id) ?? 0;
+  }
+
+  private getChapterElevenHotbarItemType(item: ChapterElevenHotbarItem): string {
+    return item.kind === 'pet-egg' ? `${item.id}-egg` : item.id;
   }
 
   private createChapterElevenSeedPacketTexture(label: string, color: string): CanvasTexture {
@@ -9295,6 +9442,9 @@ export class Game {
     this.chapterElevenPlants.forEach((plant) => {
       const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
       plant.age += deltaSeconds;
+      if (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') {
+        plant.age += deltaSeconds * 1.4;
+      }
       if (!plant.mature) {
         const sprinklerCount = this.chapterElevenSprinklers.filter((sprinkler) => (
           Math.hypot(sprinkler.x - plant.x, sprinkler.z - plant.z) <= CHAPTER_ELEVEN_SPRINKLER_RADIUS
@@ -9341,6 +9491,129 @@ export class Game {
         }
       }
     });
+  }
+
+  private startChapterElevenEvent(event: 'rain' | 'lightning'): void {
+    this.chapterElevenEvent = event;
+    this.chapterElevenEventTimer = event === 'rain' ? MathUtils.randFloat(45, 75) : MathUtils.randFloat(38, 62);
+    this.chapterElevenNextEventTimer = MathUtils.randFloat(CHAPTER_ELEVEN_EVENT_MIN_SECONDS, CHAPTER_ELEVEN_EVENT_MAX_SECONDS);
+    this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning';
+    this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(2.5, 6) : 0;
+    this.pushStatus(event === 'rain'
+      ? 'Rain storm started. Crops are growing faster.'
+      : 'Lightning storm started. Lightning can charge plants into valuable glowing crops.', 3.2);
+  }
+
+  private stopChapterElevenEvent(): void {
+    this.chapterElevenEvent = 'none';
+    this.chapterElevenEventTimer = 0;
+    this.chapterElevenRainRoot.visible = false;
+    this.chapterElevenLightningRoot.visible = false;
+  }
+
+  private strikeChapterElevenLightning(): void {
+    const bounds = this.chapterEleven.fieldBounds;
+    const strikeX = MathUtils.randFloat(bounds.minX + 4, bounds.maxX - 4);
+    const strikeZ = MathUtils.randFloat(bounds.minZ + 4, bounds.maxZ - 4);
+    this.chapterElevenLightningRoot.position.set(strikeX, 0, strikeZ);
+    this.chapterElevenLightningRoot.visible = true;
+    const flash = this.chapterElevenLightningRoot.children.find((child) => child instanceof PointLight) as PointLight | undefined;
+    if (flash) {
+      flash.intensity = 4.8;
+    }
+
+    let charged = 0;
+    this.chapterElevenPlants.forEach((plant) => {
+      if (Math.hypot(plant.x - strikeX, plant.z - strikeZ) > 5.5) {
+        return;
+      }
+
+      plant.golden = true;
+      plant.pickableFruits?.forEach((fruit) => {
+        fruit.golden = true;
+        fruit.visible = true;
+        fruit.regrowTimer = 0;
+      });
+      charged += 1;
+      this.rebuildChapterElevenPlantVisual(plant);
+    });
+    this.pushStatus(charged > 0
+      ? `Lightning charged ${charged} plant${charged === 1 ? '' : 's'} into glowing high-value crops.`
+      : 'Lightning struck the field.', 2.5);
+  }
+
+  private updateChapterElevenEventsAndTrader(deltaSeconds: number): void {
+    if (!this.chapterElevenTwoActive) {
+      this.stopChapterElevenEvent();
+      this.chapterElevenTraderRoot.visible = false;
+      this.chapterElevenTraderVisible = false;
+      return;
+    }
+
+    if (this.chapterElevenRainRoot.visible) {
+      this.chapterElevenRainRoot.children.forEach((drop) => {
+        drop.position.y -= deltaSeconds * 8.5;
+        drop.position.x -= deltaSeconds * 1.2;
+        if (drop.position.y < 0.2) {
+          drop.position.y = MathUtils.randFloat(8, 13);
+          drop.position.x = MathUtils.randFloat(-55, 55);
+          drop.position.z = MathUtils.randFloat(-55, 55);
+        }
+      });
+    }
+
+    if (this.chapterElevenLightningRoot.visible) {
+      const flash = this.chapterElevenLightningRoot.children.find((child) => child instanceof PointLight) as PointLight | undefined;
+      if (flash) {
+        flash.intensity = Math.max(0, flash.intensity - deltaSeconds * 7);
+        if (flash.intensity <= 0.05) {
+          this.chapterElevenLightningRoot.visible = false;
+        }
+      }
+    }
+
+    if (this.chapterElevenEvent === 'none') {
+      this.chapterElevenNextEventTimer -= deltaSeconds;
+      if (this.chapterElevenNextEventTimer <= 0) {
+        this.startChapterElevenEvent(Math.random() < 0.62 ? 'rain' : 'lightning');
+      }
+    } else {
+      this.chapterElevenEventTimer -= deltaSeconds;
+      if (this.chapterElevenEvent === 'lightning') {
+        this.chapterElevenLightningStrikeTimer -= deltaSeconds;
+        if (this.chapterElevenLightningStrikeTimer <= 0) {
+          this.strikeChapterElevenLightning();
+          this.chapterElevenLightningStrikeTimer = MathUtils.randFloat(4, 9);
+        }
+      }
+      if (this.chapterElevenEventTimer <= 0) {
+        this.stopChapterElevenEvent();
+        this.pushStatus('The garden weather cleared.', 2);
+      }
+    }
+
+    if (this.chapterElevenTraderVisible) {
+      this.chapterElevenTraderTimer -= deltaSeconds;
+      this.chapterElevenTraderRoot.rotation.y += Math.sin(this.elapsed * 0.7) * deltaSeconds * 0.08;
+      if (this.chapterElevenTraderTimer <= 0) {
+        this.chapterElevenTraderVisible = false;
+        this.chapterElevenTraderRoot.visible = false;
+        this.chapterElevenTraderShopOpen = false;
+        this.setChapterElevenSeedShopOpen(false);
+        this.chapterElevenNextTraderTimer = MathUtils.randFloat(CHAPTER_ELEVEN_TRADER_MIN_SECONDS, CHAPTER_ELEVEN_TRADER_MAX_SECONDS);
+        this.pushStatus('The Trader wandered away.', 2.2);
+      }
+    } else {
+      this.chapterElevenNextTraderTimer -= deltaSeconds;
+      const forcedArrival = this.chapterElevenNextTraderTimer <= 0;
+      const luckyArrival = this.chapterElevenNextTraderTimer < CHAPTER_ELEVEN_TRADER_MIN_SECONDS * 0.45 && Math.random() < deltaSeconds * 0.015;
+      if (forcedArrival || luckyArrival) {
+        this.chapterElevenTraderVisible = true;
+        this.chapterElevenTraderTimer = MathUtils.randFloat(65, 95);
+        this.chapterElevenTraderRoot.visible = true;
+        this.pushStatus('The Trader arrived with western seeds.', 3);
+      }
+    }
   }
 
   private getChapterElevenFruitWorldPosition(plant: ChapterElevenPlanting, fruit: ChapterElevenPickableFruit): Vector3 {
@@ -9797,12 +10070,20 @@ export class Game {
     this.chapterElevenVineSticks.length = 0;
     this.chapterElevenSprinklers.length = 0;
     this.chapterElevenAutoHarvesters.length = 0;
-    this.chapterElevenAutoHarvestPileRoot.clear();
-    this.chapterElevenAutoHarvestPileRoot.visible = false;
+    this.rebuildChapterElevenAutoHarvestChestModel();
+    this.chapterElevenAutoHarvestPileRoot.visible = true;
     this.chapterElevenAutoHarvestPileInventory.clear();
     this.chapterElevenPlacedPetEggs.length = 0;
     this.chapterElevenPets.length = 0;
     this.chapterElevenCropInventory.clear();
+    this.chapterElevenAutoHarvestChestOpen = false;
+    this.chapterElevenTraderShopOpen = false;
+    this.stopChapterElevenEvent();
+    this.chapterElevenNextEventTimer = MathUtils.randFloat(28, 58);
+    this.chapterElevenTraderVisible = false;
+    this.chapterElevenTraderRoot.visible = false;
+    this.chapterElevenTraderTimer = 0;
+    this.chapterElevenNextTraderTimer = MathUtils.randFloat(45, 75);
     this.chapterElevenNextPlantId = 1;
     this.chapterElevenNextPetId = 1;
     if (clearSeeds) {
@@ -10256,46 +10537,134 @@ export class Game {
     return root;
   }
 
-  private createChapterElevenPileCropMesh(cropId: ChapterElevenCropId): Mesh {
-    const golden = cropId.startsWith('golden-');
-    const baseCrop = (golden ? cropId.replace('golden-', '') : cropId) as ChapterElevenCropId;
-    const color = golden
-      ? 0xf1c84b
-      : baseCrop === 'strawberry' || baseCrop === 'tomato' || baseCrop === 'apple'
-        ? 0xd73a32
-        : baseCrop === 'raspberry'
-          ? 0xc93668
-          : baseCrop === 'blueberry'
-            ? 0x2b5ab4
-            : baseCrop === 'dragon-fruit' || baseCrop === 'cactus'
-              ? 0xd9367c
-              : baseCrop === 'peach'
-                ? 0xf2a36f
-                : baseCrop === 'pepper'
-                  ? 0xc62824
-                  : 0x1b0c26;
-    const mesh = new Mesh(
-      new SphereGeometry(baseCrop === 'pumpkin' ? 0.18 : 0.09, 14, 9),
-      new MeshStandardMaterial({ color, roughness: golden ? 0.42 : 0.64, metalness: golden ? 0.22 : 0.02 }),
-    );
-    mesh.name = `Chapter 11 auto harvester pile ${this.getChapterElevenCropLabel(cropId)}`;
-    mesh.castShadow = true;
-    return mesh;
+  private rebuildChapterElevenAutoHarvestChestModel(): void {
+    this.chapterElevenAutoHarvestPileRoot.clear();
+    const woodMaterial = new MeshStandardMaterial({ color: 0x8b542b, roughness: 0.86 });
+    const darkWoodMaterial = new MeshStandardMaterial({ color: 0x5d351f, roughness: 0.92 });
+    const metalMaterial = new MeshStandardMaterial({ color: 0x5d6870, roughness: 0.58, metalness: 0.24 });
+    const chestBase = new Mesh(new BoxGeometry(1.45, 0.72, 0.9), woodMaterial);
+    chestBase.name = 'Chapter 11 auto harvester wooden chest base';
+    chestBase.position.y = 0.36;
+    chestBase.castShadow = true;
+    chestBase.receiveShadow = true;
+
+    const chestLid = new Mesh(new BoxGeometry(1.52, 0.24, 0.96), darkWoodMaterial);
+    chestLid.name = 'Chapter 11 auto harvester wooden chest lid';
+    chestLid.position.y = 0.84;
+    chestLid.castShadow = true;
+    chestLid.receiveShadow = true;
+
+    const frontBand = new Mesh(new BoxGeometry(1.58, 0.1, 0.05), metalMaterial);
+    frontBand.name = 'Chapter 11 auto harvester chest front metal band';
+    frontBand.position.set(0, 0.74, -0.5);
+    frontBand.castShadow = true;
+
+    const latch = new Mesh(new BoxGeometry(0.22, 0.22, 0.08), metalMaterial);
+    latch.name = 'Chapter 11 auto harvester chest latch';
+    latch.position.set(0, 0.62, -0.52);
+    latch.castShadow = true;
+
+    const leftBand = new Mesh(new BoxGeometry(0.08, 0.82, 0.98), metalMaterial);
+    leftBand.name = 'Chapter 11 auto harvester chest left metal band';
+    leftBand.position.set(-0.5, 0.43, 0);
+    leftBand.castShadow = true;
+    const rightBand = leftBand.clone();
+    rightBand.name = 'Chapter 11 auto harvester chest right metal band';
+    rightBand.position.x = 0.5;
+
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 256;
+    labelCanvas.height = 96;
+    const labelContext = labelCanvas.getContext('2d');
+    if (labelContext) {
+      labelContext.fillStyle = '#f4e1a9';
+      labelContext.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
+      labelContext.strokeStyle = '#5d351f';
+      labelContext.lineWidth = 8;
+      labelContext.strokeRect(8, 8, labelCanvas.width - 16, labelCanvas.height - 16);
+      labelContext.fillStyle = '#3a2413';
+      labelContext.font = '900 30px Arial, sans-serif';
+      labelContext.textAlign = 'center';
+      labelContext.textBaseline = 'middle';
+      labelContext.fillText('HARVEST', labelCanvas.width / 2, labelCanvas.height / 2);
+    }
+    const labelTexture = new CanvasTexture(labelCanvas);
+    const label = new Mesh(new PlaneGeometry(0.72, 0.27), new MeshBasicMaterial({ map: labelTexture, transparent: true, side: DoubleSide }));
+    label.name = 'Chapter 11 auto harvester chest label';
+    label.position.set(0, 0.4, -0.535);
+    label.rotation.y = Math.PI;
+
+    this.chapterElevenAutoHarvestPileRoot.add(chestBase, chestLid, frontBand, latch, leftBand, rightBand, label);
+    this.chapterElevenAutoHarvestPileRoot.visible = true;
+  }
+
+  private buildChapterElevenEventAndTraderModels(): void {
+    this.chapterElevenRainRoot.clear();
+    const rainMaterial = new MeshBasicMaterial({ color: 0x82cfff, transparent: true, opacity: 0.55 });
+    for (let index = 0; index < 90; index += 1) {
+      const drop = new Mesh(new BoxGeometry(0.025, 0.82, 0.025), rainMaterial);
+      drop.name = 'Chapter 11 rain storm falling drop';
+      drop.position.set(
+        MathUtils.randFloat(-55, 55),
+        MathUtils.randFloat(4, 12),
+        MathUtils.randFloat(-55, 55),
+      );
+      drop.rotation.z = -0.28;
+      this.chapterElevenRainRoot.add(drop);
+    }
+    this.chapterElevenRainRoot.visible = false;
+
+    this.chapterElevenLightningRoot.clear();
+    const boltMaterial = new MeshBasicMaterial({ color: 0x8ee8ff, transparent: true, opacity: 0.9 });
+    const bolt = new Mesh(new BoxGeometry(0.16, 7.5, 0.16), boltMaterial);
+    bolt.name = 'Chapter 11 lightning storm blue white bolt';
+    bolt.position.y = 3.8;
+    bolt.rotation.z = 0.18;
+    const flash = new PointLight(0x9eeaff, 0, 34);
+    flash.name = 'Chapter 11 lightning storm flash light';
+    flash.position.y = 5.5;
+    this.chapterElevenLightningRoot.add(bolt, flash);
+    this.chapterElevenLightningRoot.visible = false;
+
+    this.chapterElevenTraderRoot.clear();
+    const bootMaterial = new MeshStandardMaterial({ color: 0x25170f, roughness: 0.88 });
+    const pantsMaterial = new MeshStandardMaterial({ color: 0x3d2719, roughness: 0.86 });
+    const shirtMaterial = new MeshStandardMaterial({ color: 0x936133, roughness: 0.82 });
+    const skinMaterial = new MeshStandardMaterial({ color: 0xc89062, roughness: 0.7 });
+    const hatMaterial = new MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+    const body = new Mesh(new BoxGeometry(0.58, 0.9, 0.32), shirtMaterial);
+    body.name = 'Chapter 11 cowboy trader body';
+    body.position.y = 1.05;
+    const head = new Mesh(new SphereGeometry(0.23, 18, 12), skinMaterial);
+    head.name = 'Chapter 11 cowboy trader head';
+    head.position.y = 1.65;
+    const brim = new Mesh(new CylinderGeometry(0.42, 0.42, 0.055, 24), hatMaterial);
+    brim.name = 'Chapter 11 cowboy trader black hat brim';
+    brim.position.y = 1.87;
+    const crown = new Mesh(new CylinderGeometry(0.24, 0.28, 0.24, 18), hatMaterial);
+    crown.name = 'Chapter 11 cowboy trader black hat crown';
+    crown.position.y = 2.01;
+    [-1, 1].forEach((side) => {
+      const leg = new Mesh(new CylinderGeometry(0.08, 0.1, 0.82, 10), pantsMaterial);
+      leg.name = 'Chapter 11 cowboy trader leg';
+      leg.position.set(side * 0.15, 0.46, 0);
+      const boot = new Mesh(new BoxGeometry(0.18, 0.12, 0.34), bootMaterial);
+      boot.name = 'Chapter 11 cowboy trader boot';
+      boot.position.set(side * 0.15, 0.07, -0.04);
+      const arm = new Mesh(new CylinderGeometry(0.055, 0.07, 0.75, 10), shirtMaterial);
+      arm.name = 'Chapter 11 cowboy trader arm';
+      arm.position.set(side * 0.4, 1.05, 0);
+      arm.rotation.z = side * 0.28;
+      this.chapterElevenTraderRoot.add(leg, boot, arm);
+    });
+    this.chapterElevenTraderRoot.add(body, head, brim, crown);
+    this.chapterElevenTraderRoot.position.set(CHAPTER_ELEVEN_TRADER_X, 0, CHAPTER_ELEVEN_TRADER_Z);
+    this.chapterElevenTraderRoot.lookAt(0, 0, 0);
+    this.chapterElevenTraderRoot.visible = false;
   }
 
   private addChapterElevenAutoHarvestPileCrop(cropId: ChapterElevenCropId): void {
     this.chapterElevenAutoHarvestPileInventory.set(cropId, (this.chapterElevenAutoHarvestPileInventory.get(cropId) ?? 0) + 1);
-    this.chapterElevenAutoHarvestPileRoot.visible = true;
-    while (this.chapterElevenAutoHarvestPileRoot.children.length >= 36) {
-      this.chapterElevenAutoHarvestPileRoot.remove(this.chapterElevenAutoHarvestPileRoot.children[0]);
-    }
-    const mesh = this.createChapterElevenPileCropMesh(cropId);
-    const index = this.chapterElevenAutoHarvestPileRoot.children.length;
-    const angle = index * 2.399;
-    const radius = 0.18 + Math.floor(index / 8) * 0.2;
-    mesh.position.set(Math.cos(angle) * radius, 0.08 + Math.floor(index / 16) * 0.08, Math.sin(angle) * radius);
-    mesh.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
-    this.chapterElevenAutoHarvestPileRoot.add(mesh);
     this.syncHud();
   }
 
@@ -10308,7 +10677,7 @@ export class Game {
   }
 
   private isNearChapterElevenAutoHarvestPile(): boolean {
-    if (!this.chapterElevenActive || this.getChapterElevenAutoHarvestPileCount() <= 0) {
+    if (!this.chapterElevenActive) {
       return false;
     }
 
@@ -10328,22 +10697,13 @@ export class Game {
     ) <= 1.4;
   }
 
-  private collectChapterElevenAutoHarvestPile(): boolean {
+  private openChapterElevenAutoHarvestChest(): boolean {
     if (!this.isNearChapterElevenAutoHarvestPile()) {
       return false;
     }
 
-    const collectedLabels: string[] = [];
-    this.chapterElevenAutoHarvestPileInventory.forEach((count, cropId) => {
-      this.addChapterElevenCropToInventory(cropId, count);
-      const label = this.getChapterElevenCropLabel(cropId);
-      collectedLabels.push(count === 1 ? label : `${count} ${label}`);
-    });
-    this.chapterElevenAutoHarvestPileInventory.clear();
-    this.chapterElevenAutoHarvestPileRoot.clear();
-    this.chapterElevenAutoHarvestPileRoot.visible = false;
-    this.pushStatus(`Picked up Auto Harvester pile: ${collectedLabels.join(', ')}.`, 3.2);
-    this.syncHud();
+    this.setChapterElevenAutoHarvestChestOpen(true);
+    this.pushStatus('Auto Harvester chest opened.', 1.8);
     return true;
   }
 
@@ -10861,7 +11221,7 @@ export class Game {
       return baseConfig
         ? {
           label: `Golden ${baseConfig.pluralLabel}`,
-          value: baseConfig.sellValue * 2,
+          value: baseConfig.sellValue * 5,
         }
         : null;
     }
@@ -10924,6 +11284,39 @@ export class Game {
       });
     });
     return items.sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  private getChapterElevenAutoHarvestChestItems(): ChapterElevenChestItemView[] {
+    const items: ChapterElevenChestItemView[] = [];
+    this.chapterElevenAutoHarvestPileInventory.forEach((count, cropId) => {
+      if (count > 0) {
+        items.push({
+          id: cropId,
+          label: this.getChapterElevenCropLabel(cropId),
+          count,
+        });
+      }
+    });
+    return items.sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  private getChapterElevenExtraInventorySlots(): HotbarSlotView[] {
+    const extraItems = this.getChapterElevenHotbarItems().slice(9, 36);
+    const slots: HotbarSlotView[] = extraItems.map((item) => ({
+      label: this.getChapterElevenHotbarItemLabel(item),
+      count: this.getChapterElevenHotbarItemCount(item),
+      filled: true,
+      type: this.getChapterElevenHotbarItemType(item),
+      selected: false,
+    }));
+    while (slots.length < 27) {
+      slots.push({
+        label: 'Empty',
+        count: 0,
+        filled: false,
+      });
+    }
+    return slots;
   }
 
   private sellChapterElevenSelectedCrops(cropIds: Set<ChapterElevenCropId> | null): void {
@@ -11006,8 +11399,34 @@ export class Game {
     this.sellChapterElevenSelectedCrops(this.chapterElevenSellSelectedCrops);
   };
 
+  private readonly handleChapterElevenAutoHarvestChestAction = (cropIdText: string): void => {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenAutoHarvestChestOpen) {
+      return;
+    }
+
+    const cropId = cropIdText as ChapterElevenCropId;
+    const count = this.chapterElevenAutoHarvestPileInventory.get(cropId) ?? 0;
+    if (count <= 0) {
+      this.syncHud();
+      return;
+    }
+
+    this.addChapterElevenCropToInventory(cropId, count);
+    this.chapterElevenAutoHarvestPileInventory.delete(cropId);
+    this.pushStatus(`Moved ${this.getChapterElevenCropLabel(cropId)} x${count} from the chest to inventory.`, 2.6);
+    this.syncHud();
+  };
+
   private handleChapterElevenInteract(): void {
+    if (this.isNearChapterElevenTrader()) {
+      this.chapterElevenTraderShopOpen = true;
+      this.setChapterElevenSeedShopOpen(true);
+      this.pushStatus('The Trader opens his western seed stock.', 2.4);
+      return;
+    }
+
     if (this.isNearChapterElevenSeedShop()) {
+      this.chapterElevenTraderShopOpen = false;
       this.setChapterElevenSeedShopOpen(true);
       this.pushStatus('The Buy Seeds shop opens.', 2.2);
       return;
@@ -11034,7 +11453,7 @@ export class Game {
       return;
     }
 
-    if (this.collectChapterElevenAutoHarvestPile()) {
+    if (this.openChapterElevenAutoHarvestChest()) {
       return;
     }
 
@@ -17553,6 +17972,11 @@ export class Game {
       this.chapterElevenSellChoosing,
       Array.from(this.chapterElevenSellSelectedCrops),
     );
+    this.hud.setChapterElevenAutoHarvestChest(
+      this.chapterElevenActive && this.chapterElevenTwoActive && this.chapterElevenAutoHarvestChestOpen,
+      this.getChapterElevenAutoHarvestChestItems(),
+      this.getChapterElevenExtraInventorySlots(),
+    );
     const chapterSevenPhaseSecondsLeft = this.getChapterSevenPhaseSecondsLeft();
     this.hud.setChapterSevenPhaseTimer(
       this.chapterSevenActive,
@@ -22371,18 +22795,11 @@ export class Game {
 
     if (this.chapterElevenActive) {
       const gardenSlots = this.getChapterElevenHotbarItems().map((item) => {
-        const count = item.kind === 'seed'
-          ? this.chapterElevenSeedInventory.get(item.id) ?? 0
-          : item.kind === 'crop'
-            ? this.chapterElevenCropInventory.get(item.id) ?? 0
-            : item.kind === 'pet-egg'
-              ? this.chapterElevenPetEggInventory.get(item.id) ?? 0
-              : this.chapterElevenEquipmentInventory.get(item.id) ?? 0;
         return {
           label: this.getChapterElevenHotbarItemLabel(item),
-          count,
+          count: this.getChapterElevenHotbarItemCount(item),
           filled: true,
-          type: item.kind === 'pet-egg' ? `${item.id}-egg` : item.id,
+          type: this.getChapterElevenHotbarItemType(item),
           selected: (item.kind === 'seed' && item.id === this.chapterElevenSelectedSeedId)
             || (item.kind === 'crop' && item.id === this.chapterElevenSelectedCropId)
             || (item.kind === 'pet-egg' && item.id === this.chapterElevenSelectedPetEggType)
@@ -23728,6 +24145,10 @@ export class Game {
         return 'Press E at the Buy Seeds stand to buy seeds.';
       }
 
+      if (this.isNearChapterElevenTrader()) {
+        return 'Press E by the Trader to buy western seeds.';
+      }
+
       if (this.isNearChapterElevenPetEggStand()) {
         return `Press E by the Pet Eggs seller to get a random pet egg for $${CHAPTER_ELEVEN_PET_EGG_COST}.`;
       }
@@ -23743,7 +24164,9 @@ export class Game {
       }
 
       if (this.isNearChapterElevenAutoHarvestPile()) {
-        return 'Press E to pick up the Auto Harvester crop pile.';
+        return this.getChapterElevenAutoHarvestPileCount() > 0
+          ? 'Press E to open the Auto Harvester chest and move stored crops.'
+          : 'Press E to open the empty Auto Harvester chest.';
       }
 
       const point = this.getChapterElevenAimGroundPoint();

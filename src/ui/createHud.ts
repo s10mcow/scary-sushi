@@ -100,6 +100,7 @@ export interface HudController {
   onChapterElevenSeedPurchase(handler: (seedId: ChapterElevenSeedId) => void): void;
   onChapterElevenEquipmentPurchase(handler: (equipmentId: ChapterElevenEquipmentId) => void): void;
   onChapterElevenSellAction(handler: (action: ChapterElevenSellAction) => void): void;
+  onChapterElevenChestAction(handler: (cropId: string) => void): void;
   onCuratorSave(handler: (slotLabel: string, summary: string) => void): void;
   setTheme(theme: 'default' | 'doom'): void;
   setCrosshairMode(mode: 'default' | 'firearm' | 'minecraft'): void;
@@ -118,6 +119,7 @@ export interface HudController {
   setChapterElevenSeedShop(active: boolean, money: number, items: ChapterElevenSeedShopItemView[]): void;
   setChapterElevenEquipmentShop(active: boolean, money: number, items: ChapterElevenEquipmentShopItemView[]): void;
   setChapterElevenSellMenu(active: boolean, money: number, items: ChapterElevenSellItemView[], choosing: boolean, selectedIds: string[]): void;
+  setChapterElevenAutoHarvestChest(active: boolean, chestItems: ChapterElevenChestItemView[], inventorySlots: HotbarSlotView[]): void;
   setChapterElevenSeedHotbar(active: boolean, slots: HotbarSlotView[]): void;
   setMoney(value: number): void;
   setChapterSevenPhaseTimer(active: boolean, phase: 'day' | 'night', secondsLeft: number, urgent: boolean): void;
@@ -185,7 +187,10 @@ export type ChapterElevenSeedId =
   | 'pepper-seeds'
   | 'dragon-fruit-seeds'
   | 'vine-seeds'
-  | 'cactus-seeds';
+  | 'cactus-seeds'
+  | 'corn-seeds'
+  | 'desert-sage-seeds'
+  | 'sunset-melon-seeds';
 
 export type ChapterElevenEquipmentId =
   | 'vine-stick'
@@ -236,6 +241,12 @@ export interface ChapterElevenSellItemView {
   label: string;
   count: number;
   value: number;
+}
+
+export interface ChapterElevenChestItemView {
+  id: string;
+  label: string;
+  count: number;
 }
 
 export type HudChapterFiveMonitorAction =
@@ -586,6 +597,7 @@ export function createHud(host: HTMLElement): HudController {
   let chapterElevenSeedPurchaseHandler: ((seedId: ChapterElevenSeedId) => void) | null = null;
   let chapterElevenEquipmentPurchaseHandler: ((equipmentId: ChapterElevenEquipmentId) => void) | null = null;
   let chapterElevenSellActionHandler: ((action: ChapterElevenSellAction) => void) | null = null;
+  let chapterElevenChestActionHandler: ((cropId: string) => void) | null = null;
 
   const backdrop = document.createElement('div');
   backdrop.className = 'hud__backdrop';
@@ -1264,6 +1276,59 @@ export function createHud(host: HTMLElement): HudController {
   chapterElevenSellOptions.className = 'hud__chapter-seven-trading-options';
 
   chapterElevenSellMenu.append(chapterElevenSellTitle, chapterElevenSellMoney, chapterElevenSellOptions);
+
+  const chapterElevenAutoHarvestChest = document.createElement('section');
+  chapterElevenAutoHarvestChest.className = 'hud__chapter-eleven-chest';
+  chapterElevenAutoHarvestChest.dataset.active = 'false';
+
+  const chapterElevenAutoHarvestChestTitle = document.createElement('h2');
+  chapterElevenAutoHarvestChestTitle.className = 'hud__chapter-seven-cookie-picker-title';
+  chapterElevenAutoHarvestChestTitle.textContent = 'Auto Harvester Chest';
+
+  const chapterElevenAutoHarvestChestHint = document.createElement('p');
+  chapterElevenAutoHarvestChestHint.className = 'hud__chapter-seven-trading-cookies';
+  chapterElevenAutoHarvestChestHint.textContent = 'Click a chest item to move it into your inventory.';
+
+  const chapterElevenAutoHarvestChestOptions = document.createElement('div');
+  chapterElevenAutoHarvestChestOptions.className = 'hud__chapter-seven-trading-options hud__chapter-eleven-chest-options';
+
+  const chapterElevenAutoHarvestInventoryTitle = document.createElement('p');
+  chapterElevenAutoHarvestInventoryTitle.className = 'hud__chapter-eleven-seed-section';
+  chapterElevenAutoHarvestInventoryTitle.textContent = 'Extra Inventory';
+
+  const chapterElevenAutoHarvestInventoryGrid = document.createElement('div');
+  chapterElevenAutoHarvestInventoryGrid.className = 'hud__chapter-eleven-chest-grid';
+
+  const chapterElevenAutoHarvestInventorySlots = Array.from({ length: 27 }, (_, index) => {
+    const slot = document.createElement('div');
+    slot.className = 'hud__slot hud__chapter-eleven-chest-slot';
+    slot.dataset.filled = 'false';
+    slot.dataset.selected = 'false';
+
+    const indexText = document.createElement('span');
+    indexText.className = 'hud__slot-index';
+    indexText.textContent = String(index + 1);
+
+    const valueText = document.createElement('span');
+    valueText.className = 'hud__slot-value';
+    valueText.textContent = 'Empty';
+
+    const countText = document.createElement('span');
+    countText.className = 'hud__slot-count';
+    countText.textContent = 'x0';
+
+    slot.append(indexText, valueText, countText);
+    chapterElevenAutoHarvestInventoryGrid.append(slot);
+    return { root: slot, valueText, countText };
+  });
+
+  chapterElevenAutoHarvestChest.append(
+    chapterElevenAutoHarvestChestTitle,
+    chapterElevenAutoHarvestChestHint,
+    chapterElevenAutoHarvestChestOptions,
+    chapterElevenAutoHarvestInventoryTitle,
+    chapterElevenAutoHarvestInventoryGrid,
+  );
 
   const statusPanel = document.createElement('section');
   statusPanel.className = 'hud__panel hud__panel--right';
@@ -2141,6 +2206,7 @@ export function createHud(host: HTMLElement): HudController {
     chapterElevenSeedShop,
     chapterElevenEquipmentShop,
     chapterElevenSellMenu,
+    chapterElevenAutoHarvestChest,
     crosshair,
     moneyPanel,
     meterPanel,
@@ -2783,6 +2849,9 @@ export function createHud(host: HTMLElement): HudController {
     onChapterElevenSellAction(handler): void {
       chapterElevenSellActionHandler = handler;
     },
+    onChapterElevenChestAction(handler): void {
+      chapterElevenChestActionHandler = handler;
+    },
     onCuratorSave(handler): void {
       curatorSaveHandler = handler;
     },
@@ -3040,6 +3109,57 @@ export function createHud(host: HTMLElement): HudController {
       }
 
       chapterElevenSellOptions.replaceChildren(...rows);
+    },
+    setChapterElevenAutoHarvestChest(active, chestItems, inventorySlots): void {
+      chapterElevenAutoHarvestChest.dataset.active = String(active);
+      chapterElevenAutoHarvestChestHint.textContent = chestItems.length > 0
+        ? 'Click a chest item to move it into your inventory.'
+        : 'The chest is empty. Auto Harvesters will drop crops here.';
+      const rows: HTMLElement[] = chestItems.length > 0
+        ? chestItems.map((item) => {
+          const button = document.createElement('button');
+          button.className = 'hud__chapter-seven-trade';
+          button.type = 'button';
+          button.dataset.crop = item.id;
+          const title = document.createElement('span');
+          title.className = 'hud__chapter-seven-trade-title';
+          title.textContent = `${item.label} x${item.count}`;
+          const description = document.createElement('span');
+          description.className = 'hud__chapter-seven-trade-description';
+          description.textContent = 'Click to move this stack to inventory.';
+          button.append(title, description);
+          let handled = false;
+          const handleTransfer = (event: Event): void => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (handled) {
+              return;
+            }
+
+            handled = true;
+            chapterElevenChestActionHandler?.(item.id);
+          };
+          button.addEventListener('pointerdown', handleTransfer);
+          button.addEventListener('mousedown', handleTransfer);
+          button.addEventListener('touchstart', handleTransfer, { passive: false });
+          button.addEventListener('click', handleTransfer);
+          return button;
+        })
+        : [(() => {
+          const empty = document.createElement('p');
+          empty.className = 'hud__chapter-seven-trade-description hud__chapter-eleven-chest-empty';
+          empty.textContent = 'No crops stored yet.';
+          return empty;
+        })()];
+      chapterElevenAutoHarvestChestOptions.replaceChildren(...rows);
+      chapterElevenAutoHarvestInventorySlots.forEach((slot, index) => {
+        const value = inventorySlots[index];
+        slot.root.dataset.filled = String(Boolean(value?.filled));
+        slot.root.dataset.selected = String(Boolean(value?.selected));
+        slot.root.dataset.item = value?.filled && value.type ? value.type : '';
+        slot.valueText.textContent = value?.label ?? 'Empty';
+        slot.countText.textContent = `x${value?.filled ? value.count : 0}`;
+      });
     },
     setMoney(value): void {
       moneyValue.textContent = `$${Math.max(0, Math.floor(value))}`;

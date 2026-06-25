@@ -2137,6 +2137,7 @@ select {
 .hud__chapter-eleven-seed-shop,
 .hud__chapter-eleven-equipment-shop,
 .hud__chapter-eleven-sell-menu,
+.hud__chapter-eleven-chest,
 .hud__tablet-cameras,
 .hud__tablet-camera-title,
 .hud__chapter-card,
@@ -2757,6 +2758,18 @@ select {
   transform: translate(-50%, -47%) scale(0.98);
 }
 
+.hud__chapter-eleven-chest {
+  left: 50%;
+  top: 50%;
+  z-index: 12;
+  width: min(42rem, calc(100% - 2rem));
+  padding: 1.35rem;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transform: translate(-50%, -47%) scale(0.98);
+}
+
 .hud__chapter-seven-trading[data-active="true"] {
   opacity: 1;
   pointer-events: auto;
@@ -2771,6 +2784,12 @@ select {
 }
 
 .hud__chapter-eleven-sell-menu[data-active="true"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.hud__chapter-eleven-chest[data-active="true"] {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, -50%) scale(1);
@@ -2801,6 +2820,33 @@ select {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 0.25rem;
+}
+
+.hud__chapter-eleven-chest .hud__chapter-seven-trading-options {
+  max-height: min(12rem, 28vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.25rem;
+}
+
+.hud__chapter-eleven-chest-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 0.3rem;
+  margin-top: 0.65rem;
+}
+
+.hud__chapter-eleven-chest-slot {
+  min-height: 3.75rem;
+  background: linear-gradient(180deg, rgba(255, 248, 225, 0.96), rgba(218, 181, 111, 0.92));
+}
+
+.hud__chapter-eleven-chest-empty {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px dashed rgba(86, 51, 25, 0.32);
+  border-radius: 0.45rem;
+  background: rgba(255, 247, 219, 0.72);
 }
 
 .hud__chapter-eleven-seed-section {
