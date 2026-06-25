@@ -28,6 +28,8 @@ export class GameplaySfxAudio {
   private chapterSevenAmbientGain?: GainNode;
   private gardenEventAmbientCue: GardenEventCue | null = null;
   private gardenEventAmbientTimer = 0;
+  private gardenEventAmbientGain?: GainNode;
+  private gardenEventAmbientSources: AudioScheduledSourceNode[] = [];
   private footstepCooldown = 0;
   private footstepSide = 0;
   private ballPitRustleCooldown = 0;
@@ -281,7 +283,10 @@ export class GameplaySfxAudio {
       return;
     }
 
-    this.playGardenEventMusic();
+    if (cue === 'cheerful') {
+      this.playGardenEventMusic();
+      return;
+    }
 
     if (cue === 'lightning') {
       this.playThunderRumble();
@@ -343,10 +348,11 @@ export class GameplaySfxAudio {
       return;
     }
 
+    this.stopGardenEventAmbientSources();
     this.gardenEventAmbientCue = cue;
-    this.gardenEventAmbientTimer = 0;
+    this.gardenEventAmbientTimer = cue === 'cheerful' ? 0 : cue === 'lightning' ? 1.4 : 999999;
     if (cue) {
-      this.playGardenEventCue(cue);
+      this.startGardenEventAmbient(cue);
     }
   }
 
@@ -360,15 +366,22 @@ export class GameplaySfxAudio {
       return;
     }
 
-    const cue = this.gardenEventAmbientCue;
-    this.playGardenEventCue(cue);
-    this.gardenEventAmbientTimer = cue === 'lightning'
-      ? 5.4 + Math.random() * 2.4
-      : cue === 'rain' || cue === 'wind'
-        ? 2.7 + Math.random() * 0.7
-        : cue === 'cheerful'
-          ? 3.0
-          : 4.2;
+    if (this.gardenEventAmbientCue === 'lightning') {
+      this.playThunderRumble();
+      this.gardenEventAmbientTimer = 5.4 + Math.random() * 2.4;
+      return;
+    }
+
+    if (this.gardenEventAmbientCue === 'cheerful') {
+      this.playGardenEventMusic();
+      this.gardenEventAmbientTimer = 3.0;
+      return;
+    }
+
+    if (this.gardenEventAmbientCue === 'magic') {
+      this.playGardenMagicCue();
+      this.gardenEventAmbientTimer = 6.5;
+    }
   }
 
   playGrandfatherClockChime(): void {
@@ -1394,6 +1407,148 @@ export class GameplaySfxAudio {
     this.startSource(rain, now, now + length);
   }
 
+  private startGardenEventAmbient(cue: GardenEventCue): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.01;
+    const ambientGain = this.context.createGain();
+    ambientGain.gain.setValueAtTime(0.0001, now);
+    ambientGain.gain.exponentialRampToValueAtTime(
+      cue === 'rain' ? 0.074 : cue === 'lightning' ? 0.066 : cue === 'wind' ? 0.062 : cue === 'volcanic' ? 0.052 : 0.042,
+      now + 0.45,
+    );
+    ambientGain.connect(this.masterGain);
+    this.gardenEventAmbientGain = ambientGain;
+
+    if (cue === 'rain' || cue === 'lightning') {
+      this.startGardenRainAmbient(now, ambientGain, cue === 'lightning');
+      if (cue === 'lightning') {
+        this.playThunderRumble();
+      }
+      return;
+    }
+
+    if (cue === 'wind') {
+      this.startGardenWindAmbient(now, ambientGain);
+      return;
+    }
+
+    if (cue === 'dragon') {
+      this.startGardenDragonAmbient(now, ambientGain);
+      this.playGardenDragonCue();
+      return;
+    }
+
+    if (cue === 'volcanic') {
+      this.startGardenVolcanicAmbient(now, ambientGain);
+      this.playGardenVolcanicCue();
+      return;
+    }
+
+    if (cue === 'magic') {
+      this.playGardenMagicCue();
+    }
+  }
+
+  private startGardenRainAmbient(startTime: number, destination: GainNode, storm: boolean): void {
+    if (!this.context || !this.noiseBuffer) {
+      return;
+    }
+
+    const rain = this.context.createBufferSource();
+    rain.buffer = this.noiseBuffer;
+    rain.loop = true;
+    rain.playbackRate.value = storm ? 1.95 : 1.72;
+
+    const highpass = this.context.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = storm ? 920 : 1100;
+    const band = this.context.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = storm ? 2500 : 3000;
+    band.Q.value = 0.72;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = storm ? 5200 : 4600;
+
+    rain.connect(highpass);
+    highpass.connect(band);
+    band.connect(lowpass);
+    lowpass.connect(destination);
+    this.trackGardenEventAmbientSource(rain, startTime);
+
+    if (storm) {
+      const lowRain = this.context.createBufferSource();
+      lowRain.buffer = this.noiseBuffer;
+      lowRain.loop = true;
+      lowRain.playbackRate.value = 0.82;
+      const lowpassRumble = this.context.createBiquadFilter();
+      lowpassRumble.type = 'lowpass';
+      lowpassRumble.frequency.value = 520;
+      lowRain.connect(lowpassRumble);
+      lowpassRumble.connect(destination);
+      this.trackGardenEventAmbientSource(lowRain, startTime);
+    }
+  }
+
+  private startGardenWindAmbient(startTime: number, destination: GainNode): void {
+    if (!this.context || !this.noiseBuffer) {
+      return;
+    }
+
+    const wind = this.context.createBufferSource();
+    wind.buffer = this.noiseBuffer;
+    wind.loop = true;
+    wind.playbackRate.value = 0.62;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 980;
+    const highpass = this.context.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 140;
+    wind.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(destination);
+    this.trackGardenEventAmbientSource(wind, startTime);
+  }
+
+  private startGardenDragonAmbient(startTime: number, destination: GainNode): void {
+    if (!this.context || !this.noiseBuffer) {
+      return;
+    }
+
+    const growl = this.context.createBufferSource();
+    growl.buffer = this.noiseBuffer;
+    growl.loop = true;
+    growl.playbackRate.value = 0.3;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 260;
+    growl.connect(lowpass);
+    lowpass.connect(destination);
+    this.trackGardenEventAmbientSource(growl, startTime);
+  }
+
+  private startGardenVolcanicAmbient(startTime: number, destination: GainNode): void {
+    if (!this.context || !this.noiseBuffer) {
+      return;
+    }
+
+    const crackle = this.context.createBufferSource();
+    crackle.buffer = this.noiseBuffer;
+    crackle.loop = true;
+    crackle.playbackRate.value = 1.12;
+    const band = this.context.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 1350;
+    band.Q.value = 2.7;
+    crackle.connect(band);
+    band.connect(destination);
+    this.trackGardenEventAmbientSource(crackle, startTime);
+  }
+
   private playGardenWindCue(): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;
@@ -1620,6 +1775,47 @@ export class GameplaySfxAudio {
     });
     source.start(startTime);
     source.stop(stopTime);
+  }
+
+  private trackGardenEventAmbientSource(source: AudioScheduledSourceNode, startTime: number): void {
+    this.gardenEventAmbientSources.push(source);
+    this.activeSources.add(source);
+    source.addEventListener('ended', () => {
+      this.activeSources.delete(source);
+      const index = this.gardenEventAmbientSources.indexOf(source);
+      if (index >= 0) {
+        this.gardenEventAmbientSources.splice(index, 1);
+      }
+    });
+    source.start(startTime);
+  }
+
+  private stopGardenEventAmbientSources(): void {
+    if (!this.context) {
+      this.gardenEventAmbientSources.length = 0;
+      this.gardenEventAmbientGain = undefined;
+      this.gardenEventAmbientCue = null;
+      this.gardenEventAmbientTimer = 0;
+      return;
+    }
+
+    const now = this.context.currentTime;
+    if (this.gardenEventAmbientGain) {
+      this.gardenEventAmbientGain.gain.cancelScheduledValues(now);
+      this.gardenEventAmbientGain.gain.setTargetAtTime(0.0001, now, 0.16);
+    }
+
+    this.gardenEventAmbientSources.forEach((source) => {
+      try {
+        source.stop(now + 0.45);
+      } catch {
+        // Ignore sources already stopped by the browser.
+      }
+      this.activeSources.delete(source);
+    });
+    this.gardenEventAmbientSources.length = 0;
+    this.gardenEventAmbientGain = undefined;
+    this.gardenEventAmbientTimer = 0;
   }
 
   private startSource(
