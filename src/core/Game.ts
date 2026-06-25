@@ -11861,7 +11861,7 @@ export class Game {
     }
 
     const playerPosition = this.player.getPosition();
-    return playerPosition.add(direction.setY(0).normalize().multiplyScalar(1.25));
+    return playerPosition.clone().add(direction.setY(0).normalize().multiplyScalar(1.25));
   }
 
   private getChapterElevenDirtPatchAt(point: Vector3): ChapterElevenDirtPatch | null {
