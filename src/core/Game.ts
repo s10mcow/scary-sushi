@@ -255,7 +255,7 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5 },
   { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.', maxStock: 2 },
   { id: 'fertilizer', label: 'Fertilizer', cost: 180, description: 'Boost one crop faster than water.', maxStock: 4 },
-  { id: 'auto-harvester', label: 'Auto Harvester', cost: 20000, description: 'Place a drone that cuts ripe bush fruit and drops it by your farm sign.', maxStock: 1 },
+  { id: 'auto-harvester', label: 'Auto Harvester', cost: 2000, description: 'Place a drone that cuts ripe bush fruit and drops it by your farm sign.', maxStock: 1 },
 ];
 const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
@@ -479,8 +479,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Pumpkin',
     pluralLabel: 'Pumpkins',
     sellValue: 140,
-    babySeconds: 4,
-    matureSeconds: 14,
+    babySeconds: 8,
+    matureSeconds: 28,
     regrows: true,
   },
   'nut-seeds': {
@@ -489,8 +489,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Nut',
     pluralLabel: 'Nuts',
     sellValue: 700,
-    babySeconds: 20,
-    matureSeconds: 60,
+    babySeconds: 30,
+    matureSeconds: 105,
     regrows: false,
   },
   'blueberry-seeds': {
@@ -499,8 +499,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Blueberry',
     pluralLabel: 'Blueberries',
     sellValue: 260,
-    babySeconds: 5,
-    matureSeconds: 15,
+    babySeconds: 12,
+    matureSeconds: 42,
     regrows: true,
   },
   'raspberry-seeds': {
@@ -509,8 +509,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Raspberry',
     pluralLabel: 'Raspberries',
     sellValue: 360,
-    babySeconds: 5,
-    matureSeconds: 15,
+    babySeconds: 16,
+    matureSeconds: 56,
     regrows: true,
   },
   'peach-seeds': {
@@ -519,8 +519,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Peach',
     pluralLabel: 'Peaches',
     sellValue: 360,
-    babySeconds: 8,
-    matureSeconds: 24,
+    babySeconds: 16,
+    matureSeconds: 58,
     regrows: false,
   },
   'apple-tree-seeds': {
@@ -529,8 +529,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Apple',
     pluralLabel: 'Apples',
     sellValue: 420,
-    babySeconds: 8,
-    matureSeconds: 24,
+    babySeconds: 18,
+    matureSeconds: 66,
     regrows: false,
   },
   'tomato-seeds': {
@@ -549,8 +549,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Pepper',
     pluralLabel: 'Peppers',
     sellValue: 260,
-    babySeconds: 5,
-    matureSeconds: 16,
+    babySeconds: 12,
+    matureSeconds: 42,
     regrows: true,
   },
   'dragon-fruit-seeds': {
@@ -559,8 +559,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Dragon Fruit',
     pluralLabel: 'Dragon Fruits',
     sellValue: 900,
-    babySeconds: 18,
-    matureSeconds: 78,
+    babySeconds: 34,
+    matureSeconds: 135,
     regrows: true,
   },
   'vine-seeds': {
@@ -569,8 +569,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Vine Fruit',
     pluralLabel: 'Vine Fruits',
     sellValue: 700,
-    babySeconds: 16,
-    matureSeconds: 70,
+    babySeconds: 30,
+    matureSeconds: 118,
     regrows: true,
   },
   'cactus-seeds': {
@@ -579,8 +579,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Cactus Fruit',
     pluralLabel: 'Cactus Fruits',
     sellValue: 800,
-    babySeconds: 20,
-    matureSeconds: 86,
+    babySeconds: 36,
+    matureSeconds: 145,
     regrows: true,
   },
   'corn-seeds': {
@@ -589,8 +589,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Western Corn',
     pluralLabel: 'Western Corn',
     sellValue: 1200,
-    babySeconds: 18,
-    matureSeconds: 72,
+    babySeconds: 38,
+    matureSeconds: 150,
     regrows: false,
   },
   'desert-sage-seeds': {
@@ -599,8 +599,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Desert Sage',
     pluralLabel: 'Desert Sage',
     sellValue: 1600,
-    babySeconds: 20,
-    matureSeconds: 82,
+    babySeconds: 46,
+    matureSeconds: 180,
     regrows: false,
   },
   'sunset-melon-seeds': {
@@ -609,8 +609,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Sunset Melon',
     pluralLabel: 'Sunset Melons',
     sellValue: 2300,
-    babySeconds: 24,
-    matureSeconds: 96,
+    babySeconds: 58,
+    matureSeconds: 225,
     regrows: false,
   },
 };
@@ -8689,6 +8689,17 @@ export class Game {
       || cropId === 'cactus';
   }
 
+  private getChapterElevenCropRegrowSeconds(cropId: ChapterElevenCropId, baseSeconds: number): number {
+    const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
+    if (!config) {
+      return baseSeconds;
+    }
+
+    const seedCost = this.getChapterElevenSeedItem(config.seedId)?.cost ?? config.sellValue;
+    const rarityMultiplier = MathUtils.clamp(1 + seedCost / 280, 1, 5.4);
+    return Math.round(baseSeconds * rarityMultiplier);
+  }
+
   private createChapterElevenPickableFruits(cropId: ChapterElevenCropId): ChapterElevenPickableFruit[] {
     const makeFruit = (
       offset: Vector3,
@@ -8711,103 +8722,105 @@ export class Game {
       mesh: null,
     });
 
+    const regrow = (baseSeconds: number) => this.getChapterElevenCropRegrowSeconds(cropId, baseSeconds);
+
     if (cropId === 'strawberry') {
       return [
-        makeFruit(new Vector3(0.24, 0.38, 0.08), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
-        makeFruit(new Vector3(-0.18, 0.45, -0.12), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
-        makeFruit(new Vector3(0.02, 0.56, -0.2), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
-        makeFruit(new Vector3(-0.28, 0.34, 0.18), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
-        makeFruit(new Vector3(0.28, 0.52, 0.2), 'Strawberry', CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
+        makeFruit(new Vector3(0.24, 0.38, 0.08), 'Strawberry', regrow(CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
+        makeFruit(new Vector3(-0.18, 0.45, -0.12), 'Strawberry', regrow(CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
+        makeFruit(new Vector3(0.02, 0.56, -0.2), 'Strawberry', regrow(CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
+        makeFruit(new Vector3(-0.28, 0.34, 0.18), 'Strawberry', regrow(CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
+        makeFruit(new Vector3(0.28, 0.52, 0.2), 'Strawberry', regrow(CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-strawberry', 'Golden Strawberry'),
       ];
     }
 
     if (cropId === 'raspberry') {
       return [
-        makeFruit(new Vector3(0.3, 0.42, 0.05), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
-        makeFruit(new Vector3(-0.22, 0.48, -0.12), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
-        makeFruit(new Vector3(0.08, 0.6, -0.25), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
-        makeFruit(new Vector3(-0.08, 0.36, 0.22), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
-        makeFruit(new Vector3(0.24, 0.66, 0.18), 'Raspberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
+        makeFruit(new Vector3(0.3, 0.42, 0.05), 'Raspberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
+        makeFruit(new Vector3(-0.22, 0.48, -0.12), 'Raspberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
+        makeFruit(new Vector3(0.08, 0.6, -0.25), 'Raspberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
+        makeFruit(new Vector3(-0.08, 0.36, 0.22), 'Raspberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
+        makeFruit(new Vector3(0.24, 0.66, 0.18), 'Raspberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Raspberry'),
       ];
     }
 
     if (cropId === 'blueberry') {
       return [
-        makeFruit(new Vector3(0.28, 0.4, 0.06), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
-        makeFruit(new Vector3(-0.24, 0.5, -0.1), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
-        makeFruit(new Vector3(0.06, 0.62, -0.23), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
-        makeFruit(new Vector3(-0.1, 0.36, 0.24), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
-        makeFruit(new Vector3(0.22, 0.58, 0.2), 'Blueberry', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
+        makeFruit(new Vector3(0.28, 0.4, 0.06), 'Blueberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
+        makeFruit(new Vector3(-0.24, 0.5, -0.1), 'Blueberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
+        makeFruit(new Vector3(0.06, 0.62, -0.23), 'Blueberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
+        makeFruit(new Vector3(-0.1, 0.36, 0.24), 'Blueberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
+        makeFruit(new Vector3(0.22, 0.58, 0.2), 'Blueberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
       ];
     }
 
     if (cropId === 'tomato') {
       return [
-        makeFruit(new Vector3(0.26, 0.44, 0.08), 'Tomato', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
-        makeFruit(new Vector3(-0.24, 0.52, -0.12), 'Tomato', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
-        makeFruit(new Vector3(0.04, 0.64, -0.24), 'Tomato', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
-        makeFruit(new Vector3(-0.12, 0.38, 0.24), 'Tomato', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
-        makeFruit(new Vector3(0.24, 0.58, 0.2), 'Tomato', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
+        makeFruit(new Vector3(0.26, 0.44, 0.08), 'Tomato', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
+        makeFruit(new Vector3(-0.24, 0.52, -0.12), 'Tomato', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
+        makeFruit(new Vector3(0.04, 0.64, -0.24), 'Tomato', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
+        makeFruit(new Vector3(-0.12, 0.38, 0.24), 'Tomato', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
+        makeFruit(new Vector3(0.24, 0.58, 0.2), 'Tomato', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-tomato', 'Golden Tomato'),
       ];
     }
 
     if (cropId === 'pepper') {
       return [
-        makeFruit(new Vector3(0.12, 0.54, 0.04), 'Pepper', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
-        makeFruit(new Vector3(-0.18, 0.48, 0.12), 'Pepper', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
-        makeFruit(new Vector3(0.26, 0.62, -0.14), 'Pepper', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
-        makeFruit(new Vector3(-0.06, 0.68, -0.18), 'Pepper', CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(0.12, 0.54, 0.04), 'Pepper', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(-0.18, 0.48, 0.12), 'Pepper', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(0.26, 0.62, -0.14), 'Pepper', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+        makeFruit(new Vector3(-0.06, 0.68, -0.18), 'Pepper', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
       ];
     }
 
     if (cropId === 'dragon-fruit') {
       return [
-        makeFruit(new Vector3(0.28, 0.62, 0.02), 'Dragon Fruit', 14, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
-        makeFruit(new Vector3(-0.22, 0.72, -0.16), 'Dragon Fruit', 14, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
-        makeFruit(new Vector3(0.04, 0.88, 0.2), 'Dragon Fruit', 14, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+        makeFruit(new Vector3(0.28, 0.62, 0.02), 'Dragon Fruit', regrow(14), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+        makeFruit(new Vector3(-0.22, 0.72, -0.16), 'Dragon Fruit', regrow(14), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
+        makeFruit(new Vector3(0.04, 0.88, 0.2), 'Dragon Fruit', regrow(14), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-dragon-fruit', 'Golden Dragon Fruit'),
       ];
     }
 
     if (cropId === 'vine-fruit') {
       return [
-        makeFruit(new Vector3(0.18, 1.0, 0.05), 'Vine Fruit', 12, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
-        makeFruit(new Vector3(-0.16, 1.22, -0.06), 'Vine Fruit', 12, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
-        makeFruit(new Vector3(0.12, 1.44, -0.12), 'Vine Fruit', 12, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
-        makeFruit(new Vector3(-0.12, 1.62, 0.12), 'Vine Fruit', 12, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
+        makeFruit(new Vector3(0.18, 1.0, 0.05), 'Vine Fruit', regrow(12), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
+        makeFruit(new Vector3(-0.16, 1.22, -0.06), 'Vine Fruit', regrow(12), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
+        makeFruit(new Vector3(0.12, 1.44, -0.12), 'Vine Fruit', regrow(12), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
+        makeFruit(new Vector3(-0.12, 1.62, 0.12), 'Vine Fruit', regrow(12), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-vine-fruit', 'Golden Vine Fruit'),
       ];
     }
 
     if (cropId === 'cactus') {
       return [
-        makeFruit(new Vector3(0.18, 0.76, 0.03), 'Cactus Fruit', 16, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
-        makeFruit(new Vector3(-0.16, 1.0, -0.08), 'Cactus Fruit', 16, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
-        makeFruit(new Vector3(0.05, 1.24, 0.12), 'Cactus Fruit', 16, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
+        makeFruit(new Vector3(0.18, 0.76, 0.03), 'Cactus Fruit', regrow(16), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
+        makeFruit(new Vector3(-0.16, 1.0, -0.08), 'Cactus Fruit', regrow(16), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
+        makeFruit(new Vector3(0.05, 1.24, 0.12), 'Cactus Fruit', regrow(16), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cactus', 'Golden Cactus Fruit'),
       ];
     }
 
     if (cropId === 'pumpkin') {
       return [
-        makeFruit(new Vector3(0, 0.34, 0), 'Pumpkin', CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pumpkin', 'Golden Pumpkin'),
-        makeFruit(new Vector3(0.42, 0.26, -0.25), 'Pumpkin', CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pumpkin', 'Golden Pumpkin'),
-        makeFruit(new Vector3(-0.38, 0.25, 0.28), 'Pumpkin', CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pumpkin', 'Golden Pumpkin'),
+        makeFruit(new Vector3(0, 0.34, 0), 'Pumpkin', regrow(CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pumpkin', 'Golden Pumpkin'),
+        makeFruit(new Vector3(0.42, 0.26, -0.25), 'Pumpkin', regrow(CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pumpkin', 'Golden Pumpkin'),
+        makeFruit(new Vector3(-0.38, 0.25, 0.28), 'Pumpkin', regrow(CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pumpkin', 'Golden Pumpkin'),
       ];
     }
 
     if (cropId === 'peach') {
       return [
-        makeFruit(new Vector3(0.32, 1.16, 0.08), 'Peach', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-peach', 'Golden Peach'),
-        makeFruit(new Vector3(-0.28, 1.28, -0.12), 'Peach', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-peach', 'Golden Peach'),
-        makeFruit(new Vector3(0.06, 1.42, -0.32), 'Peach', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-peach', 'Golden Peach'),
-        makeFruit(new Vector3(-0.08, 1.02, 0.28), 'Peach', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-peach', 'Golden Peach'),
+        makeFruit(new Vector3(0.32, 1.16, 0.08), 'Peach', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-peach', 'Golden Peach'),
+        makeFruit(new Vector3(-0.28, 1.28, -0.12), 'Peach', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-peach', 'Golden Peach'),
+        makeFruit(new Vector3(0.06, 1.42, -0.32), 'Peach', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-peach', 'Golden Peach'),
+        makeFruit(new Vector3(-0.08, 1.02, 0.28), 'Peach', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-peach', 'Golden Peach'),
       ];
     }
 
     if (cropId === 'apple') {
       return [
-        makeFruit(new Vector3(0.32, 1.16, 0.08), 'Apple', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-apple', 'Golden Apple'),
-        makeFruit(new Vector3(-0.28, 1.28, -0.12), 'Apple', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-apple', 'Golden Apple'),
-        makeFruit(new Vector3(0.06, 1.42, -0.32), 'Apple', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-apple', 'Golden Apple'),
-        makeFruit(new Vector3(-0.08, 1.02, 0.28), 'Apple', CHAPTER_ELEVEN_PEACH_REGROW_SECONDS, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-apple', 'Golden Apple'),
+        makeFruit(new Vector3(0.32, 1.16, 0.08), 'Apple', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-apple', 'Golden Apple'),
+        makeFruit(new Vector3(-0.28, 1.28, -0.12), 'Apple', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-apple', 'Golden Apple'),
+        makeFruit(new Vector3(0.06, 1.42, -0.32), 'Apple', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-apple', 'Golden Apple'),
+        makeFruit(new Vector3(-0.08, 1.02, 0.28), 'Apple', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-apple', 'Golden Apple'),
       ];
     }
 
@@ -8823,7 +8836,7 @@ export class Game {
       .map((offset) => makeFruit(
         offset,
         'Blackberry',
-        CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS,
+        regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS),
         CHAPTER_ELEVEN_GOLDEN_CHANCE,
         'golden-blackberry',
         'Golden Blackberry',
