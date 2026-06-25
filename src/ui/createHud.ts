@@ -194,6 +194,7 @@ export type ChapterElevenSeedId =
   | 'olive-tree-seeds'
   | 'lemon-tree-seeds'
   | 'banana-tree-seeds'
+  | 'golden-tree-seeds'
   | 'tomato-seeds'
   | 'pepper-seeds'
   | 'bamboo-seeds'
@@ -228,6 +229,7 @@ type ChapterElevenSeedShopSection =
   | 'cheap'
   | 'expensive'
   | 'rare-expensive'
+  | 'rare-magical'
   | 'eggs'
   | 'tools';
 
@@ -3089,6 +3091,7 @@ export function createHud(host: HTMLElement): HudController {
         cheap: 'Cheap seeds',
         expensive: 'Expensive seeds',
         'rare-expensive': 'Rare expensive seeds',
+        'rare-magical': 'Rare magical seeds',
         eggs: 'Pet eggs',
       };
       items.forEach((item) => {
