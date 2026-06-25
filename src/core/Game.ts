@@ -10147,6 +10147,24 @@ export class Game {
         plant.root.add(stem, cap);
         return;
       }
+      if (config.cropId === 'bamboo') {
+        const stalkMaterial = new MeshStandardMaterial({ color: 0x5aa63e, roughness: 0.74 });
+        const nodeMaterial = new MeshStandardMaterial({ color: 0x3c7a2d, roughness: 0.82 });
+        const babyStalk = new Mesh(new CylinderGeometry(0.055, 0.075, 0.72, 14), stalkMaterial);
+        babyStalk.name = 'Chapter 11 baby bamboo stalk';
+        babyStalk.position.y = 0.44;
+        babyStalk.castShadow = true;
+        plant.root.add(babyStalk);
+        for (let index = 0; index < 4; index += 1) {
+          const node = new Mesh(new TorusGeometry(0.062, 0.007, 6, 18), nodeMaterial);
+          node.name = 'Chapter 11 baby bamboo ring node';
+          node.position.y = 0.18 + index * 0.16;
+          node.rotation.x = Math.PI / 2;
+          plant.root.add(node);
+        }
+        this.addChapterElevenLeafCluster(plant.root, 3, 0.12, 0.48);
+        return;
+      }
       this.addChapterElevenLeafCluster(plant.root, 4, config.cropId === 'nut' ? 0.26 : 0.18, 0.06);
       return;
     }
@@ -10273,6 +10291,62 @@ export class Game {
       }
       if (plant.charged) {
         this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.78, 0), plant.golden ? 0.72 : 0.54, plant.golden);
+      }
+      return;
+    }
+
+    if (config.cropId === 'bamboo') {
+      const stalkMaterial = new MeshStandardMaterial({
+        color: plant.golden ? 0xe5c75d : 0x5cae3e,
+        roughness: plant.golden ? 0.42 : 0.68,
+        metalness: plant.golden ? 0.22 : 0,
+      });
+      const nodeMaterial = new MeshStandardMaterial({
+        color: plant.golden ? 0xa77f24 : 0x38762b,
+        roughness: 0.78,
+        metalness: plant.golden ? 0.14 : 0,
+      });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x3c8c35, roughness: 0.86 });
+      const stalks: Array<[number, number, number, number, number]> = [
+        [0, 0, 0, 0.11, 2.65],
+        [-0.16, 0, 0.1, 0.08, 2.08],
+        [0.18, 0, -0.08, 0.075, 1.82],
+      ];
+      stalks.forEach(([x, y, z, radius, height], stalkIndex) => {
+        const stalk = new Mesh(new CylinderGeometry(radius * 0.78, radius, height, 16), stalkMaterial);
+        stalk.name = stalkIndex === 0 ? 'Chapter 11 mature big bamboo main stalk' : 'Chapter 11 mature bamboo side stalk';
+        stalk.position.set(x, y + height / 2, z);
+        stalk.rotation.z = stalkIndex === 1 ? -0.08 : stalkIndex === 2 ? 0.09 : 0;
+        stalk.castShadow = true;
+        stalk.receiveShadow = true;
+        plant.root.add(stalk);
+
+        const nodeCount = Math.max(5, Math.floor(height / 0.34));
+        for (let nodeIndex = 0; nodeIndex < nodeCount; nodeIndex += 1) {
+          const node = new Mesh(new TorusGeometry(radius * 0.86, radius * 0.085, 7, 22), nodeMaterial);
+          node.name = 'Chapter 11 mature bamboo raised ring node';
+          node.position.set(x, 0.22 + nodeIndex * (height - 0.42) / Math.max(1, nodeCount - 1), z);
+          node.rotation.x = Math.PI / 2;
+          node.rotation.z = stalk.rotation.z;
+          node.castShadow = true;
+          plant.root.add(node);
+        }
+      });
+
+      for (let index = 0; index < 10; index += 1) {
+        const side = index % 2 === 0 ? -1 : 1;
+        const angle = index * 0.72;
+        const leaf = new Mesh(new BoxGeometry(0.055, 0.64, 0.025), leafMaterial);
+        leaf.name = 'Chapter 11 mature bamboo narrow blade leaf';
+        leaf.position.set(Math.cos(angle) * 0.2 + side * 0.1, 1.28 + (index % 5) * 0.25, Math.sin(angle) * 0.18);
+        leaf.rotation.set(0.26, angle, side * 0.82);
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      }
+
+      plant.root.scale.set(1.14, 1.18, 1.14);
+      if (plant.charged) {
+        this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 1.25, 0), plant.golden ? 0.82 : 0.62, plant.golden);
       }
       return;
     }
