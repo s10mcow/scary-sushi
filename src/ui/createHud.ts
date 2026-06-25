@@ -98,7 +98,7 @@ export interface HudController {
   onChapterSevenCookieTargetSelect(handler: (target: number) => void): void;
   onChapterSevenGrandpaTrade(handler: (tradeId: ChapterSevenGrandpaTradeId) => void): void;
   onChapterElevenSeedPurchase(handler: (seedId: ChapterElevenSeedId) => void): void;
-  onChapterElevenTraderPetEggPurchase(handler: () => void): void;
+  onChapterElevenTraderPetEggPurchase(handler: (eggId?: ChapterElevenPetEggShopId) => void): void;
   onChapterElevenEquipmentPurchase(handler: (equipmentId: ChapterElevenEquipmentId) => void): void;
   onChapterElevenSellAction(handler: (action: ChapterElevenSellAction) => void): void;
   onChapterElevenChestAction(handler: (cropId: string) => void): void;
@@ -175,6 +175,8 @@ export interface HudController {
 export type ChapterSevenGrandpaTradeId = 'bird-cage-key' | 'longer-night-watch';
 export type ChapterElevenSeedId =
   | 'carrot-seeds'
+  | 'lettuce-seeds'
+  | 'potato-seeds'
   | 'mushroom'
   | 'strawberry'
   | 'blackberry-bush'
@@ -189,12 +191,39 @@ export type ChapterElevenSeedId =
   | 'coconut-tree-seeds'
   | 'tomato-seeds'
   | 'pepper-seeds'
+  | 'bamboo-seeds'
+  | 'sunflower-seeds'
+  | 'crystal-berry-seeds'
+  | 'golden-corn-seeds'
+  | 'rainbow-melon-seeds'
+  | 'moonflower-seeds'
+  | 'starfruit-seeds'
+  | 'galaxy-pumpkin-seeds'
+  | 'phoenix-pepper-seeds'
+  | 'diamond-rose-seeds'
+  | 'void-vine-seeds'
+  | 'cholesterol-lily-seeds'
+  | 'time-blossom-seeds'
+  | 'lucky-clover-seeds'
+  | 'mimic-plant-seeds'
   | 'dragon-fruit-seeds'
   | 'vine-seeds'
   | 'cactus-seeds'
   | 'corn-seeds'
   | 'desert-sage-seeds'
   | 'sunset-melon-seeds';
+
+type ChapterElevenSeedShopSection =
+  | 'common'
+  | 'uncommon'
+  | 'rare'
+  | 'legendary'
+  | 'secret'
+  | 'event'
+  | 'cheap'
+  | 'expensive'
+  | 'eggs'
+  | 'tools';
 
 export type ChapterElevenEquipmentId =
   | 'vine-stick'
@@ -206,6 +235,13 @@ export type ChapterElevenEquipmentId =
   | 'fertilizer'
   | 'cheap-auto-harvester'
   | 'auto-harvester';
+
+export type ChapterElevenPetEggShopId =
+  | 'farm-egg'
+  | 'forest-egg'
+  | 'ocean-egg'
+  | 'mythical-egg'
+  | 'space-egg';
 
 export interface ChapterSevenGrandpaTradeView {
   id: ChapterSevenGrandpaTradeId;
@@ -223,7 +259,7 @@ export interface ChapterElevenSeedShopSeedItemView {
   id: ChapterElevenSeedId;
   label: string;
   cost: number;
-  section: 'cheap' | 'expensive';
+  section: ChapterElevenSeedShopSection;
   enabled: boolean;
   stock?: number;
   restockSeconds?: number;
@@ -231,10 +267,10 @@ export interface ChapterElevenSeedShopSeedItemView {
 
 export interface ChapterElevenSeedShopEggItemView {
   kind: 'egg';
-  id: 'random-pet-egg';
+  id: ChapterElevenPetEggShopId;
   label: string;
   cost: number;
-  section: 'eggs';
+  section: ChapterElevenSeedShopSection;
   enabled: boolean;
   stock?: number;
   restockSeconds?: number;
@@ -245,7 +281,7 @@ export interface ChapterElevenSeedShopEquipmentItemView {
   id: ChapterElevenEquipmentId;
   label: string;
   cost: number;
-  section: 'tools';
+  section: ChapterElevenSeedShopSection;
   enabled: boolean;
   stock?: number;
   restockSeconds?: number;
@@ -627,7 +663,7 @@ export function createHud(host: HTMLElement): HudController {
   let chapterSevenCookieTargetSelectHandler: ((target: number) => void) | null = null;
   let chapterSevenGrandpaTradeHandler: ((tradeId: ChapterSevenGrandpaTradeId) => void) | null = null;
   let chapterElevenSeedPurchaseHandler: ((seedId: ChapterElevenSeedId) => void) | null = null;
-  let chapterElevenTraderPetEggPurchaseHandler: (() => void) | null = null;
+  let chapterElevenTraderPetEggPurchaseHandler: ((eggId?: ChapterElevenPetEggShopId) => void) | null = null;
   let chapterElevenEquipmentPurchaseHandler: ((equipmentId: ChapterElevenEquipmentId) => void) | null = null;
   let chapterElevenSellActionHandler: ((action: ChapterElevenSellAction) => void) | null = null;
   let chapterElevenChestActionHandler: ((cropId: string) => void) | null = null;
@@ -2982,6 +3018,12 @@ export function createHud(host: HTMLElement): HudController {
       const rows: HTMLElement[] = [];
       let currentSection: ChapterElevenSeedShopItemView['section'] | null = null;
       const sectionLabels: Record<ChapterElevenSeedShopItemView['section'], string> = {
+        common: 'Common seeds',
+        uncommon: 'Uncommon seeds',
+        rare: 'Rare seeds',
+        legendary: 'Legendary seeds',
+        secret: 'Secret seeds',
+        event: 'Event seeds',
         tools: 'Equipment',
         cheap: 'Cheap seeds',
         expensive: 'Expensive seeds',
@@ -3036,7 +3078,7 @@ export function createHud(host: HTMLElement): HudController {
 
           purchaseHandled = true;
           if (item.kind === 'egg') {
-            chapterElevenTraderPetEggPurchaseHandler?.();
+            chapterElevenTraderPetEggPurchaseHandler?.(item.id);
           } else if (item.kind === 'equipment') {
             chapterElevenEquipmentPurchaseHandler?.(item.id);
           } else {

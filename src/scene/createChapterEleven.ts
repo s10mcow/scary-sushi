@@ -19,6 +19,7 @@ export interface ChapterElevenData {
   colliders: CollisionBox[];
   copyOnlyColliders: CollisionBox[];
   dirtPatches: ChapterElevenDirtPatch[];
+  seedLifeDirtPatch: ChapterElevenDirtPatch;
   equipmentStand: Group;
   equipmentStandCollider: CollisionBox;
   fieldBounds: {
@@ -31,6 +32,7 @@ export interface ChapterElevenData {
   lookTarget: Vector3;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number, playerPosition: Vector3): void;
+  setSeedLifeLayout(enabled: boolean): void;
   reset(): void;
 }
 
@@ -188,6 +190,8 @@ export function createChapterEleven(): ChapterElevenData {
   const colliders: CollisionBox[] = [];
   const copyOnlyColliders: CollisionBox[] = [];
   const dirtPatches: ChapterElevenDirtPatch[] = [];
+  const dirtPatchGroups: Group[] = [];
+  let seedLifeDirtPatchGroup: Group | null = null;
 
   const grass = new Mesh(new BoxGeometry(FIELD_WIDTH, 0.12, FIELD_DEPTH), grassMaterial);
   grass.name = 'Chapter 11 open grass field';
@@ -200,19 +204,25 @@ export function createChapterEleven(): ChapterElevenData {
   const halfWidth = FIELD_WIDTH / 2;
   const halfDepth = FIELD_DEPTH / 2;
 
-  const addDirtPatch = (centerX: number, centerZ: number, width: number, depth: number): void => {
-    dirtPatches.push({
+  const addDirtPatch = (centerX: number, centerZ: number, width: number, depth: number, seedLifeOnly = false): ChapterElevenDirtPatch => {
+    const patchData = {
       centerX,
       centerZ,
       halfWidth: width / 2,
       halfDepth: depth / 2,
-    });
+    };
+    if (!seedLifeOnly) {
+      dirtPatches.push(patchData);
+    }
+
+    const patchGroup = new Group();
+    patchGroup.name = seedLifeOnly ? 'Seed Life single centered fenced dirt patch group' : 'Chapter 11 fenced dirt patch group';
 
     const patch = new Mesh(new BoxGeometry(width, 0.035, depth), dirtMaterial);
     patch.name = 'Chapter 11 fenced brown dirt patch';
     patch.position.set(centerX, 0.005, centerZ);
     patch.receiveShadow = true;
-    root.add(patch);
+    patchGroup.add(patch);
 
     const railHeight = 0.28;
     const railThickness = 0.12;
@@ -229,7 +239,7 @@ export function createChapterEleven(): ChapterElevenData {
     westRail.position.set(centerX - halfPatchWidth, railHeight / 2, centerZ);
     const eastRail = westRail.clone();
     eastRail.position.x = centerX + halfPatchWidth;
-    root.add(northRail, southRail, westRail, eastRail);
+    patchGroup.add(northRail, southRail, westRail, eastRail);
 
     [
       [centerX - halfPatchWidth, centerZ - halfPatchDepth],
@@ -240,13 +250,23 @@ export function createChapterEleven(): ChapterElevenData {
       const post = new Mesh(postGeometry, dirtFenceMaterial);
       post.name = 'Chapter 11 dirt patch stick fence post';
       post.position.set(postX, 0.26, postZ);
-      root.add(post);
+      patchGroup.add(post);
     });
+
+    root.add(patchGroup);
+    if (seedLifeOnly) {
+      patchGroup.visible = false;
+      seedLifeDirtPatchGroup = patchGroup;
+    } else {
+      dirtPatchGroups.push(patchGroup);
+    }
+    return patchData;
   };
   addDirtPatch(-41.5, -39.85, 34, 38.7);
   addDirtPatch(-42.75, 40.45, 34, 38.7);
   addDirtPatch(42.75, -40.45, 34, 38.7);
   addDirtPatch(42.75, 40.45, 34, 38.7);
+  const seedLifeDirtPatch = addDirtPatch(0, 0, 42, 42, true);
 
   const stand = new Group();
   stand.name = 'Chapter 11 old fashioned garden stand with worker';
@@ -674,6 +694,7 @@ export function createChapterEleven(): ChapterElevenData {
     colliders,
     copyOnlyColliders,
     dirtPatches,
+    seedLifeDirtPatch,
     equipmentStand,
     equipmentStandCollider,
     fieldBounds: {
@@ -689,6 +710,14 @@ export function createChapterEleven(): ChapterElevenData {
     },
     update(_deltaSeconds: number, _playerPosition: Vector3): void {
       // Empty garden plot for now.
+    },
+    setSeedLifeLayout(enabled: boolean): void {
+      dirtPatchGroups.forEach((group) => {
+        group.visible = !enabled;
+      });
+      if (seedLifeDirtPatchGroup) {
+        seedLifeDirtPatchGroup.visible = enabled;
+      }
     },
     reset(): void {
       root.visible = false;

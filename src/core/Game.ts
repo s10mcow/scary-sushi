@@ -130,6 +130,7 @@ import {
   type ChapterElevenEquipmentId,
   type ChapterElevenEquipmentShopItemView,
   type ChapterElevenChestItemView,
+  type ChapterElevenPetEggShopId,
   type ChapterElevenSellAction,
   type ChapterElevenSellItemView,
   type ChapterElevenSeedId,
@@ -295,12 +296,43 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   label: string;
   singularLabel: string;
   cost: number;
-  section: 'cheap' | 'expensive';
+  section: 'common' | 'uncommon' | 'rare' | 'legendary' | 'secret' | 'event' | 'cheap' | 'expensive';
   maxStock?: number;
+  minStock?: number;
+  stockChance?: number;
   copyOnly?: boolean;
   normalOnly?: boolean;
+  seedLifeShop?: boolean;
   traderOnly?: boolean;
+  secretScientistOnly?: boolean;
+  eventShopOnly?: boolean;
 }> = [
+  { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 5, section: 'common', maxStock: 24, minStock: 12, stockChance: 0.98, seedLifeShop: true },
+  { id: 'lettuce-seeds', label: 'Lettuce seeds', singularLabel: 'Lettuce seed', cost: 8, section: 'common', maxStock: 22, minStock: 10, stockChance: 0.96, seedLifeShop: true },
+  { id: 'potato-seeds', label: 'Potato seeds', singularLabel: 'Potato seed', cost: 12, section: 'common', maxStock: 20, minStock: 9, stockChance: 0.94, seedLifeShop: true },
+  { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 10, section: 'common', maxStock: 20, minStock: 8, stockChance: 0.94, seedLifeShop: true },
+  { id: 'corn-seeds', label: 'Corn seeds', singularLabel: 'Corn seed', cost: 18, section: 'common', maxStock: 18, minStock: 7, stockChance: 0.92, seedLifeShop: true },
+  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 50, section: 'common', maxStock: 12, minStock: 4, stockChance: 0.86, seedLifeShop: true },
+  { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 200, section: 'uncommon', maxStock: 7, minStock: 2, stockChance: 0.72, seedLifeShop: true },
+  { id: 'watermelon-seeds', label: 'Watermelon seeds', singularLabel: 'Watermelon seed', cost: 100, section: 'uncommon', maxStock: 8, minStock: 2, stockChance: 0.76, normalOnly: true, seedLifeShop: true },
+  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 100, section: 'uncommon', maxStock: 8, minStock: 2, stockChance: 0.78, seedLifeShop: true },
+  { id: 'pepper-seeds', label: 'Chili pepper seeds', singularLabel: 'Chili pepper seed', cost: 350, section: 'uncommon', maxStock: 5, minStock: 1, stockChance: 0.58, seedLifeShop: true },
+  { id: 'bamboo-seeds', label: 'Bamboo seeds', singularLabel: 'Bamboo seed', cost: 420, section: 'uncommon', maxStock: 4, minStock: 1, stockChance: 0.52, copyOnly: true, seedLifeShop: true },
+  { id: 'sunflower-seeds', label: 'Sunflower seeds', singularLabel: 'Sunflower seed', cost: 380, section: 'uncommon', maxStock: 5, minStock: 1, stockChance: 0.56, copyOnly: true, seedLifeShop: true },
+  { id: 'crystal-berry-seeds', label: 'Crystal berry seeds', singularLabel: 'Crystal berry seed', cost: 900, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.32, copyOnly: true, seedLifeShop: true },
+  { id: 'golden-corn-seeds', label: 'Golden corn seeds', singularLabel: 'Golden corn seed', cost: 1050, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.3, copyOnly: true, seedLifeShop: true },
+  { id: 'rainbow-melon-seeds', label: 'Rainbow melon seeds', singularLabel: 'Rainbow melon seed', cost: 1250, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.27, copyOnly: true, seedLifeShop: true },
+  { id: 'moonflower-seeds', label: 'Moonflower seeds', singularLabel: 'Moonflower seed', cost: 1500, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.24, copyOnly: true, seedLifeShop: true },
+  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 650, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.36, seedLifeShop: true },
+  { id: 'starfruit-seeds', label: 'Starfruit seeds', singularLabel: 'Starfruit seed', cost: 1800, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.2, copyOnly: true, seedLifeShop: true },
+  { id: 'galaxy-pumpkin-seeds', label: 'Galaxy pumpkin seeds', singularLabel: 'Galaxy pumpkin seed', cost: 4500, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.08, copyOnly: true, seedLifeShop: true },
+  { id: 'phoenix-pepper-seeds', label: 'Phoenix pepper seeds', singularLabel: 'Phoenix pepper seed', cost: 5200, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.07, copyOnly: true, seedLifeShop: true },
+  { id: 'diamond-rose-seeds', label: 'Diamond rose seeds', singularLabel: 'Diamond rose seed', cost: 6800, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.06, copyOnly: true, seedLifeShop: true },
+  { id: 'void-vine-seeds', label: 'Void vine seeds', singularLabel: 'Void vine seed', cost: 8500, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.045, copyOnly: true, seedLifeShop: true },
+  { id: 'cholesterol-lily-seeds', label: 'Cholesterol lily seeds', singularLabel: 'Cholesterol lily seed', cost: 12000, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.035, copyOnly: true, seedLifeShop: true },
+  { id: 'time-blossom-seeds', label: 'Time blossom seeds', singularLabel: 'Time blossom seed', cost: 15000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.2, copyOnly: true, secretScientistOnly: true },
+  { id: 'lucky-clover-seeds', label: 'Lucky clover seeds', singularLabel: 'Lucky clover seed', cost: 9000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.3, copyOnly: true, secretScientistOnly: true },
+  { id: 'mimic-plant-seeds', label: 'Mimic plant seeds', singularLabel: 'Mimic plant seed', cost: 18000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.14, copyOnly: true, secretScientistOnly: true },
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 5, section: 'cheap', maxStock: 9 },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 30, section: 'cheap', maxStock: 6 },
   { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 50, section: 'cheap', maxStock: 5 },
@@ -325,6 +357,8 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
 ];
 type ChapterElevenCropId =
   | 'carrot'
+  | 'lettuce'
+  | 'potato'
   | 'mushroom'
   | 'strawberry'
   | 'blackberry'
@@ -342,6 +376,21 @@ type ChapterElevenCropId =
   | 'coconut'
   | 'tomato'
   | 'pepper'
+  | 'bamboo'
+  | 'sunflower'
+  | 'crystal-berry'
+  | 'seed-life-golden-corn'
+  | 'rainbow-melon'
+  | 'moonflower'
+  | 'starfruit'
+  | 'galaxy-pumpkin'
+  | 'phoenix-pepper'
+  | 'diamond-rose'
+  | 'void-vine'
+  | 'cholesterol-lily'
+  | 'time-blossom'
+  | 'lucky-clover'
+  | 'mimic-plant'
   | 'dragon-fruit'
   | 'vine-fruit'
   | 'cactus'
@@ -373,7 +422,27 @@ type ChapterElevenHotbarItem =
   | { kind: 'crop'; id: ChapterElevenCropId }
   | { kind: 'pet-egg'; id: ChapterElevenPetType }
   | { kind: 'equipment'; id: ChapterElevenEquipmentId };
-type ChapterElevenPetType = 'rabbit' | 'dog' | 'cow' | 'dinosaur';
+type ChapterElevenPetType =
+  | 'rabbit'
+  | 'dog'
+  | 'cow'
+  | 'dinosaur'
+  | 'chicken'
+  | 'duck'
+  | 'pig'
+  | 'fox'
+  | 'deer'
+  | 'hedgehog'
+  | 'crab'
+  | 'turtle'
+  | 'dolphin'
+  | 'dragon'
+  | 'phoenix'
+  | 'unicorn'
+  | 'alien'
+  | 'slime'
+  | 'astro-cat'
+  | 'cosmic-bunny';
 
 interface ChapterElevenCropConfig {
   seedId: ChapterElevenSeedId;
@@ -478,6 +547,26 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     sellValue: 12,
     babySeconds: 3,
     matureSeconds: 10,
+    regrows: false,
+  },
+  'lettuce-seeds': {
+    seedId: 'lettuce-seeds',
+    cropId: 'lettuce',
+    label: 'Lettuce',
+    pluralLabel: 'Lettuce',
+    sellValue: 14,
+    babySeconds: 3,
+    matureSeconds: 11,
+    regrows: false,
+  },
+  'potato-seeds': {
+    seedId: 'potato-seeds',
+    cropId: 'potato',
+    label: 'Potato',
+    pluralLabel: 'Potatoes',
+    sellValue: 20,
+    babySeconds: 4,
+    matureSeconds: 14,
     regrows: false,
   },
   mushroom: {
@@ -613,12 +702,72 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
   'pepper-seeds': {
     seedId: 'pepper-seeds',
     cropId: 'pepper',
-    label: 'Pepper',
-    pluralLabel: 'Peppers',
+    label: 'Chili Pepper',
+    pluralLabel: 'Chili Peppers',
     sellValue: 260,
     babySeconds: 12,
     matureSeconds: 42,
     regrows: true,
+  },
+  'bamboo-seeds': {
+    seedId: 'bamboo-seeds',
+    cropId: 'bamboo',
+    label: 'Bamboo',
+    pluralLabel: 'Bamboo',
+    sellValue: 520,
+    babySeconds: 14,
+    matureSeconds: 48,
+    regrows: false,
+  },
+  'sunflower-seeds': {
+    seedId: 'sunflower-seeds',
+    cropId: 'sunflower',
+    label: 'Sunflower',
+    pluralLabel: 'Sunflowers',
+    sellValue: 470,
+    babySeconds: 14,
+    matureSeconds: 46,
+    regrows: false,
+  },
+  'crystal-berry-seeds': {
+    seedId: 'crystal-berry-seeds',
+    cropId: 'crystal-berry',
+    label: 'Crystal Berry',
+    pluralLabel: 'Crystal Berries',
+    sellValue: 1250,
+    babySeconds: 24,
+    matureSeconds: 90,
+    regrows: true,
+  },
+  'golden-corn-seeds': {
+    seedId: 'golden-corn-seeds',
+    cropId: 'seed-life-golden-corn',
+    label: 'Golden Corn',
+    pluralLabel: 'Golden Corn',
+    sellValue: 1450,
+    babySeconds: 26,
+    matureSeconds: 95,
+    regrows: false,
+  },
+  'rainbow-melon-seeds': {
+    seedId: 'rainbow-melon-seeds',
+    cropId: 'rainbow-melon',
+    label: 'Rainbow Melon',
+    pluralLabel: 'Rainbow Melons',
+    sellValue: 1800,
+    babySeconds: 30,
+    matureSeconds: 110,
+    regrows: true,
+  },
+  'moonflower-seeds': {
+    seedId: 'moonflower-seeds',
+    cropId: 'moonflower',
+    label: 'Moonflower',
+    pluralLabel: 'Moonflowers',
+    sellValue: 2100,
+    babySeconds: 34,
+    matureSeconds: 126,
+    regrows: false,
   },
   'dragon-fruit-seeds': {
     seedId: 'dragon-fruit-seeds',
@@ -629,6 +778,96 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     babySeconds: 34,
     matureSeconds: 135,
     regrows: true,
+  },
+  'starfruit-seeds': {
+    seedId: 'starfruit-seeds',
+    cropId: 'starfruit',
+    label: 'Starfruit',
+    pluralLabel: 'Starfruit',
+    sellValue: 2500,
+    babySeconds: 38,
+    matureSeconds: 145,
+    regrows: true,
+  },
+  'galaxy-pumpkin-seeds': {
+    seedId: 'galaxy-pumpkin-seeds',
+    cropId: 'galaxy-pumpkin',
+    label: 'Galaxy Pumpkin',
+    pluralLabel: 'Galaxy Pumpkins',
+    sellValue: 7200,
+    babySeconds: 58,
+    matureSeconds: 230,
+    regrows: true,
+  },
+  'phoenix-pepper-seeds': {
+    seedId: 'phoenix-pepper-seeds',
+    cropId: 'phoenix-pepper',
+    label: 'Phoenix Pepper',
+    pluralLabel: 'Phoenix Peppers',
+    sellValue: 8300,
+    babySeconds: 62,
+    matureSeconds: 245,
+    regrows: true,
+  },
+  'diamond-rose-seeds': {
+    seedId: 'diamond-rose-seeds',
+    cropId: 'diamond-rose',
+    label: 'Diamond Rose',
+    pluralLabel: 'Diamond Roses',
+    sellValue: 10500,
+    babySeconds: 68,
+    matureSeconds: 270,
+    regrows: false,
+  },
+  'void-vine-seeds': {
+    seedId: 'void-vine-seeds',
+    cropId: 'void-vine',
+    label: 'Void Vine',
+    pluralLabel: 'Void Vines',
+    sellValue: 13200,
+    babySeconds: 75,
+    matureSeconds: 310,
+    regrows: true,
+  },
+  'cholesterol-lily-seeds': {
+    seedId: 'cholesterol-lily-seeds',
+    cropId: 'cholesterol-lily',
+    label: 'Cholesterol Lily',
+    pluralLabel: 'Cholesterol Lilies',
+    sellValue: 20000,
+    babySeconds: 92,
+    matureSeconds: 380,
+    regrows: false,
+  },
+  'time-blossom-seeds': {
+    seedId: 'time-blossom-seeds',
+    cropId: 'time-blossom',
+    label: 'Time Blossom',
+    pluralLabel: 'Time Blossoms',
+    sellValue: 26000,
+    babySeconds: 70,
+    matureSeconds: 260,
+    regrows: false,
+  },
+  'lucky-clover-seeds': {
+    seedId: 'lucky-clover-seeds',
+    cropId: 'lucky-clover',
+    label: 'Lucky Clover',
+    pluralLabel: 'Lucky Clovers',
+    sellValue: 15000,
+    babySeconds: 48,
+    matureSeconds: 185,
+    regrows: false,
+  },
+  'mimic-plant-seeds': {
+    seedId: 'mimic-plant-seeds',
+    cropId: 'mimic-plant',
+    label: 'Mimic Plant',
+    pluralLabel: 'Mimic Plants',
+    sellValue: 30000,
+    babySeconds: 85,
+    matureSeconds: 330,
+    regrows: false,
   },
   'vine-seeds': {
     seedId: 'vine-seeds',
@@ -697,6 +936,18 @@ const CHAPTER_ELEVEN_PET_EGG_HATCH_SECONDS = 60;
 const CHAPTER_ELEVEN_PET_SHOP_X = -2.61;
 const CHAPTER_ELEVEN_PET_SHOP_Z = 52.33;
 const CHAPTER_ELEVEN_PET_SHOP_RANGE = 5.5;
+const CHAPTER_ELEVEN_PET_EGG_SHOP_ITEMS: Array<{
+  id: ChapterElevenPetEggShopId;
+  label: string;
+  cost: number;
+  pets: ChapterElevenPetType[];
+}> = [
+  { id: 'farm-egg', label: 'Farm Egg', cost: 1500, pets: ['chicken', 'duck', 'pig', 'rabbit'] },
+  { id: 'forest-egg', label: 'Forest Egg', cost: 4500, pets: ['fox', 'deer', 'hedgehog', 'rabbit'] },
+  { id: 'ocean-egg', label: 'Ocean Egg', cost: 9500, pets: ['crab', 'turtle', 'dolphin'] },
+  { id: 'mythical-egg', label: 'Mythical Egg', cost: 35000, pets: ['dragon', 'phoenix', 'unicorn'] },
+  { id: 'space-egg', label: 'Space Egg', cost: 60000, pets: ['alien', 'slime', 'astro-cat', 'cosmic-bunny'] },
+];
 const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
@@ -1766,6 +2017,7 @@ export class Game {
   private chapterElevenSellMenuOpen = false;
   private chapterElevenAutoHarvestChestOpen = false;
   private chapterElevenTraderShopOpen = false;
+  private chapterElevenPetEggShopOpen = false;
   private chapterElevenSellChoosing = false;
   private readonly chapterElevenSellSelectedCrops = new Set<ChapterElevenCropId>();
   private chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
@@ -3436,6 +3688,7 @@ export class Game {
     }
     if (!open) {
       this.chapterElevenTraderShopOpen = false;
+      this.chapterElevenPetEggShopOpen = false;
     }
 
     if (this.chapterElevenSeedShopOpen === open) {
@@ -3592,10 +3845,6 @@ export class Game {
     ) <= CHAPTER_ELEVEN_TRADER_RANGE;
   }
 
-  private getChapterElevenSeedMaxStock(seedId: ChapterElevenSeedId): number {
-    return this.getChapterElevenSeedItem(seedId)?.maxStock ?? 99;
-  }
-
   private getChapterElevenRandomShopStock(cost: number, maxStock: number): number {
     const safeMaxStock = Math.max(0, Math.floor(maxStock));
     if (safeMaxStock <= 0) {
@@ -3614,12 +3863,27 @@ export class Game {
     return MathUtils.randInt(1, upperStock);
   }
 
+  private getChapterElevenRandomSeedShopStock(item: typeof CHAPTER_ELEVEN_SEED_SHOP_ITEMS[number]): number {
+    const safeMaxStock = Math.max(0, Math.floor(item.maxStock ?? 99));
+    if (safeMaxStock <= 0) {
+      return 0;
+    }
+
+    const stockedChance = item.stockChance ?? MathUtils.clamp(0.95 - MathUtils.clamp(item.cost / 850, 0, 0.78), 0.24, 0.95);
+    if (Math.random() > stockedChance) {
+      return 0;
+    }
+
+    const minStock = MathUtils.clamp(Math.floor(item.minStock ?? 1), 1, safeMaxStock);
+    return MathUtils.randInt(minStock, safeMaxStock);
+  }
+
   private getChapterElevenSeedStock(seedId: ChapterElevenSeedId): number {
     if (!this.chapterElevenSeedShopStock.has(seedId)) {
       const item = this.getChapterElevenSeedItem(seedId);
       this.chapterElevenSeedShopStock.set(
         seedId,
-        item ? this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenSeedMaxStock(seedId)) : 0,
+        item ? this.getChapterElevenRandomSeedShopStock(item) : 0,
       );
     }
 
@@ -3628,7 +3892,7 @@ export class Game {
 
   private restockChapterElevenSeedShop(): void {
     this.getChapterElevenSeedShopCatalog().forEach((item) => {
-      this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenSeedMaxStock(item.id)));
+      this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomSeedShopStock(item));
     });
     CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.forEach((item) => {
       this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenEquipmentMaxStock(item.id)));
@@ -3651,6 +3915,17 @@ export class Game {
 
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
     const items: ChapterElevenSeedShopItemView[] = [];
+    if (this.chapterElevenPetEggShopOpen) {
+      return CHAPTER_ELEVEN_PET_EGG_SHOP_ITEMS.map((item) => ({
+        kind: 'egg',
+        id: item.id,
+        label: item.label,
+        cost: item.cost,
+        section: 'eggs',
+        enabled: this.chapterElevenMoney >= item.cost,
+      }));
+    }
+
     items.push(...this.getChapterElevenSeedShopCatalog().map((item) => {
       const stock = this.getChapterElevenSeedStock(item.id);
       const stocked = stock > 0;
@@ -3661,17 +3936,6 @@ export class Game {
         restockSeconds: this.chapterElevenSeedShopRestockTimer,
       };
     }));
-
-    if (this.chapterElevenTraderShopOpen) {
-      items.push({
-        kind: 'egg',
-        id: 'random-pet-egg',
-        label: 'Random Pet Egg',
-        cost: CHAPTER_ELEVEN_PET_EGG_COST,
-        section: 'eggs',
-        enabled: this.chapterElevenMoney >= CHAPTER_ELEVEN_PET_EGG_COST,
-      });
-    }
 
     return items;
   }
@@ -3711,12 +3975,12 @@ export class Game {
     this.syncHud();
   };
 
-  private readonly handleChapterElevenTraderPetEggPurchase = (): void => {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenSeedShopOpen || !this.chapterElevenTraderShopOpen) {
+  private readonly handleChapterElevenTraderPetEggPurchase = (eggId?: ChapterElevenPetEggShopId): void => {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenSeedShopOpen || (!this.chapterElevenTraderShopOpen && !this.chapterElevenPetEggShopOpen)) {
       return;
     }
 
-    this.buyChapterElevenPetEgg();
+    this.buyChapterElevenPetEgg(eggId);
   };
 
   private putChapterElevenSeedInHotbar(seedId: ChapterElevenSeedId): number | null {
@@ -8248,7 +8512,15 @@ export class Game {
   }
 
   private getChapterElevenSeedItem(seedId: ChapterElevenSeedId) {
-    return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.find((candidate) => candidate.id === seedId) ?? null;
+    const candidates = CHAPTER_ELEVEN_SEED_SHOP_ITEMS.filter((candidate) => candidate.id === seedId);
+    if (this.chapterElevenTwoActive) {
+      return candidates.find((candidate) => candidate.seedLifeShop || candidate.copyOnly) ?? candidates[0] ?? null;
+    }
+
+    return candidates.find((candidate) => !candidate.seedLifeShop && !candidate.copyOnly && !candidate.traderOnly && !candidate.secretScientistOnly && !candidate.eventShopOnly)
+      ?? candidates.find((candidate) => !candidate.seedLifeShop)
+      ?? candidates[0]
+      ?? null;
   }
 
   private getChapterElevenSeedShopCatalog() {
@@ -8257,8 +8529,10 @@ export class Game {
     }
 
     return CHAPTER_ELEVEN_SEED_SHOP_ITEMS.filter((item) => (
-      this.chapterElevenTwoActive ? !item.normalOnly : !item.copyOnly
-    ) && !item.traderOnly);
+      this.chapterElevenTwoActive
+        ? (item.seedLifeShop === true || item.copyOnly === true) && !item.secretScientistOnly && !item.eventShopOnly
+        : !item.copyOnly && !item.seedLifeShop
+    ) && !item.traderOnly && !item.secretScientistOnly && !item.eventShopOnly);
   }
 
   private getChapterElevenHotbarItems(): ChapterElevenHotbarItem[] {
@@ -8296,6 +8570,38 @@ export class Game {
         return 'Cow';
       case 'dinosaur':
         return 'Dinosaur';
+      case 'chicken':
+        return 'Chicken';
+      case 'duck':
+        return 'Duck';
+      case 'pig':
+        return 'Pig';
+      case 'fox':
+        return 'Fox';
+      case 'deer':
+        return 'Deer';
+      case 'hedgehog':
+        return 'Hedgehog';
+      case 'crab':
+        return 'Crab';
+      case 'turtle':
+        return 'Turtle';
+      case 'dolphin':
+        return 'Dolphin';
+      case 'dragon':
+        return 'Dragon';
+      case 'phoenix':
+        return 'Phoenix';
+      case 'unicorn':
+        return 'Unicorn';
+      case 'alien':
+        return 'Alien';
+      case 'slime':
+        return 'Slime';
+      case 'astro-cat':
+        return 'Astro Cat';
+      case 'cosmic-bunny':
+        return 'Cosmic Bunny';
     }
   }
 
@@ -11204,15 +11510,42 @@ export class Game {
     return 'dinosaur';
   }
 
-  private buyChapterElevenPetEgg(): void {
-    if (this.chapterElevenMoney < CHAPTER_ELEVEN_PET_EGG_COST) {
-      this.pushStatus(`Pet eggs cost $${CHAPTER_ELEVEN_PET_EGG_COST}. You need more money.`, 2.6);
+  private buyChapterElevenPetEgg(eggId: ChapterElevenPetEggShopId = 'farm-egg'): void {
+    if (!this.chapterElevenTwoActive) {
+      if (this.chapterElevenMoney < CHAPTER_ELEVEN_PET_EGG_COST) {
+        this.pushStatus(`A pet egg costs $${CHAPTER_ELEVEN_PET_EGG_COST}. You need more money.`, 2.6);
+        return;
+      }
+
+      this.chapterElevenPetEggsBought += 1;
+      const petType = this.chooseChapterElevenPetEggType(this.chapterElevenPetEggsBought);
+      this.chapterElevenMoney -= CHAPTER_ELEVEN_PET_EGG_COST;
+      this.chapterElevenPetEggInventory.set(petType, (this.chapterElevenPetEggInventory.get(petType) ?? 0) + 1);
+      this.chapterElevenSelectedSeedId = null;
+      this.chapterElevenSelectedCropId = null;
+      this.chapterElevenSelectedPetEggType = petType;
+      this.chapterElevenSelectedEquipmentId = null;
+      this.placementToolActive = false;
+      this.placementPreview.visible = false;
+      const hotbarSlot = this.getCurrentChapterElevenHotbarSlot();
+      this.pushStatus(`Bought a ${this.getChapterElevenPetLabel(petType)} egg in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 3.2);
+      this.syncHud();
+      return;
+    }
+
+    const eggItem = CHAPTER_ELEVEN_PET_EGG_SHOP_ITEMS.find((item) => item.id === eggId) ?? CHAPTER_ELEVEN_PET_EGG_SHOP_ITEMS[0];
+    if (!eggItem) {
+      return;
+    }
+
+    if (this.chapterElevenMoney < eggItem.cost) {
+      this.pushStatus(`${eggItem.label} costs $${eggItem.cost}. You need more money.`, 2.6);
       return;
     }
 
     this.chapterElevenPetEggsBought += 1;
-    const petType = this.chooseChapterElevenPetEggType(this.chapterElevenPetEggsBought);
-    this.chapterElevenMoney -= CHAPTER_ELEVEN_PET_EGG_COST;
+    const petType = eggItem.pets[MathUtils.randInt(0, eggItem.pets.length - 1)] ?? this.chooseChapterElevenPetEggType(this.chapterElevenPetEggsBought);
+    this.chapterElevenMoney -= eggItem.cost;
     this.chapterElevenPetEggInventory.set(petType, (this.chapterElevenPetEggInventory.get(petType) ?? 0) + 1);
     this.chapterElevenSelectedSeedId = null;
     this.chapterElevenSelectedCropId = null;
@@ -11221,7 +11554,7 @@ export class Game {
     this.placementToolActive = false;
     this.placementPreview.visible = false;
     const hotbarSlot = this.getCurrentChapterElevenHotbarSlot();
-    this.pushStatus(`Bought a ${this.getChapterElevenPetLabel(petType)} Egg for $${CHAPTER_ELEVEN_PET_EGG_COST}. It is in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}. Press E on your farm dirt patch to place it.`, 3.5);
+    this.pushStatus(`Bought a ${eggItem.label}. It hatched into a ${this.getChapterElevenPetLabel(petType)} Egg in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 3.5);
     this.syncHud();
   }
 
@@ -11990,7 +12323,10 @@ export class Game {
   }
 
   private getChapterElevenDirtPatchAt(point: Vector3): ChapterElevenDirtPatch | null {
-    return this.chapterEleven.dirtPatches.find((patch) => (
+    const patches = this.chapterElevenTwoActive
+      ? [this.chapterEleven.seedLifeDirtPatch]
+      : this.chapterEleven.dirtPatches;
+    return patches.find((patch) => (
       point.x >= patch.centerX - patch.halfWidth + 0.42
       && point.x <= patch.centerX + patch.halfWidth - 0.42
       && point.z >= patch.centerZ - patch.halfDepth + 0.42
@@ -12483,6 +12819,7 @@ export class Game {
   private handleChapterElevenInteract(): void {
     if (this.isNearChapterElevenTrader()) {
       this.chapterElevenTraderShopOpen = true;
+      this.chapterElevenPetEggShopOpen = false;
       this.setChapterElevenSeedShopOpen(true);
       this.pushStatus('The Trader opens his western seed stock.', 2.4);
       return;
@@ -12490,12 +12827,20 @@ export class Game {
 
     if (this.isNearChapterElevenSeedShop()) {
       this.chapterElevenTraderShopOpen = false;
+      this.chapterElevenPetEggShopOpen = false;
       this.setChapterElevenSeedShopOpen(true);
       this.pushStatus('The Buy Seeds shop opens.', 2.2);
       return;
     }
 
     if (this.isNearChapterElevenPetEggStand()) {
+      if (this.chapterElevenTwoActive) {
+        this.chapterElevenTraderShopOpen = false;
+        this.chapterElevenPetEggShopOpen = true;
+        this.setChapterElevenSeedShopOpen(true);
+        this.pushStatus('The Pet Eggs menu opens.', 2.2);
+        return;
+      }
       this.buyChapterElevenPetEgg();
       return;
     }
@@ -25227,7 +25572,9 @@ export class Game {
       }
 
       if (this.isNearChapterElevenPetEggStand()) {
-        return `Press E by the Pet Eggs seller to get a random pet egg for $${CHAPTER_ELEVEN_PET_EGG_COST}.`;
+        return this.chapterElevenTwoActive
+          ? 'Press E by the Pet Eggs seller to open the egg menu.'
+          : `Press E by the Pet Eggs seller to get a random pet egg for $${CHAPTER_ELEVEN_PET_EGG_COST}.`;
       }
 
       if (this.isNearChapterElevenEquipmentStand()) {
@@ -32234,6 +32581,7 @@ export class Game {
     this.chapterNine.root.visible = false;
     this.chapterTen.root.visible = false;
     this.chapterEleven.reset();
+    this.chapterEleven.setSeedLifeLayout(copyMode);
     this.syncChapterElevenEquipmentStandPlacement();
     this.chapterEleven.equipmentStand.visible = true;
     this.chapterEleven.root.visible = true;
