@@ -4747,6 +4747,7 @@ export class Game {
       this.updateChapterElevenDayNight(deltaSeconds);
       this.updateChapterElevenWateringCan(deltaSeconds);
       this.updateChapterElevenPlants(deltaSeconds);
+      this.updateChapterElevenElectricityAnimations(deltaSeconds);
       this.updateChapterElevenAutoHarvesters(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
       this.updateChapterElevenSeedShopStock(deltaSeconds);
@@ -8856,13 +8857,32 @@ export class Game {
       transparent: true,
       opacity: 0.86,
     });
-    for (let index = 0; index < 6; index += 1) {
-      const angle = (index / 6) * Math.PI * 2;
-      const beam = new Mesh(new BoxGeometry(0.025, 0.025, radius), beamMaterial);
-      beam.name = golden ? 'Chapter 11 golden electric crop beam' : 'Chapter 11 blue electric crop beam';
-      beam.position.copy(offset).add(new Vector3(Math.cos(angle) * radius * 0.35, 0.05 + (index % 3) * 0.055, Math.sin(angle) * radius * 0.35));
-      beam.rotation.set(Math.PI / 2.7, angle, index % 2 === 0 ? 0.38 : -0.38);
-      root.add(beam);
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (index / 8) * Math.PI * 2;
+      const bolt = new Group();
+      bolt.name = golden ? 'Chapter 11 moving golden lightning fruit bolt' : 'Chapter 11 moving blue lightning fruit bolt';
+      bolt.userData.chapterElevenElectricBolt = true;
+      bolt.userData.centerX = offset.x;
+      bolt.userData.centerY = offset.y + 0.05 + (index % 3) * 0.045;
+      bolt.userData.centerZ = offset.z;
+      bolt.userData.radius = radius * (0.35 + (index % 2) * 0.18);
+      bolt.userData.phase = angle;
+      bolt.userData.speed = (golden ? 2.7 : 3.25) + index * 0.21;
+      bolt.userData.flicker = index * 0.57;
+      for (let segmentIndex = 0; segmentIndex < 3; segmentIndex += 1) {
+        const segment = new Mesh(new BoxGeometry(0.024, 0.024, radius * 0.34), beamMaterial);
+        segment.name = 'Chapter 11 jagged lightning bolt segment';
+        segment.position.set((segmentIndex - 1) * radius * 0.09, (segmentIndex % 2 === 0 ? 1 : -1) * radius * 0.07, 0);
+        segment.rotation.set(Math.PI / 2.65, segmentIndex % 2 === 0 ? 0.42 : -0.42, segmentIndex % 2 === 0 ? 0.65 : -0.65);
+        bolt.add(segment);
+      }
+      bolt.position.set(
+        offset.x + Math.cos(angle) * radius * 0.45,
+        offset.y + 0.05 + (index % 3) * 0.045,
+        offset.z + Math.sin(angle) * radius * 0.45,
+      );
+      bolt.rotation.set(Math.PI / 2.8, angle, index % 2 === 0 ? 0.38 : -0.38);
+      root.add(bolt);
     }
   }
 
@@ -9857,6 +9877,41 @@ export class Game {
     }
   }
 
+  private updateChapterElevenElectricityAnimations(deltaSeconds: number): void {
+    if (!this.chapterElevenActive) {
+      return;
+    }
+
+    const time = this.elapsed + deltaSeconds;
+    this.chapterElevenPlants.forEach((plant) => {
+      plant.root.children.forEach((child) => {
+        if (!child.userData.chapterElevenElectricBolt) {
+          return;
+        }
+
+        const centerX = Number(child.userData.centerX ?? 0);
+        const centerY = Number(child.userData.centerY ?? 0);
+        const centerZ = Number(child.userData.centerZ ?? 0);
+        const radius = Number(child.userData.radius ?? 0.25);
+        const phase = Number(child.userData.phase ?? 0);
+        const speed = Number(child.userData.speed ?? 3);
+        const flicker = Number(child.userData.flicker ?? 0);
+        const angle = phase + time * speed;
+        child.position.set(
+          centerX + Math.cos(angle) * radius,
+          centerY + Math.sin(time * 7.2 + flicker) * 0.045,
+          centerZ + Math.sin(angle) * radius,
+        );
+        child.rotation.set(
+          Math.PI / 2.85 + Math.sin(time * 5.5 + flicker) * 0.2,
+          angle + Math.PI / 2,
+          Math.sin(time * 9.5 + flicker) * 0.62,
+        );
+        child.visible = Math.sin(time * 18 + flicker) > -0.72;
+      });
+    });
+  }
+
   private updateChapterElevenPlants(deltaSeconds: number): void {
     if (!this.chapterElevenActive) {
       return;
@@ -9929,7 +9984,7 @@ export class Game {
     this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning';
-    this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(1.5, 4.2) : 0;
+    this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(4.5, 8) : 0;
     this.pushStatus(event === 'rain'
       ? 'Rain storm started. Crops are growing faster.'
       : 'Lightning storm started. Lightning can charge plants into valuable glowing crops.', 3.2);
@@ -9951,7 +10006,7 @@ export class Game {
   }
 
   private scheduleChapterElevenDailyEvent(): void {
-    const daySeconds = this.getChapterElevenDaySeconds();
+    const phaseSeconds = this.chapterElevenPhase === 'night' ? this.getChapterElevenNightSeconds() : this.getChapterElevenDaySeconds();
     const weatherChance = this.chapterElevenTwoActive ? 0.38 : 0.23;
     if (this.chapterElevenWeatherStreak >= 3 || Math.random() > weatherChance) {
       this.chapterElevenWeatherStreak = 0;
@@ -9961,7 +10016,7 @@ export class Game {
     }
 
     this.chapterElevenWeatherStreak += 1;
-    const eventDelay = MathUtils.randFloat(14, Math.max(18, daySeconds - 14));
+    const eventDelay = MathUtils.randFloat(14, Math.max(18, phaseSeconds - 14));
     if (!this.chapterElevenTwoActive || Math.random() < 0.72) {
       this.chapterElevenNextEventTimer = eventDelay;
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
@@ -9990,9 +10045,9 @@ export class Game {
     if (this.chapterElevenPhase === 'day') {
       this.chapterElevenPhase = 'night';
       this.chapterElevenPhaseTimer = this.getChapterElevenNightSeconds();
-      this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
-      this.stopChapterElevenEvent();
+      this.chapterElevenDailyEventUsed = false;
+      this.scheduleChapterElevenDailyEvent();
       if (this.chapterElevenTraderVisible) {
         this.chapterElevenTraderVisible = false;
         this.chapterElevenTraderRoot.visible = false;
@@ -10025,11 +10080,11 @@ export class Game {
     const bounds = this.chapterEleven.fieldBounds;
     let strikeX = MathUtils.randFloat(bounds.minX + 4, bounds.maxX - 4);
     let strikeZ = MathUtils.randFloat(bounds.minZ + 4, bounds.maxZ - 4);
-    if (this.chapterElevenPlants.length > 0 && Math.random() < 0.62) {
+    if (this.chapterElevenPlants.length > 0 && Math.random() < 0.24) {
       const targetPlant = this.chapterElevenPlants[MathUtils.randInt(0, this.chapterElevenPlants.length - 1)];
-      strikeX = MathUtils.clamp(targetPlant.x + MathUtils.randFloat(-4.5, 4.5), bounds.minX + 4, bounds.maxX - 4);
-      strikeZ = MathUtils.clamp(targetPlant.z + MathUtils.randFloat(-4.5, 4.5), bounds.minZ + 4, bounds.maxZ - 4);
-    } else if (this.chapterEleven.dirtPatches.length > 0 && Math.random() < 0.46) {
+      strikeX = MathUtils.clamp(targetPlant.x + MathUtils.randFloat(-3.6, 3.6), bounds.minX + 4, bounds.maxX - 4);
+      strikeZ = MathUtils.clamp(targetPlant.z + MathUtils.randFloat(-3.6, 3.6), bounds.minZ + 4, bounds.maxZ - 4);
+    } else if (this.chapterEleven.dirtPatches.length > 0 && Math.random() < 0.32) {
       const targetPatch = this.chapterEleven.dirtPatches[MathUtils.randInt(0, this.chapterEleven.dirtPatches.length - 1)];
       strikeX = MathUtils.clamp(
         targetPatch.centerX + MathUtils.randFloat(-targetPatch.halfWidth * 0.82, targetPatch.halfWidth * 0.82),
@@ -10052,7 +10107,13 @@ export class Game {
 
     let charged = 0;
     this.chapterElevenPlants.forEach((plant) => {
-      if (Math.hypot(plant.x - strikeX, plant.z - strikeZ) > 5.5) {
+      const distance = Math.hypot(plant.x - strikeX, plant.z - strikeZ);
+      if (distance > 2.65) {
+        return;
+      }
+
+      const chargeChance = MathUtils.clamp(0.5 - distance * 0.12, 0.12, 0.42);
+      if (Math.random() > chargeChance) {
         return;
       }
 
@@ -10104,7 +10165,7 @@ export class Game {
       }
     }
 
-    const canStartDailyEvent = this.chapterElevenPhase === 'day' && !this.chapterElevenDailyEventUsed;
+    const canStartDailyEvent = !this.chapterElevenDailyEventUsed;
     if (this.chapterElevenEvent === 'none') {
       if (!canStartDailyEvent) {
         this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
@@ -10119,7 +10180,7 @@ export class Game {
         this.chapterElevenLightningStrikeTimer -= deltaSeconds;
         if (this.chapterElevenLightningStrikeTimer <= 0) {
           this.strikeChapterElevenLightning();
-          this.chapterElevenLightningStrikeTimer = MathUtils.randFloat(3, 6.5);
+          this.chapterElevenLightningStrikeTimer = MathUtils.randFloat(7, 13);
         }
       }
       if (this.chapterElevenEventTimer <= 0) {
