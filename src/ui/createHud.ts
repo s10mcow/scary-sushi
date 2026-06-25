@@ -1728,8 +1728,8 @@ export function createHud(host: HTMLElement): HudController {
     },
     {
       id: 'chapter-11-two' as const,
-      label: 'Grow-a-Garden Two',
-      body: 'A copied Grow-a-Garden workspace for the next garden changes.',
+      label: 'Seed Life',
+      body: 'A separate garden mode for buying seeds, planting crops, and growing a farm.',
     },
     {
       id: 'chapter-12' as const,
