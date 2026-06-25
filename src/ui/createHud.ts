@@ -200,6 +200,7 @@ export type ChapterElevenEquipmentId =
   | 'hoe'
   | 'water-bucket'
   | 'watering-can'
+  | 'bucket-of-water'
   | 'sprinkler'
   | 'fertilizer'
   | 'cheap-auto-harvester'

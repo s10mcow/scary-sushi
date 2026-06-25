@@ -243,6 +243,7 @@ const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = 2.61;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_Z = 52.33;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE = 5.5;
+const CHAPTER_ELEVEN_WATERING_CAN_MAX_USES = 10;
 const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   id: ChapterElevenEquipmentId;
   label: string;
@@ -252,6 +253,7 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   seedShopOnly?: boolean;
 }> = [
   { id: 'watering-can', label: 'Watering Can', cost: 100, description: 'Hold E while aiming at plants to water them so they grow twice as fast.', maxStock: 99, seedShopOnly: true },
+  { id: 'bucket-of-water', label: 'Bucket of Water', cost: 25, description: 'Refills the Watering Can back to 10 uses.', maxStock: 99, seedShopOnly: true },
   { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.', maxStock: 4 },
   { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.', maxStock: 5 },
   { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5 },
@@ -287,7 +289,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   normalOnly?: boolean;
   traderOnly?: boolean;
 }> = [
-  { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 10, section: 'cheap', maxStock: 9 },
+  { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 5, section: 'cheap', maxStock: 9 },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 30, section: 'cheap', maxStock: 6 },
   { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 50, section: 'cheap', maxStock: 5 },
   { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 70, section: 'cheap', maxStock: 4 },
@@ -458,7 +460,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'carrot',
     label: 'Carrot',
     pluralLabel: 'Carrots',
-    sellValue: 10,
+    sellValue: 12,
     babySeconds: 3,
     matureSeconds: 10,
     regrows: false,
@@ -1769,6 +1771,10 @@ export class Game {
   private chapterElevenEventTimer = 0;
   private chapterElevenNextEventTimer = 30;
   private chapterElevenLightningStrikeTimer = 0;
+  private chapterElevenWateringCanUsesRemaining = 0;
+  private chapterElevenWateringCanActive = false;
+  private chapterElevenWateringCanOutOfWaterShown = false;
+  private chapterElevenWateringCanPouring = false;
   private chapterElevenTraderVisible = false;
   private chapterElevenTraderTimer = 0;
   private chapterElevenNextTraderTimer = 55;
@@ -3623,15 +3629,20 @@ export class Game {
 
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
     const items: ChapterElevenSeedShopItemView[] = [];
-    const wateringCan = this.getChapterElevenEquipmentItem('watering-can');
-    if (!this.chapterElevenTraderShopOpen && wateringCan) {
-      items.push({
-        kind: 'equipment',
-        id: 'watering-can',
-        label: wateringCan.label,
-        cost: wateringCan.cost,
-        section: 'tools',
-        enabled: this.chapterElevenMoney >= wateringCan.cost,
+    if (!this.chapterElevenTraderShopOpen) {
+      (['watering-can', 'bucket-of-water'] as const).forEach((equipmentId) => {
+        const tool = this.getChapterElevenEquipmentItem(equipmentId);
+        if (!tool) {
+          return;
+        }
+        items.push({
+          kind: 'equipment',
+          id: equipmentId,
+          label: tool.label,
+          cost: tool.cost,
+          section: 'tools',
+          enabled: this.chapterElevenMoney >= tool.cost,
+        });
       });
     }
 
@@ -8828,9 +8839,18 @@ export class Game {
     }
 
     const bob = Math.sin((this.elapsed + deltaSeconds) * 6.2) * 0.012;
+    const wateringCanPouring = this.chapterElevenSelectedEquipmentId === 'watering-can' && this.chapterElevenWateringCanPouring;
+    const stream = this.chapterElevenHeldSeedModel.getObjectByName('Held watering can water stream');
+    if (stream) {
+      stream.visible = wateringCanPouring;
+    }
     this.chapterElevenHeldSeedAnchor.visible = true;
     this.chapterElevenHeldSeedAnchor.position.set(0.43, -0.38 + bob, -0.66);
-    this.chapterElevenHeldSeedAnchor.rotation.set(-0.18 + bob * 0.4, -0.34, 0.12);
+    this.chapterElevenHeldSeedAnchor.rotation.set(
+      wateringCanPouring ? -0.5 + bob * 0.4 : -0.18 + bob * 0.4,
+      wateringCanPouring ? -0.46 : -0.34,
+      wateringCanPouring ? -0.14 : 0.12,
+    );
   }
 
   private clearChapterElevenPlantVisual(plant: ChapterElevenPlanting): void {
@@ -9814,7 +9834,7 @@ export class Game {
 
   private updateChapterElevenWateringCan(deltaSeconds: number): void {
     const stream = this.chapterElevenHeldSeedModel?.getObjectByName('Held watering can water stream');
-    const canWater = this.chapterElevenActive
+    const wantsWater = this.chapterElevenActive
       && this.player.isLocked()
       && this.chapterElevenSelectedEquipmentId === 'watering-can'
       && (this.chapterElevenEquipmentInventory.get('watering-can') ?? 0) > 0
@@ -9825,6 +9845,36 @@ export class Game {
       && !this.chapterElevenSellMenuOpen
       && !this.chapterElevenAutoHarvestChestOpen;
 
+    if (!wantsWater) {
+      this.chapterElevenWateringCanActive = false;
+      this.chapterElevenWateringCanOutOfWaterShown = false;
+      this.chapterElevenWateringCanPouring = false;
+      if (stream) {
+        stream.visible = false;
+      }
+      return;
+    }
+
+    if (!this.chapterElevenWateringCanActive) {
+      if (this.chapterElevenWateringCanUsesRemaining <= 0) {
+        if (!this.chapterElevenWateringCanOutOfWaterShown) {
+          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Buy Seeds stand.', 2.6);
+          this.chapterElevenWateringCanOutOfWaterShown = true;
+          this.syncHud();
+        }
+        this.chapterElevenWateringCanPouring = false;
+        if (stream) {
+          stream.visible = false;
+        }
+        return;
+      }
+      this.chapterElevenWateringCanUsesRemaining = Math.max(0, this.chapterElevenWateringCanUsesRemaining - 1);
+      this.chapterElevenWateringCanActive = true;
+      this.chapterElevenWateringCanOutOfWaterShown = false;
+    }
+
+    const canWater = this.chapterElevenWateringCanUsesRemaining >= 0;
+    this.chapterElevenWateringCanPouring = canWater;
     if (stream) {
       stream.visible = canWater;
       if (canWater) {
@@ -9833,10 +9883,6 @@ export class Game {
           drop.position.x = -0.5 - index * 0.035;
         });
       }
-    }
-
-    if (!canWater) {
-      return;
     }
 
     const targetPlant = this.findChapterElevenTargetPlant(this.getChapterElevenAimGroundPoint());
@@ -10730,6 +10776,9 @@ export class Game {
     this.chapterElevenDayCount = 1;
     this.chapterElevenDailyEventUsed = false;
     this.chapterElevenWeatherStreak = 0;
+    this.chapterElevenWateringCanActive = false;
+    this.chapterElevenWateringCanOutOfWaterShown = false;
+    this.chapterElevenWateringCanPouring = false;
     if (this.chapterElevenActive) {
       this.scheduleChapterElevenDailyEvent();
     } else {
@@ -10748,6 +10797,7 @@ export class Game {
       this.chapterElevenSelectedCropId = null;
       this.chapterElevenSelectedPetEggType = null;
       this.chapterElevenSelectedEquipmentId = null;
+      this.chapterElevenWateringCanUsesRemaining = 0;
       this.chapterElevenPetEggsBought = 0;
       this.chapterElevenEquipmentShopOpen = false;
       this.chapterElevenSellMenuOpen = false;
@@ -10836,7 +10886,7 @@ export class Game {
   }
 
   private readonly handleChapterElevenEquipmentPurchase = (equipmentId: ChapterElevenEquipmentId): void => {
-    const buyingSeedShopTool = equipmentId === 'watering-can' && this.chapterElevenSeedShopOpen && !this.chapterElevenTraderShopOpen;
+    const buyingSeedShopTool = (equipmentId === 'watering-can' || equipmentId === 'bucket-of-water') && this.chapterElevenSeedShopOpen && !this.chapterElevenTraderShopOpen;
     const buyingEquipmentShopTool = this.chapterElevenTwoActive && this.chapterElevenEquipmentShopOpen;
     if (!this.chapterElevenActive || (!buyingSeedShopTool && !buyingEquipmentShopTool)) {
       return;
@@ -10863,7 +10913,24 @@ export class Game {
     if (!buyingSeedShopTool) {
       this.chapterElevenEquipmentShopStock.set(equipmentId, Math.max(0, this.getChapterElevenEquipmentStock(equipmentId) - 1));
     }
+    if (equipmentId === 'bucket-of-water') {
+      if ((this.chapterElevenEquipmentInventory.get('watering-can') ?? 0) <= 0) {
+        this.chapterElevenMoney += item.cost;
+        this.pushStatus('Buy a Watering Can before buying a Bucket of Water refill.', 2.5);
+        this.syncHud();
+        return;
+      }
+      this.chapterElevenWateringCanUsesRemaining = CHAPTER_ELEVEN_WATERING_CAN_MAX_USES;
+      this.chapterElevenWateringCanOutOfWaterShown = false;
+      this.pushStatus(`Bucket of Water refilled the Watering Can to ${CHAPTER_ELEVEN_WATERING_CAN_MAX_USES} uses. Money left: $${this.chapterElevenMoney}.`, 2.8);
+      this.syncHud();
+      return;
+    }
     this.chapterElevenEquipmentInventory.set(equipmentId, (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) + 1);
+    if (equipmentId === 'watering-can') {
+      this.chapterElevenWateringCanUsesRemaining = CHAPTER_ELEVEN_WATERING_CAN_MAX_USES;
+      this.chapterElevenWateringCanOutOfWaterShown = false;
+    }
     this.chapterElevenSelectedSeedId = null;
     this.chapterElevenSelectedCropId = null;
     this.chapterElevenSelectedPetEggType = null;
@@ -11559,12 +11626,17 @@ export class Game {
     }
 
     if (equipmentId === 'watering-can') {
+      if (this.chapterElevenWateringCanUsesRemaining <= 0) {
+        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Buy Seeds stand.', 2.6);
+        this.syncHud();
+        return true;
+      }
       if (!targetPlant) {
         this.pushStatus('Aim the watering can at a planted crop and hold E to water it.', 2.1);
         return true;
       }
       this.waterChapterElevenPlant(targetPlant, 0.45);
-      this.pushStatus('Watering can started. Hold E to keep watering this plant.', 1.8);
+      this.pushStatus(`Watering can started. Uses left after this pour: ${this.chapterElevenWateringCanUsesRemaining}.`, 1.8);
       this.syncHud();
       return true;
     }
