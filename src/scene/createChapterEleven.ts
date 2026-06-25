@@ -1113,6 +1113,7 @@ export function createChapterEleven(): ChapterElevenData {
   addSeedLifeStall('Wizard', 47, 54.8, Math.PI / 2);
   addSeedLifeStall('Scientist', 54.8, 30, Math.PI);
   addSeedLifeStall('Event Shop', 54.8, -30, Math.PI);
+  addSeedLifeStall('Special Event Seeds', 54.8, -45, Math.PI);
 
   const addBrickPath = (pathStart: Vector3, pathEnd: Vector3): void => {
     const pathVector = pathEnd.clone().sub(pathStart);

@@ -2100,6 +2100,7 @@ export class Game {
   private chapterElevenWeatherStreak = 0;
   private chapterElevenEvent: 'none' | 'rain' | 'lightning' = 'none';
   private chapterElevenEventTimer = 0;
+  private chapterElevenSpecialEventSeedTimer = 0;
   private chapterElevenNextEventTimer = 30;
   private chapterElevenLightningStrikeTimer = 0;
   private chapterElevenWateringCanUsesRemaining = 0;
@@ -8809,7 +8810,7 @@ export class Game {
       return `${this.getChapterElevenPetLabel(item.id)} Egg`;
     }
     if (item.kind === 'equipment') {
-      return this.getChapterElevenEquipmentItem(item.id)?.label ?? 'Equipment';
+      return this.getChapterElevenEquipmentLabel(item.id);
     }
     return this.getChapterElevenCropLabel(item.id);
   }
@@ -9301,6 +9302,46 @@ export class Game {
       label.position.set(-0.04, 0.1, -0.066);
       label.rotation.z = -0.1;
       root.add(bag, label);
+    } else if (equipmentId === 'decoration-fence') {
+      const woodMaterial = new MeshStandardMaterial({ color: 0xd9c89e, roughness: 0.82 });
+      const leftPost = new Mesh(new BoxGeometry(0.07, 0.48, 0.07), woodMaterial);
+      leftPost.name = 'Held fence decoration left post';
+      leftPost.position.set(-0.18, 0.12, -0.02);
+      const rightPost = leftPost.clone();
+      rightPost.name = 'Held fence decoration right post';
+      rightPost.position.x = 0.18;
+      const upperRail = new Mesh(new BoxGeometry(0.52, 0.055, 0.06), woodMaterial);
+      upperRail.name = 'Held fence decoration upper rail';
+      upperRail.position.set(0, 0.24, -0.02);
+      const lowerRail = upperRail.clone();
+      lowerRail.name = 'Held fence decoration lower rail';
+      lowerRail.position.y = 0.02;
+      root.add(leftPost, rightPost, upperRail, lowerRail);
+    } else if (equipmentId === 'decoration-light-post') {
+      const poleMaterial = new MeshStandardMaterial({ color: 0x171717, roughness: 0.48, metalness: 0.25 });
+      const bulbMaterial = new MeshStandardMaterial({ color: 0xfff4bd, emissive: 0xffd875, emissiveIntensity: 0.8, roughness: 0.38 });
+      const pole = new Mesh(new CylinderGeometry(0.025, 0.035, 0.72, 10), poleMaterial);
+      pole.name = 'Held light post black pole';
+      pole.position.set(0, 0.18, -0.02);
+      const cross = new Mesh(new BoxGeometry(0.48, 0.035, 0.035), poleMaterial);
+      cross.name = 'Held light post cross arms';
+      cross.position.set(0, 0.56, -0.02);
+      const crossTwo = cross.clone();
+      crossTwo.name = 'Held light post second cross arms';
+      crossTwo.rotation.y = Math.PI / 2;
+      [-0.26, 0.26].forEach((x) => {
+        const bulb = new Mesh(new SphereGeometry(0.055, 10, 8), bulbMaterial);
+        bulb.name = 'Held light post glowing bulb';
+        bulb.position.set(x, 0.6, -0.02);
+        root.add(bulb);
+      });
+      [-0.26, 0.26].forEach((z) => {
+        const bulb = new Mesh(new SphereGeometry(0.055, 10, 8), bulbMaterial);
+        bulb.name = 'Held light post glowing side bulb';
+        bulb.position.set(0, 0.6, z - 0.02);
+        root.add(bulb);
+      });
+      root.add(pole, cross, crossTwo);
     } else if (equipmentId === 'auto-harvester' || equipmentId === 'cheap-auto-harvester') {
       const isCheap = equipmentId === 'cheap-auto-harvester';
       const droneMaterial = new MeshStandardMaterial({ color: isCheap ? 0x56616a : 0x2f3d46, roughness: isCheap ? 0.72 : 0.48, metalness: isCheap ? 0.16 : 0.34 });
@@ -11165,6 +11206,7 @@ export class Game {
   private updateChapterElevenEventsAndTrader(deltaSeconds: number): void {
     if (!this.chapterElevenActive) {
       this.stopChapterElevenEvent();
+      this.chapterElevenSpecialEventSeedTimer = 0;
       this.chapterElevenTraderRoot.visible = false;
       this.chapterElevenTraderVisible = false;
       this.chapterElevenDailyEventUsed = false;
@@ -11172,6 +11214,8 @@ export class Game {
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
       return;
     }
+
+    this.chapterElevenSpecialEventSeedTimer = Math.max(0, this.chapterElevenSpecialEventSeedTimer - deltaSeconds);
 
     if (this.chapterElevenRainRoot.visible) {
       const bounds = this.chapterEleven.fieldBounds;
@@ -11281,6 +11325,13 @@ export class Game {
     }
 
     candidates.sort((a, b) => (a.plant.id - b.plant.id) || (a.index - b.index));
+    const currentPlantCandidate = harvester.lastHarvestedPlantId === null
+      ? null
+      : candidates.find((candidate) => candidate.plant.id === harvester.lastHarvestedPlantId);
+    if (currentPlantCandidate) {
+      return currentPlantCandidate;
+    }
+
     const nextAfterLast = harvester.lastHarvestedPlantId === null
       ? null
       : candidates.find((candidate) => candidate.plant.id > (harvester.lastHarvestedPlantId ?? 0));
@@ -11788,6 +11839,7 @@ export class Game {
     this.chapterElevenTraderVisible = false;
     this.chapterElevenTraderRoot.visible = false;
     this.chapterElevenTraderTimer = 0;
+    this.chapterElevenSpecialEventSeedTimer = 0;
     this.chapterElevenPhase = 'day';
     this.chapterElevenPhaseTimer = this.getChapterElevenDaySeconds();
     this.chapterElevenDayCount = 1;
@@ -12027,21 +12079,49 @@ export class Game {
     }
 
     if (this.chapterElevenSpecialStallMenuId === 'event-shop') {
-      const eventSeedOptions = (['starfruit-seeds', 'moonflower-seeds', 'galaxy-pumpkin-seeds', 'cholesterol-lily-seeds'] as ChapterElevenSeedId[]).map((seedId) => {
-        const seed = this.getChapterElevenSeedItem(seedId);
-        return option(
-          `realm-seed:${seedId}`,
-          seed?.label ?? seedId,
-          seed?.cost ?? 1500,
-          'Special event seed. Availability matches the event-shop theme.',
-          'Special Event seeds',
-        );
-      });
       return {
         title: 'Event Shop',
         money: this.chapterElevenMoney,
         visual: 'event',
-        options: [...eventOptions, ...eventSeedOptions],
+        options: eventOptions,
+      };
+    }
+
+    if (this.chapterElevenSpecialStallMenuId === 'special-event-seeds') {
+      const eventSeedsAvailable = this.chapterElevenEvent !== 'none' || this.chapterElevenSpecialEventSeedTimer > 0;
+      if (!eventSeedsAvailable) {
+        return {
+          title: 'Special Event Seeds',
+          money: this.chapterElevenMoney,
+          visual: 'event',
+          options: [{
+            id: 'special-event:none',
+            label: 'No event active',
+            cost: 0,
+            description: 'Special event seeds only appear while rain, thunder, or a major event is happening.',
+            section: 'Event stock',
+            enabled: false,
+          }],
+        };
+      }
+
+      const eventSeedIds: ChapterElevenSeedId[] = this.chapterElevenEvent === 'lightning' || this.chapterElevenSpecialEventSeedTimer > 0
+        ? ['starfruit-seeds', 'galaxy-pumpkin-seeds', 'phoenix-pepper-seeds', 'cholesterol-lily-seeds']
+        : ['moonflower-seeds', 'crystal-berry-seeds', 'lucky-clover-seeds', 'time-blossom-seeds'];
+      return {
+        title: 'Special Event Seeds',
+        money: this.chapterElevenMoney,
+        visual: 'event',
+        options: eventSeedIds.map((seedId) => {
+          const seed = this.getChapterElevenSeedItem(seedId);
+          return option(
+            `realm-seed:${seedId}`,
+            seed?.label ?? seedId,
+            seed?.cost ?? 1500,
+            'Limited seed available because an event is active right now.',
+            'Event stock',
+          );
+        }),
       };
     }
 
@@ -12172,6 +12252,16 @@ export class Game {
 
   private getChapterElevenEquipmentItem(equipmentId: ChapterElevenEquipmentId) {
     return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.find((item) => item.id === equipmentId) ?? null;
+  }
+
+  private getChapterElevenEquipmentLabel(equipmentId: ChapterElevenEquipmentId): string {
+    if (equipmentId === 'decoration-fence') {
+      return 'Fence Decoration';
+    }
+    if (equipmentId === 'decoration-light-post') {
+      return 'Light Post Decoration';
+    }
+    return this.getChapterElevenEquipmentItem(equipmentId)?.label ?? 'Equipment';
   }
 
   private getChapterElevenEquipmentStock(equipmentId: ChapterElevenEquipmentId): number {
@@ -13640,6 +13730,7 @@ export class Game {
     this.chapterElevenDailyEventUsed = true;
     this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+    this.chapterElevenSpecialEventSeedTimer = 120;
     this.pushStatus(`${label} started immediately. Its Seed Life buff is active for this day.`, 3);
   }
 
@@ -13734,6 +13825,20 @@ export class Game {
       this.pushStatus(`${selectedOption.label} mutation research bought.`, 2.8);
     } else if (action.optionId === 'decoration:organizer-machine') {
       this.pushStatus('Organizer Machine bought. It will sort plants into neat rows for five days before breaking.', 3.1);
+    } else if (action.optionId === 'decoration:fence-foot') {
+      this.chapterElevenEquipmentInventory.set('decoration-fence', (this.chapterElevenEquipmentInventory.get('decoration-fence') ?? 0) + 1);
+      this.chapterElevenSelectedEquipmentId = 'decoration-fence';
+      this.chapterElevenSelectedSeedId = null;
+      this.chapterElevenSelectedCropId = null;
+      this.chapterElevenSelectedPetEggType = null;
+      this.pushStatus('Bought a Fence Decoration. It is now in your hotbar.', 2.8);
+    } else if (action.optionId === 'decoration:light-post') {
+      this.chapterElevenEquipmentInventory.set('decoration-light-post', (this.chapterElevenEquipmentInventory.get('decoration-light-post') ?? 0) + 1);
+      this.chapterElevenSelectedEquipmentId = 'decoration-light-post';
+      this.chapterElevenSelectedSeedId = null;
+      this.chapterElevenSelectedCropId = null;
+      this.chapterElevenSelectedPetEggType = null;
+      this.pushStatus('Bought a Light Post Decoration. It is now in your hotbar.', 2.8);
     } else if (action.optionId.startsWith('decoration:')) {
       this.pushStatus(`${selectedOption.label} decoration bought.`, 2.6);
     }

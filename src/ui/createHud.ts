@@ -241,7 +241,9 @@ export type ChapterElevenEquipmentId =
   | 'sprinkler'
   | 'fertilizer'
   | 'cheap-auto-harvester'
-  | 'auto-harvester';
+  | 'auto-harvester'
+  | 'decoration-fence'
+  | 'decoration-light-post';
 
 export type ChapterElevenPetEggShopId =
   | 'farm-egg'
