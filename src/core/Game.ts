@@ -3952,6 +3952,24 @@ export class Game {
       return 0;
     }
 
+    if (this.chapterElevenTwoActive && item.seedLifeShop) {
+      if (item.section === 'common') {
+        return MathUtils.randInt(Math.max(1, Math.floor(safeMaxStock * 0.58)), safeMaxStock);
+      }
+      if (item.section === 'uncommon') {
+        if (Math.random() > 0.86) {
+          return 0;
+        }
+        return MathUtils.randInt(1, Math.max(1, Math.min(3, safeMaxStock)));
+      }
+      if (item.section === 'rare') {
+        return 0;
+      }
+      if (item.section === 'legendary') {
+        return Math.random() < 0.035 ? 1 : 0;
+      }
+    }
+
     const stockedChance = item.stockChance ?? MathUtils.clamp(0.95 - MathUtils.clamp(item.cost / 850, 0, 0.78), 0.24, 0.95);
     if (Math.random() > stockedChance) {
       return 0;
@@ -3965,9 +3983,22 @@ export class Game {
     return MathUtils.randInt(1, Math.max(1, item.maxStock ?? 5));
   }
 
-  private ensureChapterElevenSeedLifeSectionStock(section: 'uncommon' | 'rare', minimumStocked: number): void {
+  private ensureChapterElevenSeedLifeSectionStock(section: 'uncommon' | 'rare', minimumStocked: number, maximumStocked = Number.POSITIVE_INFINITY): void {
     const candidates = this.getChapterElevenSeedShopCatalog().filter((item) => item.section === section);
     let stockedCount = candidates.filter((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0).length;
+    if (stockedCount > maximumStocked) {
+      const stocked = candidates
+        .filter((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0)
+        .sort(() => Math.random() - 0.5);
+      while (stockedCount > maximumStocked) {
+        const item = stocked.pop();
+        if (!item) {
+          break;
+        }
+        this.chapterElevenSeedShopStock.set(item.id, 0);
+        stockedCount -= 1;
+      }
+    }
     const shuffled = [...candidates].sort(() => Math.random() - 0.5);
     for (const item of shuffled) {
       if (stockedCount >= minimumStocked) {
@@ -3998,11 +4029,12 @@ export class Game {
       this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomSeedShopStock(item));
     });
     if (this.chapterElevenTwoActive) {
-      this.ensureChapterElevenSeedLifeSectionStock('uncommon', 3);
-      this.ensureChapterElevenSeedLifeSectionStock('rare', 2);
+      this.ensureChapterElevenSeedLifeSectionStock('uncommon', 5);
+      this.ensureChapterElevenSeedLifeSectionStock('rare', MathUtils.randInt(1, 2), 2);
       const legendaryItems = this.getChapterElevenSeedShopCatalog().filter((item) => item.section === 'legendary');
-      const hasLegendary = legendaryItems.some((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0);
-      if (!hasLegendary && legendaryItems.length > 0 && Math.random() < 0.38) {
+      const stockedLegendary = legendaryItems.filter((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0);
+      stockedLegendary.slice(1).forEach((item) => this.chapterElevenSeedShopStock.set(item.id, 0));
+      if (stockedLegendary.length === 0 && legendaryItems.length > 0 && Math.random() < 0.06) {
         const item = legendaryItems[MathUtils.randInt(0, legendaryItems.length - 1)];
         this.chapterElevenSeedShopStock.set(item.id, 1);
       }
