@@ -214,6 +214,25 @@ const START_IN_CHAPTER_NINE = false;
 const START_IN_CHAPTER_TEN = false;
 const START_IN_CHAPTER_ELEVEN = true;
 const START_IN_CHAPTER_TWELVE = false;
+const CURRENT_CHAPTER_STORAGE_KEY = 'scary-sushi:current-chapter';
+const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
+  'chapter-1',
+  'chapter-2',
+  'chapter-3',
+  'chapter-3-copy',
+  'chapter-4',
+  'chapter-5',
+  'chapter-6',
+  'chapter-7',
+  'chapter-8',
+  'chapter-9',
+  'chapter-10',
+  'chapter-11',
+  'chapter-11-two',
+  'chapter-12',
+  'zombie-fps',
+  'doom-fps',
+];
 const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
 const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
 const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
@@ -2039,28 +2058,31 @@ export class Game {
     this.resizeObserver.observe(this.shell.viewport);
     this.resize();
 
-    if (START_IN_CHAPTER_TWELVE) {
-      this.beginChapterTwelve();
+    const savedChapter = this.loadSavedChapter();
+    if (savedChapter) {
+      this.beginChapterById(savedChapter);
+    } else if (START_IN_CHAPTER_TWELVE) {
+      this.beginChapterById('chapter-12');
     } else if (START_IN_CHAPTER_ELEVEN) {
-      this.beginChapterEleven();
+      this.beginChapterById('chapter-11');
     } else if (START_IN_CHAPTER_TEN) {
-      this.beginChapterTen();
+      this.beginChapterById('chapter-10');
     } else if (START_IN_CHAPTER_NINE) {
-      this.beginChapterNine();
+      this.beginChapterById('chapter-9');
     } else if (START_IN_CHAPTER_SEVEN) {
-      this.beginChapterSeven();
+      this.beginChapterById('chapter-7');
     } else if (START_IN_CHAPTER_SIX) {
-      this.beginChapterSix();
+      this.beginChapterById('chapter-6');
     } else if (START_IN_CHAPTER_FIVE) {
-      this.beginChapterFive();
+      this.beginChapterById('chapter-5');
     } else if (START_IN_CHAPTER_FOUR) {
-      this.beginChapterFour();
+      this.beginChapterById('chapter-4');
     } else if (START_IN_CHAPTER_THREE) {
-      this.beginOfficeChapter();
+      this.beginChapterById('chapter-3');
     } else if (START_IN_CHAPTER_TWO) {
-      this.beginChapterTwo();
+      this.beginChapterById('chapter-2');
     } else {
-      this.beginChapterOne();
+      this.beginChapterById('chapter-1');
     }
 
     this.syncHud();
@@ -2404,43 +2426,81 @@ export class Game {
     this.chapterEleven.root.visible = false;
     this.chapterTwelveActive = false;
     this.chapterTwelve.root.visible = false;
-    if (chapterId === 'chapter-1') {
-      this.beginChapterOne();
-    } else if (chapterId === 'chapter-2') {
-      this.beginChapterTwo();
-    } else if (chapterId === 'chapter-3') {
-      this.beginOfficeChapter();
-    } else if (chapterId === 'chapter-3-copy') {
-      this.beginOfficeChapter(true);
-    } else if (chapterId === 'chapter-4') {
-      this.beginChapterFour();
-    } else if (chapterId === 'chapter-5') {
-      this.beginChapterFive();
-    } else if (chapterId === 'chapter-6') {
-      this.beginChapterSix();
-    } else if (chapterId === 'chapter-7') {
-      this.beginChapterSeven();
-    } else if (chapterId === 'chapter-8') {
-      this.beginChapterEight();
-    } else if (chapterId === 'chapter-9') {
-      this.beginChapterNine();
-    } else if (chapterId === 'chapter-10') {
-      this.beginChapterTen();
-    } else if (chapterId === 'chapter-11') {
-      this.beginChapterEleven();
-    } else if (chapterId === 'chapter-11-two') {
-      this.beginChapterEleven(true);
-    } else if (chapterId === 'chapter-12') {
-      this.beginChapterTwelve();
-    } else if (chapterId === 'doom-fps') {
-      this.beginDoomMode();
-    } else {
-      this.beginZombieMode();
-    }
+    this.beginChapterById(chapterId);
 
     this.setChapterMenuOpen(false);
     this.syncHud();
   };
+
+  private beginChapterById(chapterId: HudChapterId): void {
+    switch (chapterId) {
+      case 'chapter-1':
+        this.beginChapterOne();
+        return;
+      case 'chapter-2':
+        this.beginChapterTwo();
+        return;
+      case 'chapter-3':
+        this.beginOfficeChapter();
+        return;
+      case 'chapter-3-copy':
+        this.beginOfficeChapter(true);
+        return;
+      case 'chapter-4':
+        this.beginChapterFour();
+        return;
+      case 'chapter-5':
+        this.beginChapterFive();
+        return;
+      case 'chapter-6':
+        this.beginChapterSix();
+        return;
+      case 'chapter-7':
+        this.beginChapterSeven();
+        return;
+      case 'chapter-8':
+        this.beginChapterEight();
+        return;
+      case 'chapter-9':
+        this.beginChapterNine();
+        return;
+      case 'chapter-10':
+        this.beginChapterTen();
+        return;
+      case 'chapter-11':
+        this.beginChapterEleven();
+        return;
+      case 'chapter-11-two':
+        this.beginChapterEleven(true);
+        return;
+      case 'chapter-12':
+        this.beginChapterTwelve();
+        return;
+      case 'doom-fps':
+        this.beginDoomMode();
+        return;
+      case 'zombie-fps':
+        this.beginZombieMode();
+        return;
+    }
+  }
+
+  private loadSavedChapter(): HudChapterId | null {
+    try {
+      const savedChapter = window.localStorage.getItem(CURRENT_CHAPTER_STORAGE_KEY);
+      return SAVABLE_CHAPTER_IDS.includes(savedChapter as HudChapterId) ? savedChapter as HudChapterId : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private saveCurrentChapter(chapterId: HudChapterId): void {
+    try {
+      window.localStorage.setItem(CURRENT_CHAPTER_STORAGE_KEY, chapterId);
+    } catch {
+      // Chapter persistence is optional; gameplay still works if storage is blocked.
+    }
+  }
 
   private readonly handleOfficeJumpscareSelection = (jumpscareId: string): void => {
     const definition = OFFICE_JUMPSCARE_DEFINITIONS.find((entry) => entry.id === jumpscareId);
@@ -28555,6 +28615,7 @@ export class Game {
   }
 
   private beginChapterOne(): void {
+    this.saveCurrentChapter('chapter-1');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -28762,6 +28823,7 @@ export class Game {
   }
 
   private beginChapterTwo(): void {
+    this.saveCurrentChapter('chapter-2');
     this.stopOfficeGameMode();
     this.chapterTwoActive = true;
     this.officeChapterActive = false;
@@ -28873,6 +28935,7 @@ export class Game {
   }
 
   private beginZombieMode(): void {
+    this.saveCurrentChapter('zombie-fps');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -28999,6 +29062,7 @@ export class Game {
   }
 
   private beginDoomMode(): void {
+    this.saveCurrentChapter('doom-fps');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -29128,6 +29192,7 @@ export class Game {
   }
 
   private beginChapterFour(): void {
+    this.saveCurrentChapter('chapter-4');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -29285,6 +29350,7 @@ export class Game {
   }
 
   private beginChapterFive(): void {
+    this.saveCurrentChapter('chapter-5');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -29409,6 +29475,7 @@ export class Game {
   }
 
   private beginChapterSix(): void {
+    this.saveCurrentChapter('chapter-6');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -29550,6 +29617,7 @@ export class Game {
   }
 
   private beginChapterSeven(): void {
+    this.saveCurrentChapter('chapter-7');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -29699,6 +29767,7 @@ export class Game {
   }
 
   private beginChapterEight(): void {
+    this.saveCurrentChapter('chapter-8');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -29843,6 +29912,7 @@ export class Game {
   }
 
   private beginChapterNine(): void {
+    this.saveCurrentChapter('chapter-9');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -29991,6 +30061,7 @@ export class Game {
   }
 
   private beginChapterTen(): void {
+    this.saveCurrentChapter('chapter-10');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -30131,6 +30202,7 @@ export class Game {
   }
 
   private beginChapterEleven(copyMode = false): void {
+    this.saveCurrentChapter(copyMode ? 'chapter-11-two' : 'chapter-11');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -30258,6 +30330,7 @@ export class Game {
   }
 
   private beginChapterTwelve(): void {
+    this.saveCurrentChapter('chapter-12');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -30381,6 +30454,7 @@ export class Game {
   }
 
   private beginOfficeChapter(sandboxCopy = false): void {
+    this.saveCurrentChapter(sandboxCopy ? 'chapter-3-copy' : 'chapter-3');
     this.stopOfficeGameMode();
     this.officeSandboxChapterActive = sandboxCopy;
     this.officeChapter = sandboxCopy ? this.officeSandboxChapter : this.mainOfficeChapter;
