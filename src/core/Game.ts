@@ -117,7 +117,7 @@ import { InputController, type MovementState, type WeaponSelectId } from '../sys
 import { VoiceInputController } from '../systems/input/VoiceInputController';
 import { BearJumpScareAudio } from '../systems/audio/BearJumpScareAudio';
 import { CoffeeMachineAudio } from '../systems/audio/CoffeeMachineAudio';
-import { GameplaySfxAudio, type OfficeJumpscareCue } from '../systems/audio/GameplaySfxAudio';
+import { GameplaySfxAudio, type GardenEventCue, type OfficeJumpscareCue } from '../systems/audio/GameplaySfxAudio';
 import {
   FOXY_PLAY_FOXY_LINE,
   FOXY_PLAY_FOXY_SOON_LINE,
@@ -2100,6 +2100,9 @@ export class Game {
   private chapterElevenWeatherStreak = 0;
   private chapterElevenEvent: 'none' | 'rain' | 'lightning' = 'none';
   private chapterElevenEventTimer = 0;
+  private chapterElevenEventNoticeText = '';
+  private chapterElevenEventNoticeLabel = 'Garden Event';
+  private chapterElevenEventNoticeTimer = 0;
   private chapterElevenSpecialEventSeedTimer = 0;
   private chapterElevenNextEventTimer = 30;
   private chapterElevenLightningStrikeTimer = 0;
@@ -11056,6 +11059,13 @@ export class Game {
     });
   }
 
+  private showChapterElevenEventNotice(text: string, label = 'Garden Event', duration = 5.8, cue: GardenEventCue = 'cheerful'): void {
+    this.chapterElevenEventNoticeText = text;
+    this.chapterElevenEventNoticeLabel = label;
+    this.chapterElevenEventNoticeTimer = Math.max(this.chapterElevenEventNoticeTimer, duration);
+    this.gameplaySfxAudio.playGardenEventCue(cue);
+  }
+
   private startChapterElevenEvent(event: 'rain' | 'lightning'): void {
     this.chapterElevenEvent = event;
     this.chapterElevenEventTimer = event === 'rain' ? MathUtils.randFloat(85, 125) : MathUtils.randFloat(80, 115);
@@ -11064,6 +11074,12 @@ export class Game {
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning';
     this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(4.5, 8) : 0;
+    this.showChapterElevenEventNotice(
+      event === 'rain' ? 'Rain event is happening.' : 'Thunderstorm event is happening.',
+      'Garden Event',
+      5.8,
+      event,
+    );
     this.pushStatus(event === 'rain'
       ? 'Rain storm started. Crops are growing faster.'
       : 'Lightning storm started. Lightning can charge plants into valuable glowing crops.', 3.2);
@@ -11184,6 +11200,15 @@ export class Game {
       this.stopChapterElevenEvent();
       this.startChapterElevenEvent('rain');
     }
+    const cue: GardenEventCue = currentRealm.id === 'dragon-jungle'
+      ? 'dragon'
+      : currentRealm.id === 'volcanic-valley'
+        ? 'volcanic'
+        : currentRealm.id === 'miskel-mushroom-forest' || currentRealm.id === 'frozen-tundra'
+          ? 'rain'
+          : 'magic';
+    const realmLabel = messages[currentRealm.id].split('.')[0] ?? 'Realm event';
+    this.showChapterElevenEventNotice(`${realmLabel} event is happening.`, 'Realm Event', 6.2, cue);
   }
 
   private getChapterElevenNightBlend(): number {
@@ -11238,6 +11263,8 @@ export class Game {
   private updateChapterElevenEventsAndTrader(deltaSeconds: number): void {
     if (!this.chapterElevenActive) {
       this.stopChapterElevenEvent();
+      this.chapterElevenEventNoticeTimer = 0;
+      this.chapterElevenEventNoticeText = '';
       this.chapterElevenSpecialEventSeedTimer = 0;
       this.chapterElevenTraderRoot.visible = false;
       this.chapterElevenTraderVisible = false;
@@ -11245,6 +11272,13 @@ export class Game {
       this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
       return;
+    }
+
+    if (this.chapterElevenEventNoticeTimer > 0) {
+      this.chapterElevenEventNoticeTimer = Math.max(0, this.chapterElevenEventNoticeTimer - deltaSeconds);
+      if (this.chapterElevenEventNoticeTimer <= 0) {
+        this.chapterElevenEventNoticeText = '';
+      }
     }
 
     this.chapterElevenSpecialEventSeedTimer = Math.max(0, this.chapterElevenSpecialEventSeedTimer - deltaSeconds);
@@ -11316,6 +11350,7 @@ export class Game {
         this.chapterElevenDailyEventUsed = true;
         this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
         this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+        this.showChapterElevenEventNotice('Trader event is happening.', 'Garden Event', 5.8, 'cheerful');
         this.pushStatus('The Trader arrived with western seeds.', 3);
       }
     } else {
@@ -13708,12 +13743,41 @@ export class Game {
     this.syncHud();
   };
 
+  private getChapterElevenPurchasedEventCue(optionId: string): GardenEventCue {
+    if (optionId.includes('rainstorm') || optionId.includes('golden-rain')) {
+      return 'rain';
+    }
+
+    if (optionId.includes('thunderstorm')) {
+      return 'lightning';
+    }
+
+    if (optionId.includes('windy')) {
+      return 'wind';
+    }
+
+    if (optionId.includes('dragon')) {
+      return 'dragon';
+    }
+
+    if (optionId.includes('volcanic')) {
+      return 'volcanic';
+    }
+
+    if (optionId.includes('rift') || optionId.includes('meteor') || optionId.includes('rainbow') || optionId.includes('cholesterol')) {
+      return 'magic';
+    }
+
+    return 'cheerful';
+  }
+
   private triggerChapterElevenPurchasedEvent(optionId: string, label: string): void {
     if (optionId === 'event:sunny-day') {
       this.stopChapterElevenEvent();
       this.chapterElevenDailyEventUsed = true;
       this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+      this.showChapterElevenEventNotice('Sunny Day event is happening.', 'Garden Event', 5.8, 'cheerful');
       this.pushStatus('Sunny Day started. The weather clears and the garden feels warmer.', 3);
       return;
     }
@@ -13753,6 +13817,7 @@ export class Game {
         }
       });
       this.chapterElevenDailyEventUsed = true;
+      this.showChapterElevenEventNotice('Time Rift event is happening.', 'Garden Event', 5.8, 'magic');
       this.pushStatus(changed > 0
         ? `Time Rift pulsed. ${changed} crop${changed === 1 ? '' : 's'} grew one stage.`
         : 'Time Rift pulsed, but every planted crop was already mature.', 3.2);
@@ -13763,6 +13828,7 @@ export class Game {
     this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenSpecialEventSeedTimer = 120;
+    this.showChapterElevenEventNotice(`${label} event is happening.`, 'Garden Event', 5.8, this.getChapterElevenPurchasedEventCue(optionId));
     this.pushStatus(`${label} started immediately. Its Seed Life buff is active for this day.`, 3);
   }
 
@@ -24960,6 +25026,14 @@ export class Game {
   }
 
   private getStoryNoticeState(): { text: string; active: boolean; label: string } {
+    if (this.chapterElevenActive && this.chapterElevenEventNoticeTimer > 0 && this.chapterElevenEventNoticeText.length > 0) {
+      return {
+        text: this.chapterElevenEventNoticeText,
+        active: true,
+        label: this.chapterElevenEventNoticeLabel,
+      };
+    }
+
     if (this.chapterTwoActive) {
       if (this.chapterTwoDodoNightAttack) {
         return {

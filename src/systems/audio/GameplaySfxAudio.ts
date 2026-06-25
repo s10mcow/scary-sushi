@@ -16,6 +16,8 @@ export type OfficeJumpscareCue =
   | 'curtain-snap'
   | 'pirate-spin';
 
+export type GardenEventCue = 'cheerful' | 'rain' | 'lightning' | 'wind' | 'magic' | 'dragon' | 'volcanic';
+
 export class GameplaySfxAudio {
   private readonly context?: AudioContext;
   private readonly masterGain?: GainNode;
@@ -269,6 +271,44 @@ export class GameplaySfxAudio {
     rumble.connect(lowpass);
     lowpass.connect(rumbleGain);
     this.startSource(rumble, now + 0.05, now + 2.6);
+  }
+
+  playGardenEventCue(cue: GardenEventCue): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    this.playGardenEventMusic();
+
+    if (cue === 'lightning') {
+      this.playThunderRumble();
+      this.playGardenRainCue(2.8, 0.056);
+      return;
+    }
+
+    if (cue === 'rain') {
+      this.playGardenRainCue(3.4, 0.07);
+      return;
+    }
+
+    if (cue === 'wind') {
+      this.playGardenWindCue();
+      return;
+    }
+
+    if (cue === 'dragon') {
+      this.playGardenDragonCue();
+      return;
+    }
+
+    if (cue === 'volcanic') {
+      this.playGardenVolcanicCue();
+      return;
+    }
+
+    if (cue === 'magic') {
+      this.playGardenMagicCue();
+    }
   }
 
   playGrandfatherClockChime(): void {
@@ -1222,6 +1262,175 @@ export class GameplaySfxAudio {
     thud.frequency.exponentialRampToValueAtTime(42, startTime + 0.14);
     thud.connect(thudGain);
     this.startSource(thud, startTime, startTime + 0.17);
+  }
+
+  private playGardenEventMusic(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.012;
+    const melodyBus = this.context.createGain();
+    melodyBus.gain.setValueAtTime(0.0001, now);
+    melodyBus.gain.exponentialRampToValueAtTime(0.07, now + 0.05);
+    melodyBus.gain.linearRampToValueAtTime(0.052, now + 2.0);
+    melodyBus.gain.exponentialRampToValueAtTime(0.0001, now + 3.1);
+    melodyBus.connect(this.masterGain);
+
+    [
+      { frequency: 523.25, offset: 0, length: 0.28 },
+      { frequency: 659.25, offset: 0.24, length: 0.28 },
+      { frequency: 783.99, offset: 0.48, length: 0.34 },
+      { frequency: 1046.5, offset: 0.86, length: 0.42 },
+      { frequency: 987.77, offset: 1.35, length: 0.3 },
+      { frequency: 783.99, offset: 1.62, length: 0.64 },
+    ].forEach((note) => {
+      const start = now + note.offset;
+      const noteGain = this.context!.createGain();
+      noteGain.gain.setValueAtTime(0.0001, start);
+      noteGain.gain.exponentialRampToValueAtTime(0.12, start + 0.012);
+      noteGain.gain.linearRampToValueAtTime(0.05, start + note.length * 0.68);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, start + note.length);
+      noteGain.connect(melodyBus);
+
+      const tone = this.context!.createOscillator();
+      tone.type = 'triangle';
+      tone.frequency.setValueAtTime(note.frequency, start);
+      tone.connect(noteGain);
+      this.startSource(tone, start, start + note.length);
+    });
+  }
+
+  private playGardenRainCue(duration: number, peakGain: number): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    const length = Math.max(0.4, duration);
+    const rainGain = this.context.createGain();
+    rainGain.gain.setValueAtTime(0.0001, now);
+    rainGain.gain.exponentialRampToValueAtTime(peakGain, now + 0.12);
+    rainGain.gain.linearRampToValueAtTime(peakGain * 0.72, now + length * 0.76);
+    rainGain.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    rainGain.connect(this.masterGain);
+
+    const rain = this.context.createBufferSource();
+    rain.buffer = this.noiseBuffer;
+    rain.loop = true;
+    rain.playbackRate.value = 1.8 + Math.random() * 0.2;
+
+    const highpass = this.context.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 1100;
+    const band = this.context.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 2800 + Math.random() * 450;
+    band.Q.value = 0.8;
+
+    rain.connect(highpass);
+    highpass.connect(band);
+    band.connect(rainGain);
+    this.startSource(rain, now, now + length);
+  }
+
+  private playGardenWindCue(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.006;
+    const windGain = this.context.createGain();
+    windGain.gain.setValueAtTime(0.0001, now);
+    windGain.gain.exponentialRampToValueAtTime(0.085, now + 0.24);
+    windGain.gain.linearRampToValueAtTime(0.045, now + 2.4);
+    windGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.5);
+    windGain.connect(this.masterGain);
+
+    const wind = this.context.createBufferSource();
+    wind.buffer = this.noiseBuffer;
+    wind.loop = true;
+    wind.playbackRate.value = 0.72;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.setValueAtTime(700, now);
+    lowpass.frequency.linearRampToValueAtTime(1250, now + 1.4);
+    lowpass.frequency.linearRampToValueAtTime(520, now + 3.2);
+    wind.connect(lowpass);
+    lowpass.connect(windGain);
+    this.startSource(wind, now, now + 3.6);
+  }
+
+  private playGardenMagicCue(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.02;
+    [932.33, 1174.66, 1396.91, 1864.66].forEach((frequency, index) => {
+      const start = now + index * 0.11;
+      const gain = this.context!.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.065, start + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.72);
+      gain.connect(this.masterGain!);
+
+      const chime = this.context!.createOscillator();
+      chime.type = 'sine';
+      chime.frequency.setValueAtTime(frequency, start);
+      chime.frequency.exponentialRampToValueAtTime(frequency * 1.08, start + 0.7);
+      chime.connect(gain);
+      this.startSource(chime, start, start + 0.74);
+    });
+  }
+
+  private playGardenDragonCue(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.02;
+    const growlGain = this.context.createGain();
+    growlGain.gain.setValueAtTime(0.0001, now);
+    growlGain.gain.exponentialRampToValueAtTime(0.1, now + 0.12);
+    growlGain.gain.linearRampToValueAtTime(0.07, now + 1.0);
+    growlGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
+    growlGain.connect(this.masterGain);
+
+    const growl = this.context.createBufferSource();
+    growl.buffer = this.noiseBuffer;
+    growl.playbackRate.value = 0.38;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 360;
+    growl.connect(lowpass);
+    lowpass.connect(growlGain);
+    this.startSource(growl, now, now + 1.85);
+  }
+
+  private playGardenVolcanicCue(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.012;
+    this.playMetalThud(now, 0.2, 42);
+    const crackleGain = this.context.createGain();
+    crackleGain.gain.setValueAtTime(0.0001, now);
+    crackleGain.gain.exponentialRampToValueAtTime(0.055, now + 0.05);
+    crackleGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+    crackleGain.connect(this.masterGain);
+
+    const crackle = this.context.createBufferSource();
+    crackle.buffer = this.noiseBuffer;
+    crackle.playbackRate.value = 1.18;
+    const band = this.context.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 1250;
+    band.Q.value = 3.2;
+    crackle.connect(band);
+    band.connect(crackleGain);
+    this.startSource(crackle, now, now + 1.45);
   }
 
   private startChapterSevenDayMusic(startTime: number, destination: GainNode): void {

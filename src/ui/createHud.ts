@@ -3017,6 +3017,7 @@ export function createHud(host: HTMLElement): HudController {
     setObjective(): void {},
     setStoryNotice(text, active, label = 'Chapter Shift'): void {
       storyNotice.dataset.active = String(active && text.length > 0);
+      storyNotice.dataset.kind = label === 'Garden Event' || label === 'Realm Event' ? 'event' : 'story';
       storyNoticeLabel.textContent = label;
       storyNoticeText.textContent = text;
     },
