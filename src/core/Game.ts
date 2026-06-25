@@ -250,11 +250,15 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   { id: 'vine-stick', label: 'Vine Stick', cost: 25, description: 'Place by vine seeds, or aim at a plant to remove it.' },
   { id: 'hoe', label: 'Hoe', cost: 20, description: 'Aim at a planted crop to dig it up.' },
   { id: 'water-bucket', label: 'Water Bucket', cost: 30, description: 'Water one crop so it grows faster.' },
-  { id: 'sprinkler', label: 'Sprinkler', cost: 75, description: 'Place it on dirt to constantly water nearby crops.' },
+  { id: 'sprinkler', label: 'Sprinkler', cost: 150, description: 'Place it on dirt to constantly water nearby crops.' },
   { id: 'fertilizer', label: 'Fertilizer', cost: 40, description: 'Boost one crop faster than water.' },
+  { id: 'auto-harvester', label: 'Auto Harvester', cost: 325, description: 'Place a drone that cuts ripe bush fruit and drops it by your farm sign.' },
 ];
 const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 4.25;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
+const CHAPTER_ELEVEN_AUTO_HARVESTER_SPEED = 4.2;
+const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X = -31.8;
+const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z = -20.2;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   id: ChapterElevenSeedId;
   label: string;
@@ -357,6 +361,18 @@ interface ChapterElevenSprinkler {
   x: number;
   z: number;
   patch: ChapterElevenDirtPatch;
+}
+
+interface ChapterElevenAutoHarvester {
+  root: Group;
+  x: number;
+  z: number;
+  patch: ChapterElevenDirtPatch;
+  state: 'idle' | 'to-target' | 'cutting' | 'to-pile';
+  targetPlantId: number | null;
+  targetFruitIndex: number | null;
+  cargoCropId: ChapterElevenCropId | null;
+  cutTimer: number;
 }
 
 interface ChapterElevenPickableFruit {
@@ -1645,6 +1661,8 @@ export class Game {
   private readonly chapterElevenPlants: ChapterElevenPlanting[] = [];
   private readonly chapterElevenVineSticks: ChapterElevenVineStick[] = [];
   private readonly chapterElevenSprinklers: ChapterElevenSprinkler[] = [];
+  private readonly chapterElevenAutoHarvesters: ChapterElevenAutoHarvester[] = [];
+  private readonly chapterElevenAutoHarvestPileRoot = new Group();
   private readonly chapterElevenCropInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenPetEggInventory = new Map<ChapterElevenPetType, number>();
   private readonly chapterElevenEquipmentInventory = new Map<ChapterElevenEquipmentId, number>();
@@ -1836,6 +1854,10 @@ export class Game {
     this.chapterTen = createChapterTen();
     this.chapterTen.root.visible = false;
     this.chapterEleven = createChapterEleven();
+    this.chapterElevenAutoHarvestPileRoot.name = 'Chapter 11 auto harvester fruit pile by farm sign';
+    this.chapterElevenAutoHarvestPileRoot.position.set(CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X, 0, CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z);
+    this.chapterElevenAutoHarvestPileRoot.visible = false;
+    this.chapterEleven.root.add(this.chapterElevenAutoHarvestPileRoot);
     this.chapterEleven.root.visible = false;
     this.chapterTwelve = createChapterTwelve();
     this.chapterTwelve.root.visible = false;
@@ -4499,6 +4521,7 @@ export class Game {
     } else if (this.chapterElevenActive) {
       this.chapterEleven.update(deltaSeconds, this.player.getPosition());
       this.updateChapterElevenPlants(deltaSeconds);
+      this.updateChapterElevenAutoHarvesters(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
       this.updateChapterElevenSeedShopStock(deltaSeconds);
     } else if (this.chapterTwelveActive && !this.chapterTwelve.isDriving()) {
@@ -8381,6 +8404,28 @@ export class Game {
       label.position.set(-0.04, 0.1, -0.066);
       label.rotation.z = -0.1;
       root.add(bag, label);
+    } else if (equipmentId === 'auto-harvester') {
+      const droneMaterial = new MeshStandardMaterial({ color: 0x2f3d46, roughness: 0.48, metalness: 0.34 });
+      const rotorMaterial = new MeshStandardMaterial({ color: 0x1c2228, roughness: 0.42, metalness: 0.28 });
+      const bladeMaterial = new MeshStandardMaterial({ color: 0xc8d1d6, roughness: 0.36, metalness: 0.55 });
+      const body = new Mesh(new BoxGeometry(0.34, 0.14, 0.24), droneMaterial);
+      body.name = 'Held auto harvester drone body';
+      body.position.set(-0.04, 0.16, -0.02);
+      const sensor = new Mesh(new SphereGeometry(0.055, 12, 8), new MeshStandardMaterial({ color: 0x76d7ff, roughness: 0.28, emissive: 0x164d66, emissiveIntensity: 0.35 }));
+      sensor.name = 'Held auto harvester blue sensor';
+      sensor.position.set(0.12, 0.16, -0.02);
+      [-1, 1].forEach((side) => {
+        const arm = new Mesh(new BoxGeometry(0.22, 0.025, 0.035), droneMaterial);
+        arm.position.set(-0.04, 0.18, side * 0.15);
+        const rotor = new Mesh(new CylinderGeometry(0.1, 0.1, 0.016, 16), rotorMaterial);
+        rotor.position.set(-0.04, 0.2, side * 0.28);
+        const scissor = new Mesh(new BoxGeometry(0.018, 0.16, 0.02), bladeMaterial);
+        scissor.name = 'Held auto harvester tiny scissor arm';
+        scissor.position.set(-0.08, 0.02, side * 0.06);
+        scissor.rotation.z = side * 0.42;
+        root.add(arm, rotor, scissor);
+      });
+      root.add(body, sensor);
     }
 
     root.scale.setScalar(1.14);
@@ -9267,6 +9312,176 @@ export class Game {
     });
   }
 
+  private getChapterElevenFruitWorldPosition(plant: ChapterElevenPlanting, fruit: ChapterElevenPickableFruit): Vector3 {
+    return plant.root.localToWorld(fruit.offset.clone());
+  }
+
+  private findChapterElevenAutoHarvesterTarget(harvester: ChapterElevenAutoHarvester): { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number; position: Vector3 } | null {
+    let closest: { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number; position: Vector3; distance: number } | null = null;
+    this.chapterElevenPlants.forEach((plant) => {
+      if (
+        plant.stage !== 'mature'
+        || !plant.pickableFruits
+        || !this.isChapterElevenPickableFruitCrop(plant.cropId)
+        || plant.x < harvester.patch.centerX - harvester.patch.halfWidth - 0.2
+        || plant.x > harvester.patch.centerX + harvester.patch.halfWidth + 0.2
+        || plant.z < harvester.patch.centerZ - harvester.patch.halfDepth - 0.2
+        || plant.z > harvester.patch.centerZ + harvester.patch.halfDepth + 0.2
+      ) {
+        return;
+      }
+
+      plant.pickableFruits.forEach((fruit, index) => {
+        if (!fruit.visible) {
+          return;
+        }
+
+        const position = this.getChapterElevenFruitWorldPosition(plant, fruit);
+        const distance = Math.hypot(position.x - harvester.root.position.x, position.z - harvester.root.position.z);
+        if (!closest || distance < closest.distance) {
+          closest = { plant, fruit, index, position, distance };
+        }
+      });
+    });
+
+    return closest;
+  }
+
+  private getChapterElevenAutoHarvesterTarget(harvester: ChapterElevenAutoHarvester): { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number; position: Vector3 } | null {
+    if (harvester.targetPlantId === null || harvester.targetFruitIndex === null) {
+      return null;
+    }
+
+    const plant = this.chapterElevenPlants.find((candidate) => candidate.id === harvester.targetPlantId);
+    const fruit = plant?.pickableFruits?.[harvester.targetFruitIndex] ?? null;
+    if (!plant || !fruit?.visible || plant.stage !== 'mature') {
+      return null;
+    }
+
+    return {
+      plant,
+      fruit,
+      index: harvester.targetFruitIndex,
+      position: this.getChapterElevenFruitWorldPosition(plant, fruit),
+    };
+  }
+
+  private moveChapterElevenAutoHarvesterToward(harvester: ChapterElevenAutoHarvester, target: Vector3, deltaSeconds: number): boolean {
+    const root = harvester.root;
+    const targetY = target.y;
+    const dx = target.x - root.position.x;
+    const dy = targetY - root.position.y;
+    const dz = target.z - root.position.z;
+    const distance = Math.hypot(dx, dy, dz);
+    if (distance <= 0.08) {
+      root.position.set(target.x, targetY, target.z);
+      harvester.x = root.position.x;
+      harvester.z = root.position.z;
+      return true;
+    }
+
+    const step = Math.min(distance, CHAPTER_ELEVEN_AUTO_HARVESTER_SPEED * deltaSeconds);
+    root.position.x += (dx / distance) * step;
+    root.position.y += (dy / distance) * step;
+    root.position.z += (dz / distance) * step;
+    root.rotation.y = Math.atan2(dx, dz);
+    harvester.x = root.position.x;
+    harvester.z = root.position.z;
+    return false;
+  }
+
+  private animateChapterElevenAutoHarvester(harvester: ChapterElevenAutoHarvester, deltaSeconds: number): void {
+    harvester.root.children.forEach((child) => {
+      if (child.name.includes('rotor')) {
+        child.rotation.y += deltaSeconds * 18;
+      }
+      if (child.name.includes('scissor blade')) {
+        child.rotation.z += Math.sin(this.elapsed * 24) * deltaSeconds * 0.9;
+      }
+    });
+    harvester.root.position.y += Math.sin(this.elapsed * 6.5 + harvester.root.id) * 0.002;
+  }
+
+  private collectChapterElevenAutoHarvesterFruit(harvester: ChapterElevenAutoHarvester): void {
+    const target = this.getChapterElevenAutoHarvesterTarget(harvester);
+    if (!target) {
+      harvester.state = 'idle';
+      harvester.targetPlantId = null;
+      harvester.targetFruitIndex = null;
+      return;
+    }
+
+    target.fruit.visible = false;
+    target.fruit.regrowTimer = target.fruit.regrowSeconds;
+    const cropId: ChapterElevenCropId = target.fruit.golden && target.fruit.goldenCropId ? target.fruit.goldenCropId : target.fruit.cropId;
+    this.addChapterElevenCropToInventory(cropId);
+    this.rebuildChapterElevenPlantVisual(target.plant);
+    harvester.cargoCropId = cropId;
+    harvester.state = 'to-pile';
+    harvester.targetPlantId = null;
+    harvester.targetFruitIndex = null;
+    this.syncHud();
+  }
+
+  private updateChapterElevenAutoHarvesters(deltaSeconds: number): void {
+    if (!this.chapterElevenActive || this.chapterElevenAutoHarvesters.length === 0) {
+      return;
+    }
+
+    const pileTarget = new Vector3(CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X, 1.2, CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z);
+    this.chapterElevenAutoHarvesters.forEach((harvester) => {
+      this.animateChapterElevenAutoHarvester(harvester, deltaSeconds);
+      if (harvester.state === 'idle') {
+        const target = this.findChapterElevenAutoHarvesterTarget(harvester);
+        if (!target) {
+          const home = new Vector3(harvester.x, 1.35, harvester.z);
+          this.moveChapterElevenAutoHarvesterToward(harvester, home, deltaSeconds);
+          return;
+        }
+
+        harvester.targetPlantId = target.plant.id;
+        harvester.targetFruitIndex = target.index;
+        harvester.state = 'to-target';
+      }
+
+      if (harvester.state === 'to-target') {
+        const target = this.getChapterElevenAutoHarvesterTarget(harvester);
+        if (!target) {
+          harvester.state = 'idle';
+          harvester.targetPlantId = null;
+          harvester.targetFruitIndex = null;
+          return;
+        }
+
+        const hoverTarget = target.position.clone();
+        hoverTarget.y += 0.34;
+        if (this.moveChapterElevenAutoHarvesterToward(harvester, hoverTarget, deltaSeconds)) {
+          harvester.state = 'cutting';
+          harvester.cutTimer = 0.48;
+        }
+        return;
+      }
+
+      if (harvester.state === 'cutting') {
+        harvester.cutTimer -= deltaSeconds;
+        if (harvester.cutTimer <= 0) {
+          this.collectChapterElevenAutoHarvesterFruit(harvester);
+        }
+        return;
+      }
+
+      if (harvester.state === 'to-pile') {
+        if (this.moveChapterElevenAutoHarvesterToward(harvester, pileTarget, deltaSeconds)) {
+          if (harvester.cargoCropId) {
+            this.addChapterElevenAutoHarvestPileCrop(harvester.cargoCropId);
+          }
+          harvester.cargoCropId = null;
+          harvester.state = 'idle';
+        }
+      }
+    });
+  }
+
   private addChapterElevenCropToInventory(cropId: ChapterElevenCropId, count = 1): void {
     this.chapterElevenCropInventory.set(cropId, (this.chapterElevenCropInventory.get(cropId) ?? 0) + count);
   }
@@ -9543,9 +9758,17 @@ export class Game {
         sprinkler.root.parent.remove(sprinkler.root);
       }
     });
+    this.chapterElevenAutoHarvesters.forEach((harvester) => {
+      if (harvester.root.parent) {
+        harvester.root.parent.remove(harvester.root);
+      }
+    });
     this.chapterElevenPlants.length = 0;
     this.chapterElevenVineSticks.length = 0;
     this.chapterElevenSprinklers.length = 0;
+    this.chapterElevenAutoHarvesters.length = 0;
+    this.chapterElevenAutoHarvestPileRoot.clear();
+    this.chapterElevenAutoHarvestPileRoot.visible = false;
     this.chapterElevenPlacedPetEggs.length = 0;
     this.chapterElevenPets.length = 0;
     this.chapterElevenCropInventory.clear();
@@ -9919,6 +10142,97 @@ export class Game {
     return root;
   }
 
+  private createChapterElevenAutoHarvesterWorldModel(): Group {
+    const root = new Group();
+    root.name = 'Chapter 11 auto harvester drone';
+    const bodyMaterial = new MeshStandardMaterial({ color: 0x2f3d46, roughness: 0.46, metalness: 0.34 });
+    const darkMaterial = new MeshStandardMaterial({ color: 0x171d22, roughness: 0.44, metalness: 0.24 });
+    const bladeMaterial = new MeshStandardMaterial({ color: 0xc9d4d8, roughness: 0.34, metalness: 0.58 });
+    const lightMaterial = new MeshStandardMaterial({ color: 0x8ce2ff, roughness: 0.24, emissive: 0x1b6f92, emissiveIntensity: 0.55 });
+    const body = new Mesh(new BoxGeometry(0.52, 0.18, 0.34), bodyMaterial);
+    body.name = 'Auto harvester drone metal body';
+    body.castShadow = true;
+    const sensor = new Mesh(new SphereGeometry(0.075, 14, 8), lightMaterial);
+    sensor.name = 'Auto harvester glowing front sensor';
+    sensor.position.set(0.31, 0, 0);
+    const cargo = new Mesh(new BoxGeometry(0.22, 0.08, 0.2), new MeshStandardMaterial({ color: 0x6a4c2d, roughness: 0.82 }));
+    cargo.name = 'Auto harvester tiny fruit basket';
+    cargo.position.set(-0.04, -0.18, 0);
+    root.add(body, sensor, cargo);
+
+    [-1, 1].forEach((xSide) => {
+      [-1, 1].forEach((zSide) => {
+        const arm = new Mesh(new BoxGeometry(0.38, 0.035, 0.035), bodyMaterial);
+        arm.name = 'Auto harvester rotor support arm';
+        arm.position.set(xSide * 0.28, 0.02, zSide * 0.18);
+        arm.rotation.y = zSide * 0.28;
+        const rotor = new Mesh(new CylinderGeometry(0.18, 0.18, 0.025, 20), darkMaterial);
+        rotor.name = 'Auto harvester spinning rotor';
+        rotor.position.set(xSide * 0.5, 0.04, zSide * 0.32);
+        rotor.scale.set(1.5, 0.18, 0.42);
+        root.add(arm, rotor);
+      });
+    });
+
+    [-1, 1].forEach((side) => {
+      const scissorArm = new Mesh(new CylinderGeometry(0.015, 0.018, 0.36, 8), darkMaterial);
+      scissorArm.name = 'Auto harvester hanging scissor arm';
+      scissorArm.position.set(0.03, -0.28, side * 0.075);
+      const bladeA = new Mesh(new BoxGeometry(0.02, 0.26, 0.035), bladeMaterial);
+      bladeA.name = 'Auto harvester scissor blade';
+      bladeA.position.set(0.07, -0.48, side * 0.075);
+      bladeA.rotation.z = side * 0.38;
+      const bladeB = bladeA.clone();
+      bladeB.rotation.z = -side * 0.38;
+      bladeB.position.x = 0.0;
+      root.add(scissorArm, bladeA, bladeB);
+    });
+
+    root.position.y = 1.35;
+    return root;
+  }
+
+  private createChapterElevenPileCropMesh(cropId: ChapterElevenCropId): Mesh {
+    const golden = cropId.startsWith('golden-');
+    const baseCrop = (golden ? cropId.replace('golden-', '') : cropId) as ChapterElevenCropId;
+    const color = golden
+      ? 0xf1c84b
+      : baseCrop === 'strawberry' || baseCrop === 'tomato' || baseCrop === 'apple'
+        ? 0xd73a32
+        : baseCrop === 'raspberry'
+          ? 0xc93668
+          : baseCrop === 'blueberry'
+            ? 0x2b5ab4
+            : baseCrop === 'dragon-fruit' || baseCrop === 'cactus'
+              ? 0xd9367c
+              : baseCrop === 'peach'
+                ? 0xf2a36f
+                : baseCrop === 'pepper'
+                  ? 0xc62824
+                  : 0x1b0c26;
+    const mesh = new Mesh(
+      new SphereGeometry(baseCrop === 'pumpkin' ? 0.18 : 0.09, 14, 9),
+      new MeshStandardMaterial({ color, roughness: golden ? 0.42 : 0.64, metalness: golden ? 0.22 : 0.02 }),
+    );
+    mesh.name = `Chapter 11 auto harvester pile ${this.getChapterElevenCropLabel(cropId)}`;
+    mesh.castShadow = true;
+    return mesh;
+  }
+
+  private addChapterElevenAutoHarvestPileCrop(cropId: ChapterElevenCropId): void {
+    this.chapterElevenAutoHarvestPileRoot.visible = true;
+    while (this.chapterElevenAutoHarvestPileRoot.children.length >= 36) {
+      this.chapterElevenAutoHarvestPileRoot.remove(this.chapterElevenAutoHarvestPileRoot.children[0]);
+    }
+    const mesh = this.createChapterElevenPileCropMesh(cropId);
+    const index = this.chapterElevenAutoHarvestPileRoot.children.length;
+    const angle = index * 2.399;
+    const radius = 0.18 + Math.floor(index / 8) * 0.2;
+    mesh.position.set(Math.cos(angle) * radius, 0.08 + Math.floor(index / 16) * 0.08, Math.sin(angle) * radius);
+    mesh.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
+    this.chapterElevenAutoHarvestPileRoot.add(mesh);
+  }
+
   private deleteChapterElevenPlant(plant: ChapterElevenPlanting): void {
     if (plant.root.parent) {
       plant.root.parent.remove(plant.root);
@@ -10022,6 +10336,41 @@ export class Game {
     return true;
   }
 
+  private placeChapterElevenAutoHarvester(point: Vector3): boolean {
+    if (this.chapterElevenSelectedEquipmentId !== 'auto-harvester' || (this.chapterElevenEquipmentInventory.get('auto-harvester') ?? 0) <= 0) {
+      return false;
+    }
+
+    const patch = this.getChapterElevenDirtPatchAt(point);
+    if (!patch) {
+      this.pushStatus('Place Auto Harvesters inside a dirt patch.', 2.2);
+      return true;
+    }
+
+    const root = this.createChapterElevenAutoHarvesterWorldModel();
+    root.position.set(
+      MathUtils.clamp(point.x, patch.centerX - patch.halfWidth + 0.85, patch.centerX + patch.halfWidth - 0.85),
+      1.35,
+      MathUtils.clamp(point.z, patch.centerZ - patch.halfDepth + 0.85, patch.centerZ + patch.halfDepth - 0.85),
+    );
+    this.chapterEleven.root.add(root);
+    this.chapterElevenAutoHarvesters.push({
+      root,
+      x: root.position.x,
+      z: root.position.z,
+      patch: { ...patch },
+      state: 'idle',
+      targetPlantId: null,
+      targetFruitIndex: null,
+      cargoCropId: null,
+      cutTimer: 0,
+    });
+    this.consumeChapterElevenEquipment('auto-harvester');
+    this.pushStatus('Auto Harvester placed. It will fly to ripe bush fruit and pile it near your farm sign.', 2.8);
+    this.syncHud();
+    return true;
+  }
+
   private useChapterElevenEquipment(point: Vector3): boolean {
     const equipmentId = this.chapterElevenSelectedEquipmentId;
     if (!equipmentId || (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) <= 0) {
@@ -10030,6 +10379,10 @@ export class Game {
 
     if (equipmentId === 'sprinkler') {
       return this.placeChapterElevenSprinkler(point);
+    }
+
+    if (equipmentId === 'auto-harvester') {
+      return this.placeChapterElevenAutoHarvester(point);
     }
 
     const targetPlant = this.findChapterElevenTargetPlant(point);
@@ -23295,6 +23648,9 @@ export class Game {
         }
         if (this.chapterElevenSelectedEquipmentId === 'sprinkler') {
           return 'Left click or press E to place the Sprinkler in this dirt patch.';
+        }
+        if (this.chapterElevenSelectedEquipmentId === 'auto-harvester') {
+          return 'Left click or press E to place the Auto Harvester drone in this dirt patch.';
         }
         if (this.chapterElevenSelectedEquipmentId === 'hoe') {
           return 'Aim at a plant and left click or press E to dig it up.';

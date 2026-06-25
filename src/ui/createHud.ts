@@ -192,7 +192,8 @@ export type ChapterElevenEquipmentId =
   | 'hoe'
   | 'water-bucket'
   | 'sprinkler'
-  | 'fertilizer';
+  | 'fertilizer'
+  | 'auto-harvester';
 
 export interface ChapterSevenGrandpaTradeView {
   id: ChapterSevenGrandpaTradeId;
