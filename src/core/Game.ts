@@ -63,7 +63,13 @@ import { createChapterSeven, type ChapterSevenData } from '../scene/createChapte
 import { createChapterEight, type ChapterEightData } from '../scene/createChapterEight';
 import { createChapterNine, type ChapterNineData, type ChapterNineJumpscareEvent } from '../scene/createChapterNine';
 import { createChapterTen, type ChapterTenData } from '../scene/createChapterTen';
-import { createChapterEleven, type ChapterElevenData, type ChapterElevenDirtPatch } from '../scene/createChapterEleven';
+import {
+  createChapterEleven,
+  type ChapterElevenBiomePortal,
+  type ChapterElevenData,
+  type ChapterElevenDirtPatch,
+  type ChapterElevenSpecialStall,
+} from '../scene/createChapterEleven';
 import { createChapterTwelve, type ChapterTwelveData, type ChapterTwelveEventCue } from '../scene/createChapterTwelve';
 import {
   createZombieMode,
@@ -11342,6 +11348,52 @@ export class Game {
     ) <= CHAPTER_ELEVEN_PET_SHOP_RANGE;
   }
 
+  private getNearbyChapterElevenBiomePortal(): { portal: ChapterElevenBiomePortal; side: 'garden' | 'biome' } | null {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    for (const portal of this.chapterEleven.biomePortals) {
+      if (Math.hypot(playerPosition.x - portal.position.x, playerPosition.z - portal.position.z) <= portal.range) {
+        return { portal, side: 'garden' };
+      }
+      if (Math.hypot(playerPosition.x - portal.targetPosition.x, playerPosition.z - portal.targetPosition.z) <= portal.range) {
+        return { portal, side: 'biome' };
+      }
+    }
+
+    return null;
+  }
+
+  private getNearbyChapterElevenSpecialStall(): ChapterElevenSpecialStall | null {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    return this.chapterEleven.specialStalls.find((stall) => (
+      Math.hypot(playerPosition.x - stall.position.x, playerPosition.z - stall.position.z) <= stall.range
+    )) ?? null;
+  }
+
+  private useChapterElevenBiomePortal(): boolean {
+    const nearbyPortal = this.getNearbyChapterElevenBiomePortal();
+    if (!nearbyPortal) {
+      return false;
+    }
+
+    const destination = nearbyPortal.side === 'garden'
+      ? nearbyPortal.portal.targetPosition
+      : nearbyPortal.portal.position;
+    this.player.teleport(destination);
+    this.pushStatus(nearbyPortal.side === 'garden'
+      ? `${nearbyPortal.portal.label} portal pulls you into the exclusive biome.`
+      : `${nearbyPortal.portal.label} return portal brings you back to the main garden.`, 3.0);
+    this.syncHud();
+    return true;
+  }
+
   private getChapterElevenEquipmentStandPosition(): { x: number; z: number; rotationY: number } {
     return this.chapterElevenTwoActive
       ? {
@@ -12803,6 +12855,17 @@ export class Game {
   };
 
   private handleChapterElevenInteract(): void {
+    if (this.useChapterElevenBiomePortal()) {
+      return;
+    }
+
+    const specialStall = this.getNearbyChapterElevenSpecialStall();
+    if (specialStall) {
+      this.pushStatus(`${specialStall.label} stall is set up on the outer path. Its full menu will open here.`, 2.8);
+      this.syncHud();
+      return;
+    }
+
     if (this.isNearChapterElevenTrader()) {
       this.chapterElevenTraderShopOpen = true;
       this.chapterElevenPetEggShopOpen = false;
@@ -25549,6 +25612,18 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
+      const nearbyPortal = this.getNearbyChapterElevenBiomePortal();
+      if (nearbyPortal) {
+        return nearbyPortal.side === 'garden'
+          ? `Press E to enter the ${nearbyPortal.portal.label} biome portal.`
+          : `Press E to return from ${nearbyPortal.portal.label} to the main garden.`;
+      }
+
+      const specialStall = this.getNearbyChapterElevenSpecialStall();
+      if (specialStall) {
+        return `Press E at the ${specialStall.label} stall.`;
+      }
+
       if (this.isNearChapterElevenSeedShop()) {
         return 'Press E at the Buy Seeds stand to buy seeds.';
       }

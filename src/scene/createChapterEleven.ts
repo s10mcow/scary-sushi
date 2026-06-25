@@ -6,6 +6,7 @@ import {
   Group,
   Mesh,
   MeshStandardMaterial,
+  Object3D,
   PlaneGeometry,
   SphereGeometry,
   Vector3,
@@ -14,12 +15,37 @@ import {
 import { GAME_CONFIG } from '../config/gameConfig';
 import type { CollisionBox } from '../types/world';
 
+export type ChapterElevenBiomePortalId =
+  | 'miskel-mushroom-forest'
+  | 'frozen-tundra'
+  | 'volcanic-valley'
+  | 'cholesterol-garden'
+  | 'dragon-jungle'
+  | 'rainbow-dimension';
+
+export interface ChapterElevenBiomePortal {
+  id: ChapterElevenBiomePortalId;
+  label: string;
+  position: Vector3;
+  targetPosition: Vector3;
+  range: number;
+}
+
+export interface ChapterElevenSpecialStall {
+  id: string;
+  label: string;
+  position: Vector3;
+  range: number;
+}
+
 export interface ChapterElevenData {
   root: Group;
   colliders: CollisionBox[];
   copyOnlyColliders: CollisionBox[];
   dirtPatches: ChapterElevenDirtPatch[];
   seedLifeDirtPatch: ChapterElevenDirtPatch;
+  biomePortals: ChapterElevenBiomePortal[];
+  specialStalls: ChapterElevenSpecialStall[];
   equipmentStand: Group;
   equipmentStandCollider: CollisionBox;
   fieldBounds: {
@@ -184,6 +210,10 @@ export function createChapterEleven(): ChapterElevenData {
   const copyOnlyColliders: CollisionBox[] = [];
   const dirtPatches: ChapterElevenDirtPatch[] = [];
   const dirtPatchGroups: Group[] = [];
+  const seedLifeOnlyGroups: Object3D[] = [];
+  const portalDiscs: Mesh[] = [];
+  const biomePortals: ChapterElevenBiomePortal[] = [];
+  const specialStalls: ChapterElevenSpecialStall[] = [];
   let seedLifeDirtPatchGroup: Group | null = null;
 
   const grass = new Mesh(new BoxGeometry(FIELD_WIDTH, 0.12, FIELD_DEPTH), grassMaterial);
@@ -447,6 +477,27 @@ export function createChapterEleven(): ChapterElevenData {
     addBox(targetStand, `Chapter 11 ${label.toLowerCase()} sign left post`, [0.08, 0.68, 0.08], [1.46, 2.92, -1.26], standDarkWoodMaterial);
     addBox(targetStand, `Chapter 11 ${label.toLowerCase()} sign right post`, [0.08, 0.68, 0.08], [1.46, 2.92, 1.26], standDarkWoodMaterial);
   };
+
+  const addSeedLifeStall = (label: string, x: number, z: number, rotationY: number): void => {
+    const stall = stand.clone(true);
+    stall.name = `Seed Life ${label} outer stall`;
+    stall.children
+      .filter((child) => child.name.toLowerCase().includes('sell'))
+      .forEach((child) => stall.remove(child));
+    stall.position.set(x, 0, z);
+    stall.rotation.y = rotationY;
+    addStandLabel(stall, label);
+    root.add(stall);
+    seedLifeOnlyGroups.push(stall);
+    copyOnlyColliders.push({ centerX: x, centerZ: z, halfWidth: 1.75, halfDepth: 3.1 });
+    specialStalls.push({
+      id: label.toLowerCase().replace(/\s+/g, '-'),
+      label,
+      position: new Vector3(x, GAME_CONFIG.player.height, z),
+      range: 5.25,
+    });
+  };
+
   const petEggsStand = stand.clone(true);
   petEggsStand.name = 'Chapter 11 pet eggs old fashioned garden stand';
   petEggsStand.position.set(-2.61, 0, 52.33);
@@ -595,6 +646,104 @@ export function createChapterEleven(): ChapterElevenData {
   };
   addGroundSign('My Farm', -35.18, -20.16);
 
+  const portalMaterial = new MeshStandardMaterial({
+    color: 0x7bd6ff,
+    emissive: 0x1f75ff,
+    emissiveIntensity: 1.15,
+    roughness: 0.22,
+    transparent: true,
+    opacity: 0.7,
+    side: DoubleSide,
+  });
+  const portalGoldMaterial = new MeshStandardMaterial({
+    color: 0xf7d46a,
+    emissive: 0xa665ff,
+    emissiveIntensity: 0.75,
+    roughness: 0.42,
+  });
+  const biomeMaterials = {
+    mushroom: new MeshStandardMaterial({ color: 0x28452d, roughness: 0.94 }),
+    frozen: new MeshStandardMaterial({ color: 0xd8f0ff, roughness: 0.56 }),
+    volcanic: new MeshStandardMaterial({ color: 0x3d241e, roughness: 0.88, emissive: 0x3a0700, emissiveIntensity: 0.18 }),
+    cosmic: new MeshStandardMaterial({ color: 0x2d2148, roughness: 0.76, emissive: 0x25135f, emissiveIntensity: 0.2 }),
+    jungle: new MeshStandardMaterial({ color: 0x265a2c, roughness: 0.92 }),
+    rainbow: new MeshStandardMaterial({ color: 0xb7d9ff, roughness: 0.68 }),
+  };
+
+  const addPortalPair = (
+    id: ChapterElevenBiomePortalId,
+    label: string,
+    gateX: number,
+    gateZ: number,
+    targetX: number,
+    targetZ: number,
+    platformMaterial: MeshStandardMaterial,
+  ): void => {
+    biomePortals.push({
+      id,
+      label,
+      position: new Vector3(gateX, GAME_CONFIG.player.height, gateZ),
+      targetPosition: new Vector3(targetX, GAME_CONFIG.player.height, targetZ),
+      range: 5.2,
+    });
+
+    const createPortal = (x: number, z: number, nameSuffix: string): Group => {
+      const portalRoot = new Group();
+      portalRoot.name = `Seed Life ${label} ${nameSuffix} portal`;
+      portalRoot.position.set(x, 0, z);
+      addBox(portalRoot, `${label} portal left gold post`, [0.28, 3.2, 0.28], [-1.45, 1.6, 0], portalGoldMaterial);
+      addBox(portalRoot, `${label} portal right gold post`, [0.28, 3.2, 0.28], [1.45, 1.6, 0], portalGoldMaterial);
+      addBox(portalRoot, `${label} portal top gold beam`, [3.15, 0.3, 0.3], [0, 3.05, 0], portalGoldMaterial);
+      const disc = new Mesh(new PlaneGeometry(2.25, 2.55), portalMaterial.clone());
+      disc.name = `${label} glowing portal disc`;
+      disc.position.set(0, 1.58, 0.04);
+      disc.castShadow = true;
+      portalRoot.add(disc);
+      portalDiscs.push(disc);
+      const sign = new Mesh(new PlaneGeometry(3.4, 0.78), createStandLabelMaterial(label));
+      sign.name = `${label} portal label`;
+      sign.position.set(0, 3.64, 0.08);
+      portalRoot.add(sign);
+      root.add(portalRoot);
+      seedLifeOnlyGroups.push(portalRoot);
+      return portalRoot;
+    };
+
+    createPortal(gateX, gateZ, 'garden gate');
+    createPortal(targetX, targetZ, 'biome return');
+    const platform = new Mesh(new BoxGeometry(22, 0.08, 22), platformMaterial);
+    platform.name = `Seed Life ${label} biome landing platform`;
+    platform.position.set(targetX, -0.035, targetZ);
+    platform.receiveShadow = true;
+    root.add(platform);
+    seedLifeOnlyGroups.push(platform);
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (index / 8) * Math.PI * 2;
+      const marker = new Mesh(new SphereGeometry(0.18 + (index % 3) * 0.05, 12, 8), portalGoldMaterial);
+      marker.name = `${label} portal sparkle stone`;
+      marker.position.set(targetX + Math.cos(angle) * 8.2, 0.18, targetZ + Math.sin(angle) * 8.2);
+      marker.castShadow = true;
+      root.add(marker);
+      seedLifeOnlyGroups.push(marker);
+    }
+  };
+
+  addPortalPair('miskel-mushroom-forest', 'Miskel Forest', -48, -55.2, -142, -80, biomeMaterials.mushroom);
+  addPortalPair('frozen-tundra', 'Frozen Tundra', -16, -55.2, -142, 80, biomeMaterials.frozen);
+  addPortalPair('volcanic-valley', 'Volcanic Valley', 16, -55.2, 142, -80, biomeMaterials.volcanic);
+  addPortalPair('cholesterol-garden', 'Star Garden', 48, -55.2, 142, 80, biomeMaterials.cosmic);
+  addPortalPair('dragon-jungle', 'Dragon Jungle', -55.2, 0, 0, -150, biomeMaterials.jungle);
+  addPortalPair('rainbow-dimension', 'Rainbow Gate', 55.2, 0, 0, 150, biomeMaterials.rainbow);
+
+  addSeedLifeStall('Mutation', -47, 54.8, Math.PI / 2);
+  addSeedLifeStall('Decoration', -32, 54.8, Math.PI / 2);
+  addSeedLifeStall('Weather', -17, 54.8, Math.PI / 2);
+  addSeedLifeStall('Juice', 17, 54.8, Math.PI / 2);
+  addSeedLifeStall('Bakery', 32, 54.8, Math.PI / 2);
+  addSeedLifeStall('Wizard', 47, 54.8, Math.PI / 2);
+  addSeedLifeStall('Scientist', 54.8, 30, Math.PI);
+  addSeedLifeStall('Event Shop', 54.8, -30, Math.PI);
+
   const addBrickPath = (pathStart: Vector3, pathEnd: Vector3): void => {
     const pathVector = pathEnd.clone().sub(pathStart);
     const pathLength = Math.hypot(pathVector.x, pathVector.z);
@@ -673,6 +822,8 @@ export function createChapterEleven(): ChapterElevenData {
     copyOnlyColliders,
     dirtPatches,
     seedLifeDirtPatch,
+    biomePortals,
+    specialStalls,
     equipmentStand,
     equipmentStandCollider,
     fieldBounds: {
@@ -687,7 +838,11 @@ export function createChapterEleven(): ChapterElevenData {
       return FLOOR_Y + GAME_CONFIG.player.height;
     },
     update(_deltaSeconds: number, _playerPosition: Vector3): void {
-      // Empty garden plot for now.
+      portalDiscs.forEach((disc, index) => {
+        disc.rotation.z += _deltaSeconds * (0.45 + index * 0.015);
+        const material = disc.material as MeshStandardMaterial;
+        material.opacity = 0.58 + Math.sin(performance.now() * 0.004 + index) * 0.12;
+      });
     },
     setSeedLifeLayout(enabled: boolean): void {
       dirtPatchGroups.forEach((group) => {
@@ -696,6 +851,9 @@ export function createChapterEleven(): ChapterElevenData {
       if (seedLifeDirtPatchGroup) {
         seedLifeDirtPatchGroup.visible = enabled;
       }
+      seedLifeOnlyGroups.forEach((group) => {
+        group.visible = enabled;
+      });
     },
     reset(): void {
       root.visible = false;
