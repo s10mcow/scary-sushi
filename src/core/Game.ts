@@ -259,6 +259,9 @@ const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{
 }> = [
   { seedId: 'coconut-tree-seeds', count: 5, normalOnly: true },
   { seedId: 'dragon-fruit-seeds', count: 5, normalOnly: true },
+  { seedId: 'lemon-tree-seeds', count: 1, normalOnly: true },
+  { seedId: 'olive-tree-seeds', count: 1, normalOnly: true },
+  { seedId: 'banana-tree-seeds', count: 1, normalOnly: true },
 ];
 const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = -3.82;
@@ -9268,11 +9271,26 @@ export class Game {
     }
 
     if (baseCrop === 'carrot' || baseCrop === 'pepper') {
+      const leafMaterial = new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.82 });
       const crop = new Mesh(new ConeGeometry(baseCrop === 'pepper' ? 0.06 : 0.09, baseCrop === 'pepper' ? 0.32 : 0.46, 14), materialFor(baseCrop === 'pepper' ? 0xc62824 : 0xe87920));
       crop.position.set(-0.03, 0.12, -0.02);
       crop.rotation.set(Math.PI, 0, baseCrop === 'pepper' ? -0.35 : 0.15);
       crop.scale.x = baseCrop === 'pepper' ? 0.72 : 1;
       root.add(crop);
+      const topY = baseCrop === 'pepper' ? 0.25 : 0.35;
+      const stem = new Mesh(new CylinderGeometry(0.012, 0.018, 0.11, 7), leafMaterial);
+      stem.name = `Held ${baseCrop} green stem`;
+      stem.position.set(-0.03, topY, -0.02);
+      stem.rotation.z = baseCrop === 'pepper' ? -0.22 : 0.12;
+      root.add(stem);
+      for (let index = 0; index < (baseCrop === 'pepper' ? 4 : 7); index += 1) {
+        const angle = (index / (baseCrop === 'pepper' ? 4 : 7)) * Math.PI * 2;
+        const leaf = new Mesh(new BoxGeometry(0.028, baseCrop === 'pepper' ? 0.12 : 0.18, 0.014), leafMaterial);
+        leaf.name = `Held ${baseCrop} leafy top`;
+        leaf.position.set(-0.03 + Math.cos(angle) * 0.035, topY + 0.035, -0.02 + Math.sin(angle) * 0.035);
+        leaf.rotation.set(0.5, angle, index % 2 === 0 ? 0.36 : -0.36);
+        root.add(leaf);
+      }
       root.scale.setScalar(1.14);
       return root;
     }
@@ -9390,46 +9408,113 @@ export class Game {
       return root;
     }
 
+    if (baseCrop === 'tomato') {
+      const tomato = new Mesh(new SphereGeometry(0.15, 20, 14), materialFor(0xd7392e, 0.62));
+      tomato.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
+      tomato.position.set(-0.03, 0.12, -0.02);
+      tomato.scale.set(1.08, 0.92, 1.02);
+      root.add(tomato);
+      const leafMaterial = new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.84 });
+      for (let index = 0; index < 6; index += 1) {
+        const angle = (index / 6) * Math.PI * 2;
+        const leaf = new Mesh(new ConeGeometry(0.024, 0.12, 5), leafMaterial);
+        leaf.name = 'Held tomato green star leaf';
+        leaf.position.set(-0.03 + Math.cos(angle) * 0.045, 0.255, -0.02 + Math.sin(angle) * 0.045);
+        leaf.rotation.set(Math.PI / 2.15, angle, 0);
+        root.add(leaf);
+      }
+      const stem = new Mesh(new CylinderGeometry(0.012, 0.016, 0.09, 7), leafMaterial);
+      stem.name = 'Held tomato short green stem';
+      stem.position.set(-0.03, 0.3, -0.02);
+      stem.rotation.z = 0.16;
+      root.add(stem);
+      root.scale.setScalar(1.12);
+      return root;
+    }
+
+    if (baseCrop === 'apple' || baseCrop === 'peach' || baseCrop === 'lemon' || baseCrop === 'olive') {
+      const fruitColor = baseCrop === 'apple'
+        ? 0xd7392e
+        : baseCrop === 'peach'
+          ? 0xf2a36f
+          : baseCrop === 'lemon'
+            ? 0xe8d34a
+            : 0x76823c;
+      const fruit = new Mesh(new SphereGeometry(baseCrop === 'olive' ? 0.085 : 0.15, 20, 14), materialFor(fruitColor, baseCrop === 'lemon' ? 0.58 : 0.64));
+      fruit.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
+      fruit.position.set(-0.03, 0.12, -0.02);
+      fruit.scale.set(
+        baseCrop === 'lemon' ? 1.35 : baseCrop === 'olive' ? 1.08 : 1.02,
+        baseCrop === 'lemon' ? 0.82 : baseCrop === 'olive' ? 0.78 : baseCrop === 'peach' ? 0.95 : 0.98,
+        baseCrop === 'lemon' ? 0.9 : baseCrop === 'olive' ? 0.9 : 1,
+      );
+      root.add(fruit);
+      const stemMaterial = new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.82 });
+      const leafMaterial = new MeshStandardMaterial({ color: baseCrop === 'olive' ? 0x536234 : 0x2f7b34, roughness: 0.84 });
+      const stem = new Mesh(new CylinderGeometry(baseCrop === 'olive' ? 0.007 : 0.012, baseCrop === 'olive' ? 0.01 : 0.016, baseCrop === 'olive' ? 0.07 : 0.11, 7), stemMaterial);
+      stem.name = `Held ${baseCrop} little stem`;
+      stem.position.set(-0.03, baseCrop === 'olive' ? 0.19 : 0.255, -0.02);
+      stem.rotation.z = baseCrop === 'lemon' ? -0.18 : 0.24;
+      root.add(stem);
+      const leaf = new Mesh(new SphereGeometry(baseCrop === 'olive' ? 0.04 : 0.055, 10, 6), leafMaterial);
+      leaf.name = `Held ${baseCrop} small leaf`;
+      leaf.position.set(0.02, baseCrop === 'olive' ? 0.205 : 0.27, -0.02);
+      leaf.scale.set(1.55, 0.22, 0.72);
+      leaf.rotation.set(0.25, 0.2, -0.45);
+      root.add(leaf);
+      if (baseCrop === 'peach') {
+        const crease = new Mesh(new BoxGeometry(0.012, 0.22, 0.01), new MeshStandardMaterial({ color: 0xd37a5e, roughness: 0.72 }));
+        crease.name = 'Held peach soft center crease';
+        crease.position.set(0.002, 0.12, 0.105);
+        crease.rotation.z = -0.06;
+        root.add(crease);
+      }
+      root.scale.setScalar(baseCrop === 'olive' ? 1.04 : 1.12);
+      return root;
+    }
+
+    if (baseCrop === 'pumpkin') {
+      const pumpkin = new Mesh(new SphereGeometry(0.2, 24, 14), materialFor(0xd87522, 0.76));
+      pumpkin.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
+      pumpkin.position.set(-0.03, 0.11, -0.02);
+      pumpkin.scale.set(1.24, 0.82, 1.04);
+      root.add(pumpkin);
+      const ridgeMaterial = new MeshStandardMaterial({ color: golden ? 0x8f6818 : 0xa64f17, roughness: 0.8 });
+      for (let index = 0; index < 6; index += 1) {
+        const ridge = new Mesh(new BoxGeometry(0.012, 0.26, 0.012), ridgeMaterial);
+        ridge.name = 'Held pumpkin raised groove';
+        ridge.position.copy(pumpkin.position).add(new Vector3(Math.cos(index * Math.PI / 3) * 0.13, 0, Math.sin(index * Math.PI / 3) * 0.08));
+        ridge.rotation.set(0.18, index * Math.PI / 3, 0);
+        root.add(ridge);
+      }
+      const stem = new Mesh(new CylinderGeometry(0.026, 0.04, 0.13, 7), new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.84 }));
+      stem.name = 'Held pumpkin thick green stem';
+      stem.position.set(-0.03, 0.29, -0.02);
+      stem.rotation.z = 0.22;
+      root.add(stem);
+      root.scale.setScalar(1.12);
+      return root;
+    }
+
     const color = baseCrop === 'blackberry'
       ? 0x1b0c26
       : baseCrop === 'blueberry'
         ? 0x2b5ab4
         : baseCrop === 'raspberry'
           ? 0xc93668
-          : baseCrop === 'tomato' || baseCrop === 'apple'
-            ? 0xd7392e
-            : baseCrop === 'pumpkin'
-              ? 0xd87522
-              : baseCrop === 'dragon-fruit'
-                ? 0xd9367c
-                : baseCrop === 'vine-fruit'
-                  ? 0x6d42bd
-                  : baseCrop === 'cactus'
-                    ? 0xe45b76
-                    : baseCrop === 'olive'
-                      ? 0x76823c
-                      : baseCrop === 'lemon'
-                        ? 0xe8d34a
-                        : baseCrop === 'peach'
-                          ? 0xf2a36f
-                          : 0xc6a16f;
-    const radius = baseCrop === 'pumpkin' || baseCrop === 'nut'
+          : baseCrop === 'dragon-fruit'
+            ? 0xd9367c
+            : baseCrop === 'vine-fruit'
+              ? 0x6d42bd
+              : baseCrop === 'cactus'
+                ? 0xe45b76
+                : 0xc6a16f;
+    const radius = baseCrop === 'nut'
       ? 0.2
-      : baseCrop === 'olive'
-        ? 0.075
-        : 0.11;
+      : 0.11;
     const crop = new Mesh(new SphereGeometry(radius, 18, 12), materialFor(color));
     crop.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
     crop.position.set(-0.03, 0.1, -0.02);
-    if (baseCrop === 'pumpkin') {
-      crop.scale.set(1.24, 0.82, 1.04);
-    } else if (baseCrop === 'peach') {
-      crop.scale.set(1.05, 0.94, 1);
-    } else if (baseCrop === 'lemon') {
-      crop.scale.set(1.24, 0.82, 0.88);
-    } else if (baseCrop === 'olive') {
-      crop.scale.set(1.08, 0.78, 0.9);
-    }
     root.add(crop);
     root.scale.setScalar(1.12);
     return root;
