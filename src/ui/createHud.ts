@@ -186,6 +186,7 @@ export type ChapterElevenSeedId =
   | 'peach-seeds'
   | 'pineapple-seeds'
   | 'apple-tree-seeds'
+  | 'coconut-tree-seeds'
   | 'tomato-seeds'
   | 'pepper-seeds'
   | 'dragon-fruit-seeds'

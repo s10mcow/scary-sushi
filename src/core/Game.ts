@@ -302,6 +302,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 300, section: 'expensive', maxStock: 2 },
   { id: 'pineapple-seeds', label: 'Pineapple seeds', singularLabel: 'Pineapple seed', cost: 250, section: 'expensive', maxStock: 2, normalOnly: true },
   { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 350, section: 'expensive', maxStock: 2 },
+  { id: 'coconut-tree-seeds', label: 'Coconut tree seeds', singularLabel: 'Coconut tree seed', cost: 600, section: 'expensive', maxStock: 1, normalOnly: true },
   { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 350, section: 'expensive', maxStock: 3 },
   { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 650, section: 'expensive', maxStock: 1 },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
@@ -326,6 +327,7 @@ type ChapterElevenCropId =
   | 'golden-peach'
   | 'pineapple'
   | 'apple'
+  | 'coconut'
   | 'tomato'
   | 'pepper'
   | 'dragon-fruit'
@@ -339,6 +341,7 @@ type ChapterElevenCropId =
   | 'golden-blueberry'
   | 'golden-raspberry'
   | 'golden-apple'
+  | 'golden-coconut'
   | 'golden-pineapple'
   | 'golden-tomato'
   | 'golden-pepper'
@@ -574,6 +577,16 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     babySeconds: 18,
     matureSeconds: 66,
     regrows: false,
+  },
+  'coconut-tree-seeds': {
+    seedId: 'coconut-tree-seeds',
+    cropId: 'coconut',
+    label: 'Coconut',
+    pluralLabel: 'Coconuts',
+    sellValue: 400,
+    babySeconds: 22,
+    matureSeconds: 78,
+    regrows: true,
   },
   'tomato-seeds': {
     seedId: 'tomato-seeds',
@@ -8292,6 +8305,8 @@ export class Game {
         return 'golden-pineapple';
       case 'apple':
         return 'golden-apple';
+      case 'coconut':
+        return 'golden-coconut';
       case 'tomato':
         return 'golden-tomato';
       case 'pepper':
@@ -8449,6 +8464,8 @@ export class Game {
                 ? '#f2a36f'
                 : seedId === 'apple-tree-seeds'
                   ? '#d84435'
+                  : seedId === 'coconut-tree-seeds'
+                    ? '#3a2a1f'
                   : seedId === 'tomato-seeds'
                     ? '#c83d30'
                   : seedId === 'pepper-seeds'
@@ -8605,6 +8622,24 @@ export class Game {
         root.add(leaf);
       }
       root.scale.setScalar(1.14);
+      return root;
+    }
+
+    if (baseCrop === 'coconut') {
+      const coconut = new Mesh(new SphereGeometry(0.18, 20, 14), materialFor(0x14100d, 0.86));
+      coconut.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
+      coconut.position.set(-0.03, 0.11, -0.02);
+      coconut.scale.set(1.12, 0.9, 1);
+      root.add(coconut);
+      const holeMaterial = new MeshStandardMaterial({ color: 0x050403, roughness: 0.9 });
+      [[0.02, 0.12, -0.07], [-0.07, 0.1, 0.03], [0.07, 0.095, 0.04]].forEach(([x, y, z]) => {
+        const hole = new Mesh(new SphereGeometry(0.024, 8, 6), holeMaterial);
+        hole.name = 'Held coconut three top hole';
+        hole.position.set(-0.03 + x, 0.11 + y, -0.02 + z);
+        hole.scale.set(1, 0.35, 1);
+        root.add(hole);
+      });
+      root.scale.setScalar(1.16);
       return root;
     }
 
@@ -8825,11 +8860,15 @@ export class Game {
       stream.visible = wateringCanPouring;
     }
     this.chapterElevenHeldSeedAnchor.visible = true;
-    this.chapterElevenHeldSeedAnchor.position.set(0.43, -0.38 + bob, -0.66);
+    this.chapterElevenHeldSeedAnchor.position.set(
+      wateringCanPouring ? 0.5 : 0.43,
+      wateringCanPouring ? -0.48 + bob : -0.38 + bob,
+      wateringCanPouring ? -0.72 : -0.66,
+    );
     this.chapterElevenHeldSeedAnchor.rotation.set(
-      wateringCanPouring ? -0.5 + bob * 0.4 : -0.18 + bob * 0.4,
-      wateringCanPouring ? -0.46 : -0.34,
-      wateringCanPouring ? -0.14 : 0.12,
+      wateringCanPouring ? -1.0 + bob * 0.4 : -0.18 + bob * 0.4,
+      wateringCanPouring ? -0.58 : -0.34,
+      wateringCanPouring ? -0.34 : 0.12,
     );
   }
 
@@ -8896,6 +8935,7 @@ export class Game {
       || cropId === 'peach'
       || cropId === 'pineapple'
       || cropId === 'apple'
+      || cropId === 'coconut'
       || cropId === 'tomato'
       || cropId === 'pepper'
       || cropId === 'dragon-fruit'
@@ -9051,6 +9091,14 @@ export class Game {
       ];
     }
 
+    if (cropId === 'coconut') {
+      return [
+        makeFruit(new Vector3(0.16, 2.58, 0.12), 'Coconut', 8, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-coconut', 'Golden Coconut'),
+        makeFruit(new Vector3(-0.18, 2.5, -0.08), 'Coconut', 8, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-coconut', 'Golden Coconut'),
+        makeFruit(new Vector3(0.02, 2.72, -0.2), 'Coconut', 8, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-coconut', 'Golden Coconut'),
+      ];
+    }
+
     const blackberryOffsets = [
       new Vector3(0.3, 0.42, 0.05),
       new Vector3(-0.22, 0.48, -0.12),
@@ -9096,6 +9144,8 @@ export class Game {
       goldenPeach: new MeshStandardMaterial({ color: 0xf2ca4d, roughness: 0.42, metalness: 0.22 }),
       apple: new MeshStandardMaterial({ color: 0xd7392e, roughness: 0.58 }),
       appleDark: new MeshStandardMaterial({ color: 0x9f241e, roughness: 0.62 }),
+      coconut: new MeshStandardMaterial({ color: 0x14100d, roughness: 0.86 }),
+      coconutHole: new MeshStandardMaterial({ color: 0x050403, roughness: 0.9 }),
       genericGold: new MeshStandardMaterial({ color: 0xf1c84b, roughness: 0.42, metalness: 0.28 }),
       stem: new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }),
       strawberryLeaf: new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }),
@@ -9190,6 +9240,18 @@ export class Game {
         stem.rotation.z = 0.25;
         stem.castShadow = true;
         plant.root.add(stem);
+      } else if (fruitState.cropId === 'coconut') {
+        fruit = new Mesh(new SphereGeometry(0.145, 18, 12), fruitState.golden ? materials.genericGold : materials.coconut);
+        fruit.scale.set(1.12, 0.92, 1.02);
+        const holeOffsets = [[0.02, 0.11, -0.055], [-0.052, 0.09, 0.03], [0.065, 0.08, 0.038]] as const;
+        holeOffsets.forEach(([x, y, z]) => {
+          const hole = new Mesh(new SphereGeometry(0.018, 8, 6), materials.coconutHole);
+          hole.name = 'Chapter 11 coconut three top hole';
+          hole.position.copy(fruitState.offset).add(new Vector3(x, y, z));
+          hole.scale.set(1, 0.35, 1);
+          hole.castShadow = true;
+          plant.root.add(hole);
+        });
       } else if (fruitState.cropId === 'tomato') {
         fruit = new Mesh(new SphereGeometry(0.075, 14, 10), fruitState.golden ? materials.genericGold : materials.tomato);
         fruit.scale.set(1.08, 0.94, 1);
@@ -9269,6 +9331,8 @@ export class Game {
         return 0.9;
       case 'pineapple':
         return 0.68;
+      case 'coconut':
+        return 1.05;
       case 'peach':
       case 'apple':
         return 0.82;
@@ -9303,6 +9367,8 @@ export class Game {
         return 0.54;
       case 'pineapple':
         return 0.38;
+      case 'coconut':
+        return 0.5;
       case 'peach':
       case 'apple':
         return 0.42;
@@ -9717,6 +9783,62 @@ export class Game {
       return;
     }
 
+    if (config.cropId === 'coconut') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const trunkMaterial = new MeshStandardMaterial({ color: 0x7a5636, roughness: 0.92 });
+      const trunkBandMaterial = new MeshStandardMaterial({ color: 0x4f351f, roughness: 0.92 });
+      const palmLeafMaterial = new MeshStandardMaterial({ color: 0x2f8b3b, roughness: 0.84 });
+      const darkPalmLeafMaterial = new MeshStandardMaterial({ color: 0x22662d, roughness: 0.88 });
+      const trunk = new Mesh(new CylinderGeometry(0.13, 0.24, 2.7, 12), trunkMaterial);
+      trunk.name = 'Chapter 11 tall coconut palm trunk';
+      trunk.position.y = 1.38;
+      trunk.rotation.z = 0.06;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      plant.root.add(trunk);
+
+      for (let bandIndex = 0; bandIndex < 8; bandIndex += 1) {
+        const band = new Mesh(new TorusGeometry(0.15 + bandIndex * 0.006, 0.012, 6, 24), trunkBandMaterial);
+        band.name = 'Chapter 11 coconut palm rough trunk ring';
+        band.position.set(Math.sin(bandIndex * 0.7) * 0.035, 0.28 + bandIndex * 0.28, 0);
+        band.rotation.set(Math.PI / 2, 0, bandIndex * 0.2);
+        band.scale.set(1, 0.78, 1);
+        band.castShadow = true;
+        plant.root.add(band);
+      }
+
+      const crown = new Mesh(new SphereGeometry(0.2, 14, 10), darkPalmLeafMaterial);
+      crown.name = 'Chapter 11 coconut palm leafy crown center';
+      crown.position.set(0.12, 2.78, 0);
+      crown.scale.set(1.25, 0.64, 1.25);
+      crown.castShadow = true;
+      plant.root.add(crown);
+
+      for (let leafIndex = 0; leafIndex < 10; leafIndex += 1) {
+        const angle = (leafIndex / 10) * Math.PI * 2;
+        const leaf = new Mesh(new BoxGeometry(0.16, 0.055, 1.15), leafIndex % 2 === 0 ? palmLeafMaterial : darkPalmLeafMaterial);
+        leaf.name = 'Chapter 11 coconut palm long frond';
+        leaf.position.set(Math.cos(angle) * 0.38, 2.78 + (leafIndex % 2) * 0.04, Math.sin(angle) * 0.38);
+        leaf.rotation.set(0.34, angle, leafIndex % 2 === 0 ? 0.2 : -0.2);
+        leaf.castShadow = true;
+        leaf.receiveShadow = true;
+        plant.root.add(leaf);
+
+        const tipLeaf = new Mesh(new ConeGeometry(0.095, 0.34, 6), leafIndex % 2 === 0 ? palmLeafMaterial : darkPalmLeafMaterial);
+        tipLeaf.name = 'Chapter 11 coconut palm pointed frond tip';
+        tipLeaf.position.set(Math.cos(angle) * 0.78, 2.7, Math.sin(angle) * 0.78);
+        tipLeaf.rotation.set(Math.PI / 2.2, angle, 0);
+        tipLeaf.castShadow = true;
+        plant.root.add(tipLeaf);
+      }
+
+      this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
     if (config.cropId === 'peach' || config.cropId === 'apple') {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
@@ -9865,7 +9987,8 @@ export class Game {
       }
     }
 
-    const targetPlant = this.findChapterElevenTargetPlant(this.getChapterElevenAimGroundPoint());
+    const targetPlant = this.findChapterElevenTargetPlant(this.getChapterElevenAimGroundPoint())
+      ?? this.findNearbyChapterElevenWaterablePlant();
     if (!targetPlant) {
       return;
     }
@@ -11660,11 +11783,12 @@ export class Game {
         this.syncHud();
         return true;
       }
-      if (!targetPlant) {
+      const wateringTarget = targetPlant ?? this.findNearbyChapterElevenWaterablePlant();
+      if (!wateringTarget) {
         this.pushStatus('Aim the watering can at a planted crop and hold E to water it.', 2.1);
         return true;
       }
-      this.waterChapterElevenPlant(targetPlant, 0.45);
+      this.waterChapterElevenPlant(wateringTarget, 0.45);
       this.pushStatus(`Watering can started. Uses left after this pour: ${this.chapterElevenWateringCanUsesRemaining}.`, 1.8);
       this.syncHud();
       return true;
@@ -11759,6 +11883,21 @@ export class Game {
         this.getChapterElevenPlantFootprintRadius(plant.seedId) + 0.78,
       );
       if (distance < closestDistance && distance <= interactRange) {
+        closest = plant;
+        closestDistance = distance;
+      }
+    });
+    return closest;
+  }
+
+  private findNearbyChapterElevenWaterablePlant(): ChapterElevenPlanting | null {
+    const playerPosition = this.player.getPosition();
+    let closest: ChapterElevenPlanting | null = null;
+    let closestDistance = Infinity;
+    this.chapterElevenPlants.forEach((plant) => {
+      const reach = this.getChapterElevenPlantFootprintRadius(plant.seedId) + 2.2;
+      const distance = Math.hypot(plant.x - playerPosition.x, plant.z - playerPosition.z);
+      if (distance <= reach && distance < closestDistance) {
         closest = plant;
         closestDistance = distance;
       }
