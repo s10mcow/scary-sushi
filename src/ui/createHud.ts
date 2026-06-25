@@ -225,6 +225,7 @@ type ChapterElevenSeedShopSection =
   | 'event'
   | 'cheap'
   | 'expensive'
+  | 'rare-expensive'
   | 'eggs'
   | 'tools';
 
@@ -3031,6 +3032,7 @@ export function createHud(host: HTMLElement): HudController {
         tools: 'Tools',
         cheap: 'Cheap seeds',
         expensive: 'Expensive seeds',
+        'rare-expensive': 'Rare expensive seeds',
         eggs: 'Pet eggs',
       };
       items.forEach((item) => {

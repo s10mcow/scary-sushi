@@ -304,7 +304,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   label: string;
   singularLabel: string;
   cost: number;
-  section: 'common' | 'uncommon' | 'rare' | 'legendary' | 'secret' | 'event' | 'cheap' | 'expensive';
+  section: 'common' | 'uncommon' | 'rare' | 'legendary' | 'secret' | 'event' | 'cheap' | 'expensive' | 'rare-expensive';
   maxStock?: number;
   minStock?: number;
   stockChance?: number;
@@ -355,11 +355,11 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'pineapple-seeds', label: 'Pineapple seeds', singularLabel: 'Pineapple seed', cost: 250, section: 'expensive', maxStock: 2, normalOnly: true },
   { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 350, section: 'expensive', maxStock: 2 },
   { id: 'coconut-tree-seeds', label: 'Coconut tree seeds', singularLabel: 'Coconut tree seed', cost: 850, section: 'expensive', maxStock: 1, normalOnly: true },
-  { id: 'olive-tree-seeds', label: 'Olive tree seeds', singularLabel: 'Olive tree seed', cost: 1000, section: 'expensive', maxStock: 1, normalOnly: true },
-  { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 900, section: 'expensive', maxStock: 1, normalOnly: true },
-  { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 1000, section: 'expensive', maxStock: 1, normalOnly: true },
   { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 350, section: 'expensive', maxStock: 3 },
   { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 800, section: 'expensive', maxStock: 1 },
+  { id: 'olive-tree-seeds', label: 'Olive tree seeds', singularLabel: 'Olive tree seed', cost: 1000, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 900, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 1000, section: 'rare-expensive', maxStock: 1, normalOnly: true },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
   { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1, copyOnly: true },
   { id: 'corn-seeds', label: 'Western corn seeds', singularLabel: 'Western corn seed', cost: 750, section: 'expensive', maxStock: 2, copyOnly: true, traderOnly: true },
