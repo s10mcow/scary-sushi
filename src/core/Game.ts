@@ -9607,30 +9607,77 @@ export class Game {
       }
 
       const cactusMaterial = new MeshStandardMaterial({ color: 0x3d8f4a, roughness: 0.88 });
+      const ribMaterial = new MeshStandardMaterial({ color: 0x2f783f, roughness: 0.9 });
       const thornMaterial = new MeshStandardMaterial({ color: 0xf0dfbb, roughness: 0.74 });
+      const areoleMaterial = new MeshStandardMaterial({ color: 0xe8d6ab, roughness: 0.82 });
       const trunk = new Mesh(new CylinderGeometry(0.16, 0.22, 1.42, 12), cactusMaterial);
       trunk.name = 'Chapter 11 dragon fruit cactus main stalk';
       trunk.position.y = 0.75;
       trunk.castShadow = true;
       trunk.receiveShadow = true;
       plant.root.add(trunk);
-      [[-0.26, 0.84, -0.08, -0.56], [0.24, 1.02, 0.1, 0.52]].forEach(([x, y, z, rotationZ]) => {
+      const addNeedleCluster = (x: number, y: number, z: number, angle: number, scale = 1): void => {
+        const outward = new Vector3(Math.cos(angle), 0.08, Math.sin(angle)).normalize();
+        const areole = new Mesh(new SphereGeometry(0.018 * scale, 6, 4), areoleMaterial);
+        areole.name = 'Chapter 11 dragon fruit cactus pale needle pad';
+        areole.position.set(x, y, z);
+        areole.scale.set(1, 0.48, 0.82);
+        areole.castShadow = true;
+        plant.root.add(areole);
+
+        [-0.16, 0.16].forEach((tilt) => {
+          const needle = new Mesh(new ConeGeometry(0.0065 * scale, 0.115 * scale, 5), thornMaterial);
+          needle.name = 'Chapter 11 dragon fruit cactus sharp needle';
+          needle.position.set(
+            x + outward.x * 0.035 * scale,
+            y + tilt * 0.025 * scale,
+            z + outward.z * 0.035 * scale,
+          );
+          const needleDirection = new Vector3(outward.x, 0.05 + tilt * 0.3, outward.z).normalize();
+          needle.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), needleDirection);
+          needle.castShadow = true;
+          plant.root.add(needle);
+        });
+      };
+
+      for (let ribIndex = 0; ribIndex < 6; ribIndex += 1) {
+        const angle = (ribIndex / 6) * Math.PI * 2;
+        const rib = new Mesh(new CylinderGeometry(0.014, 0.019, 1.38, 6), ribMaterial);
+        rib.name = 'Chapter 11 dragon fruit cactus raised rib';
+        rib.position.set(Math.cos(angle) * 0.17, 0.76, Math.sin(angle) * 0.15);
+        rib.scale.set(0.72, 1, 0.72);
+        rib.castShadow = true;
+        plant.root.add(rib);
+      }
+
+      for (let level = 0; level < 7; level += 1) {
+        const y = 0.2 + level * 0.18;
+        for (let side = 0; side < 6; side += 1) {
+          if ((level + side) % 2 === 1) {
+            continue;
+          }
+          const angle = (side / 6) * Math.PI * 2 + level * 0.08;
+          addNeedleCluster(Math.cos(angle) * 0.185, y, Math.sin(angle) * 0.165, angle, 0.95);
+        }
+      }
+
+      [[-0.26, 0.84, -0.08, -0.56], [0.24, 1.02, 0.1, 0.52]].forEach(([x, y, z, rotationZ], armIndex) => {
         const arm = new Mesh(new CylinderGeometry(0.075, 0.1, 0.62, 10), cactusMaterial);
         arm.name = 'Chapter 11 dragon fruit cactus raised arm';
         arm.position.set(x, y, z);
         arm.rotation.z = rotationZ;
         arm.castShadow = true;
         plant.root.add(arm);
+
+        for (let needleIndex = 0; needleIndex < 5; needleIndex += 1) {
+          const side = needleIndex % 2 === 0 ? 1 : -1;
+          const needleX = x + (needleIndex - 2) * 0.045;
+          const needleY = y - 0.18 + needleIndex * 0.085;
+          const needleZ = z + side * 0.088;
+          const angle = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+          addNeedleCluster(needleX, needleY, needleZ, angle + armIndex * 0.18, 0.82);
+        }
       });
-      for (let index = 0; index < 18; index += 1) {
-        const angle = index * 1.17;
-        const thorn = new Mesh(new ConeGeometry(0.011, 0.07, 5), thornMaterial);
-        thorn.name = 'Chapter 11 dragon fruit cactus tiny thorn';
-        thorn.position.set(Math.cos(angle) * 0.17, 0.18 + (index % 7) * 0.16, Math.sin(angle) * 0.15);
-        thorn.rotation.set(Math.PI / 2, angle, 0);
-        thorn.castShadow = true;
-        plant.root.add(thorn);
-      }
       this.addChapterElevenPickableFruitMeshes(plant);
       return;
     }
