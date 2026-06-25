@@ -254,7 +254,7 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   { id: 'fertilizer', label: 'Fertilizer', cost: 40, description: 'Boost one crop faster than water.' },
   { id: 'auto-harvester', label: 'Auto Harvester', cost: 325, description: 'Place a drone that cuts ripe bush fruit and drops it by your farm sign.' },
 ];
-const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 4.25;
+const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_SPEED = 4.2;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X = -31.8;
