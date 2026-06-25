@@ -10589,25 +10589,45 @@ export class Game {
     this.chapterElevenCropInventory.set(cropId, (this.chapterElevenCropInventory.get(cropId) ?? 0) + count);
   }
 
-  private trampleChapterElevenPlantIntoInventory(plant: ChapterElevenPlanting): void {
+  private chapterElevenPlantHasTrampleProduce(plant: ChapterElevenPlanting): boolean {
     if (!plant.mature) {
-      return;
+      return false;
     }
 
     if (plant.pickableFruits && this.isChapterElevenPickableFruitCrop(plant.cropId)) {
+      return plant.pickableFruits.some((fruit) => fruit.visible);
+    }
+
+    return true;
+  }
+
+  private trampleChapterElevenProduceIntoInventory(plant: ChapterElevenPlanting): number {
+    if (!this.chapterElevenPlantHasTrampleProduce(plant)) {
+      return 0;
+    }
+
+    if (plant.pickableFruits && this.isChapterElevenPickableFruitCrop(plant.cropId)) {
+      let harvested = 0;
       plant.pickableFruits.forEach((fruit) => {
         if (!fruit.visible) {
           return;
         }
         const cropId = this.getChapterElevenHarvestCropId(fruit.cropId, fruit.golden, fruit.charged);
         this.addChapterElevenCropToInventory(cropId);
+        fruit.visible = false;
+        fruit.regrowTimer = fruit.regrowSeconds;
+        harvested += 1;
       });
-    } else {
-      this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId(plant.cropId, plant.golden, plant.charged));
+      if (harvested > 0) {
+        this.rebuildChapterElevenPlantVisual(plant);
+      }
+      return harvested;
     }
 
+    this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId(plant.cropId, plant.golden, plant.charged));
     this.chapterEleven.root.remove(plant.root);
     this.chapterElevenPlants.splice(this.chapterElevenPlants.indexOf(plant), 1);
+    return 1;
   }
 
   private hatchChapterElevenPetEgg(egg: ChapterElevenPlacedPetEgg): void {
@@ -10690,7 +10710,7 @@ export class Game {
 
     return this.chapterElevenPlants
       .filter((plant) => (
-        plant.mature
+        this.chapterElevenPlantHasTrampleProduce(plant)
         && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
       ))
       .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0] ?? null;
@@ -10743,8 +10763,10 @@ export class Game {
     if (pet.petType === 'cow') {
       const crop = this.findChapterElevenCowCropTarget(pet);
       if (crop) {
-        this.trampleChapterElevenPlantIntoInventory(crop);
-        this.pushStatus('Your cow trampled a grown crop into your inventory.', 2.4);
+        const harvested = this.trampleChapterElevenProduceIntoInventory(crop);
+        if (harvested > 0) {
+          this.pushStatus('Your cow trampled ripe food into your inventory.', 2.4);
+        }
       }
       return;
     }
@@ -10752,14 +10774,14 @@ export class Game {
     const radius = pet.petType === 'dinosaur' ? 1.15 : 0.72;
     const trampled = this.chapterElevenPlants
       .filter((plant) => (
-        plant.mature
+        this.chapterElevenPlantHasTrampleProduce(plant)
         && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
         && Math.hypot(plant.x - pet.x, plant.z - pet.z) <= radius
       ))
       .slice(0, pet.petType === 'dinosaur' ? 2 : 1);
-    trampled.forEach((plant) => this.trampleChapterElevenPlantIntoInventory(plant));
-    if (trampled.length > 0) {
-      this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} trampled crops into your inventory.`, 2.4);
+    const harvested = trampled.reduce((total, plant) => total + this.trampleChapterElevenProduceIntoInventory(plant), 0);
+    if (harvested > 0) {
+      this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} trampled ripe food into your inventory.`, 2.4);
     }
   }
 
