@@ -85,6 +85,12 @@ const carrotMaterial = new MeshStandardMaterial({ color: 0xe87920, roughness: 0.
 const carrotLeafMaterial = new MeshStandardMaterial({ color: 0x2f8b35, roughness: 0.82 });
 const petEggMaterial = new MeshStandardMaterial({ color: 0xf0a3c9, roughness: 0.62 });
 const petEggSpotMaterial = new MeshStandardMaterial({ color: 0x7a3ca8, roughness: 0.7 });
+const toolsMarkerMaterial = new MeshStandardMaterial({
+  color: 0xffd44a,
+  roughness: 0.42,
+  emissive: 0x8a5200,
+  emissiveIntensity: 0.45,
+});
 
 function createStandLabelMaterial(label: string): MeshStandardMaterial {
   const canvas = document.createElement('canvas');
@@ -447,6 +453,21 @@ export function createChapterEleven(): ChapterElevenData {
   addBox(equipmentStand, 'Chapter 11 tools stand blue bucket water top', [0.36, 0.035, 0.36], [1.08, 1.24, -0.08], new MeshStandardMaterial({ color: 0x66b5dc, roughness: 0.24, transparent: true, opacity: 0.72 }));
   addBox(equipmentStand, 'Chapter 11 tools stand small hoe handle', [0.64, 0.055, 0.055], [1.08, 1.2, 0.44], standDarkWoodMaterial).rotation.z = 0.32;
   addBox(equipmentStand, 'Chapter 11 tools stand small hoe blade', [0.08, 0.22, 0.2], [1.34, 1.3, 0.44], dirtFenceMaterial);
+  addBox(equipmentStand, 'Chapter 11 tools stand tall left locator post', [0.12, 2.6, 0.12], [1.42, 3.18, -1.48], standDarkWoodMaterial);
+  addBox(equipmentStand, 'Chapter 11 tools stand tall right locator post', [0.12, 2.6, 0.12], [1.42, 3.18, 1.48], standDarkWoodMaterial);
+  const bigToolsSign = new Mesh(new PlaneGeometry(4.2, 1.45), createStandLabelMaterial('Tools'));
+  bigToolsSign.name = 'Chapter 11 huge visible Tools stand sign';
+  bigToolsSign.position.set(1.48, 4.45, 0);
+  bigToolsSign.rotation.y = Math.PI / 2;
+  bigToolsSign.castShadow = true;
+  equipmentStand.add(bigToolsSign);
+  const markerArrow = new Mesh(new ConeGeometry(0.42, 0.85, 4), toolsMarkerMaterial);
+  markerArrow.name = 'Chapter 11 bright yellow Tools stand floating locator arrow';
+  markerArrow.position.set(1.48, 5.7, 0);
+  markerArrow.rotation.set(Math.PI, Math.PI / 4, 0);
+  markerArrow.castShadow = true;
+  equipmentStand.add(markerArrow);
+  addBox(equipmentStand, 'Chapter 11 tools stand bright yellow counter stripe', [0.12, 0.14, 2.65], [1.58, 1.1, 0], toolsMarkerMaterial);
   root.add(equipmentStand);
   addCollider(colliders, -3.82, -50.47, 3.02, 1.55);
 
