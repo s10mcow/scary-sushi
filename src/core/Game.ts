@@ -19350,7 +19350,7 @@ export class Game {
     if (this.chapterElevenActive) {
       return this.chapterElevenTwoActive
         ? [...this.chapterEleven.colliders, ...this.chapterEleven.copyOnlyColliders]
-        : this.chapterEleven.colliders;
+        : [...this.chapterEleven.colliders, ...this.chapterEleven.normalOnlyColliders];
     }
 
     if (this.chapterTwelveActive) {

@@ -4,6 +4,7 @@ import {
   ConeGeometry,
   DoubleSide,
   Group,
+  MathUtils,
   Mesh,
   MeshStandardMaterial,
   Object3D,
@@ -41,6 +42,7 @@ export interface ChapterElevenSpecialStall {
 export interface ChapterElevenData {
   root: Group;
   colliders: CollisionBox[];
+  normalOnlyColliders: CollisionBox[];
   copyOnlyColliders: CollisionBox[];
   dirtPatches: ChapterElevenDirtPatch[];
   seedLifeDirtPatch: ChapterElevenDirtPatch;
@@ -207,10 +209,12 @@ export function createChapterEleven(): ChapterElevenData {
   const root = new Group();
   root.name = 'Chapter 11: Grow a garden';
   const colliders: CollisionBox[] = [];
+  const normalOnlyColliders: CollisionBox[] = [];
   const copyOnlyColliders: CollisionBox[] = [];
   const dirtPatches: ChapterElevenDirtPatch[] = [];
   const dirtPatchGroups: Group[] = [];
   const seedLifeOnlyGroups: Object3D[] = [];
+  const normalOnlyGroups: Object3D[] = [];
   const portalDiscs: Mesh[] = [];
   const biomePortals: ChapterElevenBiomePortal[] = [];
   const specialStalls: ChapterElevenSpecialStall[] = [];
@@ -489,7 +493,13 @@ export function createChapterEleven(): ChapterElevenData {
     addStandLabel(stall, label);
     root.add(stall);
     seedLifeOnlyGroups.push(stall);
-    copyOnlyColliders.push({ centerX: x, centerZ: z, halfWidth: 1.75, halfDepth: 3.1 });
+    const sideways = Math.abs(Math.sin(rotationY)) > 0.65;
+    copyOnlyColliders.push({
+      centerX: x,
+      centerZ: z,
+      halfWidth: sideways ? 3.02 : 1.55,
+      halfDepth: sideways ? 1.55 : 3.02,
+    });
     specialStalls.push({
       id: label.toLowerCase().replace(/\s+/g, '-'),
       label,
@@ -671,6 +681,97 @@ export function createChapterEleven(): ChapterElevenData {
     jungle: new MeshStandardMaterial({ color: 0x265a2c, roughness: 0.92 }),
     rainbow: new MeshStandardMaterial({ color: 0xb7d9ff, roughness: 0.68 }),
   };
+  const seedLifeGateOpenings: Array<{ side: 'south' | 'west' | 'east'; center: number; width: number }> = [];
+
+  const getGateSide = (x: number, z: number): 'south' | 'west' | 'east' => {
+    if (Math.abs(x) > Math.abs(z)) {
+      return x < 0 ? 'west' : 'east';
+    }
+    return 'south';
+  };
+
+  const addSeedLifePortalPath = (label: string, portalX: number, portalZ: number, side: 'south' | 'west' | 'east'): void => {
+    const pathWidth = 5.8;
+    const pathThickness = 0.2;
+    const pathFenceHeight = 1.15;
+    const openingCenter = side === 'south' ? portalX : portalZ;
+    seedLifeGateOpenings.push({ side, center: openingCenter, width: pathWidth + 0.8 });
+
+    const edgeX = side === 'west' ? -halfWidth : side === 'east' ? halfWidth : portalX;
+    const edgeZ = side === 'south' ? -halfDepth : portalZ;
+    const pathCenterX = (edgeX + portalX) / 2;
+    const pathCenterZ = (edgeZ + portalZ) / 2;
+    const pathLength = Math.max(8, Math.hypot(portalX - edgeX, portalZ - edgeZ));
+    const pathGroup = new Group();
+    pathGroup.name = `Seed Life fenced path to ${label} portal`;
+
+    const path = new Mesh(
+      new BoxGeometry(side === 'south' ? pathWidth : pathLength, 0.035, side === 'south' ? pathLength : pathWidth),
+      pathDirtBaseMaterial,
+    );
+    path.name = `${label} tan path beyond garden gate`;
+    path.position.set(pathCenterX, 0.035, pathCenterZ);
+    path.receiveShadow = true;
+    pathGroup.add(path);
+
+    if (side === 'south') {
+      [-1, 1].forEach((direction) => {
+        const fence = new Mesh(new BoxGeometry(pathThickness, pathFenceHeight, pathLength + 1.2), fenceMaterial);
+        fence.name = `${label} portal path side fence`;
+        fence.position.set(portalX + direction * pathWidth / 2, pathFenceHeight / 2, pathCenterZ);
+        fence.castShadow = true;
+        fence.receiveShadow = true;
+        pathGroup.add(fence);
+        copyOnlyColliders.push({ centerX: fence.position.x, centerZ: fence.position.z, halfWidth: pathThickness * 0.6, halfDepth: pathLength / 2 + 0.6 });
+      });
+    } else {
+      [-1, 1].forEach((direction) => {
+        const fence = new Mesh(new BoxGeometry(pathLength + 1.2, pathFenceHeight, pathThickness), fenceMaterial);
+        fence.name = `${label} portal path side fence`;
+        fence.position.set(pathCenterX, pathFenceHeight / 2, portalZ + direction * pathWidth / 2);
+        fence.castShadow = true;
+        fence.receiveShadow = true;
+        pathGroup.add(fence);
+        copyOnlyColliders.push({ centerX: fence.position.x, centerZ: fence.position.z, halfWidth: pathLength / 2 + 0.6, halfDepth: pathThickness * 0.6 });
+      });
+    }
+
+    const gateRoot = new Group();
+    gateRoot.name = `${label} garden gate opening to portal path`;
+    gateRoot.position.set(edgeX, 0, edgeZ);
+    const gateBarSize: [number, number, number] = side === 'south' ? [pathWidth, 0.18, 0.18] : [0.18, 0.18, pathWidth];
+    const gatePostOffsetA = side === 'south'
+      ? new Vector3(-pathWidth / 2, 0.78, 0)
+      : new Vector3(0, 0.78, -pathWidth / 2);
+    const gatePostOffsetB = side === 'south'
+      ? new Vector3(pathWidth / 2, 0.78, 0)
+      : new Vector3(0, 0.78, pathWidth / 2);
+    [gatePostOffsetA, gatePostOffsetB].forEach((offset, index) => {
+      const post = new Mesh(new BoxGeometry(0.32, 1.56, 0.32), fenceMaterial);
+      post.name = `${label} portal path gate post ${index + 1}`;
+      post.position.copy(offset);
+      post.castShadow = true;
+      post.receiveShadow = true;
+      gateRoot.add(post);
+    });
+    const topRail = new Mesh(new BoxGeometry(gateBarSize[0], gateBarSize[1], gateBarSize[2]), fenceMaterial);
+    topRail.name = `${label} open gate top rail`;
+    topRail.position.y = 1.48;
+    topRail.castShadow = true;
+    topRail.receiveShadow = true;
+    gateRoot.add(topRail);
+    const openGate = new Mesh(new BoxGeometry(side === 'south' ? 2.1 : 0.18, 0.7, side === 'south' ? 0.18 : 2.1), dirtFenceMaterial);
+    openGate.name = `${label} unlocked gate swung open`;
+    openGate.position.set(side === 'south' ? -pathWidth / 2 - 0.55 : 0.55, 0.58, side === 'south' ? -0.55 : -pathWidth / 2 - 0.55);
+    openGate.rotation.y = side === 'south' ? -0.75 : 0.75;
+    openGate.castShadow = true;
+    openGate.receiveShadow = true;
+    gateRoot.add(openGate);
+    pathGroup.add(gateRoot);
+
+    root.add(pathGroup);
+    seedLifeOnlyGroups.push(pathGroup);
+  };
 
   const addPortalPair = (
     id: ChapterElevenBiomePortalId,
@@ -681,6 +782,9 @@ export function createChapterEleven(): ChapterElevenData {
     targetZ: number,
     platformMaterial: MeshStandardMaterial,
   ): void => {
+    const gateSide = getGateSide(gateX, gateZ);
+    addSeedLifePortalPath(label, gateX, gateZ, gateSide);
+
     biomePortals.push({
       id,
       label,
@@ -719,6 +823,39 @@ export function createChapterEleven(): ChapterElevenData {
     platform.receiveShadow = true;
     root.add(platform);
     seedLifeOnlyGroups.push(platform);
+    const realmFenceGroup = new Group();
+    realmFenceGroup.name = `Seed Life ${label} separate biome realm boundary`;
+    realmFenceGroup.position.set(targetX, 0, targetZ);
+    const realmFenceMaterial = platformMaterial.clone();
+    realmFenceMaterial.roughness = 0.86;
+    const realmNorthFence = new Mesh(new BoxGeometry(22.5, 1.25, 0.28), realmFenceMaterial);
+    realmNorthFence.name = `${label} realm north fence`;
+    realmNorthFence.position.set(0, 0.625, -11.25);
+    const realmSouthFence = realmNorthFence.clone();
+    realmSouthFence.name = `${label} realm south fence`;
+    realmSouthFence.position.z = 11.25;
+    const realmWestFence = new Mesh(new BoxGeometry(0.28, 1.25, 22.5), realmFenceMaterial);
+    realmWestFence.name = `${label} realm west fence`;
+    realmWestFence.position.set(-11.25, 0.625, 0);
+    const realmEastFence = realmWestFence.clone();
+    realmEastFence.name = `${label} realm east fence`;
+    realmEastFence.position.x = 11.25;
+    realmFenceGroup.add(realmNorthFence, realmSouthFence, realmWestFence, realmEastFence);
+    for (let postIndex = 0; postIndex < 4; postIndex += 1) {
+      const cornerX = postIndex < 2 ? -11.25 : 11.25;
+      const cornerZ = postIndex % 2 === 0 ? -11.25 : 11.25;
+      const post = new Mesh(new BoxGeometry(0.46, 1.7, 0.46), portalGoldMaterial);
+      post.name = `${label} realm gold corner post`;
+      post.position.set(cornerX, 0.85, cornerZ);
+      post.castShadow = true;
+      realmFenceGroup.add(post);
+    }
+    root.add(realmFenceGroup);
+    seedLifeOnlyGroups.push(realmFenceGroup);
+    copyOnlyColliders.push({ centerX: targetX, centerZ: targetZ - 11.25, halfWidth: 11.35, halfDepth: 0.18 });
+    copyOnlyColliders.push({ centerX: targetX, centerZ: targetZ + 11.25, halfWidth: 11.35, halfDepth: 0.18 });
+    copyOnlyColliders.push({ centerX: targetX - 11.25, centerZ: targetZ, halfWidth: 0.18, halfDepth: 11.35 });
+    copyOnlyColliders.push({ centerX: targetX + 11.25, centerZ: targetZ, halfWidth: 0.18, halfDepth: 11.35 });
     for (let index = 0; index < 8; index += 1) {
       const angle = (index / 8) * Math.PI * 2;
       const marker = new Mesh(new SphereGeometry(0.18 + (index % 3) * 0.05, 12, 8), portalGoldMaterial);
@@ -730,12 +867,12 @@ export function createChapterEleven(): ChapterElevenData {
     }
   };
 
-  addPortalPair('miskel-mushroom-forest', 'Miskel Forest', -48, -55.2, -142, -80, biomeMaterials.mushroom);
-  addPortalPair('frozen-tundra', 'Frozen Tundra', -16, -55.2, -142, 80, biomeMaterials.frozen);
-  addPortalPair('volcanic-valley', 'Volcanic Valley', 16, -55.2, 142, -80, biomeMaterials.volcanic);
-  addPortalPair('cholesterol-garden', 'Star Garden', 48, -55.2, 142, 80, biomeMaterials.cosmic);
-  addPortalPair('dragon-jungle', 'Dragon Jungle', -55.2, 0, 0, -150, biomeMaterials.jungle);
-  addPortalPair('rainbow-dimension', 'Rainbow Gate', 55.2, 0, 0, 150, biomeMaterials.rainbow);
+  addPortalPair('miskel-mushroom-forest', 'Miskel Forest', -48, -72, -142, -80, biomeMaterials.mushroom);
+  addPortalPair('frozen-tundra', 'Frozen Tundra', -16, -72, -142, 80, biomeMaterials.frozen);
+  addPortalPair('volcanic-valley', 'Volcanic Valley', 16, -72, 142, -80, biomeMaterials.volcanic);
+  addPortalPair('cholesterol-garden', 'Star Garden', 48, -72, 142, 80, biomeMaterials.cosmic);
+  addPortalPair('dragon-jungle', 'Dragon Jungle', -72, 0, 0, -150, biomeMaterials.jungle);
+  addPortalPair('rainbow-dimension', 'Rainbow Gate', 72, 0, 0, 150, biomeMaterials.rainbow);
 
   addSeedLifeStall('Mutation', -47, 54.8, Math.PI / 2);
   addSeedLifeStall('Decoration', -32, 54.8, Math.PI / 2);
@@ -791,6 +928,7 @@ export function createChapterEleven(): ChapterElevenData {
   eastFence.name = 'Chapter 11 east border fence';
   eastFence.position.x = halfWidth;
   root.add(northFence, southFence, westFence, eastFence);
+  normalOnlyGroups.push(northFence, southFence, westFence, eastFence);
 
   const postGeometry = new BoxGeometry(0.32, 1.55, 0.32);
   for (let i = -halfWidth; i <= halfWidth + 0.001; i += 2.5) {
@@ -800,6 +938,7 @@ export function createChapterEleven(): ChapterElevenData {
     const southPost = northPost.clone();
     southPost.position.z = halfDepth;
     root.add(northPost, southPost);
+    normalOnlyGroups.push(northPost, southPost);
   }
   for (let i = -halfDepth + 2.5; i <= halfDepth - 2.5 + 0.001; i += 2.5) {
     const westPost = new Mesh(postGeometry, fenceMaterial);
@@ -808,12 +947,80 @@ export function createChapterEleven(): ChapterElevenData {
     const eastPost = westPost.clone();
     eastPost.position.x = halfWidth;
     root.add(westPost, eastPost);
+    normalOnlyGroups.push(westPost, eastPost);
   }
 
-  addCollider(colliders, 0, -halfDepth, halfWidth + fenceThickness, fenceThickness);
-  addCollider(colliders, 0, halfDepth, halfWidth + fenceThickness, fenceThickness);
-  addCollider(colliders, -halfWidth, 0, fenceThickness, halfDepth + fenceThickness);
-  addCollider(colliders, halfWidth, 0, fenceThickness, halfDepth + fenceThickness);
+  const addSeedLifeBorderSegment = (
+    name: string,
+    centerX: number,
+    centerZ: number,
+    width: number,
+    depth: number,
+  ): void => {
+    if (width <= 0.4 || depth <= 0.4) {
+      return;
+    }
+    const segment = new Mesh(new BoxGeometry(width, fenceHeight, depth), fenceMaterial);
+    segment.name = name;
+    segment.position.set(centerX, fenceHeight / 2, centerZ);
+    segment.castShadow = true;
+    segment.receiveShadow = true;
+    root.add(segment);
+    seedLifeOnlyGroups.push(segment);
+    copyOnlyColliders.push({ centerX, centerZ, halfWidth: width / 2, halfDepth: depth / 2 });
+  };
+
+  const addSeedLifeHorizontalBorder = (name: string, z: number, openings: Array<{ center: number; width: number }>): void => {
+    const sorted = openings
+      .map((opening) => ({
+        start: MathUtils.clamp(opening.center - opening.width / 2, -halfWidth, halfWidth),
+        end: MathUtils.clamp(opening.center + opening.width / 2, -halfWidth, halfWidth),
+      }))
+      .sort((a, b) => a.start - b.start);
+    let cursor = -halfWidth;
+    sorted.forEach((opening, index) => {
+      if (opening.start > cursor) {
+        const length = opening.start - cursor;
+        addSeedLifeBorderSegment(`${name} Seed Life fence segment ${index + 1}`, cursor + length / 2, z, length, fenceThickness);
+      }
+      cursor = Math.max(cursor, opening.end);
+    });
+    if (cursor < halfWidth) {
+      const length = halfWidth - cursor;
+      addSeedLifeBorderSegment(`${name} Seed Life fence end segment`, cursor + length / 2, z, length, fenceThickness);
+    }
+  };
+
+  const addSeedLifeVerticalBorder = (name: string, x: number, openings: Array<{ center: number; width: number }>): void => {
+    const sorted = openings
+      .map((opening) => ({
+        start: MathUtils.clamp(opening.center - opening.width / 2, -halfDepth, halfDepth),
+        end: MathUtils.clamp(opening.center + opening.width / 2, -halfDepth, halfDepth),
+      }))
+      .sort((a, b) => a.start - b.start);
+    let cursor = -halfDepth;
+    sorted.forEach((opening, index) => {
+      if (opening.start > cursor) {
+        const length = opening.start - cursor;
+        addSeedLifeBorderSegment(`${name} Seed Life fence segment ${index + 1}`, x, cursor + length / 2, fenceThickness, length);
+      }
+      cursor = Math.max(cursor, opening.end);
+    });
+    if (cursor < halfDepth) {
+      const length = halfDepth - cursor;
+      addSeedLifeBorderSegment(`${name} Seed Life fence end segment`, x, cursor + length / 2, fenceThickness, length);
+    }
+  };
+
+  addSeedLifeHorizontalBorder('north border', -halfDepth, seedLifeGateOpenings.filter((opening) => opening.side === 'south'));
+  addSeedLifeHorizontalBorder('south border', halfDepth, []);
+  addSeedLifeVerticalBorder('west border', -halfWidth, seedLifeGateOpenings.filter((opening) => opening.side === 'west'));
+  addSeedLifeVerticalBorder('east border', halfWidth, seedLifeGateOpenings.filter((opening) => opening.side === 'east'));
+
+  addCollider(normalOnlyColliders, 0, -halfDepth, halfWidth + fenceThickness, fenceThickness);
+  addCollider(normalOnlyColliders, 0, halfDepth, halfWidth + fenceThickness, fenceThickness);
+  addCollider(normalOnlyColliders, -halfWidth, 0, fenceThickness, halfDepth + fenceThickness);
+  addCollider(normalOnlyColliders, halfWidth, 0, fenceThickness, halfDepth + fenceThickness);
 
   const spawn = new Vector3(0, GAME_CONFIG.player.height, 0);
   const lookTarget = new Vector3(-52.8, GAME_CONFIG.player.height * 0.9, 4.6);
@@ -821,6 +1028,7 @@ export function createChapterEleven(): ChapterElevenData {
   return {
     root,
     colliders,
+    normalOnlyColliders,
     copyOnlyColliders,
     dirtPatches,
     seedLifeDirtPatch,
@@ -829,10 +1037,10 @@ export function createChapterEleven(): ChapterElevenData {
     equipmentStand,
     equipmentStandCollider,
     fieldBounds: {
-      minX: -halfWidth,
-      maxX: halfWidth,
-      minZ: -halfDepth,
-      maxZ: halfDepth,
+      minX: -170,
+      maxX: 170,
+      minZ: -170,
+      maxZ: 170,
     },
     spawn,
     lookTarget,
@@ -855,6 +1063,9 @@ export function createChapterEleven(): ChapterElevenData {
       }
       seedLifeOnlyGroups.forEach((group) => {
         group.visible = enabled;
+      });
+      normalOnlyGroups.forEach((group) => {
+        group.visible = !enabled;
       });
     },
     reset(): void {
