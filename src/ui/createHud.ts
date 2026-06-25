@@ -198,6 +198,7 @@ export type ChapterElevenEquipmentId =
   | 'water-bucket'
   | 'sprinkler'
   | 'fertilizer'
+  | 'cheap-auto-harvester'
   | 'auto-harvester';
 
 export interface ChapterSevenGrandpaTradeView {
