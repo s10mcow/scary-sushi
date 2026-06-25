@@ -232,6 +232,45 @@ export class GameplaySfxAudio {
     this.startSource(grit, now, now + 0.3);
   }
 
+  playThunderRumble(): void {
+    if (!this.context || !this.masterGain || !this.noiseBuffer) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.08;
+    const boomGain = this.context.createGain();
+    boomGain.gain.setValueAtTime(0.0001, now);
+    boomGain.gain.exponentialRampToValueAtTime(0.24, now + 0.08);
+    boomGain.gain.linearRampToValueAtTime(0.16, now + 0.72);
+    boomGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+    boomGain.connect(this.masterGain);
+
+    const boom = this.context.createOscillator();
+    boom.type = 'sine';
+    boom.frequency.setValueAtTime(48 + Math.random() * 8, now);
+    boom.frequency.exponentialRampToValueAtTime(24 + Math.random() * 4, now + 1.8);
+    boom.connect(boomGain);
+    this.startSource(boom, now, now + 2.25);
+
+    const rumbleGain = this.context.createGain();
+    rumbleGain.gain.setValueAtTime(0.0001, now + 0.05);
+    rumbleGain.gain.exponentialRampToValueAtTime(0.12, now + 0.18);
+    rumbleGain.gain.linearRampToValueAtTime(0.08, now + 1.2);
+    rumbleGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.55);
+    rumbleGain.connect(this.masterGain);
+
+    const rumble = this.context.createBufferSource();
+    rumble.buffer = this.noiseBuffer;
+    rumble.playbackRate.value = 0.28 + Math.random() * 0.06;
+    const lowpass = this.context.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.setValueAtTime(180 + Math.random() * 50, now);
+    lowpass.frequency.linearRampToValueAtTime(95 + Math.random() * 30, now + 2.1);
+    rumble.connect(lowpass);
+    lowpass.connect(rumbleGain);
+    this.startSource(rumble, now + 0.05, now + 2.6);
+  }
+
   playGrandfatherClockChime(): void {
     if (!this.context || !this.masterGain) {
       return;

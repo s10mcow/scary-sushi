@@ -9805,12 +9805,12 @@ export class Game {
 
   private startChapterElevenEvent(event: 'rain' | 'lightning'): void {
     this.chapterElevenEvent = event;
-    this.chapterElevenEventTimer = event === 'rain' ? MathUtils.randFloat(45, 75) : MathUtils.randFloat(38, 62);
+    this.chapterElevenEventTimer = event === 'rain' ? MathUtils.randFloat(85, 125) : MathUtils.randFloat(80, 115);
     this.chapterElevenDailyEventUsed = true;
     this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning';
-    this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(2.5, 6) : 0;
+    this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(1.5, 4.2) : 0;
     this.pushStatus(event === 'rain'
       ? 'Rain storm started. Crops are growing faster.'
       : 'Lightning storm started. Lightning can charge plants into valuable glowing crops.', 3.2);
@@ -9904,14 +9904,32 @@ export class Game {
 
   private strikeChapterElevenLightning(): void {
     const bounds = this.chapterEleven.fieldBounds;
-    const strikeX = MathUtils.randFloat(bounds.minX + 4, bounds.maxX - 4);
-    const strikeZ = MathUtils.randFloat(bounds.minZ + 4, bounds.maxZ - 4);
+    let strikeX = MathUtils.randFloat(bounds.minX + 4, bounds.maxX - 4);
+    let strikeZ = MathUtils.randFloat(bounds.minZ + 4, bounds.maxZ - 4);
+    if (this.chapterElevenPlants.length > 0 && Math.random() < 0.62) {
+      const targetPlant = this.chapterElevenPlants[MathUtils.randInt(0, this.chapterElevenPlants.length - 1)];
+      strikeX = MathUtils.clamp(targetPlant.x + MathUtils.randFloat(-4.5, 4.5), bounds.minX + 4, bounds.maxX - 4);
+      strikeZ = MathUtils.clamp(targetPlant.z + MathUtils.randFloat(-4.5, 4.5), bounds.minZ + 4, bounds.maxZ - 4);
+    } else if (this.chapterEleven.dirtPatches.length > 0 && Math.random() < 0.46) {
+      const targetPatch = this.chapterEleven.dirtPatches[MathUtils.randInt(0, this.chapterEleven.dirtPatches.length - 1)];
+      strikeX = MathUtils.clamp(
+        targetPatch.centerX + MathUtils.randFloat(-targetPatch.halfWidth * 0.82, targetPatch.halfWidth * 0.82),
+        bounds.minX + 4,
+        bounds.maxX - 4,
+      );
+      strikeZ = MathUtils.clamp(
+        targetPatch.centerZ + MathUtils.randFloat(-targetPatch.halfDepth * 0.82, targetPatch.halfDepth * 0.82),
+        bounds.minZ + 4,
+        bounds.maxZ - 4,
+      );
+    }
     this.chapterElevenLightningRoot.position.set(strikeX, 0, strikeZ);
     this.chapterElevenLightningRoot.visible = true;
     const flash = this.chapterElevenLightningRoot.children.find((child) => child instanceof PointLight) as PointLight | undefined;
     if (flash) {
-      flash.intensity = 4.8;
+      flash.intensity = 8.6;
     }
+    this.gameplaySfxAudio.playThunderRumble();
 
     let charged = 0;
     this.chapterElevenPlants.forEach((plant) => {
@@ -9945,13 +9963,14 @@ export class Game {
     }
 
     if (this.chapterElevenRainRoot.visible) {
+      const bounds = this.chapterEleven.fieldBounds;
       this.chapterElevenRainRoot.children.forEach((drop) => {
-        drop.position.y -= deltaSeconds * 8.5;
-        drop.position.x -= deltaSeconds * 1.2;
+        drop.position.y -= deltaSeconds * (this.chapterElevenEvent === 'lightning' ? 12.5 : 10.4);
+        drop.position.x -= deltaSeconds * (this.chapterElevenEvent === 'lightning' ? 2.2 : 1.55);
         if (drop.position.y < 0.2) {
-          drop.position.y = MathUtils.randFloat(8, 13);
-          drop.position.x = MathUtils.randFloat(-55, 55);
-          drop.position.z = MathUtils.randFloat(-55, 55);
+          drop.position.y = MathUtils.randFloat(9, 15);
+          drop.position.x = MathUtils.randFloat(bounds.minX + 2, bounds.maxX - 2);
+          drop.position.z = MathUtils.randFloat(bounds.minZ + 2, bounds.maxZ - 2);
         }
       });
     }
@@ -9981,7 +10000,7 @@ export class Game {
         this.chapterElevenLightningStrikeTimer -= deltaSeconds;
         if (this.chapterElevenLightningStrikeTimer <= 0) {
           this.strikeChapterElevenLightning();
-          this.chapterElevenLightningStrikeTimer = MathUtils.randFloat(4, 9);
+          this.chapterElevenLightningStrikeTimer = MathUtils.randFloat(3, 6.5);
         }
       }
       if (this.chapterElevenEventTimer <= 0) {
@@ -11057,14 +11076,14 @@ export class Game {
 
   private buildChapterElevenEventAndTraderModels(): void {
     this.chapterElevenRainRoot.clear();
-    const rainMaterial = new MeshBasicMaterial({ color: 0x82cfff, transparent: true, opacity: 0.55 });
-    for (let index = 0; index < 90; index += 1) {
-      const drop = new Mesh(new BoxGeometry(0.025, 0.82, 0.025), rainMaterial);
+    const rainMaterial = new MeshBasicMaterial({ color: 0x9fd9ff, transparent: true, opacity: 0.62 });
+    for (let index = 0; index < 260; index += 1) {
+      const drop = new Mesh(new BoxGeometry(0.022, 1.04, 0.022), rainMaterial);
       drop.name = 'Chapter 11 rain storm falling drop';
       drop.position.set(
-        MathUtils.randFloat(-55, 55),
-        MathUtils.randFloat(4, 12),
-        MathUtils.randFloat(-55, 55),
+        MathUtils.randFloat(-62, 62),
+        MathUtils.randFloat(4, 15),
+        MathUtils.randFloat(-62, 62),
       );
       drop.rotation.z = -0.28;
       this.chapterElevenRainRoot.add(drop);
@@ -11073,13 +11092,13 @@ export class Game {
 
     this.chapterElevenLightningRoot.clear();
     const boltMaterial = new MeshBasicMaterial({ color: 0x8ee8ff, transparent: true, opacity: 0.9 });
-    const bolt = new Mesh(new BoxGeometry(0.16, 7.5, 0.16), boltMaterial);
+    const bolt = new Mesh(new BoxGeometry(0.2, 9.2, 0.2), boltMaterial);
     bolt.name = 'Chapter 11 lightning storm blue white bolt';
-    bolt.position.y = 3.8;
+    bolt.position.y = 4.6;
     bolt.rotation.z = 0.18;
-    const flash = new PointLight(0x9eeaff, 0, 34);
+    const flash = new PointLight(0x9eeaff, 0, 52);
     flash.name = 'Chapter 11 lightning storm flash light';
-    flash.position.y = 5.5;
+    flash.position.y = 5.8;
     this.chapterElevenLightningRoot.add(bolt, flash);
     this.chapterElevenLightningRoot.visible = false;
 
@@ -17980,19 +17999,30 @@ export class Game {
 
     if (this.chapterElevenActive) {
       const nightBlend = this.getChapterElevenNightBlend();
-      this.lighting.ambient.intensity = MathUtils.lerp(0.78, 0.18, nightBlend);
-      this.lighting.hemisphere.intensity = MathUtils.lerp(0.98, 0.28, nightBlend);
+      const rainBlend = this.chapterElevenEvent === 'rain' ? 0.38 : 0;
+      const stormBlend = this.chapterElevenEvent === 'lightning' ? 0.72 : rainBlend;
+      const darknessBlend = Math.max(nightBlend, stormBlend);
+      this.lighting.ambient.intensity = MathUtils.lerp(0.78, this.chapterElevenEvent === 'lightning' ? 0.34 : 0.18, darknessBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(0.98, this.chapterElevenEvent === 'lightning' ? 0.5 : 0.28, darknessBlend);
       this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.65;
       this.lighting.flashlight.distance = 26;
 
       if (this.scene.background instanceof Color) {
+        const stormSky = this.chapterElevenEvent === 'lightning' ? new Color(0x202936) : new Color(0x677d88);
         this.scene.background.copy(new Color(0x9fc8df).lerp(new Color(0x070915), nightBlend));
+        if (stormBlend > 0) {
+          this.scene.background.lerp(stormSky, stormBlend);
+        }
       }
 
       if (this.scene.fog instanceof Fog) {
+        const stormFog = this.chapterElevenEvent === 'lightning' ? new Color(0x4c5660) : new Color(0x87958e);
         this.scene.fog.color.copy(new Color(0xc1d6b8).lerp(new Color(0x10131c), nightBlend));
-        this.scene.fog.near = MathUtils.lerp(92, 55, nightBlend);
-        this.scene.fog.far = MathUtils.lerp(300, 210, nightBlend);
+        if (stormBlend > 0) {
+          this.scene.fog.color.lerp(stormFog, stormBlend);
+        }
+        this.scene.fog.near = MathUtils.lerp(92, this.chapterElevenEvent === 'lightning' ? 42 : 55, darknessBlend);
+        this.scene.fog.far = MathUtils.lerp(300, this.chapterElevenEvent === 'lightning' ? 185 : 210, darknessBlend);
       }
 
       return;
