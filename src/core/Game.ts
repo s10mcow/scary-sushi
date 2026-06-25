@@ -342,7 +342,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'lucky-clover-seeds', label: 'Lucky clover seeds', singularLabel: 'Lucky clover seed', cost: 9000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.3, copyOnly: true, secretScientistOnly: true },
   { id: 'mimic-plant-seeds', label: 'Mimic plant seeds', singularLabel: 'Mimic plant seed', cost: 18000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.14, copyOnly: true, secretScientistOnly: true },
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 5, section: 'cheap', maxStock: 9 },
-  { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 30, section: 'cheap', maxStock: 6 },
+  { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 25, section: 'cheap', maxStock: 6 },
   { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 50, section: 'cheap', maxStock: 5 },
   { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 70, section: 'cheap', maxStock: 4 },
   { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 10, section: 'cheap', maxStock: 7 },
@@ -357,6 +357,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'coconut-tree-seeds', label: 'Coconut tree seeds', singularLabel: 'Coconut tree seed', cost: 850, section: 'expensive', maxStock: 1, normalOnly: true },
   { id: 'olive-tree-seeds', label: 'Olive tree seeds', singularLabel: 'Olive tree seed', cost: 1000, section: 'expensive', maxStock: 1, normalOnly: true },
   { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 900, section: 'expensive', maxStock: 1, normalOnly: true },
+  { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 1000, section: 'expensive', maxStock: 1, normalOnly: true },
   { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 350, section: 'expensive', maxStock: 3 },
   { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 800, section: 'expensive', maxStock: 1 },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
@@ -386,6 +387,7 @@ type ChapterElevenCropId =
   | 'coconut'
   | 'olive'
   | 'lemon'
+  | 'banana'
   | 'tomato'
   | 'pepper'
   | 'bamboo'
@@ -417,6 +419,7 @@ type ChapterElevenCropId =
   | 'golden-coconut'
   | 'golden-olive'
   | 'golden-lemon'
+  | 'golden-banana'
   | 'golden-pineapple'
   | 'golden-tomato'
   | 'golden-pepper'
@@ -589,7 +592,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'mushroom',
     label: 'Mushroom',
     pluralLabel: 'Mushrooms',
-    sellValue: 20,
+    sellValue: 30,
     babySeconds: 3,
     matureSeconds: 10,
     regrows: false,
@@ -722,6 +725,16 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     sellValue: 680,
     babySeconds: 24,
     matureSeconds: 88,
+    regrows: true,
+  },
+  'banana-tree-seeds': {
+    seedId: 'banana-tree-seeds',
+    cropId: 'banana',
+    label: 'Banana Bundle',
+    pluralLabel: 'Banana Bundles',
+    sellValue: 780,
+    babySeconds: 28,
+    matureSeconds: 100,
     regrows: true,
   },
   'tomato-seeds': {
@@ -8677,6 +8690,8 @@ export class Game {
         return 'golden-olive';
       case 'lemon':
         return 'golden-lemon';
+      case 'banana':
+        return 'golden-banana';
       case 'tomato':
         return 'golden-tomato';
       case 'pepper':
@@ -8840,17 +8855,19 @@ export class Game {
                       ? '#72823c'
                       : seedId === 'lemon-tree-seeds'
                         ? '#e0c83d'
-                        : seedId === 'tomato-seeds'
-                          ? '#c83d30'
-                          : seedId === 'pepper-seeds'
-                            ? '#a92d24'
-                            : seedId === 'dragon-fruit-seeds'
-                              ? '#d9367c'
-                              : seedId === 'vine-seeds'
-                                ? '#6d42bd'
-                                : seedId === 'cactus-seeds'
-                                  ? '#4b9a42'
-                                  : '#889d4d';
+                        : seedId === 'banana-tree-seeds'
+                          ? '#e4c32e'
+                          : seedId === 'tomato-seeds'
+                            ? '#c83d30'
+                            : seedId === 'pepper-seeds'
+                              ? '#a92d24'
+                              : seedId === 'dragon-fruit-seeds'
+                                ? '#d9367c'
+                                : seedId === 'vine-seeds'
+                                  ? '#6d42bd'
+                                  : seedId === 'cactus-seeds'
+                                    ? '#4b9a42'
+                                    : '#889d4d';
     const packetTexture = this.createChapterElevenSeedPacketTexture(item?.singularLabel ?? 'Seed packet', packetColor);
     const packet = new Mesh(new BoxGeometry(0.42, 0.56, 0.035), new MeshStandardMaterial({
       map: packetTexture,
@@ -9017,6 +9034,26 @@ export class Game {
       return root;
     }
 
+    if (baseCrop === 'banana') {
+      const bananaMaterial = materialFor(0xe6c72f, 0.62);
+      const tipMaterial = new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.8 });
+      for (let index = 0; index < 5; index += 1) {
+        const banana = new Mesh(new CylinderGeometry(0.032, 0.04, 0.36, 10), bananaMaterial);
+        banana.name = `Held ${this.getChapterElevenCropLabel(cropId)} finger`;
+        banana.position.set(-0.07 + index * 0.04, 0.12 - index * 0.012, -0.03 + Math.sin(index * 0.7) * 0.03);
+        banana.rotation.set(1.14, -0.3 + index * 0.13, -0.52 + index * 0.08);
+        banana.scale.set(0.82, 1, 1.08);
+        root.add(banana);
+        const tip = new Mesh(new SphereGeometry(0.018, 6, 4), tipMaterial);
+        tip.name = 'Held banana dark tip';
+        tip.position.copy(banana.position).add(new Vector3(0, -0.14, 0.08));
+        tip.scale.set(0.8, 0.52, 0.8);
+        root.add(tip);
+      }
+      root.scale.setScalar(1.14);
+      return root;
+    }
+
     const color = baseCrop === 'blackberry'
       ? 0x1b0c26
       : baseCrop === 'blueberry'
@@ -9099,14 +9136,28 @@ export class Game {
       handle.name = equipmentId === 'shovel' ? 'Held garden shovel wooden handle' : 'Held garden hoe wooden handle';
       handle.position.set(-0.05, 0.13, -0.02);
       handle.rotation.set(0.5, 0.08, -0.4);
-      const blade = equipmentId === 'shovel'
-        ? new Mesh(new BoxGeometry(0.18, 0.24, 0.07), new MeshStandardMaterial({ color: 0x707070, roughness: 0.55, metalness: 0.35 }))
-        : new Mesh(new BoxGeometry(0.34, 0.055, 0.12), new MeshStandardMaterial({ color: 0x707070, roughness: 0.55, metalness: 0.35 }));
+      let blade: Mesh;
+      const metalMaterial = new MeshStandardMaterial({ color: 0x747a7c, roughness: 0.48, metalness: 0.42, side: DoubleSide });
+      if (equipmentId === 'shovel') {
+        const shovelBladeShape = new Shape();
+        shovelBladeShape.moveTo(0, -0.17);
+        shovelBladeShape.bezierCurveTo(-0.1, -0.11, -0.12, 0.04, -0.08, 0.14);
+        shovelBladeShape.quadraticCurveTo(0, 0.2, 0.08, 0.14);
+        shovelBladeShape.bezierCurveTo(0.12, 0.04, 0.1, -0.11, 0, -0.17);
+        blade = new Mesh(new ShapeGeometry(shovelBladeShape), metalMaterial);
+      } else {
+        blade = new Mesh(new BoxGeometry(0.34, 0.055, 0.12), metalMaterial);
+      }
       blade.name = equipmentId === 'shovel' ? 'Held garden shovel metal scoop' : 'Held garden hoe metal blade';
       blade.position.set(-0.18, 0.43, -0.02);
       blade.rotation.z = -0.4;
       if (equipmentId === 'shovel') {
-        blade.scale.y = 1.15;
+        blade.scale.set(1.08, 1.18, 1);
+        const socket = new Mesh(new CylinderGeometry(0.028, 0.04, 0.12, 8), metalMaterial);
+        socket.name = 'Held garden shovel metal neck socket';
+        socket.position.set(-0.12, 0.34, -0.02);
+        socket.rotation.set(0.5, 0.08, -0.4);
+        root.add(socket);
       }
       root.add(handle, blade);
     } else if (equipmentId === 'water-bucket') {
@@ -9329,6 +9380,7 @@ export class Game {
       || cropId === 'coconut'
       || cropId === 'olive'
       || cropId === 'lemon'
+      || cropId === 'banana'
       || cropId === 'tomato'
       || cropId === 'pepper'
       || cropId === 'dragon-fruit'
@@ -9511,6 +9563,15 @@ export class Game {
       ];
     }
 
+    if (cropId === 'banana') {
+      return [
+        makeFruit(new Vector3(0.22, 1.68, 0.12), 'Banana Bundle', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-banana', 'Golden Banana Bundle'),
+        makeFruit(new Vector3(-0.24, 1.58, -0.14), 'Banana Bundle', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-banana', 'Golden Banana Bundle'),
+        makeFruit(new Vector3(0.08, 1.86, -0.22), 'Banana Bundle', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-banana', 'Golden Banana Bundle'),
+        makeFruit(new Vector3(-0.06, 1.42, 0.28), 'Banana Bundle', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-banana', 'Golden Banana Bundle'),
+      ];
+    }
+
     const blackberryOffsets = [
       new Vector3(0.3, 0.42, 0.05),
       new Vector3(-0.22, 0.48, -0.12),
@@ -9560,6 +9621,8 @@ export class Game {
       coconutHole: new MeshStandardMaterial({ color: 0x050403, roughness: 0.9 }),
       olive: new MeshStandardMaterial({ color: 0x76823c, roughness: 0.66 }),
       lemon: new MeshStandardMaterial({ color: 0xe8d34a, roughness: 0.6 }),
+      banana: new MeshStandardMaterial({ color: 0xe6c72f, roughness: 0.62 }),
+      bananaTip: new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.8 }),
       genericGold: new MeshStandardMaterial({ color: 0xf1c84b, roughness: 0.42, metalness: 0.28 }),
       stem: new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }),
       strawberryLeaf: new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }),
@@ -9684,6 +9747,32 @@ export class Game {
         stem.rotation.z = index % 2 === 0 ? -0.24 : 0.18;
         stem.castShadow = true;
         plant.root.add(stem);
+      } else if (fruitState.cropId === 'banana') {
+        fruit = new Mesh(new SphereGeometry(0.08, 14, 8), fruitState.golden ? materials.genericGold : materials.banana);
+        fruit.scale.set(0.92, 0.56, 1.55);
+        fruit.rotation.set(0.28, index * 0.42, -0.36);
+        for (let bananaIndex = 0; bananaIndex < 5; bananaIndex += 1) {
+          const angle = -0.38 + bananaIndex * 0.19;
+          const banana = new Mesh(new CylinderGeometry(0.024, 0.032, 0.22, 8), fruitState.golden ? materials.genericGold : materials.banana);
+          banana.name = 'Chapter 11 banana bundle curved finger';
+          banana.position.copy(fruitState.offset).add(new Vector3((bananaIndex - 2) * 0.035, -0.018 * bananaIndex, Math.sin(angle) * 0.045));
+          banana.rotation.set(1.18, angle, -0.42 + bananaIndex * 0.08);
+          banana.scale.set(0.8, 1, 1.2);
+          banana.castShadow = true;
+          plant.root.add(banana);
+          const tip = new Mesh(new SphereGeometry(0.015, 6, 4), materials.bananaTip);
+          tip.name = 'Chapter 11 banana dark tip';
+          tip.position.copy(banana.position).add(new Vector3(0, -0.09, 0.055));
+          tip.scale.set(0.8, 0.55, 0.8);
+          tip.castShadow = true;
+          plant.root.add(tip);
+        }
+        const stem = new Mesh(new CylinderGeometry(0.012, 0.018, 0.09, 6), materials.stem);
+        stem.name = 'Chapter 11 banana bundle hanging stem';
+        stem.position.copy(fruitState.offset).add(new Vector3(0, 0.078, 0));
+        stem.rotation.z = 0.24;
+        stem.castShadow = true;
+        plant.root.add(stem);
       } else if (fruitState.cropId === 'tomato') {
         fruit = new Mesh(new SphereGeometry(0.075, 14, 10), fruitState.golden ? materials.genericGold : materials.tomato);
         fruit.scale.set(1.08, 0.94, 1);
@@ -9769,6 +9858,8 @@ export class Game {
         return 0.9;
       case 'lemon':
         return 0.76;
+      case 'banana':
+        return 0.95;
       case 'peach':
       case 'apple':
         return 0.82;
@@ -9809,6 +9900,8 @@ export class Game {
         return 0.44;
       case 'lemon':
         return 0.4;
+      case 'banana':
+        return 0.46;
       case 'peach':
       case 'apple':
         return 0.42;
@@ -10336,6 +10429,62 @@ export class Game {
       }
 
       this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
+    if (config.cropId === 'banana') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const trunkMaterial = new MeshStandardMaterial({ color: 0x7d633e, roughness: 0.92 });
+      const trunkBandMaterial = new MeshStandardMaterial({ color: 0x5d472b, roughness: 0.92 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x3f963b, roughness: 0.84 });
+      const darkLeafMaterial = new MeshStandardMaterial({ color: 0x2f7130, roughness: 0.88 });
+      const trunk = new Mesh(new CylinderGeometry(0.18, 0.26, 1.8, 12), trunkMaterial);
+      trunk.name = 'Chapter 11 banana tree thick soft trunk';
+      trunk.position.y = 0.92;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      plant.root.add(trunk);
+
+      for (let bandIndex = 0; bandIndex < 6; bandIndex += 1) {
+        const band = new Mesh(new TorusGeometry(0.19 + bandIndex * 0.006, 0.01, 6, 22), trunkBandMaterial);
+        band.name = 'Chapter 11 banana tree trunk band';
+        band.position.set(0, 0.28 + bandIndex * 0.25, 0);
+        band.rotation.set(Math.PI / 2, 0, bandIndex * 0.16);
+        band.scale.set(1, 0.82, 1);
+        band.castShadow = true;
+        plant.root.add(band);
+      }
+
+      const crown = new Mesh(new SphereGeometry(0.18, 12, 8), darkLeafMaterial);
+      crown.name = 'Chapter 11 banana tree crown';
+      crown.position.y = 1.92;
+      crown.scale.set(1.2, 0.55, 1.2);
+      crown.castShadow = true;
+      plant.root.add(crown);
+
+      for (let leafIndex = 0; leafIndex < 9; leafIndex += 1) {
+        const angle = (leafIndex / 9) * Math.PI * 2;
+        const leaf = new Mesh(new BoxGeometry(0.34, 0.055, 1.32), leafIndex % 2 === 0 ? leafMaterial : darkLeafMaterial);
+        leaf.name = 'Chapter 11 banana tree huge broad leaf';
+        leaf.position.set(Math.cos(angle) * 0.42, 1.95 + (leafIndex % 2) * 0.04, Math.sin(angle) * 0.42);
+        leaf.rotation.set(0.34, angle, leafIndex % 2 === 0 ? 0.28 : -0.22);
+        leaf.castShadow = true;
+        leaf.receiveShadow = true;
+        plant.root.add(leaf);
+
+        const centerVein = new Mesh(new BoxGeometry(0.025, 0.065, 1.28), trunkBandMaterial);
+        centerVein.name = 'Chapter 11 banana leaf center vein';
+        centerVein.position.copy(leaf.position).add(new Vector3(Math.cos(angle) * 0.03, 0.01, Math.sin(angle) * 0.03));
+        centerVein.rotation.copy(leaf.rotation);
+        centerVein.castShadow = true;
+        plant.root.add(centerVein);
+      }
+
+      this.addChapterElevenPickableFruitMeshes(plant);
+      plant.root.scale.setScalar(1.52);
       return;
     }
 
