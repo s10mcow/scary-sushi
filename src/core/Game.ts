@@ -247,12 +247,12 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   cost: number;
   description: string;
 }> = [
-  { id: 'vine-stick', label: 'Vine Stick', cost: 25, description: 'Place by vine seeds, or aim at a plant to remove it.' },
-  { id: 'hoe', label: 'Hoe', cost: 20, description: 'Aim at a planted crop to dig it up.' },
-  { id: 'water-bucket', label: 'Water Bucket', cost: 30, description: 'Water one crop so it grows faster.' },
-  { id: 'sprinkler', label: 'Sprinkler', cost: 150, description: 'Place it on dirt to constantly water nearby crops.' },
-  { id: 'fertilizer', label: 'Fertilizer', cost: 40, description: 'Boost one crop faster than water.' },
-  { id: 'auto-harvester', label: 'Auto Harvester', cost: 325, description: 'Place a drone that cuts ripe bush fruit and drops it by your farm sign.' },
+  { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.' },
+  { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.' },
+  { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.' },
+  { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.' },
+  { id: 'fertilizer', label: 'Fertilizer', cost: 180, description: 'Boost one crop faster than water.' },
+  { id: 'auto-harvester', label: 'Auto Harvester', cost: 20000, description: 'Place a drone that cuts ripe bush fruit and drops it by your farm sign.' },
 ];
 const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
