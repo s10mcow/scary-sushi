@@ -251,6 +251,8 @@ const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{
 const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = -3.82;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_Z = -50.47;
+const CHAPTER_ELEVEN_SEED_LIFE_EQUIPMENT_STALL_X = 3.75;
+const CHAPTER_ELEVEN_SEED_LIFE_EQUIPMENT_STALL_Z = 52.33;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE = 7.5;
 const CHAPTER_ELEVEN_WATERING_CAN_MAX_USES = 10;
 const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
@@ -10055,7 +10057,7 @@ export class Game {
     if (!this.chapterElevenWateringCanActive) {
       if (this.chapterElevenWateringCanUsesRemaining <= 0) {
         if (!this.chapterElevenWateringCanOutOfWaterShown) {
-          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Tools stand.', 2.6);
+          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Equipment stand.', 2.6);
           this.chapterElevenWateringCanOutOfWaterShown = true;
           this.syncHud();
         }
@@ -11041,15 +11043,38 @@ export class Game {
     ) <= CHAPTER_ELEVEN_PET_SHOP_RANGE;
   }
 
+  private getChapterElevenEquipmentStandPosition(): { x: number; z: number; rotationY: number } {
+    return this.chapterElevenTwoActive
+      ? {
+        x: CHAPTER_ELEVEN_SEED_LIFE_EQUIPMENT_STALL_X,
+        z: CHAPTER_ELEVEN_SEED_LIFE_EQUIPMENT_STALL_Z,
+        rotationY: Math.PI / 2,
+      }
+      : {
+        x: CHAPTER_ELEVEN_EQUIPMENT_STALL_X,
+        z: CHAPTER_ELEVEN_EQUIPMENT_STALL_Z,
+        rotationY: -Math.PI / 2,
+      };
+  }
+
+  private syncChapterElevenEquipmentStandPlacement(): void {
+    const placement = this.getChapterElevenEquipmentStandPosition();
+    this.chapterEleven.equipmentStand.position.set(placement.x, 0, placement.z);
+    this.chapterEleven.equipmentStand.rotation.y = placement.rotationY;
+    this.chapterEleven.equipmentStandCollider.centerX = placement.x;
+    this.chapterEleven.equipmentStandCollider.centerZ = placement.z;
+  }
+
   private isNearChapterElevenEquipmentStand(): boolean {
     if (!this.chapterElevenActive) {
       return false;
     }
 
     const playerPosition = this.player.getPosition();
+    const placement = this.getChapterElevenEquipmentStandPosition();
     return Math.hypot(
-      playerPosition.x - CHAPTER_ELEVEN_EQUIPMENT_STALL_X,
-      playerPosition.z - CHAPTER_ELEVEN_EQUIPMENT_STALL_Z,
+      playerPosition.x - placement.x,
+      playerPosition.z - placement.z,
     ) <= CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE;
   }
 
@@ -11879,7 +11904,7 @@ export class Game {
 
     if (equipmentId === 'watering-can') {
       if (this.chapterElevenWateringCanUsesRemaining <= 0) {
-        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Tools stand.', 2.6);
+        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Equipment stand.', 2.6);
         this.syncHud();
         return true;
       }
@@ -25206,7 +25231,7 @@ export class Game {
       }
 
       if (this.isNearChapterElevenEquipmentStand()) {
-        return 'Press E by the Tools seller to buy tools and water refills.';
+        return 'Press E by the Equipment seller to buy equipment and water refills.';
       }
 
       if (this.isNearChapterElevenSellStand()) {
@@ -32209,6 +32234,7 @@ export class Game {
     this.chapterNine.root.visible = false;
     this.chapterTen.root.visible = false;
     this.chapterEleven.reset();
+    this.syncChapterElevenEquipmentStandPlacement();
     this.chapterEleven.equipmentStand.visible = true;
     this.chapterEleven.root.visible = true;
     this.zombieMode.root.visible = false;

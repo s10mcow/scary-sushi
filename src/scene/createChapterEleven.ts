@@ -20,6 +20,7 @@ export interface ChapterElevenData {
   copyOnlyColliders: CollisionBox[];
   dirtPatches: ChapterElevenDirtPatch[];
   equipmentStand: Group;
+  equipmentStandCollider: CollisionBox;
   fieldBounds: {
     minX: number;
     maxX: number;
@@ -159,8 +160,10 @@ function addCollider(
   centerZ: number,
   halfWidth: number,
   halfDepth: number,
-): void {
-  colliders.push({ centerX, centerZ, halfWidth, halfDepth });
+): CollisionBox {
+  const collider = { centerX, centerZ, halfWidth, halfDepth };
+  colliders.push(collider);
+  return collider;
 }
 
 function addBox(
@@ -439,7 +442,7 @@ export function createChapterEleven(): ChapterElevenData {
   addCollider(colliders, -2.61, 52.33, 3.02, 1.55);
 
   const equipmentStand = stand.clone(true);
-  equipmentStand.name = 'Chapter 11 tools old fashioned garden stand with girl worker';
+  equipmentStand.name = 'Chapter 11 equipment old fashioned garden stand with girl worker';
   equipmentStand.position.set(-3.82, 0, -50.47);
   equipmentStand.rotation.y = -Math.PI / 2;
   const toolsWorker = equipmentStand.getObjectByName('Chapter 11 garden stand person facing counter') as Group | undefined;
@@ -455,26 +458,26 @@ export function createChapterEleven(): ChapterElevenData {
   addBox(equipmentStand, 'Chapter 11 tools stand small hoe blade', [0.08, 0.22, 0.2], [1.34, 1.3, 0.44], dirtFenceMaterial);
   addBox(equipmentStand, 'Chapter 11 tools stand tall left locator post', [0.12, 2.6, 0.12], [1.42, 3.18, -1.48], standDarkWoodMaterial);
   addBox(equipmentStand, 'Chapter 11 tools stand tall right locator post', [0.12, 2.6, 0.12], [1.42, 3.18, 1.48], standDarkWoodMaterial);
-  const bigToolsSign = new Mesh(new PlaneGeometry(4.2, 1.45), createStandLabelMaterial('Tools'));
-  bigToolsSign.name = 'Chapter 11 huge visible Tools stand sign';
+  const bigToolsSign = new Mesh(new PlaneGeometry(4.2, 1.45), createStandLabelMaterial('Equipment'));
+  bigToolsSign.name = 'Chapter 11 huge visible Equipment stand sign';
   bigToolsSign.position.set(1.48, 4.45, 0);
   bigToolsSign.rotation.y = Math.PI / 2;
   bigToolsSign.castShadow = true;
   equipmentStand.add(bigToolsSign);
   const markerArrow = new Mesh(new ConeGeometry(0.42, 0.85, 4), toolsMarkerMaterial);
-  markerArrow.name = 'Chapter 11 bright yellow Tools stand floating locator arrow';
+  markerArrow.name = 'Chapter 11 bright yellow Equipment stand floating locator arrow';
   markerArrow.position.set(1.48, 5.7, 0);
   markerArrow.rotation.set(Math.PI, Math.PI / 4, 0);
   markerArrow.castShadow = true;
   equipmentStand.add(markerArrow);
   addBox(equipmentStand, 'Chapter 11 tools stand bright yellow counter stripe', [0.12, 0.14, 2.65], [1.58, 1.1, 0], toolsMarkerMaterial);
   root.add(equipmentStand);
-  addCollider(colliders, -3.82, -50.47, 3.02, 1.55);
+  const equipmentStandCollider = addCollider(colliders, -3.82, -50.47, 3.02, 1.55);
 
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'Buy Seeds');
   addStandLabel(petEggsStand, 'Pet Eggs');
-  addStandLabel(equipmentStand, 'Tools');
+  addStandLabel(equipmentStand, 'Equipment');
 
   const addPetEggDisplay = (x: number, y: number, z: number): void => {
     const eggGroup = new Group();
@@ -672,6 +675,7 @@ export function createChapterEleven(): ChapterElevenData {
     copyOnlyColliders,
     dirtPatches,
     equipmentStand,
+    equipmentStandCollider,
     fieldBounds: {
       minX: -halfWidth,
       maxX: halfWidth,
