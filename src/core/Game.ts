@@ -239,9 +239,14 @@ const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
 const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
 const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
 const CHAPTER_ELEVEN_STARTING_MONEY = 50;
-const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{ seedId: ChapterElevenSeedId; count: number }> = [
-  { seedId: 'coconut-tree-seeds', count: 5 },
-  { seedId: 'dragon-fruit-seeds', count: 5 },
+const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{
+  seedId: ChapterElevenSeedId;
+  count: number;
+  copyOnly?: boolean;
+  normalOnly?: boolean;
+}> = [
+  { seedId: 'coconut-tree-seeds', count: 5, normalOnly: true },
+  { seedId: 'dragon-fruit-seeds', count: 5, normalOnly: true },
 ];
 const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = -3.82;
@@ -3739,9 +3744,13 @@ export class Game {
   }
 
   private grantChapterElevenStartingSeeds(): void {
-    CHAPTER_ELEVEN_STARTING_SEEDS.forEach(({ seedId, count }) => {
+    CHAPTER_ELEVEN_STARTING_SEEDS.forEach(({ seedId, count, copyOnly, normalOnly }) => {
       const item = this.getChapterElevenSeedItem(seedId);
-      if (!item || (item.copyOnly && !this.chapterElevenTwoActive) || (item.normalOnly && this.chapterElevenTwoActive)) {
+      if (!item
+        || (copyOnly && !this.chapterElevenTwoActive)
+        || (normalOnly && this.chapterElevenTwoActive)
+        || (item.copyOnly && !this.chapterElevenTwoActive)
+        || (item.normalOnly && this.chapterElevenTwoActive)) {
         return;
       }
 
@@ -9640,27 +9649,6 @@ export class Game {
         });
       };
 
-      for (let ribIndex = 0; ribIndex < 6; ribIndex += 1) {
-        const angle = (ribIndex / 6) * Math.PI * 2;
-        const rib = new Mesh(new CylinderGeometry(0.014, 0.019, 1.38, 6), ribMaterial);
-        rib.name = 'Chapter 11 dragon fruit cactus raised rib';
-        rib.position.set(Math.cos(angle) * 0.17, 0.76, Math.sin(angle) * 0.15);
-        rib.scale.set(0.72, 1, 0.72);
-        rib.castShadow = true;
-        plant.root.add(rib);
-      }
-
-      for (let level = 0; level < 7; level += 1) {
-        const y = 0.2 + level * 0.18;
-        for (let side = 0; side < 6; side += 1) {
-          if ((level + side) % 2 === 1) {
-            continue;
-          }
-          const angle = (side / 6) * Math.PI * 2 + level * 0.08;
-          addNeedleCluster(Math.cos(angle) * 0.185, y, Math.sin(angle) * 0.165, angle, 0.95);
-        }
-      }
-
       [[-0.26, 0.84, -0.08, -0.56], [0.24, 1.02, 0.1, 0.52]].forEach(([x, y, z, rotationZ], armIndex) => {
         const arm = new Mesh(new CylinderGeometry(0.075, 0.1, 0.62, 10), cactusMaterial);
         arm.name = 'Chapter 11 dragon fruit cactus raised arm';
@@ -9669,15 +9657,49 @@ export class Game {
         arm.castShadow = true;
         plant.root.add(arm);
 
-        for (let needleIndex = 0; needleIndex < 5; needleIndex += 1) {
-          const side = needleIndex % 2 === 0 ? 1 : -1;
-          const needleX = x + (needleIndex - 2) * 0.045;
-          const needleY = y - 0.18 + needleIndex * 0.085;
-          const needleZ = z + side * 0.088;
-          const angle = side > 0 ? Math.PI / 2 : -Math.PI / 2;
-          addNeedleCluster(needleX, needleY, needleZ, angle + armIndex * 0.18, 0.82);
+        if (!this.chapterElevenTwoActive) {
+          for (let needleIndex = 0; needleIndex < 5; needleIndex += 1) {
+            const side = needleIndex % 2 === 0 ? 1 : -1;
+            const needleX = x + (needleIndex - 2) * 0.045;
+            const needleY = y - 0.18 + needleIndex * 0.085;
+            const needleZ = z + side * 0.088;
+            const angle = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+            addNeedleCluster(needleX, needleY, needleZ, angle + armIndex * 0.18, 0.82);
+          }
         }
       });
+      if (this.chapterElevenTwoActive) {
+        for (let index = 0; index < 18; index += 1) {
+          const angle = index * 1.17;
+          const thorn = new Mesh(new ConeGeometry(0.011, 0.07, 5), thornMaterial);
+          thorn.name = 'Chapter 11 dragon fruit cactus tiny thorn';
+          thorn.position.set(Math.cos(angle) * 0.17, 0.18 + (index % 7) * 0.16, Math.sin(angle) * 0.15);
+          thorn.rotation.set(Math.PI / 2, angle, 0);
+          thorn.castShadow = true;
+          plant.root.add(thorn);
+        }
+      } else {
+        for (let ribIndex = 0; ribIndex < 6; ribIndex += 1) {
+          const angle = (ribIndex / 6) * Math.PI * 2;
+          const rib = new Mesh(new CylinderGeometry(0.014, 0.019, 1.38, 6), ribMaterial);
+          rib.name = 'Chapter 11 dragon fruit cactus raised rib';
+          rib.position.set(Math.cos(angle) * 0.17, 0.76, Math.sin(angle) * 0.15);
+          rib.scale.set(0.72, 1, 0.72);
+          rib.castShadow = true;
+          plant.root.add(rib);
+        }
+
+        for (let level = 0; level < 7; level += 1) {
+          const y = 0.2 + level * 0.18;
+          for (let side = 0; side < 6; side += 1) {
+            if ((level + side) % 2 === 1) {
+              continue;
+            }
+            const angle = (side / 6) * Math.PI * 2 + level * 0.08;
+            addNeedleCluster(Math.cos(angle) * 0.185, y, Math.sin(angle) * 0.165, angle, 0.95);
+          }
+        }
+      }
       this.addChapterElevenPickableFruitMeshes(plant);
       return;
     }
