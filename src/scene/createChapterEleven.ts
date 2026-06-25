@@ -10,6 +10,7 @@ import {
   Object3D,
   PlaneGeometry,
   SphereGeometry,
+  CylinderGeometry,
   Vector3,
 } from 'three';
 
@@ -46,6 +47,7 @@ export interface ChapterElevenData {
   copyOnlyColliders: CollisionBox[];
   dirtPatches: ChapterElevenDirtPatch[];
   seedLifeDirtPatch: ChapterElevenDirtPatch;
+  seedLifeDirtPatches: ChapterElevenDirtPatch[];
   biomePortals: ChapterElevenBiomePortal[];
   specialStalls: ChapterElevenSpecialStall[];
   equipmentStand: Group;
@@ -215,6 +217,7 @@ export function createChapterEleven(): ChapterElevenData {
   const dirtPatchGroups: Group[] = [];
   const seedLifeOnlyGroups: Object3D[] = [];
   const normalOnlyGroups: Object3D[] = [];
+  const seedLifeDirtPatches: ChapterElevenDirtPatch[] = [];
   const portalDiscs: Mesh[] = [];
   const biomePortals: ChapterElevenBiomePortal[] = [];
   const specialStalls: ChapterElevenSpecialStall[] = [];
@@ -240,6 +243,8 @@ export function createChapterEleven(): ChapterElevenData {
     };
     if (!seedLifeOnly) {
       dirtPatches.push(patchData);
+    } else {
+      seedLifeDirtPatches.push(patchData);
     }
 
     const patchGroup = new Group();
@@ -283,7 +288,10 @@ export function createChapterEleven(): ChapterElevenData {
     root.add(patchGroup);
     if (seedLifeOnly) {
       patchGroup.visible = false;
-      seedLifeDirtPatchGroup = patchGroup;
+      seedLifeOnlyGroups.push(patchGroup);
+      if (!seedLifeDirtPatchGroup) {
+        seedLifeDirtPatchGroup = patchGroup;
+      }
     } else {
       dirtPatchGroups.push(patchGroup);
     }
@@ -491,6 +499,89 @@ export function createChapterEleven(): ChapterElevenData {
     stall.position.set(x, 0, z);
     stall.rotation.y = rotationY;
     addStandLabel(stall, label);
+    const worker = stall.getObjectByName('Chapter 11 garden stand person facing counter') as Group | undefined;
+    if (label === 'Weather' && worker) {
+      worker.visible = false;
+      const cloud = new Group();
+      cloud.name = 'Seed Life weather stall happy cloud worker';
+      cloud.position.set(0.38, 1.58, 0);
+      const cloudMaterial = new MeshStandardMaterial({ color: 0xf4f7fb, roughness: 0.62 });
+      const cheekMaterial = new MeshStandardMaterial({ color: 0xf2a1b6, roughness: 0.64 });
+      [
+        [-0.24, 0, 0, 0.28],
+        [0, 0.08, 0, 0.34],
+        [0.28, 0, 0, 0.28],
+        [-0.04, -0.08, 0, 0.3],
+      ].forEach(([cx, cy, cz, radius]) => {
+        const puff = new Mesh(new SphereGeometry(radius, 18, 12), cloudMaterial);
+        puff.name = 'Seed Life weather cloud round puff';
+        puff.position.set(cx, cy, cz);
+        puff.scale.set(1.18, 0.78, 0.68);
+        puff.castShadow = true;
+        cloud.add(puff);
+      });
+      addBox(cloud, 'Seed Life weather cloud left eye', [0.035, 0.075, 0.025], [-0.12, 0.02, 0.22], faceMaterial);
+      addBox(cloud, 'Seed Life weather cloud right eye', [0.035, 0.075, 0.025], [0.12, 0.02, 0.22], faceMaterial);
+      addBox(cloud, 'Seed Life weather cloud smiling mouth', [0.14, 0.026, 0.026], [0, -0.08, 0.24], faceMaterial);
+      const leftCheek = new Mesh(new SphereGeometry(0.055, 10, 6), cheekMaterial);
+      leftCheek.name = 'Seed Life weather cloud rosy left cheek';
+      leftCheek.position.set(-0.22, -0.06, 0.22);
+      leftCheek.scale.set(1, 0.45, 0.5);
+      const rightCheek = leftCheek.clone();
+      rightCheek.name = 'Seed Life weather cloud rosy right cheek';
+      rightCheek.position.x = 0.22;
+      cloud.add(leftCheek, rightCheek);
+      stall.add(cloud);
+    } else if (label === 'Wizard' && worker) {
+      addBox(worker, 'Seed Life wizard purple robe front', [0.08, 0.95, 0.52], [0.36, 0.9, 0], new MeshStandardMaterial({ color: 0x5c3ba2, roughness: 0.78 }));
+      const hat = new Mesh(new ConeGeometry(0.34, 0.86, 18), new MeshStandardMaterial({ color: 0x4b2d87, roughness: 0.76 }));
+      hat.name = 'Seed Life wizard pointy hat';
+      hat.position.set(0.18, 2.48, 0);
+      hat.rotation.z = -0.1;
+      hat.castShadow = true;
+      worker.add(hat);
+      const brim = new Mesh(new CylinderGeometry(0.42, 0.36, 0.08, 18), new MeshStandardMaterial({ color: 0x3b236e, roughness: 0.78 }));
+      brim.name = 'Seed Life wizard hat brim';
+      brim.position.set(0.2, 2.04, 0);
+      brim.rotation.z = -0.1;
+      brim.castShadow = true;
+      worker.add(brim);
+      addBox(worker, 'Seed Life wizard gold belt', [0.075, 0.09, 0.56], [0.39, 0.92, 0], portalGoldMaterial);
+    } else if (label === 'Juice' && worker) {
+      worker.visible = false;
+      const cup = new Group();
+      cup.name = 'Seed Life juice stall smiling floating cup worker';
+      cup.position.set(0.34, 1.42, 0);
+      const cupMaterial = new MeshStandardMaterial({ color: 0xf7f0df, roughness: 0.56 });
+      const juiceMaterial = new MeshStandardMaterial({ color: 0xf48b32, roughness: 0.36, transparent: true, opacity: 0.84 });
+      const cupBody = new Mesh(new CylinderGeometry(0.3, 0.24, 0.72, 22), cupMaterial);
+      cupBody.name = 'Seed Life smiling juice cup body';
+      cupBody.castShadow = true;
+      cup.add(cupBody);
+      const juice = new Mesh(new CylinderGeometry(0.27, 0.27, 0.08, 22), juiceMaterial);
+      juice.name = 'Seed Life orange juice surface';
+      juice.position.y = 0.38;
+      cup.add(juice);
+      const straw = new Mesh(new CylinderGeometry(0.025, 0.025, 0.84, 10), new MeshStandardMaterial({ color: 0xf5d2d9, roughness: 0.5 }));
+      straw.name = 'Seed Life smiling juice cup straw';
+      straw.position.set(0.12, 0.62, -0.06);
+      straw.rotation.z = -0.28;
+      straw.castShadow = true;
+      cup.add(straw);
+      addBox(cup, 'Seed Life juice cup left eye', [0.035, 0.07, 0.025], [-0.11, 0.08, 0.29], faceMaterial);
+      addBox(cup, 'Seed Life juice cup right eye', [0.035, 0.07, 0.025], [0.11, 0.08, 0.29], faceMaterial);
+      addBox(cup, 'Seed Life juice cup smile', [0.16, 0.026, 0.026], [0, -0.05, 0.3], faceMaterial);
+      const cheekMaterial = new MeshStandardMaterial({ color: 0xf2a1b6, roughness: 0.64 });
+      const leftCheek = new Mesh(new SphereGeometry(0.052, 10, 6), cheekMaterial);
+      leftCheek.name = 'Seed Life juice cup rosy left cheek';
+      leftCheek.position.set(-0.2, -0.03, 0.29);
+      leftCheek.scale.set(1, 0.45, 0.5);
+      const rightCheek = leftCheek.clone();
+      rightCheek.name = 'Seed Life juice cup rosy right cheek';
+      rightCheek.position.x = 0.2;
+      cup.add(leftCheek, rightCheek);
+      stall.add(cup);
+    }
     root.add(stall);
     seedLifeOnlyGroups.push(stall);
     const sideways = Math.abs(Math.sin(rotationY)) > 0.65;
@@ -784,6 +875,7 @@ export function createChapterEleven(): ChapterElevenData {
   ): void => {
     const gateSide = getGateSide(gateX, gateZ);
     addSeedLifePortalPath(label, gateX, gateZ, gateSide);
+    const hiddenTrapdoor = id === 'rainbow-dimension';
 
     biomePortals.push({
       id,
@@ -797,6 +889,26 @@ export function createChapterEleven(): ChapterElevenData {
       const portalRoot = new Group();
       portalRoot.name = `Seed Life ${label} ${nameSuffix} portal`;
       portalRoot.position.set(x, 0, z);
+      if (hiddenTrapdoor && nameSuffix === 'garden gate') {
+        const trapdoor = new Mesh(new BoxGeometry(3.2, 0.12, 2.3), standDarkWoodMaterial);
+        trapdoor.name = 'Seed Life hidden rainbow dimension trapdoor portal';
+        trapdoor.position.set(0, 0.08, 0);
+        trapdoor.rotation.y = 0.12;
+        trapdoor.castShadow = true;
+        portalRoot.add(trapdoor);
+        const ring = new Mesh(new BoxGeometry(0.52, 0.06, 0.12), portalGoldMaterial);
+        ring.name = 'Seed Life trapdoor small gold pull handle';
+        ring.position.set(0, 0.18, 0.52);
+        portalRoot.add(ring);
+        const sign = new Mesh(new PlaneGeometry(2.55, 0.52), createStandLabelMaterial('???'));
+        sign.name = 'Hidden rainbow trapdoor tiny secret sign';
+        sign.position.set(0, 0.62, -1.4);
+        sign.rotation.x = -0.6;
+        portalRoot.add(sign);
+        root.add(portalRoot);
+        seedLifeOnlyGroups.push(portalRoot);
+        return portalRoot;
+      }
       addBox(portalRoot, `${label} portal left gold post`, [0.28, 3.2, 0.28], [-1.45, 1.6, 0], portalGoldMaterial);
       addBox(portalRoot, `${label} portal right gold post`, [0.28, 3.2, 0.28], [1.45, 1.6, 0], portalGoldMaterial);
       addBox(portalRoot, `${label} portal top gold beam`, [3.15, 0.3, 0.3], [0, 3.05, 0], portalGoldMaterial);
@@ -817,7 +929,9 @@ export function createChapterEleven(): ChapterElevenData {
 
     createPortal(gateX, gateZ, 'garden gate');
     createPortal(targetX, targetZ, 'biome return');
-    const platform = new Mesh(new BoxGeometry(22, 0.08, 22), platformMaterial);
+    const realmSize = 82;
+    const halfRealmSize = realmSize / 2;
+    const platform = new Mesh(new BoxGeometry(realmSize, 0.08, realmSize), platformMaterial);
     platform.name = `Seed Life ${label} biome landing platform`;
     platform.position.set(targetX, -0.035, targetZ);
     platform.receiveShadow = true;
@@ -828,22 +942,22 @@ export function createChapterEleven(): ChapterElevenData {
     realmFenceGroup.position.set(targetX, 0, targetZ);
     const realmFenceMaterial = platformMaterial.clone();
     realmFenceMaterial.roughness = 0.86;
-    const realmNorthFence = new Mesh(new BoxGeometry(22.5, 1.25, 0.28), realmFenceMaterial);
+    const realmNorthFence = new Mesh(new BoxGeometry(realmSize + 0.5, 1.25, 0.28), realmFenceMaterial);
     realmNorthFence.name = `${label} realm north fence`;
-    realmNorthFence.position.set(0, 0.625, -11.25);
+    realmNorthFence.position.set(0, 0.625, -halfRealmSize);
     const realmSouthFence = realmNorthFence.clone();
     realmSouthFence.name = `${label} realm south fence`;
-    realmSouthFence.position.z = 11.25;
-    const realmWestFence = new Mesh(new BoxGeometry(0.28, 1.25, 22.5), realmFenceMaterial);
+    realmSouthFence.position.z = halfRealmSize;
+    const realmWestFence = new Mesh(new BoxGeometry(0.28, 1.25, realmSize + 0.5), realmFenceMaterial);
     realmWestFence.name = `${label} realm west fence`;
-    realmWestFence.position.set(-11.25, 0.625, 0);
+    realmWestFence.position.set(-halfRealmSize, 0.625, 0);
     const realmEastFence = realmWestFence.clone();
     realmEastFence.name = `${label} realm east fence`;
-    realmEastFence.position.x = 11.25;
+    realmEastFence.position.x = halfRealmSize;
     realmFenceGroup.add(realmNorthFence, realmSouthFence, realmWestFence, realmEastFence);
     for (let postIndex = 0; postIndex < 4; postIndex += 1) {
-      const cornerX = postIndex < 2 ? -11.25 : 11.25;
-      const cornerZ = postIndex % 2 === 0 ? -11.25 : 11.25;
+      const cornerX = postIndex < 2 ? -halfRealmSize : halfRealmSize;
+      const cornerZ = postIndex % 2 === 0 ? -halfRealmSize : halfRealmSize;
       const post = new Mesh(new BoxGeometry(0.46, 1.7, 0.46), portalGoldMaterial);
       post.name = `${label} realm gold corner post`;
       post.position.set(cornerX, 0.85, cornerZ);
@@ -852,10 +966,61 @@ export function createChapterEleven(): ChapterElevenData {
     }
     root.add(realmFenceGroup);
     seedLifeOnlyGroups.push(realmFenceGroup);
-    copyOnlyColliders.push({ centerX: targetX, centerZ: targetZ - 11.25, halfWidth: 11.35, halfDepth: 0.18 });
-    copyOnlyColliders.push({ centerX: targetX, centerZ: targetZ + 11.25, halfWidth: 11.35, halfDepth: 0.18 });
-    copyOnlyColliders.push({ centerX: targetX - 11.25, centerZ: targetZ, halfWidth: 0.18, halfDepth: 11.35 });
-    copyOnlyColliders.push({ centerX: targetX + 11.25, centerZ: targetZ, halfWidth: 0.18, halfDepth: 11.35 });
+    copyOnlyColliders.push({ centerX: targetX, centerZ: targetZ - halfRealmSize, halfWidth: halfRealmSize + 0.1, halfDepth: 0.18 });
+    copyOnlyColliders.push({ centerX: targetX, centerZ: targetZ + halfRealmSize, halfWidth: halfRealmSize + 0.1, halfDepth: 0.18 });
+    copyOnlyColliders.push({ centerX: targetX - halfRealmSize, centerZ: targetZ, halfWidth: 0.18, halfDepth: halfRealmSize + 0.1 });
+    copyOnlyColliders.push({ centerX: targetX + halfRealmSize, centerZ: targetZ, halfWidth: 0.18, halfDepth: halfRealmSize + 0.1 });
+    addDirtPatch(targetX, targetZ + 9, 26, 22, true);
+    const addRealmFeature = (feature: Mesh, localX: number, localY: number, localZ: number): void => {
+      feature.position.set(targetX + localX, localY, targetZ + localZ);
+      feature.castShadow = true;
+      feature.receiveShadow = true;
+      root.add(feature);
+      seedLifeOnlyGroups.push(feature);
+    };
+    for (let featureIndex = 0; featureIndex < 14; featureIndex += 1) {
+      const angle = featureIndex * 1.71;
+      const radius = 17 + (featureIndex % 5) * 3.2;
+      const localX = Math.cos(angle) * radius;
+      const localZ = Math.sin(angle) * radius - 7;
+      if (id === 'miskel-mushroom-forest') {
+        const stemHeight = 3.4 + (featureIndex % 3);
+        const stem = new Mesh(new CylinderGeometry(0.52, 0.78, stemHeight, 14), new MeshStandardMaterial({ color: 0xd7c1a6, roughness: 0.8 }));
+        addRealmFeature(stem, localX, stemHeight / 2, localZ);
+        const cap = new Mesh(new SphereGeometry(1.35 + (featureIndex % 3) * 0.28, 18, 12), new MeshStandardMaterial({ color: featureIndex % 2 === 0 ? 0xb74442 : 0x7b4ab0, roughness: 0.66 }));
+        cap.name = 'Seed Life mushroom forest giant spotted cap';
+        cap.scale.y = 0.42;
+        addRealmFeature(cap, localX, stemHeight + 0.8, localZ);
+        for (let spotIndex = 0; spotIndex < 4; spotIndex += 1) {
+          const spot = new Mesh(new SphereGeometry(0.16, 8, 6), canopyWhiteMaterial);
+          spot.name = 'Seed Life mushroom cap pale spot';
+          spot.scale.y = 0.18;
+          addRealmFeature(spot, localX + Math.cos(spotIndex * 1.7) * 0.6, stemHeight + 1.28, localZ + Math.sin(spotIndex * 1.7) * 0.38);
+        }
+      } else if (id === 'frozen-tundra') {
+        const ice = new Mesh(new ConeGeometry(0.32 + (featureIndex % 3) * 0.14, 2.2 + (featureIndex % 4) * 0.5, 8), new MeshStandardMaterial({ color: 0xbfefff, roughness: 0.35, metalness: 0.08, transparent: true, opacity: 0.84 }));
+        ice.name = 'Seed Life frozen tundra sharp icicle crystal';
+        addRealmFeature(ice, localX, 1.1, localZ);
+      } else if (id === 'volcanic-valley') {
+        const rock = new Mesh(new SphereGeometry(0.8 + (featureIndex % 3) * 0.28, 10, 8), new MeshStandardMaterial({ color: 0x3d2b26, roughness: 0.92, emissive: 0x4b0900, emissiveIntensity: 0.08 }));
+        rock.name = 'Seed Life volcanic valley dark lava rock';
+        rock.scale.set(1.2, 0.48, 0.9);
+        addRealmFeature(rock, localX, 0.36, localZ);
+      } else if (id === 'cholesterol-garden') {
+        const star = new Mesh(new SphereGeometry(0.32 + (featureIndex % 3) * 0.06, 10, 8), portalGoldMaterial);
+        star.name = 'Seed Life star garden glowing star stone';
+        addRealmFeature(star, localX, 0.5 + (featureIndex % 3) * 0.22, localZ);
+      } else if (id === 'dragon-jungle') {
+        const ruinHeight = 2.4 + (featureIndex % 3) * 0.4;
+        const ruin = new Mesh(new BoxGeometry(0.8, ruinHeight, 0.8), new MeshStandardMaterial({ color: 0x69624e, roughness: 0.9 }));
+        ruin.name = 'Seed Life dragon jungle ancient stone ruin';
+        addRealmFeature(ruin, localX, ruinHeight / 2, localZ);
+      } else {
+        const prism = new Mesh(new ConeGeometry(0.5, 1.8, 5), new MeshStandardMaterial({ color: 0xb7d9ff, roughness: 0.46, emissive: 0x714dff, emissiveIntensity: 0.22 }));
+        prism.name = 'Seed Life rainbow dimension prismatic crystal';
+        addRealmFeature(prism, localX, 0.9, localZ);
+      }
+    }
     for (let index = 0; index < 8; index += 1) {
       const angle = (index / 8) * Math.PI * 2;
       const marker = new Mesh(new SphereGeometry(0.18 + (index % 3) * 0.05, 12, 8), portalGoldMaterial);
@@ -867,12 +1032,12 @@ export function createChapterEleven(): ChapterElevenData {
     }
   };
 
-  addPortalPair('miskel-mushroom-forest', 'Miskel Forest', -48, -72, -142, -80, biomeMaterials.mushroom);
-  addPortalPair('frozen-tundra', 'Frozen Tundra', -16, -72, -142, 80, biomeMaterials.frozen);
-  addPortalPair('volcanic-valley', 'Volcanic Valley', 16, -72, 142, -80, biomeMaterials.volcanic);
-  addPortalPair('cholesterol-garden', 'Star Garden', 48, -72, 142, 80, biomeMaterials.cosmic);
-  addPortalPair('dragon-jungle', 'Dragon Jungle', -72, 0, 0, -150, biomeMaterials.jungle);
-  addPortalPair('rainbow-dimension', 'Rainbow Gate', 72, 0, 0, 150, biomeMaterials.rainbow);
+  addPortalPair('miskel-mushroom-forest', 'Miskel Forest', -50, -72, -430, -170, biomeMaterials.mushroom);
+  addPortalPair('frozen-tundra', 'Frozen Tundra', -30, -72, -430, 170, biomeMaterials.frozen);
+  addPortalPair('volcanic-valley', 'Volcanic Valley', -10, -72, 430, -170, biomeMaterials.volcanic);
+  addPortalPair('cholesterol-garden', 'Star Garden', 10, -72, 430, 170, biomeMaterials.cosmic);
+  addPortalPair('dragon-jungle', 'Dragon Jungle', 30, -72, 0, -430, biomeMaterials.jungle);
+  addPortalPair('rainbow-dimension', 'Rainbow Gate', 50, -72, 0, 430, biomeMaterials.rainbow);
 
   addSeedLifeStall('Mutation', -47, 54.8, Math.PI / 2);
   addSeedLifeStall('Decoration', -32, 54.8, Math.PI / 2);
@@ -1032,15 +1197,16 @@ export function createChapterEleven(): ChapterElevenData {
     copyOnlyColliders,
     dirtPatches,
     seedLifeDirtPatch,
+    seedLifeDirtPatches,
     biomePortals,
     specialStalls,
     equipmentStand,
     equipmentStandCollider,
     fieldBounds: {
-      minX: -170,
-      maxX: 170,
-      minZ: -170,
-      maxZ: 170,
+      minX: -490,
+      maxX: 490,
+      minZ: -490,
+      maxZ: 490,
     },
     spawn,
     lookTarget,

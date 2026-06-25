@@ -10008,6 +10008,35 @@ export class Game {
       return;
     }
 
+    if (config.cropId === 'lettuce') {
+      const outerLeafMaterial = new MeshStandardMaterial({ color: 0x6fbf55, roughness: 0.9 });
+      const innerLeafMaterial = new MeshStandardMaterial({ color: 0xa8d86d, roughness: 0.88 });
+      const core = new Mesh(new SphereGeometry(0.18, 14, 10), innerLeafMaterial);
+      core.name = 'Chapter 11 mature lettuce tight leafy core';
+      core.position.y = 0.26;
+      core.scale.set(1.1, 0.62, 1.05);
+      core.castShadow = true;
+      plant.root.add(core);
+      for (let ring = 0; ring < 2; ring += 1) {
+        const count = ring === 0 ? 7 : 10;
+        const radius = ring === 0 ? 0.22 : 0.34;
+        for (let index = 0; index < count; index += 1) {
+          const angle = (index / count) * Math.PI * 2 + ring * 0.18;
+          const leaf = new Mesh(new SphereGeometry(ring === 0 ? 0.12 : 0.15, 10, 8), ring === 0 ? innerLeafMaterial : outerLeafMaterial);
+          leaf.name = 'Chapter 11 mature lettuce curled leaf';
+          leaf.position.set(Math.cos(angle) * radius, 0.2 + ring * 0.03, Math.sin(angle) * radius);
+          leaf.scale.set(1.35, 0.18, 0.74);
+          leaf.rotation.set(0.28, angle, ring === 0 ? 0.22 : -0.16);
+          leaf.castShadow = true;
+          plant.root.add(leaf);
+        }
+      }
+      if (plant.charged) {
+        this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.28, 0), plant.golden ? 0.5 : 0.38, plant.golden);
+      }
+      return;
+    }
+
     if (
       config.cropId === 'strawberry'
       || config.cropId === 'blackberry'
@@ -12634,7 +12663,7 @@ export class Game {
 
   private getChapterElevenDirtPatchAt(point: Vector3): ChapterElevenDirtPatch | null {
     const patches = this.chapterElevenTwoActive
-      ? [this.chapterEleven.seedLifeDirtPatch]
+      ? this.chapterEleven.seedLifeDirtPatches
       : this.chapterEleven.dirtPatches;
     return patches.find((patch) => (
       point.x >= patch.centerX - patch.halfWidth + 0.42
