@@ -2119,6 +2119,7 @@ export class Game {
   private chapterElevenEventNoticeText = '';
   private chapterElevenEventNoticeLabel = 'Garden Event';
   private chapterElevenEventNoticeTimer = 0;
+  private chapterElevenEventAudioTimer = 0;
   private chapterElevenSpecialEventSeedTimer = 0;
   private chapterElevenNextEventTimer = 30;
   private chapterElevenLightningStrikeTimer = 0;
@@ -5238,6 +5239,7 @@ export class Game {
       this.updateChapterElevenPets(deltaSeconds);
       this.updateChapterElevenSeedShopStock(deltaSeconds);
       this.updateChapterElevenEventsAndTrader(deltaSeconds);
+      this.gameplaySfxAudio.updateGardenEventAmbient(deltaSeconds);
     } else if (this.chapterTwelveActive && !this.chapterTwelve.isDriving()) {
       this.chapterTwelve.update(deltaSeconds);
     } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive) {
@@ -11401,10 +11403,23 @@ export class Game {
   }
 
   private showChapterElevenEventNotice(text: string, label = 'Garden Event', duration = 5.8, cue: GardenEventCue = 'cheerful'): void {
-    this.chapterElevenEventNoticeText = text;
+    this.chapterElevenEventNoticeText = label === 'Garden Event' || label === 'Realm Event'
+      ? `ALARM: ${text}`
+      : text;
     this.chapterElevenEventNoticeLabel = label;
     this.chapterElevenEventNoticeTimer = Math.max(this.chapterElevenEventNoticeTimer, duration);
+    this.gameplaySfxAudio.playGardenEventAlarm();
     this.gameplaySfxAudio.playGardenEventCue(cue);
+  }
+
+  private startChapterElevenEventAudio(cue: GardenEventCue, duration: number): void {
+    this.chapterElevenEventAudioTimer = Math.max(this.chapterElevenEventAudioTimer, duration);
+    this.gameplaySfxAudio.setGardenEventAmbient(cue);
+  }
+
+  private stopChapterElevenEventAudio(): void {
+    this.chapterElevenEventAudioTimer = 0;
+    this.gameplaySfxAudio.setGardenEventAmbient(null);
   }
 
   private startChapterElevenEvent(event: 'rain' | 'lightning'): void {
@@ -11415,6 +11430,7 @@ export class Game {
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning';
     this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(4.5, 8) : 0;
+    this.startChapterElevenEventAudio(event, this.chapterElevenEventTimer);
     this.showChapterElevenEventNotice(
       event === 'rain' ? 'Rain event is happening.' : 'Thunderstorm event is happening.',
       'Garden Event',
@@ -11431,6 +11447,7 @@ export class Game {
     this.chapterElevenEventTimer = 0;
     this.chapterElevenRainRoot.visible = false;
     this.chapterElevenLightningRoot.visible = false;
+    this.stopChapterElevenEventAudio();
   }
 
   private getChapterElevenDaySeconds(): number {
@@ -11550,6 +11567,7 @@ export class Game {
           : 'magic';
     const realmLabel = messages[currentRealm.id].split('.')[0] ?? 'Realm event';
     this.showChapterElevenEventNotice(`${realmLabel} event is happening.`, 'Realm Event', 6.2, cue);
+    this.startChapterElevenEventAudio(cue, Math.min(Math.max(this.chapterElevenEventTimer, 55), 95));
     const mutation: ChapterElevenMutationId | null = currentRealm.id === 'frozen-tundra'
       ? 'frozen'
       : currentRealm.id === 'volcanic-valley'
@@ -11662,6 +11680,7 @@ export class Game {
       this.stopChapterElevenEvent();
       this.chapterElevenEventNoticeTimer = 0;
       this.chapterElevenEventNoticeText = '';
+      this.stopChapterElevenEventAudio();
       this.chapterElevenSpecialEventSeedTimer = 0;
       this.chapterElevenTraderRoot.visible = false;
       this.chapterElevenTraderVisible = false;
@@ -11675,6 +11694,13 @@ export class Game {
       this.chapterElevenEventNoticeTimer = Math.max(0, this.chapterElevenEventNoticeTimer - deltaSeconds);
       if (this.chapterElevenEventNoticeTimer <= 0) {
         this.chapterElevenEventNoticeText = '';
+      }
+    }
+
+    if (this.chapterElevenEventAudioTimer > 0) {
+      this.chapterElevenEventAudioTimer = Math.max(0, this.chapterElevenEventAudioTimer - deltaSeconds);
+      if (this.chapterElevenEventAudioTimer <= 0 && this.chapterElevenEvent === 'none') {
+        this.stopChapterElevenEventAudio();
       }
     }
 
@@ -11736,6 +11762,9 @@ export class Game {
         this.chapterElevenTraderShopOpen = false;
         this.setChapterElevenSeedShopOpen(false);
         this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+        if (this.chapterElevenEvent === 'none') {
+          this.stopChapterElevenEventAudio();
+        }
         this.pushStatus('The Trader wandered away.', 2.2);
       }
     } else if (this.chapterElevenTwoActive && canStartDailyEvent) {
@@ -11748,6 +11777,7 @@ export class Game {
         this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
         this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
         this.showChapterElevenEventNotice('Trader event is happening.', 'Garden Event', 5.8, 'cheerful');
+        this.startChapterElevenEventAudio('cheerful', this.chapterElevenTraderTimer);
         this.pushStatus('The Trader arrived with western seeds.', 3);
       }
     } else {
@@ -12099,7 +12129,7 @@ export class Game {
   }
 
   private findChapterElevenCowCropTarget(pet: ChapterElevenPet): ChapterElevenPlanting | null {
-    if (pet.petType !== 'cow' && pet.petType !== 'dinosaur') {
+    if (pet.petType !== 'cow' && pet.petType !== 'dinosaur' && pet.petType !== 'pig' && pet.petType !== 'hedgehog' && pet.petType !== 'crab') {
       return null;
     }
 
@@ -12128,6 +12158,82 @@ export class Game {
     });
   }
 
+  private addChapterElevenPetFertilizerPile(root: Group, color = 0x7a4a23, name = 'pet fertilizer'): void {
+    const material = new MeshStandardMaterial({ color, roughness: 0.82 });
+    for (let index = 0; index < 4; index += 1) {
+      const pile = new Mesh(new SphereGeometry(0.075 - index * 0.006, 10, 6), material);
+      pile.name = `Chapter 11 ${name}`;
+      const angle = index * 1.15;
+      pile.position.set(Math.cos(angle) * 0.075, 0.075 + index * 0.025, Math.sin(angle) * 0.06);
+      pile.scale.set(1.18, 0.46, 0.95);
+      pile.castShadow = true;
+      root.add(pile);
+    }
+  }
+
+  private boostChapterElevenPlantGrowth(plant: ChapterElevenPlanting, seconds: number): void {
+    if (plant.mature) {
+      return;
+    }
+
+    const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
+    plant.age = Math.min(config.matureSeconds + 0.1, plant.age + seconds);
+    const nextStage: ChapterElevenPlantStage = plant.age >= config.matureSeconds
+      ? 'mature'
+      : plant.age >= config.babySeconds
+        ? 'baby'
+        : 'planted';
+    if (plant.stage !== nextStage) {
+      plant.stage = nextStage;
+      plant.mature = nextStage === 'mature';
+      this.rebuildChapterElevenPlantVisual(plant);
+    }
+  }
+
+  private findChapterElevenGrowingPlantTarget(pet: ChapterElevenPet): ChapterElevenPlanting | null {
+    return this.chapterElevenPlants
+      .filter((plant) => (
+        !plant.mature
+        && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
+      ))
+      .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0] ?? null;
+  }
+
+  private findChapterElevenMutationPetTarget(pet: ChapterElevenPet): ChapterElevenPlanting | null {
+    return this.chapterElevenPlants
+      .filter((plant) => (
+        plant.mature
+        && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
+      ))
+      .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0] ?? null;
+  }
+
+  private applyChapterElevenPetMutation(plant: ChapterElevenPlanting, mutation: ChapterElevenMutationId, chance: number): boolean {
+    if (Math.random() > chance) {
+      return false;
+    }
+
+    let changed = false;
+    if (plant.pickableFruits && this.isChapterElevenPickableFruitCrop(plant.cropId)) {
+      plant.pickableFruits.forEach((fruit) => {
+        if (!fruit.visible || fruit.mutation) {
+          return;
+        }
+
+        fruit.mutation = mutation;
+        changed = true;
+      });
+    } else if (!plant.mutation) {
+      plant.mutation = mutation;
+      changed = true;
+    }
+
+    if (changed) {
+      this.rebuildChapterElevenPlantVisual(plant);
+    }
+    return changed;
+  }
+
   private updateChapterElevenPetAction(pet: ChapterElevenPet): void {
     if (pet.petType === 'rabbit') {
       const carrot = this.findChapterElevenRabbitCarrotTarget(pet);
@@ -12145,12 +12251,35 @@ export class Game {
         .filter((candidate) => !candidate.mature && this.isPointInChapterElevenPatch(candidate.x, candidate.z, pet.homePatch, 0.1))
         .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0];
       if (plant) {
-        plant.age += plant.stage === 'planted' ? 10 : 8;
+        this.boostChapterElevenPlantGrowth(plant, plant.stage === 'planted' ? 10 : 8);
         if (plant.root.userData.chapterElevenDogFertilized !== true) {
           this.addChapterElevenRainbowPoop(plant.root);
           plant.root.userData.chapterElevenDogFertilized = true;
         }
         this.pushStatus('Your dog left rainbow fertilizer on a planted seed. It grows faster.', 2.2);
+      }
+      return;
+    }
+
+    if (pet.petType === 'chicken') {
+      const plant = this.findChapterElevenGrowingPlantTarget(pet);
+      if (plant) {
+        this.boostChapterElevenPlantGrowth(plant, 9);
+        if (plant.root.userData.chapterElevenChickenFertilized !== true) {
+          this.addChapterElevenPetFertilizerPile(plant.root, 0x8b5a2b, 'chicken fertilizer poop');
+          plant.root.userData.chapterElevenChickenFertilized = true;
+        }
+        this.pushStatus('Your chicken fertilized a plant. It grows faster.', 2.2);
+      }
+      return;
+    }
+
+    if (pet.petType === 'duck' || pet.petType === 'turtle' || pet.petType === 'dolphin' || pet.petType === 'slime') {
+      const plant = this.findChapterElevenGrowingPlantTarget(pet);
+      if (plant) {
+        const boost = pet.petType === 'dolphin' ? 14 : pet.petType === 'turtle' ? 11 : pet.petType === 'slime' ? 10 : 8;
+        this.boostChapterElevenPlantGrowth(plant, boost);
+        this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} helped water a plant. It grows faster.`, 2.2);
       }
       return;
     }
@@ -12161,6 +12290,50 @@ export class Game {
         const harvested = this.trampleChapterElevenProduceIntoInventory(crop);
         if (harvested > 0) {
           this.pushStatus('Your cow trampled ripe food into your inventory.', 2.4);
+        }
+      }
+      return;
+    }
+
+    if (pet.petType === 'pig' || pet.petType === 'hedgehog' || pet.petType === 'crab') {
+      const crop = this.findChapterElevenCowCropTarget(pet);
+      if (crop) {
+        const harvested = this.trampleChapterElevenProduceIntoInventory(crop);
+        if (harvested > 0) {
+          this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} gathered ripe food into your inventory.`, 2.4);
+        }
+      }
+      return;
+    }
+
+    if (pet.petType === 'deer') {
+      const nearby = this.chapterElevenPlants.filter((plant) => (
+        !plant.mature
+        && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
+        && Math.hypot(plant.x - pet.x, plant.z - pet.z) <= 4.5
+      ));
+      nearby.forEach((plant) => this.boostChapterElevenPlantGrowth(plant, 5));
+      if (nearby.length > 0) {
+        this.pushStatus('Your deer gave nearby crops a gentle growth buff.', 2.2);
+      }
+      return;
+    }
+
+    if (pet.petType === 'fox' || pet.petType === 'unicorn' || pet.petType === 'alien' || pet.petType === 'astro-cat' || pet.petType === 'cosmic-bunny' || pet.petType === 'phoenix' || pet.petType === 'dragon') {
+      const plant = this.findChapterElevenMutationPetTarget(pet);
+      if (plant) {
+        const mutation: ChapterElevenMutationId = pet.petType === 'dragon'
+          ? 'dragon-touched'
+          : pet.petType === 'phoenix'
+            ? 'molten'
+            : pet.petType === 'unicorn'
+              ? 'rainbow'
+              : pet.petType === 'alien' || pet.petType === 'astro-cat' || pet.petType === 'cosmic-bunny'
+                ? 'cosmic'
+                : 'golden';
+        const chance = pet.petType === 'unicorn' || pet.petType === 'dragon' ? 0.34 : 0.24;
+        if (this.applyChapterElevenPetMutation(plant, mutation, chance)) {
+          this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} gave a crop the ${this.getChapterElevenMutationLabel(mutation)} mutation.`, 2.6);
         }
       }
       return;
@@ -12199,6 +12372,15 @@ export class Game {
       const rabbitCarrot = this.findChapterElevenRabbitCarrotTarget(pet);
       const dogSeed = this.findChapterElevenDogSeedTarget(pet);
       const cowCrop = this.findChapterElevenCowCropTarget(pet);
+      const growthPlant = (pet.petType === 'chicken' || pet.petType === 'duck' || pet.petType === 'turtle' || pet.petType === 'dolphin' || pet.petType === 'slime' || pet.petType === 'deer')
+        ? this.findChapterElevenGrowingPlantTarget(pet)
+        : null;
+      const mutationPlant = (pet.petType === 'fox' || pet.petType === 'unicorn' || pet.petType === 'alien' || pet.petType === 'astro-cat' || pet.petType === 'cosmic-bunny' || pet.petType === 'phoenix' || pet.petType === 'dragon')
+        ? this.findChapterElevenMutationPetTarget(pet)
+        : null;
+      const gatherCrop = (pet.petType === 'pig' || pet.petType === 'hedgehog' || pet.petType === 'crab')
+        ? this.findChapterElevenCowCropTarget(pet)
+        : null;
       if (rabbitCarrot) {
         pet.targetX = rabbitCarrot.x;
         pet.targetZ = rabbitCarrot.z;
@@ -12207,27 +12389,40 @@ export class Game {
         pet.targetX = dogSeed.x;
         pet.targetZ = dogSeed.z;
         pet.targetKind = 'seed';
-      } else if (cowCrop) {
-        pet.targetX = cowCrop.x;
-        pet.targetZ = cowCrop.z;
+      } else if (cowCrop || gatherCrop) {
+        const targetCrop = cowCrop ?? gatherCrop!;
+        pet.targetX = targetCrop.x;
+        pet.targetZ = targetCrop.z;
+        pet.targetKind = 'crop';
+      } else if (growthPlant) {
+        pet.targetX = growthPlant.x;
+        pet.targetZ = growthPlant.z;
+        pet.targetKind = 'seed';
+      } else if (mutationPlant) {
+        pet.targetX = mutationPlant.x;
+        pet.targetZ = mutationPlant.z;
         pet.targetKind = 'crop';
       }
 
       const toTarget = new Vector3(pet.targetX - pet.x, 0, pet.targetZ - pet.z);
       const distance = Math.hypot(toTarget.x, toTarget.z);
       if (distance < 0.25) {
-        if (rabbitCarrot || dogSeed || cowCrop) {
+        if (rabbitCarrot || dogSeed || cowCrop || growthPlant || mutationPlant || gatherCrop) {
           this.updateChapterElevenPetAction(pet);
-          pet.actionTimer = pet.petType === 'dog' ? 6 : pet.petType === 'cow' ? 3.5 : 5 + Math.random() * 2;
+          pet.actionTimer = pet.petType === 'dog' || pet.petType === 'chicken'
+            ? 6
+            : pet.petType === 'cow' || pet.petType === 'pig' || pet.petType === 'hedgehog' || pet.petType === 'crab'
+              ? 3.5
+              : 5 + Math.random() * 2;
         }
         this.chooseChapterElevenPetTarget(pet);
         pet.targetKind = 'wander';
       } else {
         const speed = rabbitCarrot
           ? 2.45
-          : dogSeed
+          : dogSeed || growthPlant
             ? 1.85
-            : cowCrop
+            : cowCrop || gatherCrop || mutationPlant
               ? pet.petType === 'dinosaur' ? 1.75 : 1.55
               : pet.petType === 'dinosaur'
                 ? 1.1
@@ -14281,6 +14476,7 @@ export class Game {
       this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
       this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
       this.showChapterElevenEventNotice('Sunny Day event is happening.', 'Garden Event', 5.8, 'cheerful');
+      this.startChapterElevenEventAudio('cheerful', Math.min(this.chapterElevenPhaseTimer, 55));
       this.pushStatus('Sunny Day started. The weather clears and the garden feels warmer.', 3);
       return;
     }
@@ -14322,6 +14518,7 @@ export class Game {
       });
       this.chapterElevenDailyEventUsed = true;
       this.showChapterElevenEventNotice('Time Rift event is happening.', 'Garden Event', 5.8, 'magic');
+      this.startChapterElevenEventAudio('magic', 38);
       this.pushStatus(changed > 0
         ? `Time Rift pulsed. ${changed} crop${changed === 1 ? '' : 's'} grew one stage.`
         : 'Time Rift pulsed, but every planted crop was already mature.', 3.2);
@@ -14332,7 +14529,9 @@ export class Game {
     this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenSpecialEventSeedTimer = 120;
-    this.showChapterElevenEventNotice(`${label} event is happening.`, 'Garden Event', 5.8, this.getChapterElevenPurchasedEventCue(optionId));
+    const cue = this.getChapterElevenPurchasedEventCue(optionId);
+    this.showChapterElevenEventNotice(`${label} event is happening.`, 'Garden Event', 5.8, cue);
+    this.startChapterElevenEventAudio(cue, Math.min(this.chapterElevenPhaseTimer, 75));
     if (optionId === 'event:rainstorm') {
       this.applyChapterElevenMutationToCrops('rain-kissed', 0.18);
     } else if (optionId === 'event:rainbow-storm') {

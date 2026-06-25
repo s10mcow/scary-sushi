@@ -26,6 +26,8 @@ export class GameplaySfxAudio {
   private chapterSevenAmbientMode: 'day' | 'night' | null = null;
   private chapterSevenAmbientSources: AudioScheduledSourceNode[] = [];
   private chapterSevenAmbientGain?: GainNode;
+  private gardenEventAmbientCue: GardenEventCue | null = null;
+  private gardenEventAmbientTimer = 0;
   private footstepCooldown = 0;
   private footstepSide = 0;
   private ballPitRustleCooldown = 0;
@@ -58,6 +60,7 @@ export class GameplaySfxAudio {
 
   destroy(): void {
     this.stopChapterSevenAmbient();
+    this.setGardenEventAmbient(null);
     this.stopAllSources();
 
     if (!this.context || this.context.state === 'closed') {
@@ -309,6 +312,63 @@ export class GameplaySfxAudio {
     if (cue === 'magic') {
       this.playGardenMagicCue();
     }
+  }
+
+  playGardenEventAlarm(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.01;
+    for (let index = 0; index < 4; index += 1) {
+      const start = now + index * 0.34;
+      const gain = this.context.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.075, start + 0.018);
+      gain.gain.linearRampToValueAtTime(0.052, start + 0.16);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.26);
+      gain.connect(this.masterGain);
+
+      const alarm = this.context.createOscillator();
+      alarm.type = 'square';
+      alarm.frequency.setValueAtTime(880, start);
+      alarm.frequency.linearRampToValueAtTime(620, start + 0.24);
+      alarm.connect(gain);
+      this.startSource(alarm, start, start + 0.28);
+    }
+  }
+
+  setGardenEventAmbient(cue: GardenEventCue | null): void {
+    if (this.gardenEventAmbientCue === cue) {
+      return;
+    }
+
+    this.gardenEventAmbientCue = cue;
+    this.gardenEventAmbientTimer = 0;
+    if (cue) {
+      this.playGardenEventCue(cue);
+    }
+  }
+
+  updateGardenEventAmbient(deltaSeconds: number): void {
+    if (!this.gardenEventAmbientCue) {
+      return;
+    }
+
+    this.gardenEventAmbientTimer -= deltaSeconds;
+    if (this.gardenEventAmbientTimer > 0) {
+      return;
+    }
+
+    const cue = this.gardenEventAmbientCue;
+    this.playGardenEventCue(cue);
+    this.gardenEventAmbientTimer = cue === 'lightning'
+      ? 5.4 + Math.random() * 2.4
+      : cue === 'rain' || cue === 'wind'
+        ? 2.7 + Math.random() * 0.7
+        : cue === 'cheerful'
+          ? 3.0
+          : 4.2;
   }
 
   playGrandfatherClockChime(): void {
