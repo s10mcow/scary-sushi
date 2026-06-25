@@ -15,6 +15,7 @@ import {
   MeshStandardMaterial,
   NoToneMapping,
   Object3D,
+  OctahedronGeometry,
   PlaneGeometry,
   PerspectiveCamera,
   PointLight,
@@ -428,6 +429,7 @@ type ChapterElevenCropId =
   | 'golden-tomato'
   | 'golden-pepper'
   | 'golden-dragon-fruit'
+  | 'golden-crystal-berry'
   | 'golden-vine-fruit'
   | 'golden-cactus'
   | 'corn'
@@ -8913,6 +8915,8 @@ export class Game {
         return 'golden-nut';
       case 'blueberry':
         return 'golden-blueberry';
+      case 'crystal-berry':
+        return 'golden-crystal-berry';
       case 'raspberry':
         return 'golden-raspberry';
       case 'peach':
@@ -9366,6 +9370,26 @@ export class Game {
       return root;
     }
 
+    if (baseCrop === 'crystal-berry') {
+      const crystal = new Mesh(new OctahedronGeometry(0.16, 0), materialFor(0x86eaff, 0.22));
+      crystal.name = `Held ${this.getChapterElevenCropLabel(cropId)} diamond crystal`;
+      crystal.position.set(-0.03, 0.14, -0.02);
+      crystal.scale.set(0.82, 1.35, 0.82);
+      crystal.rotation.set(0.28, 0.46, 0.12);
+      root.add(crystal);
+      const glint = new Mesh(new OctahedronGeometry(0.07, 0), new MeshBasicMaterial({
+        color: 0xd8fbff,
+        transparent: true,
+        opacity: 0.76,
+      }));
+      glint.name = 'Held Crystal Berry bright glint';
+      glint.position.set(0.02, 0.2, 0.02);
+      glint.scale.set(0.58, 0.9, 0.58);
+      root.add(glint);
+      root.scale.setScalar(1.1);
+      return root;
+    }
+
     const color = baseCrop === 'blackberry'
       ? 0x1b0c26
       : baseCrop === 'blueberry'
@@ -9725,6 +9749,7 @@ export class Game {
       || cropId === 'strawberry'
       || cropId === 'raspberry'
       || cropId === 'blueberry'
+      || cropId === 'crystal-berry'
       || cropId === 'pumpkin'
       || cropId === 'watermelon'
       || cropId === 'peach'
@@ -9807,6 +9832,17 @@ export class Game {
         makeFruit(new Vector3(0.06, 0.62, -0.23), 'Blueberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
         makeFruit(new Vector3(-0.1, 0.36, 0.24), 'Blueberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
         makeFruit(new Vector3(0.22, 0.58, 0.2), 'Blueberry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blueberry', 'Golden Blueberry'),
+      ];
+    }
+
+    if (cropId === 'crystal-berry') {
+      return [
+        makeFruit(new Vector3(0.28, 0.42, 0.07), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
+        makeFruit(new Vector3(-0.24, 0.52, -0.1), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
+        makeFruit(new Vector3(0.06, 0.66, -0.24), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
+        makeFruit(new Vector3(-0.12, 0.38, 0.24), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
+        makeFruit(new Vector3(0.24, 0.6, 0.22), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
+        makeFruit(new Vector3(-0.02, 0.72, 0.04), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
       ];
     }
 
@@ -9964,6 +10000,8 @@ export class Game {
       strawberry: new MeshStandardMaterial({ color: 0xd73535, roughness: 0.62 }),
       raspberry: new MeshStandardMaterial({ color: 0xc93668, roughness: 0.62 }),
       blueberry: new MeshStandardMaterial({ color: 0x2b5ab4, roughness: 0.62 }),
+      crystalBerry: new MeshStandardMaterial({ color: 0x86eaff, emissive: 0x1e7fa0, emissiveIntensity: 0.28, roughness: 0.22, metalness: 0.12 }),
+      goldenCrystalBerry: new MeshStandardMaterial({ color: 0xf3d76a, emissive: 0x8b681d, emissiveIntensity: 0.22, roughness: 0.28, metalness: 0.3 }),
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
       pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
       dragonFruit: new MeshStandardMaterial({ color: 0xd9367c, roughness: 0.58 }),
@@ -10193,6 +10231,20 @@ export class Game {
         fruit = new Mesh(new SphereGeometry(0.055, 12, 8), fruitState.golden ? materials.genericGold : materials.raspberry);
       } else if (fruitState.cropId === 'blueberry') {
         fruit = new Mesh(new SphereGeometry(0.055, 12, 8), fruitState.golden ? materials.genericGold : materials.blueberry);
+      } else if (fruitState.cropId === 'crystal-berry') {
+        fruit = new Mesh(new OctahedronGeometry(fruitState.golden ? 0.088 : 0.076, 0), fruitState.golden ? materials.goldenCrystalBerry : materials.crystalBerry);
+        fruit.scale.set(0.82, 1.28, 0.82);
+        fruit.rotation.set(0.28, index * 0.54, 0.16);
+        const glint = new Mesh(new OctahedronGeometry(fruitState.golden ? 0.044 : 0.036, 0), fruitState.golden ? materials.genericGold : new MeshBasicMaterial({
+          color: 0xc9fbff,
+          transparent: true,
+          opacity: 0.76,
+        }));
+        glint.name = 'Chapter 11 crystal berry tiny diamond glint';
+        glint.position.copy(fruitState.offset).add(new Vector3(0.018, 0.026, 0.015));
+        glint.scale.set(0.46, 0.8, 0.46);
+        glint.castShadow = true;
+        plant.root.add(glint);
       } else {
         fruit = new Mesh(
           new SphereGeometry(fruitState.golden ? 0.062 : 0.052, 12, 8),
@@ -10609,6 +10661,7 @@ export class Game {
       || config.cropId === 'blackberry'
       || config.cropId === 'raspberry'
       || config.cropId === 'blueberry'
+      || config.cropId === 'crystal-berry'
       || config.cropId === 'tomato'
     ) {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
@@ -10616,11 +10669,15 @@ export class Game {
       }
 
       const leafMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x2d7f33 : 0x1f5f2d,
+        color: config.cropId === 'crystal-berry'
+          ? 0x1f6d58
+          : config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x2d7f33 : 0x1f5f2d,
         roughness: 0.88,
       });
       const darkLeafMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x1f5f29 : 0x174521,
+        color: config.cropId === 'crystal-berry'
+          ? 0x164b45
+          : config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x1f5f29 : 0x174521,
         roughness: 0.9,
       });
       const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.86 });
