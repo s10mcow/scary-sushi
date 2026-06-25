@@ -283,7 +283,7 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.', maxStock: 2, copyOnly: true },
   { id: 'fertilizer', label: 'Fertilizer', cost: 180, description: 'Boost one crop faster than water.', maxStock: 4, copyOnly: true },
   { id: 'cheap-auto-harvester', label: 'Cheap Auto Harvester', cost: 500, description: 'Place a small drone. Carries 5 fruits per run and retires after 200 harvests.', maxStock: 2, copyOnly: true },
-  { id: 'auto-harvester', label: 'Auto Harvester', cost: 2000, description: 'Place a strong drone. Carries 50 fruits per run and lasts 10 garden days.', maxStock: 1, copyOnly: true },
+  { id: 'auto-harvester', label: 'Auto Harvester', cost: 5000, description: 'Place a strong drone. Carries 50 fruits per run and lasts 10 garden days.', maxStock: 1, copyOnly: true },
 ];
 const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
@@ -3982,12 +3982,21 @@ export class Game {
     return MathUtils.randInt(minStock, safeMaxStock);
   }
 
+  private getChapterElevenSeedLifeShopItemsBySection(section: 'common' | 'uncommon' | 'rare' | 'legendary') {
+    return this.getChapterElevenSeedShopCatalog().filter((item) => item.seedLifeShop && item.section === section);
+  }
+
+  private isChapterElevenSeedLifeCommonSeed(seedId: ChapterElevenSeedId): boolean {
+    return this.chapterElevenTwoActive
+      && CHAPTER_ELEVEN_SEED_SHOP_ITEMS.some((item) => item.id === seedId && item.seedLifeShop && item.section === 'common');
+  }
+
   private getChapterElevenRandomEquipmentShopStock(item: typeof CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS[number]): number {
     return MathUtils.randInt(1, Math.max(1, item.maxStock ?? 5));
   }
 
   private ensureChapterElevenSeedLifeSectionStock(section: 'uncommon' | 'rare', minimumStocked: number, maximumStocked = Number.POSITIVE_INFINITY): void {
-    const candidates = this.getChapterElevenSeedShopCatalog().filter((item) => item.section === section);
+    const candidates = this.getChapterElevenSeedLifeShopItemsBySection(section);
     let stockedCount = candidates.filter((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0).length;
     if (stockedCount > maximumStocked) {
       const stocked = candidates
@@ -4015,6 +4024,18 @@ export class Game {
     }
   }
 
+  private limitChapterElevenSeedLifeLegendaryStock(): void {
+    const legendaryItems = this.getChapterElevenSeedLifeShopItemsBySection('legendary');
+    const stockedLegendary = legendaryItems
+      .filter((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0)
+      .sort(() => Math.random() - 0.5);
+    stockedLegendary.slice(1).forEach((item) => this.chapterElevenSeedShopStock.set(item.id, 0));
+    if (stockedLegendary.length === 0 && legendaryItems.length > 0 && Math.random() < 0.045) {
+      const item = legendaryItems[MathUtils.randInt(0, legendaryItems.length - 1)];
+      this.chapterElevenSeedShopStock.set(item.id, 1);
+    }
+  }
+
   private getChapterElevenSeedStock(seedId: ChapterElevenSeedId): number {
     if (!this.chapterElevenSeedShopStock.has(seedId)) {
       const item = this.getChapterElevenSeedItem(seedId);
@@ -4032,15 +4053,9 @@ export class Game {
       this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomSeedShopStock(item));
     });
     if (this.chapterElevenTwoActive) {
-      this.ensureChapterElevenSeedLifeSectionStock('uncommon', 5);
+      this.ensureChapterElevenSeedLifeSectionStock('uncommon', 3);
       this.ensureChapterElevenSeedLifeSectionStock('rare', MathUtils.randInt(1, 2), 2);
-      const legendaryItems = this.getChapterElevenSeedShopCatalog().filter((item) => item.section === 'legendary');
-      const stockedLegendary = legendaryItems.filter((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0);
-      stockedLegendary.slice(1).forEach((item) => this.chapterElevenSeedShopStock.set(item.id, 0));
-      if (stockedLegendary.length === 0 && legendaryItems.length > 0 && Math.random() < 0.06) {
-        const item = legendaryItems[MathUtils.randInt(0, legendaryItems.length - 1)];
-        this.chapterElevenSeedShopStock.set(item.id, 1);
-      }
+      this.limitChapterElevenSeedLifeLegendaryStock();
     }
     CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.forEach((item) => {
       this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomEquipmentShopStock(item));
@@ -11005,16 +11020,17 @@ export class Game {
 
     this.chapterElevenPlants.forEach((plant) => {
       const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
-      plant.age += deltaSeconds;
+      const growthDelta = this.isChapterElevenSeedLifeCommonSeed(plant.seedId) ? deltaSeconds * 0.5 : deltaSeconds;
+      plant.age += growthDelta;
       if (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') {
-        plant.age += deltaSeconds;
+        plant.age += growthDelta;
       }
       if (!plant.mature) {
         const sprinklerCount = this.chapterElevenSprinklers.filter((sprinkler) => (
           Math.hypot(sprinkler.x - plant.x, sprinkler.z - plant.z) <= CHAPTER_ELEVEN_SPRINKLER_RADIUS
         )).length;
         if (sprinklerCount > 0) {
-          plant.age += deltaSeconds * (CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER + Math.min(2, sprinklerCount - 1) * 0.35);
+          plant.age += growthDelta * (CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER + Math.min(2, sprinklerCount - 1) * 0.35);
         }
       }
       const nextStage: ChapterElevenPlantStage = plant.age >= config.matureSeconds
@@ -12962,6 +12978,73 @@ export class Game {
     }
   }
 
+  private createChapterElevenDecorationWorldModel(equipmentId: 'decoration-fence' | 'decoration-light-post'): Group {
+    const root = new Group();
+    root.name = equipmentId === 'decoration-fence' ? 'Chapter 11 placed fence decoration' : 'Chapter 11 placed glowing light post decoration';
+
+    if (equipmentId === 'decoration-fence') {
+      const woodMaterial = new MeshStandardMaterial({ color: 0xd9c89e, roughness: 0.82 });
+      [-0.52, 0, 0.52].forEach((x) => {
+        const post = new Mesh(new BoxGeometry(0.11, 0.9, 0.11), woodMaterial);
+        post.name = 'Chapter 11 placed fence post';
+        post.position.set(x, 0.45, 0);
+        post.castShadow = true;
+        post.receiveShadow = true;
+        root.add(post);
+      });
+      [0.28, 0.62].forEach((y) => {
+        const rail = new Mesh(new BoxGeometry(1.28, 0.09, 0.08), woodMaterial);
+        rail.name = 'Chapter 11 placed fence horizontal rail';
+        rail.position.set(0, y, 0);
+        rail.castShadow = true;
+        rail.receiveShadow = true;
+        root.add(rail);
+      });
+      return root;
+    }
+
+    const poleMaterial = new MeshStandardMaterial({ color: 0x171717, roughness: 0.48, metalness: 0.25 });
+    const bulbMaterial = new MeshStandardMaterial({ color: 0xfff4bd, emissive: 0xffd875, emissiveIntensity: 1.15, roughness: 0.38 });
+    const glowMaterial = new MeshBasicMaterial({ color: 0xffdf8a, transparent: true, opacity: 0.2, depthWrite: false });
+    const pole = new Mesh(new CylinderGeometry(0.045, 0.06, 2.25, 14), poleMaterial);
+    pole.name = 'Chapter 11 placed light post pole';
+    pole.position.y = 1.125;
+    pole.castShadow = true;
+    root.add(pole);
+
+    const cross = new Mesh(new BoxGeometry(1.16, 0.055, 0.055), poleMaterial);
+    cross.name = 'Chapter 11 placed light post cross arm';
+    cross.position.y = 2.22;
+    const crossTwo = cross.clone();
+    crossTwo.name = 'Chapter 11 placed light post second cross arm';
+    crossTwo.rotation.y = Math.PI / 2;
+    root.add(cross, crossTwo);
+
+    [
+      new Vector3(-0.64, 2.23, 0),
+      new Vector3(0.64, 2.23, 0),
+      new Vector3(0, 2.23, -0.64),
+      new Vector3(0, 2.23, 0.64),
+    ].forEach((position) => {
+      const bulb = new Mesh(new SphereGeometry(0.105, 16, 10), bulbMaterial);
+      bulb.name = 'Chapter 11 placed light post glowing bulb';
+      bulb.position.copy(position);
+      root.add(bulb);
+    });
+
+    const light = new PointLight(0xffd486, 5.8, 15, 1.7);
+    light.name = 'Chapter 11 placed light post warm circle light';
+    light.position.set(0, 2.05, 0);
+    root.add(light);
+
+    const glow = new Mesh(new CircleGeometry(4.2, 36), glowMaterial);
+    glow.name = 'Chapter 11 placed light post soft ground glow';
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.y = 0.012;
+    root.add(glow);
+    return root;
+  }
+
   private consumeChapterElevenEquipment(equipmentId: ChapterElevenEquipmentId): void {
     const nextCount = Math.max(0, (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) - 1);
     if (nextCount > 0) {
@@ -13097,6 +13180,30 @@ export class Game {
     return true;
   }
 
+  private placeChapterElevenDecoration(point: Vector3): boolean {
+    const equipmentId = this.chapterElevenSelectedEquipmentId;
+    if ((equipmentId !== 'decoration-fence' && equipmentId !== 'decoration-light-post') || (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) <= 0) {
+      return false;
+    }
+
+    const bounds = this.chapterEleven.fieldBounds;
+    const root = this.createChapterElevenDecorationWorldModel(equipmentId);
+    root.position.set(
+      MathUtils.clamp(point.x, bounds.minX + 0.8, bounds.maxX - 0.8),
+      0,
+      MathUtils.clamp(point.z, bounds.minZ + 0.8, bounds.maxZ - 0.8),
+    );
+    this.camera.getWorldDirection(this.placementRayDirection).normalize();
+    root.rotation.y = Math.atan2(this.placementRayDirection.x, this.placementRayDirection.z) + Math.PI / 2;
+    this.chapterEleven.root.add(root);
+    this.consumeChapterElevenEquipment(equipmentId);
+    this.pushStatus(equipmentId === 'decoration-light-post'
+      ? 'Light Post Decoration placed. It casts a warm circle of light.'
+      : 'Fence Decoration placed.', 2.6);
+    this.syncHud();
+    return true;
+  }
+
   private useChapterElevenEquipment(point: Vector3): boolean {
     const equipmentId = this.chapterElevenSelectedEquipmentId;
     if (!equipmentId || (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) <= 0) {
@@ -13109,6 +13216,10 @@ export class Game {
 
     if (equipmentId === 'auto-harvester' || equipmentId === 'cheap-auto-harvester') {
       return this.placeChapterElevenAutoHarvester(point);
+    }
+
+    if (equipmentId === 'decoration-fence' || equipmentId === 'decoration-light-post') {
+      return this.placeChapterElevenDecoration(point);
     }
 
     const targetPlant = this.findChapterElevenTargetPlant(point);
@@ -26759,6 +26870,13 @@ export class Game {
       }
 
       const point = this.getChapterElevenAimGroundPoint();
+      if (this.chapterElevenSelectedEquipmentId === 'decoration-fence') {
+        return 'Press E to place the Fence Decoration here.';
+      }
+      if (this.chapterElevenSelectedEquipmentId === 'decoration-light-post') {
+        return 'Press E to place the Light Post Decoration here.';
+      }
+
       const fruitTarget = this.findChapterElevenTargetPickableFruit();
       if (fruitTarget) {
         const label = this.getChapterElevenCropLabel(this.getChapterElevenHarvestCropId(fruitTarget.fruit.cropId, fruitTarget.fruit.golden, fruitTarget.fruit.charged));
