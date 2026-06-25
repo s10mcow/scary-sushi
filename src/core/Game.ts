@@ -286,9 +286,9 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   traderOnly?: boolean;
 }> = [
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 10, section: 'cheap', maxStock: 9 },
-  { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 20, section: 'cheap', maxStock: 6 },
-  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 40, section: 'cheap', maxStock: 5 },
-  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 50, section: 'cheap', maxStock: 4 },
+  { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 30, section: 'cheap', maxStock: 6 },
+  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 50, section: 'cheap', maxStock: 5 },
+  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 70, section: 'cheap', maxStock: 4 },
   { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 10, section: 'cheap', maxStock: 7 },
   { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 100, section: 'expensive', maxStock: 3 },
   { id: 'watermelon-seeds', label: 'Watermelon seeds', singularLabel: 'Watermelon seed', cost: 100, section: 'expensive', maxStock: 3, normalOnly: true },
@@ -3582,10 +3582,6 @@ export class Game {
   }
 
   private getChapterElevenSeedStock(seedId: ChapterElevenSeedId): number {
-    if (!this.chapterElevenTwoActive) {
-      return this.getChapterElevenSeedMaxStock(seedId);
-    }
-
     if (!this.chapterElevenSeedShopStock.has(seedId)) {
       const item = this.getChapterElevenSeedItem(seedId);
       this.chapterElevenSeedShopStock.set(
@@ -3608,7 +3604,7 @@ export class Game {
   }
 
   private updateChapterElevenSeedShopStock(deltaSeconds: number): void {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+    if (!this.chapterElevenActive) {
       return;
     }
 
@@ -3623,12 +3619,12 @@ export class Game {
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
     const items: ChapterElevenSeedShopItemView[] = this.getChapterElevenSeedShopCatalog().map((item) => {
       const stock = this.getChapterElevenSeedStock(item.id);
-      const stocked = !this.chapterElevenTwoActive || stock > 0;
+      const stocked = stock > 0;
       return {
         ...item,
         enabled: this.chapterElevenMoney >= item.cost && stocked,
-        stock: this.chapterElevenTwoActive ? stock : undefined,
-        restockSeconds: this.chapterElevenTwoActive ? this.chapterElevenSeedShopRestockTimer : undefined,
+        stock,
+        restockSeconds: this.chapterElevenSeedShopRestockTimer,
       };
     });
 
@@ -3662,7 +3658,7 @@ export class Game {
       return;
     }
 
-    if (this.chapterElevenTwoActive && this.getChapterElevenSeedStock(seedId) <= 0) {
+    if (this.getChapterElevenSeedStock(seedId) <= 0) {
       this.pushStatus(`${item.label} are sold out until the next restock.`, 2.4);
       this.syncHud();
       return;
@@ -3676,9 +3672,7 @@ export class Game {
     }
 
     this.chapterElevenMoney -= item.cost;
-    if (this.chapterElevenTwoActive) {
-      this.chapterElevenSeedShopStock.set(seedId, Math.max(0, this.getChapterElevenSeedStock(seedId) - 1));
-    }
+    this.chapterElevenSeedShopStock.set(seedId, Math.max(0, this.getChapterElevenSeedStock(seedId) - 1));
     this.pushStatus(`Bought ${item.singularLabel}. It is in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 3.2);
     this.syncHud();
   };
@@ -9022,6 +9016,7 @@ export class Game {
       watermelon: new MeshStandardMaterial({ color: 0x4fac48, roughness: 0.72 }),
       watermelonStripe: new MeshStandardMaterial({ color: 0x1f6f34, roughness: 0.76 }),
       pineapple: new MeshStandardMaterial({ color: 0xd79a2a, roughness: 0.68 }),
+      pineappleMark: new MeshStandardMaterial({ color: 0x7d5524, roughness: 0.78 }),
       pineappleLeaf: new MeshStandardMaterial({ color: 0x2f8f3b, roughness: 0.82 }),
       peach: new MeshStandardMaterial({ color: 0xf2a36f, roughness: 0.64 }),
       goldenPeach: new MeshStandardMaterial({ color: 0xf2ca4d, roughness: 0.42, metalness: 0.22 }),
@@ -9053,12 +9048,12 @@ export class Game {
       } else if (fruitState.cropId === 'watermelon') {
         fruit = new Mesh(new SphereGeometry(0.34, 28, 16), fruitState.golden ? materials.genericGold : materials.watermelon);
         fruit.scale.set(1.32, 0.72, 1.02);
-        for (let stripeIndex = 0; stripeIndex < 5; stripeIndex += 1) {
-          const stripe = new Mesh(new TorusGeometry(0.23 + stripeIndex * 0.018, 0.012, 6, 36), fruitState.golden ? materials.stem : materials.watermelonStripe);
+        for (let stripeIndex = 0; stripeIndex < 8; stripeIndex += 1) {
+          const stripe = new Mesh(new TorusGeometry(0.2 + stripeIndex * 0.014, 0.014, 6, 40), fruitState.golden ? materials.stem : materials.watermelonStripe);
           stripe.name = 'Chapter 11 watermelon dark green stripe';
-          stripe.position.copy(fruitState.offset).add(new Vector3(0, 0.004 + stripeIndex * 0.004, 0));
-          stripe.scale.set(1.35, 0.42, 0.74);
-          stripe.rotation.set(Math.PI / 2, stripeIndex * 0.42, 0);
+          stripe.position.copy(fruitState.offset).add(new Vector3(0, -0.012 + stripeIndex * 0.004, 0));
+          stripe.scale.set(1.42, 0.36, 0.78);
+          stripe.rotation.set(Math.PI / 2, stripeIndex * 0.34, stripeIndex % 2 === 0 ? 0.12 : -0.12);
           stripe.castShadow = true;
           plant.root.add(stripe);
         }
@@ -9069,9 +9064,23 @@ export class Game {
         stem.castShadow = true;
         plant.root.add(stem);
       } else if (fruitState.cropId === 'pineapple') {
-        fruit = new Mesh(new CylinderGeometry(0.12, 0.16, 0.36, 14), fruitState.golden ? materials.genericGold : materials.pineapple);
-        fruit.scale.set(0.95, 1.08, 0.95);
+        fruit = new Mesh(new SphereGeometry(0.18, 20, 14), fruitState.golden ? materials.genericGold : materials.pineapple);
+        fruit.scale.set(0.82, 1.34, 0.82);
         fruit.rotation.y = 0.18;
+        const markMaterial = fruitState.golden ? materials.stem : materials.pineappleMark;
+        for (let markIndex = 0; markIndex < 8; markIndex += 1) {
+          const angle = (markIndex / 8) * Math.PI * 2;
+          const yOffset = -0.11 + (markIndex % 4) * 0.07;
+          const center = fruitState.offset.clone().add(new Vector3(Math.cos(angle) * 0.13, yOffset, Math.sin(angle) * 0.13));
+          [-0.58, 0.58].forEach((tilt, segmentIndex) => {
+            const mark = new Mesh(new BoxGeometry(0.012, 0.12, 0.012), markMaterial);
+            mark.name = 'Chapter 11 pineapple raised diamond mark';
+            mark.position.copy(center);
+            mark.rotation.set(0.25, angle, tilt + segmentIndex * 0.08);
+            mark.castShadow = true;
+            plant.root.add(mark);
+          });
+        }
         for (let leafIndex = 0; leafIndex < 8; leafIndex += 1) {
           const angle = (leafIndex / 8) * Math.PI * 2;
           const leaf = new Mesh(new ConeGeometry(0.035, 0.24, 6), materials.pineappleLeaf);
@@ -9300,6 +9309,7 @@ export class Game {
     }
 
     if (config.cropId === 'carrot') {
+      const carrotLeafMaterial = new MeshStandardMaterial({ color: 0x2f7d35, roughness: 0.86 });
       const carrot = new Mesh(new ConeGeometry(0.13, 0.58, 16), new MeshStandardMaterial({
         color: plant.golden ? 0xf1c84b : 0xe87920,
         roughness: plant.golden ? 0.42 : 0.74,
@@ -9310,7 +9320,15 @@ export class Game {
       carrot.rotation.z = Math.PI;
       carrot.castShadow = true;
       plant.root.add(carrot);
-      this.addChapterElevenLeafCluster(plant.root, 7, 0.32, 0.08);
+      for (let leafIndex = 0; leafIndex < 8; leafIndex += 1) {
+        const angle = (leafIndex / 8) * Math.PI * 2;
+        const leaf = new Mesh(new BoxGeometry(0.05, 0.34, 0.035), carrotLeafMaterial);
+        leaf.name = 'Chapter 11 carrot upright green top';
+        leaf.position.set(Math.cos(angle) * 0.055, 0.58, Math.sin(angle) * 0.055);
+        leaf.rotation.set(0.52, angle, leafIndex % 2 === 0 ? 0.34 : -0.34);
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      }
       if (plant.charged) {
         this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.35, 0), plant.golden ? 0.5 : 0.38, plant.golden);
       }
@@ -9655,9 +9673,7 @@ export class Game {
         plant.root.add(canopy);
       });
       this.addChapterElevenPickableFruitMeshes(plant);
-      if (this.chapterElevenTwoActive) {
-        plant.root.scale.setScalar(config.cropId === 'apple' ? 1.72 : 1.62);
-      }
+      plant.root.scale.setScalar(config.cropId === 'apple' ? 1.9 : 1.82);
       return;
     }
 
@@ -9735,7 +9751,7 @@ export class Game {
       const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
       plant.age += deltaSeconds;
       if (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') {
-        plant.age += deltaSeconds * 1.4;
+        plant.age += deltaSeconds;
       }
       if (!plant.mature) {
         const sprinklerCount = this.chapterElevenSprinklers.filter((sprinkler) => (
@@ -9769,7 +9785,8 @@ export class Game {
             return;
           }
 
-          fruit.regrowTimer -= deltaSeconds;
+          const regrowDelta = (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') ? deltaSeconds * 2 : deltaSeconds;
+          fruit.regrowTimer -= regrowDelta;
           if (fruit.regrowTimer <= 0) {
             fruit.visible = true;
             fruit.regrowTimer = 0;
