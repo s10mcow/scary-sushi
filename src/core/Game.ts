@@ -287,7 +287,7 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
 ];
 const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
-const CHAPTER_ELEVEN_AUTO_HARVESTER_SPEED = 4.2;
+const CHAPTER_ELEVEN_AUTO_HARVESTER_SPEED = 12.6;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X = -31.8;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z = -18.2;
 const CHAPTER_ELEVEN_CHEAP_AUTO_HARVESTER_CAPACITY = 5;
@@ -436,7 +436,21 @@ type ChapterElevenCropId =
   | 'golden-corn'
   | 'golden-desert-sage'
   | 'golden-sunset-melon'
+  | `${ChapterElevenMutationId}-${string}`
   | `charged-${string}`;
+type ChapterElevenMutationId =
+  | 'basic'
+  | 'large'
+  | 'giant'
+  | 'golden'
+  | 'rainbow'
+  | 'rain-kissed'
+  | 'storm-charged'
+  | 'frozen'
+  | 'molten'
+  | 'cosmic'
+  | 'dragon-touched'
+  | 'prismatic';
 type ChapterElevenPlantStage = 'planted' | 'baby' | 'mature';
 type ChapterElevenHotbarItem =
   | { kind: 'seed'; id: ChapterElevenSeedId }
@@ -488,6 +502,7 @@ interface ChapterElevenPlanting {
   mature: boolean;
   golden: boolean;
   charged: boolean;
+  mutation?: ChapterElevenMutationId;
   pickableFruits?: ChapterElevenPickableFruit[];
   hasVineStick?: boolean;
 }
@@ -527,6 +542,7 @@ interface ChapterElevenPickableFruit {
   visible: boolean;
   golden: boolean;
   charged: boolean;
+  mutation?: ChapterElevenMutationId;
   goldenChance: number;
   regrowTimer: number;
   regrowSeconds: number;
@@ -8771,6 +8787,10 @@ export class Game {
   }
 
   private getChapterElevenCropLabel(cropId: ChapterElevenCropId): string {
+    const mutation = this.getChapterElevenCropMutationPrefix(cropId);
+    if (mutation) {
+      return `${this.getChapterElevenMutationLabel(mutation.mutation)} ${this.getChapterElevenCropLabel(mutation.baseCropId)}`;
+    }
     if (cropId.startsWith('charged-golden-')) {
       const base = cropId.replace('charged-golden-', '') as ChapterElevenCropId;
       return `Golden Electric ${this.getChapterElevenCropLabel(base)}`;
@@ -8785,6 +8805,92 @@ export class Game {
     }
     const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
     return config?.label ?? 'Crop';
+  }
+
+  private getChapterElevenMutationLabel(mutation: ChapterElevenMutationId): string {
+    switch (mutation) {
+      case 'rain-kissed':
+        return 'Rain Kissed';
+      case 'storm-charged':
+        return 'Storm Charged';
+      case 'dragon-touched':
+        return 'Dragon Touched';
+      default:
+        return mutation
+          .split('-')
+          .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+          .join(' ');
+    }
+  }
+
+  private getChapterElevenMutationMultiplier(mutation: ChapterElevenMutationId): number {
+    switch (mutation) {
+      case 'basic':
+        return 1.5;
+      case 'large':
+        return 2.2;
+      case 'giant':
+        return 3;
+      case 'golden':
+        return 5;
+      case 'rain-kissed':
+        return 2;
+      case 'storm-charged':
+        return 4;
+      case 'frozen':
+        return 8;
+      case 'molten':
+        return 10;
+      case 'cosmic':
+        return 25;
+      case 'dragon-touched':
+        return 20;
+      case 'rainbow':
+        return 10;
+      case 'prismatic':
+        return 100;
+    }
+  }
+
+  private getChapterElevenMutationStory(mutation: ChapterElevenMutationId): string {
+    switch (mutation) {
+      case 'cosmic':
+        return 'Cosmic dust swirls around it and turns the fruit purplish blue.';
+      case 'frozen':
+        return 'Cold frost crawls over it and turns the fruit icy blue.';
+      case 'molten':
+        return 'Lava heat rolls through it and makes it glow red-orange.';
+      case 'rain-kissed':
+        return 'Rainwater shines on it and makes it fresh and valuable.';
+      case 'storm-charged':
+        return 'Storm energy snaps around it with blue sparks.';
+      case 'dragon-touched':
+        return 'A dragon blessing leaves glowing scale marks on it.';
+      case 'rainbow':
+      case 'prismatic':
+        return 'Rainbow light bends around it and changes its color.';
+      case 'golden':
+        return 'Golden light coats it and makes it shine like treasure.';
+      case 'large':
+      case 'giant':
+        return 'The crop swells bigger than normal.';
+      case 'basic':
+        return 'The crop changes into a stronger mutated version.';
+    }
+  }
+
+  private getChapterElevenCropMutationPrefix(cropId: ChapterElevenCropId): { mutation: ChapterElevenMutationId; baseCropId: ChapterElevenCropId } | null {
+    const mutationIds: ChapterElevenMutationId[] = ['dragon-touched', 'storm-charged', 'rain-kissed', 'prismatic', 'cosmic', 'frozen', 'molten', 'rainbow', 'golden', 'giant', 'large', 'basic'];
+    const cropText = String(cropId);
+    const mutation = mutationIds.find((candidate) => cropText.startsWith(`${candidate}-`));
+    if (!mutation) {
+      return null;
+    }
+
+    return {
+      mutation,
+      baseCropId: cropText.slice(mutation.length + 1) as ChapterElevenCropId,
+    };
   }
 
   private getChapterElevenGoldenCropId(cropId: ChapterElevenCropId): ChapterElevenCropId | null {
@@ -8842,14 +8948,16 @@ export class Game {
     }
   }
 
-  private getChapterElevenHarvestCropId(baseCropId: ChapterElevenCropId, golden: boolean, charged: boolean): ChapterElevenCropId {
+  private getChapterElevenHarvestCropId(baseCropId: ChapterElevenCropId, golden: boolean, charged: boolean, mutation?: ChapterElevenMutationId): ChapterElevenCropId {
+    const normalizedBase = this.getChapterElevenCropMutationPrefix(baseCropId)?.baseCropId ?? baseCropId;
+    const mutated = mutation ? `${mutation}-` : '';
     if (charged && golden) {
-      return `charged-golden-${baseCropId}`;
+      return `${mutated}charged-golden-${normalizedBase}` as ChapterElevenCropId;
     }
     if (charged) {
-      return `charged-${baseCropId}`;
+      return `${mutated}charged-${normalizedBase}` as ChapterElevenCropId;
     }
-    return golden ? this.getChapterElevenGoldenCropId(baseCropId) ?? baseCropId : baseCropId;
+    return `${mutated}${golden ? this.getChapterElevenGoldenCropId(normalizedBase) ?? normalizedBase : normalizedBase}` as ChapterElevenCropId;
   }
 
   private getChapterElevenHotbarItemLabel(item: ChapterElevenHotbarItem): string {
@@ -9047,6 +9155,74 @@ export class Game {
     }
   }
 
+  private createChapterElevenMutationMaterial(mutation: ChapterElevenMutationId): MeshStandardMaterial {
+    switch (mutation) {
+      case 'cosmic':
+        return new MeshStandardMaterial({ color: 0x6b55d9, emissive: 0x20145a, emissiveIntensity: 0.42, roughness: 0.38, metalness: 0.12 });
+      case 'frozen':
+        return new MeshStandardMaterial({ color: 0xaee6ff, emissive: 0x2a7fa3, emissiveIntensity: 0.28, roughness: 0.34, metalness: 0.08 });
+      case 'molten':
+        return new MeshStandardMaterial({ color: 0xf05b25, emissive: 0xff5a12, emissiveIntensity: 0.52, roughness: 0.46, metalness: 0.1 });
+      case 'rain-kissed':
+        return new MeshStandardMaterial({ color: 0x66c8d5, emissive: 0x0d5f75, emissiveIntensity: 0.22, roughness: 0.24, metalness: 0.06 });
+      case 'storm-charged':
+        return new MeshStandardMaterial({ color: 0x74d8ff, emissive: 0x1d72ff, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.12 });
+      case 'dragon-touched':
+        return new MeshStandardMaterial({ color: 0x8ed24d, emissive: 0x3d8b1f, emissiveIntensity: 0.36, roughness: 0.48, metalness: 0.08 });
+      case 'rainbow':
+      case 'prismatic':
+        return new MeshStandardMaterial({ color: 0xd66cff, emissive: 0x4a2cff, emissiveIntensity: 0.38, roughness: 0.3, metalness: 0.16 });
+      case 'golden':
+        return new MeshStandardMaterial({ color: 0xf1c84b, emissive: 0x8f6818, emissiveIntensity: 0.28, roughness: 0.38, metalness: 0.28 });
+      case 'large':
+      case 'giant':
+      case 'basic':
+        return new MeshStandardMaterial({ color: 0x9bdd55, emissive: 0x2a651c, emissiveIntensity: 0.18, roughness: 0.58 });
+    }
+  }
+
+  private addChapterElevenMutationEffect(root: Group, position: Vector3, mutation: ChapterElevenMutationId, radius = 0.28): void {
+    const effectMaterial = new MeshBasicMaterial({
+      color: mutation === 'cosmic'
+        ? 0x8f7cff
+        : mutation === 'frozen'
+          ? 0xbbeeff
+          : mutation === 'molten'
+            ? 0xff6b25
+            : mutation === 'dragon-touched'
+              ? 0x9bed5c
+              : mutation === 'golden'
+                ? 0xffdc62
+              : mutation === 'rainbow' || mutation === 'prismatic'
+                ? 0xff77dd
+                : 0x83dfff,
+      transparent: true,
+      opacity: mutation === 'cosmic' ? 0.62 : 0.48,
+      depthWrite: false,
+    });
+
+    const dustCount = mutation === 'cosmic' || mutation === 'prismatic' ? 8 : 5;
+    for (let index = 0; index < dustCount; index += 1) {
+      const angle = (index / dustCount) * Math.PI * 2;
+      const dust = new Mesh(new SphereGeometry(0.018, 6, 4), effectMaterial);
+      dust.name = `Chapter 11 ${this.getChapterElevenMutationLabel(mutation)} mutation floating dust`;
+      dust.position.set(
+        position.x + Math.cos(angle) * radius,
+        position.y + 0.05 + Math.sin(index * 1.7) * 0.035,
+        position.z + Math.sin(angle) * radius,
+      );
+      dust.userData.chapterElevenElectricBolt = true;
+      dust.userData.centerX = position.x;
+      dust.userData.centerY = position.y + 0.05;
+      dust.userData.centerZ = position.z;
+      dust.userData.radius = radius;
+      dust.userData.phase = angle;
+      dust.userData.speed = mutation === 'cosmic' || mutation === 'prismatic' ? 1.2 : 0.7;
+      dust.userData.flicker = index * 0.47;
+      root.add(dust);
+    }
+  }
+
   private createChapterElevenHeldCropModel(cropId: ChapterElevenCropId): Group {
     const root = new Group();
     const handMaterial = new MeshStandardMaterial({ color: 0xd5a17b, roughness: 0.84 });
@@ -9054,10 +9230,15 @@ export class Game {
     hand.position.set(0.1, -0.22, 0.04);
     root.add(hand);
 
-    const golden = cropId.startsWith('golden-');
-    const baseCrop = (golden ? cropId.replace('golden-', '') : cropId) as ChapterElevenCropId;
+    const mutationPrefix = this.getChapterElevenCropMutationPrefix(cropId);
+    const displayCropId = mutationPrefix?.baseCropId ?? cropId;
+    const golden = displayCropId.startsWith('golden-');
+    const baseCrop = (golden ? displayCropId.replace('golden-', '') : displayCropId) as ChapterElevenCropId;
     const goldMaterial = new MeshStandardMaterial({ color: 0xf1c84b, roughness: 0.42, metalness: 0.28 });
-    const materialFor = (color: number, roughness = 0.7) => golden
+    const mutationMaterial = mutationPrefix ? this.createChapterElevenMutationMaterial(mutationPrefix.mutation) : null;
+    const materialFor = (color: number, roughness = 0.7) => mutationMaterial
+      ? mutationMaterial
+      : golden
       ? goldMaterial
       : new MeshStandardMaterial({ color, roughness });
 
@@ -9553,6 +9734,8 @@ export class Game {
       || cropId === 'banana'
       || cropId === 'tomato'
       || cropId === 'pepper'
+      || cropId === 'corn'
+      || cropId === 'seed-life-golden-corn'
       || cropId === 'dragon-fruit'
       || cropId === 'vine-fruit'
       || cropId === 'cactus';
@@ -9582,6 +9765,7 @@ export class Game {
       visible: true,
       golden: Math.random() < goldenChance,
       charged: false,
+      mutation: undefined,
       goldenChance,
       regrowTimer: 0,
       regrowSeconds,
@@ -9640,6 +9824,12 @@ export class Game {
         makeFruit(new Vector3(-0.18, 0.48, 0.12), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
         makeFruit(new Vector3(0.26, 0.62, -0.14), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
         makeFruit(new Vector3(-0.06, 0.68, -0.18), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+      ];
+    }
+
+    if (cropId === 'corn' || cropId === 'seed-life-golden-corn') {
+      return [
+        makeFruit(new Vector3(0.08, 1.32, 0.04), 'Corn Cob', regrow(16), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-corn', 'Golden Corn Cob'),
       ];
     }
 
@@ -9962,6 +10152,17 @@ export class Game {
         stem.rotation.z = index % 2 === 0 ? -0.18 : 0.14;
         stem.castShadow = true;
         plant.root.add(stem);
+      } else if (fruitState.cropId === 'corn' || fruitState.cropId === 'seed-life-golden-corn') {
+        fruit = new Mesh(new CylinderGeometry(0.105, 0.13, 0.52, 16), fruitState.golden || fruitState.cropId === 'seed-life-golden-corn' ? materials.genericGold : materials.lemon);
+        fruit.name = 'Chapter 11 pickable corn cob';
+        fruit.rotation.z = -0.12;
+        for (let row = 0; row < 5; row += 1) {
+          const kernelRing = new Mesh(new CylinderGeometry(0.112, 0.118, 0.018, 16), fruitState.golden || fruitState.cropId === 'seed-life-golden-corn' ? materials.genericGold : materials.lemon);
+          kernelRing.name = 'Chapter 11 pickable corn cob kernel ring';
+          kernelRing.position.copy(fruitState.offset).add(new Vector3(0, -0.19 + row * 0.08, 0));
+          kernelRing.rotation.z = -0.12;
+          plant.root.add(kernelRing);
+        }
       } else if (fruitState.cropId === 'dragon-fruit') {
         fruit = new Mesh(new SphereGeometry(0.095, 16, 10), fruitState.golden ? materials.genericGold : materials.dragonFruit);
         fruit.scale.set(1.08, 0.92, 0.96);
@@ -9997,12 +10198,19 @@ export class Game {
         );
       }
 
-      fruit.name = `Chapter 11 pickable ${fruitState.golden ? fruitState.goldenLabel ?? fruitState.label : fruitState.label}`;
+      const mutation = fruitState.mutation ?? plant.mutation;
+      if (mutation) {
+        fruit.material = this.createChapterElevenMutationMaterial(mutation);
+      }
+      fruit.name = `Chapter 11 pickable ${mutation ? `${this.getChapterElevenMutationLabel(mutation)} ` : ''}${fruitState.golden ? fruitState.goldenLabel ?? fruitState.label : fruitState.label}`;
       fruit.userData.chapterElevenPlantId = plant.id;
       fruit.userData.chapterElevenFruitIndex = index;
       fruit.position.copy(fruitState.offset);
       fruit.castShadow = true;
       plant.root.add(fruit);
+      if (mutation) {
+        this.addChapterElevenMutationEffect(plant.root, fruitState.offset, mutation, mutation === 'cosmic' || mutation === 'prismatic' ? 0.34 : 0.25);
+      }
       if (fruitState.charged) {
         this.addChapterElevenElectricityBeams(plant.root, fruitState.offset, fruitState.golden ? 0.52 : 0.42, fruitState.golden);
       }
@@ -10165,6 +10373,15 @@ export class Game {
         this.addChapterElevenLeafCluster(plant.root, 3, 0.12, 0.48);
         return;
       }
+      if (config.cropId === 'sunflower') {
+        const stalk = new Mesh(new CylinderGeometry(0.035, 0.05, 0.7, 10), new MeshStandardMaterial({ color: 0x3d8a32, roughness: 0.84 }));
+        stalk.name = 'Chapter 11 baby sunflower short stalk';
+        stalk.position.y = 0.42;
+        stalk.castShadow = true;
+        plant.root.add(stalk);
+        this.addChapterElevenLeafCluster(plant.root, 4, 0.15, 0.46);
+        return;
+      }
       this.addChapterElevenLeafCluster(plant.root, 4, config.cropId === 'nut' ? 0.26 : 0.18, 0.06);
       return;
     }
@@ -10258,11 +10475,6 @@ export class Game {
     if (config.cropId === 'corn' || config.cropId === 'seed-life-golden-corn') {
       const stalkMaterial = new MeshStandardMaterial({ color: 0x347d2e, roughness: 0.88 });
       const leafMaterial = new MeshStandardMaterial({ color: 0x4f9a3a, roughness: 0.86 });
-      const cobMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'seed-life-golden-corn' || plant.golden ? 0xf3c94b : 0xf2d15a,
-        roughness: 0.62,
-        metalness: config.cropId === 'seed-life-golden-corn' || plant.golden ? 0.2 : 0,
-      });
       const stalk = new Mesh(new CylinderGeometry(0.07, 0.09, 1.32, 10), stalkMaterial);
       stalk.name = 'Chapter 11 semi realistic corn stalk';
       stalk.position.y = 0.72;
@@ -10278,19 +10490,58 @@ export class Game {
         leaf.castShadow = true;
         plant.root.add(leaf);
       }
-      const cob = new Mesh(new CylinderGeometry(0.105, 0.13, 0.52, 16), cobMaterial);
-      cob.name = 'Chapter 11 upright corn cob at top';
-      cob.position.y = 1.42;
-      cob.castShadow = true;
-      plant.root.add(cob);
-      for (let row = 0; row < 5; row += 1) {
-        const kernelRing = new Mesh(new CylinderGeometry(0.112, 0.118, 0.018, 16), cobMaterial);
-        kernelRing.name = 'Chapter 11 corn cob kernel ring';
-        kernelRing.position.y = 1.22 + row * 0.08;
-        plant.root.add(kernelRing);
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
+      this.addChapterElevenPickableFruitMeshes(plant);
       if (plant.charged) {
         this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.78, 0), plant.golden ? 0.72 : 0.54, plant.golden);
+      }
+      return;
+    }
+
+    if (config.cropId === 'sunflower') {
+      const stalkMaterial = new MeshStandardMaterial({ color: 0x3f8f34, roughness: 0.86 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x4f9f3b, roughness: 0.84 });
+      const petalMaterial = new MeshStandardMaterial({
+        color: plant.golden ? 0xf4cf42 : 0xf5c431,
+        roughness: plant.golden ? 0.42 : 0.62,
+        metalness: plant.golden ? 0.16 : 0,
+      });
+      const centerMaterial = new MeshStandardMaterial({ color: plant.golden ? 0x8d641b : 0x4b2b17, roughness: 0.72 });
+      const stalk = new Mesh(new CylinderGeometry(0.055, 0.075, 1.72, 12), stalkMaterial);
+      stalk.name = 'Chapter 11 mature sunflower tall green stalk';
+      stalk.position.y = 0.9;
+      stalk.castShadow = true;
+      plant.root.add(stalk);
+      [-1, 1].forEach((side, index) => {
+        const leaf = new Mesh(new SphereGeometry(0.18, 12, 8), leafMaterial);
+        leaf.name = 'Chapter 11 mature sunflower broad leaf';
+        leaf.position.set(side * 0.18, 0.58 + index * 0.32, 0);
+        leaf.scale.set(1.6, 0.22, 0.72);
+        leaf.rotation.set(0.22, 0, side * 0.72);
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      });
+      const headY = 1.8;
+      for (let index = 0; index < 18; index += 1) {
+        const angle = (index / 18) * Math.PI * 2;
+        const petal = new Mesh(new SphereGeometry(0.105, 12, 8), petalMaterial);
+        petal.name = 'Chapter 11 mature sunflower bright yellow petal';
+        petal.position.set(Math.cos(angle) * 0.26, headY + Math.sin(angle) * 0.26, 0.015);
+        petal.scale.set(0.62, 1.45, 0.18);
+        petal.rotation.z = -angle;
+        petal.castShadow = true;
+        plant.root.add(petal);
+      }
+      const center = new Mesh(new SphereGeometry(0.19, 18, 12), centerMaterial);
+      center.name = 'Chapter 11 mature sunflower dark seeded center';
+      center.position.set(0, headY, 0.04);
+      center.scale.set(1.05, 1.05, 0.22);
+      center.castShadow = true;
+      plant.root.add(center);
+      if (plant.charged) {
+        this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, headY, 0), plant.golden ? 0.78 : 0.56, plant.golden);
       }
       return;
     }
@@ -11299,6 +11550,60 @@ export class Game {
           : 'magic';
     const realmLabel = messages[currentRealm.id].split('.')[0] ?? 'Realm event';
     this.showChapterElevenEventNotice(`${realmLabel} event is happening.`, 'Realm Event', 6.2, cue);
+    const mutation: ChapterElevenMutationId | null = currentRealm.id === 'frozen-tundra'
+      ? 'frozen'
+      : currentRealm.id === 'volcanic-valley'
+        ? 'molten'
+        : currentRealm.id === 'cholesterol-garden'
+          ? 'cosmic'
+          : currentRealm.id === 'dragon-jungle'
+            ? 'dragon-touched'
+            : currentRealm.id === 'rainbow-dimension'
+              ? 'prismatic'
+              : null;
+    if (mutation) {
+      this.applyChapterElevenMutationToCrops(mutation, 0.42);
+    }
+  }
+
+  private applyChapterElevenMutationToCrops(mutation: ChapterElevenMutationId, chance: number): number {
+    let changed = 0;
+    this.chapterElevenPlants.forEach((plant) => {
+      if (plant.stage !== 'mature') {
+        return;
+      }
+
+      let plantChanged = false;
+      if (plant.pickableFruits && this.isChapterElevenPickableFruitCrop(plant.cropId)) {
+        plant.pickableFruits.forEach((fruit) => {
+          if (!fruit.visible || Math.random() > chance) {
+            return;
+          }
+          fruit.mutation = mutation;
+          changed += 1;
+          plantChanged = true;
+        });
+      } else if (Math.random() <= chance) {
+        plant.mutation = mutation;
+        changed += 1;
+        plantChanged = true;
+      }
+
+      if (plantChanged) {
+        this.rebuildChapterElevenPlantVisual(plant);
+      }
+    });
+
+    if (changed > 0) {
+      this.showChapterElevenEventNotice(
+        `${this.getChapterElevenMutationLabel(mutation)} mutation is happening.`,
+        'Garden Event',
+        6,
+        mutation === 'frozen' || mutation === 'rain-kissed' ? 'rain' : mutation === 'molten' || mutation === 'dragon-touched' ? 'dragon' : 'magic',
+      );
+      this.pushStatus(`${this.getChapterElevenMutationLabel(mutation)} mutation started. ${this.getChapterElevenMutationStory(mutation)}`, 3.6);
+    }
+    return changed;
   }
 
   private getChapterElevenNightBlend(): number {
@@ -11337,8 +11642,10 @@ export class Game {
       }
 
       plant.charged = true;
+      plant.mutation = 'storm-charged';
       plant.pickableFruits?.forEach((fruit) => {
         fruit.charged = true;
+        fruit.mutation = 'storm-charged';
         fruit.visible = true;
         fruit.regrowTimer = 0;
       });
@@ -11346,7 +11653,7 @@ export class Game {
       this.rebuildChapterElevenPlantVisual(plant);
     });
     this.pushStatus(charged > 0
-      ? `Lightning charged ${charged} plant${charged === 1 ? '' : 's'} into glowing high-value crops.`
+      ? `Storm Charged mutation hit ${charged} plant${charged === 1 ? '' : 's'}. ${this.getChapterElevenMutationStory('storm-charged')}`
       : 'Lightning struck the field.', 2.5);
   }
 
@@ -11582,7 +11889,7 @@ export class Game {
 
     target.fruit.visible = false;
     target.fruit.regrowTimer = target.fruit.regrowSeconds;
-    const cropId = this.getChapterElevenHarvestCropId(target.fruit.cropId, target.fruit.golden, target.fruit.charged);
+    const cropId = this.getChapterElevenHarvestCropId(target.fruit.cropId, target.fruit.golden, target.fruit.charged, target.fruit.mutation ?? target.plant.mutation);
     this.rebuildChapterElevenPlantVisual(target.plant);
     harvester.cargoCropIds.push(cropId);
     harvester.totalHarvested += 1;
@@ -11700,7 +12007,7 @@ export class Game {
         if (!fruit.visible) {
           return;
         }
-        const cropId = this.getChapterElevenHarvestCropId(fruit.cropId, fruit.golden, fruit.charged);
+        const cropId = this.getChapterElevenHarvestCropId(fruit.cropId, fruit.golden, fruit.charged, fruit.mutation ?? plant.mutation);
         this.addChapterElevenCropToInventory(cropId);
         fruit.visible = false;
         fruit.regrowTimer = fruit.regrowSeconds;
@@ -11712,7 +12019,7 @@ export class Game {
       return harvested;
     }
 
-    this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId(plant.cropId, plant.golden, plant.charged));
+    this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId(plant.cropId, plant.golden, plant.charged, plant.mutation));
     this.chapterEleven.root.remove(plant.root);
     this.chapterElevenPlants.splice(this.chapterElevenPlants.indexOf(plant), 1);
     return 1;
@@ -11825,7 +12132,7 @@ export class Game {
     if (pet.petType === 'rabbit') {
       const carrot = this.findChapterElevenRabbitCarrotTarget(pet);
       if (carrot) {
-        this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId('carrot', carrot.golden, carrot.charged));
+        this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId('carrot', carrot.golden, carrot.charged, carrot.mutation));
         this.chapterEleven.root.remove(carrot.root);
         this.chapterElevenPlants.splice(this.chapterElevenPlants.indexOf(carrot), 1);
         this.pushStatus('Your rabbit dug up a carrot for you.', 2.2);
@@ -13675,7 +13982,7 @@ export class Game {
       return;
     }
 
-    const inventoryCropId = this.getChapterElevenHarvestCropId(config.cropId, plant.golden, plant.charged);
+    const inventoryCropId = this.getChapterElevenHarvestCropId(config.cropId, plant.golden, plant.charged, plant.mutation);
     this.chapterElevenCropInventory.set(inventoryCropId, (this.chapterElevenCropInventory.get(inventoryCropId) ?? 0) + 1);
 
     if (config.regrows) {
@@ -13695,7 +14002,7 @@ export class Game {
   private harvestChapterElevenPickableFruit(target: { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number }): void {
     target.fruit.visible = false;
     target.fruit.regrowTimer = target.fruit.regrowSeconds;
-    const cropId = this.getChapterElevenHarvestCropId(target.fruit.cropId, target.fruit.golden, target.fruit.charged);
+    const cropId = this.getChapterElevenHarvestCropId(target.fruit.cropId, target.fruit.golden, target.fruit.charged, target.fruit.mutation ?? target.plant.mutation);
     this.chapterElevenCropInventory.set(cropId, (this.chapterElevenCropInventory.get(cropId) ?? 0) + 1);
     this.rebuildChapterElevenPlantVisual(target.plant);
     const label = this.getChapterElevenCropLabel(cropId);
@@ -13704,6 +14011,17 @@ export class Game {
   }
 
   private getChapterElevenSellableCrop(cropId: ChapterElevenCropId): { label: string; value: number } | null {
+    const mutation = this.getChapterElevenCropMutationPrefix(cropId);
+    if (mutation) {
+      const baseSellable = this.getChapterElevenSellableCrop(mutation.baseCropId);
+      return baseSellable
+        ? {
+          label: `${this.getChapterElevenMutationLabel(mutation.mutation)} ${baseSellable.label}`,
+          value: Math.round(baseSellable.value * this.getChapterElevenMutationMultiplier(mutation.mutation)),
+        }
+        : null;
+    }
+
     if (cropId.startsWith('charged-golden-')) {
       const baseCropId = cropId.replace('charged-golden-', '') as ChapterElevenCropId;
       const baseConfig = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === baseCropId);
@@ -13970,6 +14288,7 @@ export class Game {
     if (optionId === 'event:rainstorm') {
       this.stopChapterElevenEvent();
       this.startChapterElevenEvent('rain');
+      this.applyChapterElevenMutationToCrops('rain-kissed', 0.18);
       return;
     }
 
@@ -14014,6 +14333,15 @@ export class Game {
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenSpecialEventSeedTimer = 120;
     this.showChapterElevenEventNotice(`${label} event is happening.`, 'Garden Event', 5.8, this.getChapterElevenPurchasedEventCue(optionId));
+    if (optionId === 'event:rainstorm') {
+      this.applyChapterElevenMutationToCrops('rain-kissed', 0.18);
+    } else if (optionId === 'event:rainbow-storm') {
+      this.applyChapterElevenMutationToCrops('rainbow', 0.32);
+    } else if (optionId === 'event:meteor-shower' || optionId === 'event:cholesterol-bloom') {
+      this.applyChapterElevenMutationToCrops('cosmic', 0.34);
+    } else if (optionId === 'event:dragon-visit') {
+      this.applyChapterElevenMutationToCrops('dragon-touched', 0.38);
+    }
     this.pushStatus(`${label} started immediately. Its Seed Life buff is active for this day.`, 3);
   }
 
@@ -14105,7 +14433,11 @@ export class Game {
     } else if (action.optionId.startsWith('buff:')) {
       this.pushStatus(`${selectedOption.label} spell applied to your farm.`, 2.8);
     } else if (action.optionId.startsWith('mutation:')) {
-      this.pushStatus(`${selectedOption.label} mutation research bought.`, 2.8);
+      const mutation = action.optionId.slice('mutation:'.length) as ChapterElevenMutationId;
+      const changed = this.applyChapterElevenMutationToCrops(mutation, 0.55);
+      this.pushStatus(changed > 0
+        ? `${selectedOption.label} mutation research activated on ${changed} crop${changed === 1 ? '' : 's'}.`
+        : `${selectedOption.label} mutation research bought, but no mature crops were ready to mutate.`, 3.2);
     } else if (action.optionId === 'decoration:organizer-machine') {
       this.pushStatus('Organizer Machine bought. It will sort plants into neat rows for five days before breaking.', 3.1);
     } else if (action.optionId === 'decoration:fence-foot') {
@@ -26953,7 +27285,7 @@ export class Game {
 
       const fruitTarget = this.findChapterElevenTargetPickableFruit();
       if (fruitTarget) {
-        const label = this.getChapterElevenCropLabel(this.getChapterElevenHarvestCropId(fruitTarget.fruit.cropId, fruitTarget.fruit.golden, fruitTarget.fruit.charged));
+        const label = this.getChapterElevenCropLabel(this.getChapterElevenHarvestCropId(fruitTarget.fruit.cropId, fruitTarget.fruit.golden, fruitTarget.fruit.charged, fruitTarget.fruit.mutation ?? fruitTarget.plant.mutation));
         return `Press E to pick this ${label}.`;
       }
 
@@ -26967,7 +27299,7 @@ export class Game {
           return `${config.label} plant is ready. Press E to pick the next ripe fruit.`;
         }
         return targetPlant.mature
-          ? `Press E to harvest ${this.getChapterElevenCropLabel(this.getChapterElevenHarvestCropId(config.cropId, targetPlant.golden, targetPlant.charged))}.`
+          ? `Press E to harvest ${this.getChapterElevenCropLabel(this.getChapterElevenHarvestCropId(config.cropId, targetPlant.golden, targetPlant.charged, targetPlant.mutation))}.`
           : `${config.label} is growing.`;
       }
 
