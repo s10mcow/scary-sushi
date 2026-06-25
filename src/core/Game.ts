@@ -272,6 +272,7 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
 }> = [
   { id: 'watering-can', label: 'Watering Can', cost: 100, description: 'Hold E while aiming at plants to water them so they grow twice as fast.', maxStock: 5 },
   { id: 'bucket-of-water', label: 'Bucket of Water', cost: 25, description: 'Refills the Watering Can back to 10 uses.', maxStock: 8 },
+  { id: 'shovel', label: 'Shovel', cost: 200, description: 'Aim at a planted crop and press E to dig it back into your seed inventory.', maxStock: 5 },
   { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.', maxStock: 4, copyOnly: true },
   { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.', maxStock: 5, copyOnly: true },
   { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5, copyOnly: true },
@@ -295,6 +296,7 @@ const CHAPTER_ELEVEN_TRADER_RANGE = 4.8;
 const CHAPTER_ELEVEN_COPY_DAY_SECONDS = 180;
 const CHAPTER_ELEVEN_COPY_NIGHT_SECONDS = 180;
 const CHAPTER_ELEVEN_COPY_SPRINT_MULTIPLIER = 3;
+const CHAPTER_ELEVEN_NORMAL_SPRINT_MULTIPLIER = 4.5;
 const CHAPTER_ELEVEN_NORMAL_DAY_SECONDS = 120;
 const CHAPTER_ELEVEN_NORMAL_NIGHT_SECONDS = 120;
 const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
@@ -3976,7 +3978,7 @@ export class Game {
     this.buyChapterElevenPetEgg(eggId);
   };
 
-  private putChapterElevenSeedInHotbar(seedId: ChapterElevenSeedId): number | null {
+  private putChapterElevenSeedInHotbar(seedId: ChapterElevenSeedId, selectSeed = true): number | null {
     const item = this.getChapterElevenSeedItem(seedId);
     if (!item) {
       return null;
@@ -3993,13 +3995,15 @@ export class Game {
 
     this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
     this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
-    this.chapterElevenSelectedSeedId = seedId;
-    this.chapterElevenSelectedCropId = null;
-    this.chapterElevenSelectedPetEggType = null;
-    this.chapterElevenSelectedEquipmentId = null;
-    this.placementToolActive = false;
-    this.placementPreview.visible = false;
-    this.chapterElevenHeldSeedAnchor.visible = false;
+    if (selectSeed) {
+      this.chapterElevenSelectedSeedId = seedId;
+      this.chapterElevenSelectedCropId = null;
+      this.chapterElevenSelectedPetEggType = null;
+      this.chapterElevenSelectedEquipmentId = null;
+      this.placementToolActive = false;
+      this.placementPreview.visible = false;
+      this.chapterElevenHeldSeedAnchor.visible = false;
+    }
     return hotbarIndex + 2;
   }
 
@@ -9044,15 +9048,20 @@ export class Game {
       twine.position.set(-0.1, 0.28, -0.01);
       twine.rotation.set(Math.PI / 2, 0.1, -0.35);
       root.add(stick, twine);
-    } else if (equipmentId === 'hoe') {
+    } else if (equipmentId === 'hoe' || equipmentId === 'shovel') {
       const handle = new Mesh(new CylinderGeometry(0.025, 0.035, 0.78, 8), new MeshStandardMaterial({ color: 0x7a4d28, roughness: 0.86 }));
-      handle.name = 'Held garden hoe wooden handle';
+      handle.name = equipmentId === 'shovel' ? 'Held garden shovel wooden handle' : 'Held garden hoe wooden handle';
       handle.position.set(-0.05, 0.13, -0.02);
       handle.rotation.set(0.5, 0.08, -0.4);
-      const blade = new Mesh(new BoxGeometry(0.34, 0.055, 0.12), new MeshStandardMaterial({ color: 0x707070, roughness: 0.55, metalness: 0.35 }));
-      blade.name = 'Held garden hoe metal blade';
+      const blade = equipmentId === 'shovel'
+        ? new Mesh(new BoxGeometry(0.18, 0.24, 0.07), new MeshStandardMaterial({ color: 0x707070, roughness: 0.55, metalness: 0.35 }))
+        : new Mesh(new BoxGeometry(0.34, 0.055, 0.12), new MeshStandardMaterial({ color: 0x707070, roughness: 0.55, metalness: 0.35 }));
+      blade.name = equipmentId === 'shovel' ? 'Held garden shovel metal scoop' : 'Held garden hoe metal blade';
       blade.position.set(-0.18, 0.43, -0.02);
       blade.rotation.z = -0.4;
+      if (equipmentId === 'shovel') {
+        blade.scale.y = 1.15;
+      }
       root.add(handle, blade);
     } else if (equipmentId === 'water-bucket') {
       const bucket = new Mesh(new CylinderGeometry(0.16, 0.13, 0.22, 18), new MeshStandardMaterial({ color: 0x6f8790, roughness: 0.56, metalness: 0.22 }));
@@ -10356,7 +10365,7 @@ export class Game {
     if (!this.chapterElevenWateringCanActive) {
       if (this.chapterElevenWateringCanUsesRemaining <= 0) {
         if (!this.chapterElevenWateringCanOutOfWaterShown) {
-          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Equipment stand.', 2.6);
+          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Tools stand.', 2.6);
           this.chapterElevenWateringCanOutOfWaterShown = true;
           this.syncHud();
         }
@@ -12262,6 +12271,24 @@ export class Game {
       return true;
     }
 
+    if (equipmentId === 'shovel') {
+      if (!targetPlant) {
+        this.pushStatus('Aim the shovel at a planted crop to turn it back into a seed.', 2.1);
+        return true;
+      }
+      const hotbarSlot = this.putChapterElevenSeedInHotbar(targetPlant.seedId, false);
+      if (!hotbarSlot) {
+        this.pushStatus('Your seed hotbar is full. Make room before digging this plant back into a seed.', 2.6);
+        this.syncHud();
+        return true;
+      }
+      this.deleteChapterElevenPlant(targetPlant);
+      const seedItem = this.getChapterElevenSeedItem(targetPlant.seedId);
+      this.pushStatus(`Shovel dug up the plant and returned ${seedItem?.singularLabel ?? 'a seed'} to hotbar slot ${hotbarSlot}.`, 2.8);
+      this.syncHud();
+      return true;
+    }
+
     if (equipmentId === 'water-bucket') {
       if (!targetPlant) {
         this.pushStatus('Aim the water bucket at a planted crop to water it.', 2.1);
@@ -12275,7 +12302,7 @@ export class Game {
 
     if (equipmentId === 'watering-can') {
       if (this.chapterElevenWateringCanUsesRemaining <= 0) {
-        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Equipment stand.', 2.6);
+        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Tools stand.', 2.6);
         this.syncHud();
         return true;
       }
@@ -12896,7 +12923,7 @@ export class Game {
 
     if (this.isNearChapterElevenEquipmentStand()) {
       this.setChapterElevenEquipmentShopOpen(true);
-      this.pushStatus('The Equipment shop opens.', 2.2);
+      this.pushStatus('The Tools shop opens.', 2.2);
       return;
     }
 
@@ -15260,9 +15287,11 @@ export class Game {
   }
 
   private getPlayerMovementOptions(input: MovementState): PlayerMovementOptions {
-    if (this.chapterElevenActive && this.chapterElevenTwoActive) {
+    if (this.chapterElevenActive) {
       return {
-        sprintMultiplier: CHAPTER_ELEVEN_COPY_SPRINT_MULTIPLIER,
+        sprintMultiplier: this.chapterElevenTwoActive
+          ? CHAPTER_ELEVEN_COPY_SPRINT_MULTIPLIER
+          : CHAPTER_ELEVEN_NORMAL_SPRINT_MULTIPLIER,
       };
     }
 
@@ -25639,7 +25668,7 @@ export class Game {
       }
 
       if (this.isNearChapterElevenEquipmentStand()) {
-        return 'Press E by the Equipment seller to buy equipment and water refills.';
+        return 'Press E by the Tools seller to buy tools and water refills.';
       }
 
       if (this.isNearChapterElevenSellStand()) {
@@ -25690,6 +25719,9 @@ export class Game {
         }
         if (this.chapterElevenSelectedEquipmentId === 'hoe') {
           return 'Aim at a plant and left click or press E to dig it up.';
+        }
+        if (this.chapterElevenSelectedEquipmentId === 'shovel') {
+          return 'Aim at a plant and left click or press E to turn it back into a seed.';
         }
         if (this.chapterElevenSelectedEquipmentId === 'water-bucket') {
           return 'Aim at a plant and left click or press E to water it.';

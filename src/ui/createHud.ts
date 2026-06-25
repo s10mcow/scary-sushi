@@ -228,6 +228,7 @@ type ChapterElevenSeedShopSection =
 export type ChapterElevenEquipmentId =
   | 'vine-stick'
   | 'hoe'
+  | 'shovel'
   | 'water-bucket'
   | 'watering-can'
   | 'bucket-of-water'
@@ -1318,7 +1319,7 @@ export function createHud(host: HTMLElement): HudController {
 
   const chapterElevenEquipmentShopTitle = document.createElement('h2');
   chapterElevenEquipmentShopTitle.className = 'hud__chapter-seven-cookie-picker-title';
-  chapterElevenEquipmentShopTitle.textContent = 'Equipment';
+  chapterElevenEquipmentShopTitle.textContent = 'Tools';
 
   const chapterElevenEquipmentShopMoney = document.createElement('p');
   chapterElevenEquipmentShopMoney.className = 'hud__chapter-seven-trading-cookies';
@@ -3024,7 +3025,7 @@ export function createHud(host: HTMLElement): HudController {
         legendary: 'Legendary seeds',
         secret: 'Secret seeds',
         event: 'Event seeds',
-        tools: 'Equipment',
+        tools: 'Tools',
         cheap: 'Cheap seeds',
         expensive: 'Expensive seeds',
         eggs: 'Pet eggs',

@@ -520,13 +520,15 @@ export function createChapterEleven(): ChapterElevenData {
   addBox(equipmentStand, 'Chapter 11 tools stand blue bucket water top', [0.36, 0.035, 0.36], [1.08, 1.24, -0.08], new MeshStandardMaterial({ color: 0x66b5dc, roughness: 0.24, transparent: true, opacity: 0.72 }));
   addBox(equipmentStand, 'Chapter 11 tools stand small hoe handle', [0.64, 0.055, 0.055], [1.08, 1.2, 0.44], standDarkWoodMaterial).rotation.z = 0.32;
   addBox(equipmentStand, 'Chapter 11 tools stand small hoe blade', [0.08, 0.22, 0.2], [1.34, 1.3, 0.44], dirtFenceMaterial);
+  addBox(equipmentStand, 'Chapter 11 tools stand shovel handle', [0.72, 0.055, 0.055], [1.06, 1.2, 0.92], standDarkWoodMaterial).rotation.z = -0.3;
+  addBox(equipmentStand, 'Chapter 11 tools stand shovel scoop', [0.18, 0.26, 0.08], [1.36, 1.1, 0.92], dirtFenceMaterial).rotation.z = -0.3;
   root.add(equipmentStand);
   const equipmentStandCollider = addCollider(colliders, -3.82, -50.47, 3.02, 1.55);
 
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'Buy Seeds');
   addStandLabel(petEggsStand, 'Pet Eggs');
-  addStandLabel(equipmentStand, 'Equipment');
+  addStandLabel(equipmentStand, 'Tools');
 
   const addPetEggDisplay = (x: number, y: number, z: number): void => {
     const eggGroup = new Group();
