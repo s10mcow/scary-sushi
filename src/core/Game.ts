@@ -277,7 +277,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   label: string;
   singularLabel: string;
   cost: number;
-  section: ChapterElevenSeedShopItemView['section'];
+  section: 'cheap' | 'expensive';
   maxStock?: number;
   copyOnly?: boolean;
   traderOnly?: boolean;
@@ -2146,6 +2146,7 @@ export class Game {
     this.hud.onChapterSevenCookieTargetSelect(this.handleChapterSevenCookieTargetSelect);
     this.hud.onChapterSevenGrandpaTrade(this.handleChapterSevenGrandpaTrade);
     this.hud.onChapterElevenSeedPurchase(this.handleChapterElevenSeedPurchase);
+    this.hud.onChapterElevenTraderPetEggPurchase(this.handleChapterElevenTraderPetEggPurchase);
     this.hud.onChapterElevenEquipmentPurchase(this.handleChapterElevenEquipmentPurchase);
     this.hud.onChapterElevenSellAction(this.handleChapterElevenSellAction);
     this.hud.onChapterElevenChestAction(this.handleChapterElevenAutoHarvestChestAction);
@@ -3587,7 +3588,7 @@ export class Game {
   }
 
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
-    return this.getChapterElevenSeedShopCatalog().map((item) => {
+    const items: ChapterElevenSeedShopItemView[] = this.getChapterElevenSeedShopCatalog().map((item) => {
       const stock = this.getChapterElevenSeedStock(item.id);
       const stocked = !this.chapterElevenTwoActive || stock > 0;
       return {
@@ -3597,6 +3598,19 @@ export class Game {
         restockSeconds: this.chapterElevenTwoActive ? this.chapterElevenSeedShopRestockTimer : undefined,
       };
     });
+
+    if (this.chapterElevenTraderShopOpen) {
+      items.push({
+        kind: 'egg',
+        id: 'random-pet-egg',
+        label: 'Random Pet Egg',
+        cost: CHAPTER_ELEVEN_PET_EGG_COST,
+        section: 'eggs',
+        enabled: this.chapterElevenMoney >= CHAPTER_ELEVEN_PET_EGG_COST,
+      });
+    }
+
+    return items;
   }
 
   private readonly handleChapterElevenSeedPurchase = (seedId: ChapterElevenSeedId): void => {
@@ -3634,6 +3648,14 @@ export class Game {
     }
     this.pushStatus(`Bought ${item.singularLabel}. It is in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 3.2);
     this.syncHud();
+  };
+
+  private readonly handleChapterElevenTraderPetEggPurchase = (): void => {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenSeedShopOpen || !this.chapterElevenTraderShopOpen) {
+      return;
+    }
+
+    this.buyChapterElevenPetEgg();
   };
 
   private putChapterElevenSeedInHotbar(seedId: ChapterElevenSeedId): number | null {

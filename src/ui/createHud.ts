@@ -98,6 +98,7 @@ export interface HudController {
   onChapterSevenCookieTargetSelect(handler: (target: number) => void): void;
   onChapterSevenGrandpaTrade(handler: (tradeId: ChapterSevenGrandpaTradeId) => void): void;
   onChapterElevenSeedPurchase(handler: (seedId: ChapterElevenSeedId) => void): void;
+  onChapterElevenTraderPetEggPurchase(handler: () => void): void;
   onChapterElevenEquipmentPurchase(handler: (equipmentId: ChapterElevenEquipmentId) => void): void;
   onChapterElevenSellAction(handler: (action: ChapterElevenSellAction) => void): void;
   onChapterElevenChestAction(handler: (cropId: string) => void): void;
@@ -210,11 +211,25 @@ export interface ChapterSevenGrandpaTradeView {
   enabled: boolean;
 }
 
-export interface ChapterElevenSeedShopItemView {
+export type ChapterElevenSeedShopItemView = ChapterElevenSeedShopSeedItemView | ChapterElevenSeedShopEggItemView;
+
+export interface ChapterElevenSeedShopSeedItemView {
+  kind?: 'seed';
   id: ChapterElevenSeedId;
   label: string;
   cost: number;
   section: 'cheap' | 'expensive';
+  enabled: boolean;
+  stock?: number;
+  restockSeconds?: number;
+}
+
+export interface ChapterElevenSeedShopEggItemView {
+  kind: 'egg';
+  id: 'random-pet-egg';
+  label: string;
+  cost: number;
+  section: 'eggs';
   enabled: boolean;
   stock?: number;
   restockSeconds?: number;
@@ -596,6 +611,7 @@ export function createHud(host: HTMLElement): HudController {
   let chapterSevenCookieTargetSelectHandler: ((target: number) => void) | null = null;
   let chapterSevenGrandpaTradeHandler: ((tradeId: ChapterSevenGrandpaTradeId) => void) | null = null;
   let chapterElevenSeedPurchaseHandler: ((seedId: ChapterElevenSeedId) => void) | null = null;
+  let chapterElevenTraderPetEggPurchaseHandler: (() => void) | null = null;
   let chapterElevenEquipmentPurchaseHandler: ((equipmentId: ChapterElevenEquipmentId) => void) | null = null;
   let chapterElevenSellActionHandler: ((action: ChapterElevenSellAction) => void) | null = null;
   let chapterElevenChestActionHandler: ((cropId: string) => void) | null = null;
@@ -2844,6 +2860,9 @@ export function createHud(host: HTMLElement): HudController {
     onChapterElevenSeedPurchase(handler): void {
       chapterElevenSeedPurchaseHandler = handler;
     },
+    onChapterElevenTraderPetEggPurchase(handler): void {
+      chapterElevenTraderPetEggPurchaseHandler = handler;
+    },
     onChapterElevenEquipmentPurchase(handler): void {
       chapterElevenEquipmentPurchaseHandler = handler;
     },
@@ -2946,12 +2965,17 @@ export function createHud(host: HTMLElement): HudController {
       chapterElevenSeedShopMoney.textContent = `Money: $${safeMoney}`;
       const rows: HTMLElement[] = [];
       let currentSection: ChapterElevenSeedShopItemView['section'] | null = null;
+      const sectionLabels: Record<ChapterElevenSeedShopItemView['section'], string> = {
+        cheap: 'Cheap seeds',
+        expensive: 'Expensive seeds',
+        eggs: 'Pet eggs',
+      };
       items.forEach((item) => {
         if (item.section !== currentSection) {
           currentSection = item.section;
           const heading = document.createElement('p');
           heading.className = 'hud__chapter-eleven-seed-section';
-          heading.textContent = item.section === 'cheap' ? 'Cheap seeds' : 'Expensive seeds';
+          heading.textContent = sectionLabels[item.section];
           rows.push(heading);
         }
 
@@ -2959,7 +2983,11 @@ export function createHud(host: HTMLElement): HudController {
         button.className = 'hud__chapter-seven-trade';
         button.type = 'button';
         button.disabled = !item.enabled;
-        button.dataset.seed = item.id;
+        if (item.kind === 'egg') {
+          button.dataset.petEgg = item.id;
+        } else {
+          button.dataset.seed = item.id;
+        }
         const title = document.createElement('span');
         title.className = 'hud__chapter-seven-trade-title';
         title.textContent = `${item.label} $${item.cost}`;
@@ -2984,7 +3012,11 @@ export function createHud(host: HTMLElement): HudController {
           }
 
           purchaseHandled = true;
-          chapterElevenSeedPurchaseHandler?.(item.id);
+          if (item.kind === 'egg') {
+            chapterElevenTraderPetEggPurchaseHandler?.();
+          } else {
+            chapterElevenSeedPurchaseHandler?.(item.id);
+          }
         };
         button.addEventListener('pointerdown', handlePurchasePointer);
         button.addEventListener('mousedown', handlePurchasePointer);
