@@ -498,6 +498,7 @@ interface ChapterElevenAutoHarvester {
   cutTimer: number;
   totalHarvested: number;
   placedDay: number;
+  lastHarvestedPlantId: number | null;
 }
 
 interface ChapterElevenPickableFruit {
@@ -3845,24 +3846,6 @@ export class Game {
     ) <= CHAPTER_ELEVEN_TRADER_RANGE;
   }
 
-  private getChapterElevenRandomShopStock(cost: number, maxStock: number): number {
-    const safeMaxStock = Math.max(0, Math.floor(maxStock));
-    if (safeMaxStock <= 0) {
-      return 0;
-    }
-
-    const costPressure = MathUtils.clamp(cost / 850, 0, 0.78);
-    const lowStockPressure = MathUtils.clamp((3 - Math.min(safeMaxStock, 3)) * 0.06, 0, 0.12);
-    const stockedChance = MathUtils.clamp(0.95 - costPressure - lowStockPressure, 0.24, 0.95);
-    if (Math.random() > stockedChance) {
-      return 0;
-    }
-
-    const upperShare = MathUtils.clamp(1 - costPressure * 0.45, 0.35, 1);
-    const upperStock = Math.max(1, Math.ceil(safeMaxStock * upperShare));
-    return MathUtils.randInt(1, upperStock);
-  }
-
   private getChapterElevenRandomSeedShopStock(item: typeof CHAPTER_ELEVEN_SEED_SHOP_ITEMS[number]): number {
     const safeMaxStock = Math.max(0, Math.floor(item.maxStock ?? 99));
     if (safeMaxStock <= 0) {
@@ -3876,6 +3859,10 @@ export class Game {
 
     const minStock = MathUtils.clamp(Math.floor(item.minStock ?? 1), 1, safeMaxStock);
     return MathUtils.randInt(minStock, safeMaxStock);
+  }
+
+  private getChapterElevenRandomEquipmentShopStock(): number {
+    return MathUtils.randInt(1, 5);
   }
 
   private getChapterElevenSeedStock(seedId: ChapterElevenSeedId): number {
@@ -3895,7 +3882,7 @@ export class Game {
       this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomSeedShopStock(item));
     });
     CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.forEach((item) => {
-      this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenEquipmentMaxStock(item.id)));
+      this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomEquipmentShopStock());
     });
     this.chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
   }
@@ -10756,7 +10743,7 @@ export class Game {
   }
 
   private findChapterElevenAutoHarvesterTarget(harvester: ChapterElevenAutoHarvester): { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number; position: Vector3 } | null {
-    let closest: { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number; position: Vector3; distance: number } | null = null;
+    const candidates: Array<{ plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number; position: Vector3 }> = [];
     this.chapterElevenPlants.forEach((plant) => {
       if (
         plant.stage !== 'mature'
@@ -10776,14 +10763,19 @@ export class Game {
         }
 
         const position = this.getChapterElevenFruitWorldPosition(plant, fruit);
-        const distance = Math.hypot(position.x - harvester.root.position.x, position.z - harvester.root.position.z);
-        if (!closest || distance < closest.distance) {
-          closest = { plant, fruit, index, position, distance };
-        }
+        candidates.push({ plant, fruit, index, position });
       });
     });
 
-    return closest;
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    candidates.sort((a, b) => (a.plant.id - b.plant.id) || (a.index - b.index));
+    const nextAfterLast = harvester.lastHarvestedPlantId === null
+      ? null
+      : candidates.find((candidate) => candidate.plant.id > (harvester.lastHarvestedPlantId ?? 0));
+    return nextAfterLast ?? candidates[0] ?? null;
   }
 
   private getChapterElevenAutoHarvesterTarget(harvester: ChapterElevenAutoHarvester): { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number; position: Vector3 } | null {
@@ -10877,6 +10869,7 @@ export class Game {
     this.rebuildChapterElevenPlantVisual(target.plant);
     harvester.cargoCropIds.push(cropId);
     harvester.totalHarvested += 1;
+    harvester.lastHarvestedPlantId = target.plant.id;
     harvester.state = harvester.cargoCropIds.length >= this.getChapterElevenAutoHarvesterCapacity(harvester) || this.isChapterElevenAutoHarvesterSpent(harvester)
       ? 'to-pile'
       : 'idle';
@@ -11388,17 +11381,9 @@ export class Game {
     return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.find((item) => item.id === equipmentId) ?? null;
   }
 
-  private getChapterElevenEquipmentMaxStock(equipmentId: ChapterElevenEquipmentId): number {
-    return this.getChapterElevenEquipmentItem(equipmentId)?.maxStock ?? 99;
-  }
-
   private getChapterElevenEquipmentStock(equipmentId: ChapterElevenEquipmentId): number {
     if (!this.chapterElevenEquipmentShopStock.has(equipmentId)) {
-      const item = this.getChapterElevenEquipmentItem(equipmentId);
-      this.chapterElevenEquipmentShopStock.set(
-        equipmentId,
-        item ? this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenEquipmentMaxStock(equipmentId)) : 0,
-      );
+      this.chapterElevenEquipmentShopStock.set(equipmentId, this.getChapterElevenRandomEquipmentShopStock());
     }
 
     return this.chapterElevenEquipmentShopStock.get(equipmentId) ?? 0;
@@ -12179,6 +12164,7 @@ export class Game {
       cutTimer: 0,
       totalHarvested: 0,
       placedDay: this.chapterElevenDayCount,
+      lastHarvestedPlantId: null,
     });
     this.consumeChapterElevenEquipment(equipmentId);
     this.pushStatus(equipmentId === 'cheap-auto-harvester'
