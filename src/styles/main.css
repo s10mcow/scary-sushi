@@ -2136,6 +2136,7 @@ select {
 .hud__chapter-seven-trading,
 .hud__chapter-eleven-seed-shop,
 .hud__chapter-eleven-equipment-shop,
+.hud__chapter-eleven-special-stall,
 .hud__chapter-eleven-sell-menu,
 .hud__chapter-eleven-chest,
 .hud__tablet-cameras,
@@ -2734,7 +2735,8 @@ select {
 }
 
 .hud__chapter-eleven-seed-shop,
-.hud__chapter-eleven-equipment-shop {
+.hud__chapter-eleven-equipment-shop,
+.hud__chapter-eleven-special-stall {
   left: 50%;
   top: 50%;
   z-index: 12;
@@ -2777,7 +2779,8 @@ select {
 }
 
 .hud__chapter-eleven-seed-shop[data-active="true"],
-.hud__chapter-eleven-equipment-shop[data-active="true"] {
+.hud__chapter-eleven-equipment-shop[data-active="true"],
+.hud__chapter-eleven-special-stall[data-active="true"] {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, -50%) scale(1);
@@ -2808,11 +2811,42 @@ select {
 }
 
 .hud__chapter-eleven-seed-shop .hud__chapter-seven-trading-options,
-.hud__chapter-eleven-equipment-shop .hud__chapter-seven-trading-options {
+.hud__chapter-eleven-equipment-shop .hud__chapter-seven-trading-options,
+.hud__chapter-eleven-special-stall .hud__chapter-seven-trading-options {
   max-height: min(25rem, 56vh);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 0.25rem;
+}
+
+.hud__seed-life-stall-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 3.25rem;
+  margin: -0.35rem 0 1rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(86, 51, 25, 0.2);
+  border-radius: 0.5rem;
+  background: rgba(255, 250, 232, 0.68);
+  color: #3e2a18;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.hud__seed-life-stall-visual-title {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #8d431f;
+}
+
+.hud__seed-life-stall-visual[data-visual="blender"] span:not(.hud__seed-life-stall-visual-title) {
+  min-width: 5.2rem;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid rgba(62, 42, 24, 0.25);
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.66);
 }
 
 .hud__chapter-eleven-sell-menu .hud__chapter-seven-trading-options {
@@ -5267,6 +5301,7 @@ select {
   .hud__chapter-seven-trading,
   .hud__chapter-eleven-seed-shop,
   .hud__chapter-eleven-equipment-shop,
+  .hud__chapter-eleven-special-stall,
   .hud__chapter-eleven-sell-menu,
   .hud__chapter-seven-timer,
   .hud__tablet-cameras {

@@ -547,7 +547,7 @@ export function createChapterEleven(): ChapterElevenData {
       brim.castShadow = true;
       worker.add(brim);
       addBox(worker, 'Seed Life wizard gold belt', [0.075, 0.09, 0.56], [0.39, 0.92, 0], portalGoldMaterial);
-    } else if (label === 'Juice' && worker) {
+    } else if (label === 'Juice/Smoothie' && worker) {
       worker.visible = false;
       const cup = new Group();
       cup.name = 'Seed Life juice stall smiling floating cup worker';
@@ -581,6 +581,13 @@ export function createChapterEleven(): ChapterElevenData {
       rightCheek.position.x = 0.2;
       cup.add(leftCheek, rightCheek);
       stall.add(cup);
+    } else if (label === 'Scientist' && worker) {
+      const labCoatMaterial = new MeshStandardMaterial({ color: 0xf7f8f4, roughness: 0.68 });
+      const gloveMaterial = new MeshStandardMaterial({ color: 0x2c8fe7, roughness: 0.48 });
+      addBox(worker, 'Seed Life scientist white lab coat front', [0.08, 0.96, 0.58], [0.36, 0.9, 0], labCoatMaterial);
+      addBox(worker, 'Seed Life scientist blue left glove', [0.12, 0.12, 0.14], [0.1, 0.62, -0.46], gloveMaterial);
+      addBox(worker, 'Seed Life scientist blue right glove', [0.12, 0.12, 0.14], [0.1, 0.62, 0.46], gloveMaterial);
+      addBox(worker, 'Seed Life scientist shirt split line', [0.088, 0.82, 0.025], [0.42, 0.92, 0], standDarkWoodMaterial);
     }
     root.add(stall);
     seedLifeOnlyGroups.push(stall);
@@ -592,7 +599,7 @@ export function createChapterEleven(): ChapterElevenData {
       halfDepth: sideways ? 1.55 : 3.02,
     });
     specialStalls.push({
-      id: label.toLowerCase().replace(/\s+/g, '-'),
+      id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
       label,
       position: new Vector3(x, GAME_CONFIG.player.height, z),
       range: 5.25,
@@ -629,7 +636,7 @@ export function createChapterEleven(): ChapterElevenData {
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'Buy Seeds');
   addStandLabel(petEggsStand, 'Pet Eggs');
-  addStandLabel(equipmentStand, 'Tools');
+  addStandLabel(equipmentStand, 'Equipment');
 
   const addPetEggDisplay = (x: number, y: number, z: number): void => {
     const eggGroup = new Group();
@@ -1042,8 +1049,7 @@ export function createChapterEleven(): ChapterElevenData {
   addSeedLifeStall('Mutation', -47, 54.8, Math.PI / 2);
   addSeedLifeStall('Decoration', -32, 54.8, Math.PI / 2);
   addSeedLifeStall('Weather', -17, 54.8, Math.PI / 2);
-  addSeedLifeStall('Juice', 17, 54.8, Math.PI / 2);
-  addSeedLifeStall('Bakery', 32, 54.8, Math.PI / 2);
+  addSeedLifeStall('Juice/Smoothie', 17, 54.8, Math.PI / 2);
   addSeedLifeStall('Wizard', 47, 54.8, Math.PI / 2);
   addSeedLifeStall('Scientist', 54.8, 30, Math.PI);
   addSeedLifeStall('Event Shop', 54.8, -30, Math.PI);

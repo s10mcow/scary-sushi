@@ -141,6 +141,9 @@ import {
   type ChapterElevenSellItemView,
   type ChapterElevenSeedId,
   type ChapterElevenSeedShopItemView,
+  type ChapterElevenSpecialStallAction,
+  type ChapterElevenSpecialStallMenuView,
+  type ChapterElevenSpecialStallOptionView,
   type HudChapterId,
   type HudChapterFiveMonitorAction,
   type ChapterSevenGrandpaTradeId,
@@ -2062,6 +2065,8 @@ export class Game {
   private chapterSevenGrandpaTradingOpen = false;
   private chapterElevenSeedShopOpen = false;
   private chapterElevenEquipmentShopOpen = false;
+  private chapterElevenSpecialStallMenuOpen = false;
+  private chapterElevenSpecialStallMenuId: string | null = null;
   private chapterElevenSellMenuOpen = false;
   private chapterElevenAutoHarvestChestOpen = false;
   private chapterElevenTraderShopOpen = false;
@@ -2514,6 +2519,7 @@ export class Game {
     this.hud.onChapterElevenSeedPurchase(this.handleChapterElevenSeedPurchase);
     this.hud.onChapterElevenTraderPetEggPurchase(this.handleChapterElevenTraderPetEggPurchase);
     this.hud.onChapterElevenEquipmentPurchase(this.handleChapterElevenEquipmentPurchase);
+    this.hud.onChapterElevenSpecialStallAction(this.handleChapterElevenSpecialStallAction);
     this.hud.onChapterElevenSellAction(this.handleChapterElevenSellAction);
     this.hud.onChapterElevenChestAction(this.handleChapterElevenAutoHarvestChestAction);
     this.hud.onCuratorSave(this.handleCuratorSave);
@@ -2683,11 +2689,12 @@ export class Game {
     }
 
     if (event.code === 'KeyE') {
-      if (this.chapterElevenActive && (this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSellMenuOpen || this.chapterElevenAutoHarvestChestOpen)) {
+      if (this.chapterElevenActive && (this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSpecialStallMenuOpen || this.chapterElevenSellMenuOpen || this.chapterElevenAutoHarvestChestOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         this.setChapterElevenSeedShopOpen(false);
         this.setChapterElevenEquipmentShopOpen(false);
+        this.setChapterElevenSpecialStallMenuOpen(false);
         this.setChapterElevenSellMenuOpen(false);
         this.setChapterElevenAutoHarvestChestOpen(false);
         this.player.lock();
@@ -2807,8 +2814,8 @@ export class Game {
     }
 
     const clickedMenu = event.target instanceof Element
-      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest');
-    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSellMenuOpen || this.chapterElevenAutoHarvestChestOpen) {
+      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-special-stall, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest');
+    if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSpecialStallMenuOpen || this.chapterElevenSellMenuOpen || this.chapterElevenAutoHarvestChestOpen) {
       if (clickedMenu) {
         return;
       }
@@ -2826,7 +2833,7 @@ export class Game {
       this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest')) {
+    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-special-stall, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest')) {
       return;
     }
 
@@ -3753,6 +3760,8 @@ export class Game {
       this.chapterSevenCookiePickerOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenEquipmentShopOpen = false;
+      this.chapterElevenSpecialStallMenuOpen = false;
+      this.chapterElevenSpecialStallMenuId = null;
       this.chapterElevenSellMenuOpen = false;
       this.chapterElevenAutoHarvestChestOpen = false;
     }
@@ -3785,6 +3794,8 @@ export class Game {
       this.chapterSevenCookiePickerOpen = false;
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenSpecialStallMenuOpen = false;
+      this.chapterElevenSpecialStallMenuId = null;
       this.chapterElevenSellMenuOpen = false;
       this.chapterElevenAutoHarvestChestOpen = false;
     }
@@ -3818,10 +3829,49 @@ export class Game {
       this.chapterSevenGrandpaTradingOpen = false;
       this.chapterElevenSeedShopOpen = false;
       this.chapterElevenEquipmentShopOpen = false;
+      this.chapterElevenSpecialStallMenuOpen = false;
+      this.chapterElevenSpecialStallMenuId = null;
       this.chapterElevenAutoHarvestChestOpen = false;
       this.chapterElevenSellChoosing = false;
       this.chapterElevenSellSelectedCrops.clear();
     } else {
+      this.chapterElevenSellChoosing = false;
+      this.chapterElevenSellSelectedCrops.clear();
+    }
+
+    if (open && this.player.isLocked()) {
+      this.syncHud();
+      this.player.controls.unlock();
+      return;
+    }
+
+    this.syncHud();
+  }
+
+  private setChapterElevenSpecialStallMenuOpen(open: boolean, stallId: string | null = null): void {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+      open = false;
+      stallId = null;
+    }
+
+    if (this.chapterElevenSpecialStallMenuOpen === open && this.chapterElevenSpecialStallMenuId === stallId) {
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenSpecialStallMenuOpen = open;
+    this.chapterElevenSpecialStallMenuId = open ? stallId : null;
+    if (open) {
+      this.chapterMenuOpen = false;
+      this.curatorToolOpen = false;
+      this.officeJumpscareMenuOpen = false;
+      this.officeModeMenuOpen = false;
+      this.chapterSevenCookiePickerOpen = false;
+      this.chapterSevenGrandpaTradingOpen = false;
+      this.chapterElevenSeedShopOpen = false;
+      this.chapterElevenEquipmentShopOpen = false;
+      this.chapterElevenSellMenuOpen = false;
+      this.chapterElevenAutoHarvestChestOpen = false;
       this.chapterElevenSellChoosing = false;
       this.chapterElevenSellSelectedCrops.clear();
     }
@@ -9268,6 +9318,7 @@ export class Game {
       || this.chapterMenuOpen
       || this.chapterElevenSeedShopOpen
       || this.chapterElevenEquipmentShopOpen
+      || this.chapterElevenSpecialStallMenuOpen
       || this.chapterElevenSellMenuOpen
       || this.placementToolActive
       || !heldKey
@@ -10651,6 +10702,7 @@ export class Game {
       && !this.chapterMenuOpen
       && !this.chapterElevenSeedShopOpen
       && !this.chapterElevenEquipmentShopOpen
+      && !this.chapterElevenSpecialStallMenuOpen
       && !this.chapterElevenSellMenuOpen
       && !this.chapterElevenAutoHarvestChestOpen;
 
@@ -10667,7 +10719,7 @@ export class Game {
     if (!this.chapterElevenWateringCanActive) {
       if (this.chapterElevenWateringCanUsesRemaining <= 0) {
         if (!this.chapterElevenWateringCanOutOfWaterShown) {
-          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Tools stand.', 2.6);
+          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Equipment stand.', 2.6);
           this.chapterElevenWateringCanOutOfWaterShown = true;
           this.syncHud();
         }
@@ -10863,6 +10915,19 @@ export class Game {
 
   private scheduleChapterElevenDailyEvent(): void {
     const phaseSeconds = this.chapterElevenPhase === 'night' ? this.getChapterElevenNightSeconds() : this.getChapterElevenDaySeconds();
+    if (this.chapterElevenTwoActive) {
+      this.chapterElevenWeatherStreak = 0;
+      const eventDelay = MathUtils.randFloat(12, Math.max(18, phaseSeconds - 12));
+      if (Math.random() < 0.82) {
+        this.chapterElevenNextEventTimer = eventDelay;
+        this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+      } else {
+        this.chapterElevenNextTraderTimer = eventDelay;
+        this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+      }
+      return;
+    }
+
     const weatherChance = this.chapterElevenTwoActive ? 0.38 : 0.23;
     if (this.chapterElevenWeatherStreak >= 3 || Math.random() > weatherChance) {
       this.chapterElevenWeatherStreak = 0;
@@ -11589,6 +11654,8 @@ export class Game {
     this.chapterElevenPets.length = 0;
     this.chapterElevenCropInventory.clear();
     this.chapterElevenAutoHarvestChestOpen = false;
+    this.chapterElevenSpecialStallMenuOpen = false;
+    this.chapterElevenSpecialStallMenuId = null;
     this.chapterElevenTraderShopOpen = false;
     this.stopChapterElevenEvent();
     this.chapterElevenTraderVisible = false;
@@ -11623,6 +11690,8 @@ export class Game {
       this.chapterElevenWateringCanUsesRemaining = 0;
       this.chapterElevenPetEggsBought = 0;
       this.chapterElevenEquipmentShopOpen = false;
+      this.chapterElevenSpecialStallMenuOpen = false;
+      this.chapterElevenSpecialStallMenuId = null;
       this.chapterElevenSellMenuOpen = false;
       this.chapterElevenSellChoosing = false;
       this.chapterElevenSellSelectedCrops.clear();
@@ -11686,6 +11755,169 @@ export class Game {
     return this.chapterEleven.specialStalls.find((stall) => (
       Math.hypot(playerPosition.x - stall.position.x, playerPosition.z - stall.position.z) <= stall.range
     )) ?? null;
+  }
+
+  private getChapterElevenSpecialStallMenuView(): ChapterElevenSpecialStallMenuView | null {
+    if (!this.chapterElevenSpecialStallMenuOpen || !this.chapterElevenSpecialStallMenuId) {
+      return null;
+    }
+
+    const option = (
+      id: string,
+      label: string,
+      cost: number,
+      description: string,
+      section?: string,
+    ): ChapterElevenSpecialStallOptionView => ({
+      id,
+      label,
+      cost,
+      description,
+      section,
+      enabled: this.chapterElevenMoney >= cost,
+    });
+
+    if (this.chapterElevenSpecialStallMenuId === 'juice-smoothie') {
+      const cropOptions: ChapterElevenSpecialStallOptionView[] = [];
+      this.chapterElevenCropInventory.forEach((count, cropId) => {
+        if (count <= 0) {
+          return;
+        }
+
+        const crop = this.getChapterElevenSellableCrop(cropId);
+        if (!crop) {
+          return;
+        }
+
+        const fee = Math.max(5, Math.round(crop.value * 0.22));
+        cropOptions.push(option(
+          `juice:${cropId}`,
+          `${crop.label} Juice/Smoothie`,
+          fee,
+          `Blend one ${crop.label}. The blender turns it into a higher-value drink immediately.`,
+          'Blender recipes',
+        ));
+      });
+      if (cropOptions.length === 0) {
+        cropOptions.push({
+          id: 'juice:none',
+          label: 'No fruit ready',
+          cost: 0,
+          description: 'Harvest fruit or vegetables first, then bring one here to blend.',
+          section: 'Blender recipes',
+          enabled: false,
+        });
+      }
+      return {
+        title: 'Juice/Smoothie',
+        money: this.chapterElevenMoney,
+        visual: 'blender',
+        options: cropOptions,
+      };
+    }
+
+    const eventOptions = [
+      option('event:sunny-day', 'Sunny Day', 250, '+25 growth speed feeling for this day.', 'OK events'),
+      option('event:rainstorm', 'Rainstorm', 500, 'Starts real rain. Crops grow faster while it rains.', 'OK events'),
+      option('event:pollinator-day', 'Pollinator Day', 900, 'Better mutation luck for the day.', 'Good events'),
+      option('event:windy-day', 'Windy Day', 1200, 'Seeds feel like they could spread to nearby open slots.', 'Good events'),
+      option('event:harvest-festival', 'Harvest Festival', 2000, '+50 crop value feeling for the day.', 'Very good events'),
+      option('event:lucky-day', 'Lucky Day', 2500, 'Rare shop stock improves for the day.', 'Very good events'),
+      option('event:golden-rain', 'Golden Rain', 4500, 'Crops have a better chance to become golden.', 'Super good events'),
+      option('event:rainbow-storm', 'Rainbow Storm', 6500, 'Every crop gets a better mutation chance.', 'Super good events'),
+      option('event:meteor-shower', 'Meteor Shower', 9000, 'Space mutations become available.', 'Legendary events'),
+      option('event:time-rift', 'Time Rift', 12000, 'All crops instantly grow one stage.', 'Legendary events'),
+      option('event:cholesterol-bloom', 'Cholesterol Bloom', 20000, 'Purple and gold stardust event with rare mutation chances.', 'Godly events'),
+      option('event:dragon-visit', 'Dragon Visit', 25000, 'Dragon blessing event for very rare crop power.', 'Godly events'),
+    ];
+
+    if (this.chapterElevenSpecialStallMenuId === 'weather') {
+      return {
+        title: 'Weather',
+        money: this.chapterElevenMoney,
+        visual: 'weather',
+        options: [
+          option('event:sunny-day', 'Sunny Day', 250, 'Clears stormy weather and makes the garden bright.', 'Weather'),
+          option('event:rainstorm', 'Rainstorm', 500, 'Starts rain immediately and speeds crop growth.', 'Weather'),
+          option('event:thunderstorm', 'Thunderstorm', 1200, 'Starts thunder and lightning that can charge crops.', 'Weather'),
+        ],
+      };
+    }
+
+    if (this.chapterElevenSpecialStallMenuId === 'event-shop') {
+      return {
+        title: 'Event Shop',
+        money: this.chapterElevenMoney,
+        visual: 'event',
+        options: eventOptions,
+      };
+    }
+
+    if (this.chapterElevenSpecialStallMenuId === 'wizard') {
+      return {
+        title: 'Wizard Buffs',
+        money: this.chapterElevenMoney,
+        visual: 'wizard',
+        options: [
+          option('buff:sprout-spark', 'Sprout Spark', 400, 'Small farm growth buff.', 'OK buffs'),
+          option('buff:watering-charm', 'Watering Charm', 900, 'Watering effects feel stronger.', 'Good buffs'),
+          option('buff:harvest-luck', 'Harvest Luck', 2400, 'Better rare harvest chance.', 'Very good buffs'),
+          option('buff:golden-aura', 'Golden Aura', 6500, 'Raises golden crop chances.', 'Super good buffs'),
+          option('buff:dragon-blessing', 'Dragon Blessing', 16000, 'Very strong farm buff.', 'Godly buffs'),
+        ],
+      };
+    }
+
+    if (this.chapterElevenSpecialStallMenuId === 'scientist') {
+      return {
+        title: 'Scientist Machines',
+        money: this.chapterElevenMoney,
+        visual: 'scientist',
+        options: [
+          option('machine:growth-scanner', 'Growth Scanner', 1400, 'Tech scanner for checking crop growth strength.', 'Machines'),
+          option('machine:harvest-sorter', 'Harvest Sorter', 2200, 'Machine that helps organize harvested crops.', 'Machines'),
+          option('machine:fertilizer-3000', 'Fertilizer 3000', 3500, 'Sprays five times farther than sprinklers and uses fertilizer packets.', 'Machines'),
+          option('machine:fertilizer-packets', 'Fertilizer Packets', 300, 'Adds packets for Fertilizer 3000. Each packet lasts about 30 seconds.', 'Supplies'),
+        ],
+      };
+    }
+
+    if (this.chapterElevenSpecialStallMenuId === 'mutation') {
+      return {
+        title: 'Mutation Stall',
+        money: this.chapterElevenMoney,
+        visual: 'mutation',
+        options: [
+          option('mutation:basic', 'Basic Mutation', 300, '1.5x crop value.', 'Normal mutations'),
+          option('mutation:large', 'Large Mutation', 900, '2.2x crop value.', 'Normal mutations'),
+          option('mutation:giant', 'Giant Mutation', 1600, '3x crop value.', 'Normal mutations'),
+          option('mutation:golden', 'Golden Mutation', 3000, '5x crop value.', 'Normal mutations'),
+          option('mutation:rainbow', 'Rainbow Mutation', 6500, '10x crop value.', 'Normal mutations'),
+          option('mutation:rain-kissed', 'Rain Kissed', 900, 'Weather mutation from rain.', 'Weather mutations'),
+          option('mutation:storm-charged', 'Storm Charged', 1800, 'Weather mutation from thunderstorms.', 'Weather mutations'),
+          option('mutation:frozen', 'Frozen', 3200, 'Frozen Tundra mutation.', 'Biome mutations'),
+          option('mutation:molten', 'Molten', 5000, 'Volcanic Valley mutation.', 'Biome mutations'),
+          option('mutation:cosmic', 'Cosmic', 9000, 'Cholesterol Garden mutation.', 'Biome mutations'),
+          option('mutation:dragon-touched', 'Dragon Touched', 14000, 'Dragon Jungle mutation.', 'Biome mutations'),
+          option('mutation:prismatic', 'Prismatic', 25000, 'Rainbow Dimension mutation.', 'Secret mutations'),
+        ],
+      };
+    }
+
+    if (this.chapterElevenSpecialStallMenuId === 'decoration') {
+      return {
+        title: 'Decorations',
+        money: this.chapterElevenMoney,
+        visual: 'decoration',
+        options: [
+          option('decoration:fence-foot', 'Fence', 1, 'Normal fence pieces, priced at $1 per foot.', 'Garden pieces'),
+          option('decoration:light-post', 'Light Post', 50, 'Black pole with four arms and bulbs.', 'Garden pieces'),
+          option('decoration:organizer-machine', 'Organizer Machine', 500, 'Small tread robot that reorganizes plants into neat rows for five days.', 'Machines'),
+        ],
+      };
+    }
+
+    return null;
   }
 
   private useChapterElevenBiomePortal(): boolean {
@@ -12576,7 +12808,7 @@ export class Game {
 
     if (equipmentId === 'watering-can') {
       if (this.chapterElevenWateringCanUsesRemaining <= 0) {
-        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Tools stand.', 2.6);
+        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Equipment stand.', 2.6);
         this.syncHud();
         return true;
       }
@@ -13155,6 +13387,131 @@ export class Game {
     this.syncHud();
   };
 
+  private triggerChapterElevenPurchasedEvent(optionId: string, label: string): void {
+    if (optionId === 'event:sunny-day') {
+      this.stopChapterElevenEvent();
+      this.chapterElevenDailyEventUsed = true;
+      this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+      this.pushStatus('Sunny Day started. The weather clears and the garden feels warmer.', 3);
+      return;
+    }
+
+    if (optionId === 'event:rainstorm') {
+      this.stopChapterElevenEvent();
+      this.startChapterElevenEvent('rain');
+      return;
+    }
+
+    if (optionId === 'event:thunderstorm') {
+      this.stopChapterElevenEvent();
+      this.startChapterElevenEvent('lightning');
+      return;
+    }
+
+    if (optionId === 'event:time-rift') {
+      let changed = 0;
+      this.chapterElevenPlants.forEach((plant) => {
+        if (plant.stage === 'mature') {
+          return;
+        }
+
+        const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
+        plant.age = plant.stage === 'planted'
+          ? Math.max(plant.age, config.babySeconds + 0.1)
+          : Math.max(plant.age, config.matureSeconds + 0.1);
+        const nextStage: ChapterElevenPlantStage = plant.age < config.babySeconds
+          ? 'planted'
+          : plant.age < config.matureSeconds
+            ? 'baby'
+            : 'mature';
+        if (plant.stage !== nextStage) {
+          plant.stage = nextStage;
+          this.rebuildChapterElevenPlantVisual(plant);
+          changed += 1;
+        }
+      });
+      this.chapterElevenDailyEventUsed = true;
+      this.pushStatus(changed > 0
+        ? `Time Rift pulsed. ${changed} crop${changed === 1 ? '' : 's'} grew one stage.`
+        : 'Time Rift pulsed, but every planted crop was already mature.', 3.2);
+      return;
+    }
+
+    this.chapterElevenDailyEventUsed = true;
+    this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
+    this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
+    this.pushStatus(`${label} started immediately. Its Seed Life buff is active for this day.`, 3);
+  }
+
+  private readonly handleChapterElevenSpecialStallAction = (action: ChapterElevenSpecialStallAction): void => {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenSpecialStallMenuOpen || action.type !== 'buy') {
+      return;
+    }
+
+    const menu = this.getChapterElevenSpecialStallMenuView();
+    const selectedOption = menu?.options.find((option) => option.id === action.optionId) ?? null;
+    if (!selectedOption || !selectedOption.enabled) {
+      this.pushStatus('That stall item is not available right now.', 2.2);
+      this.syncHud();
+      return;
+    }
+
+    if (this.chapterElevenMoney < selectedOption.cost) {
+      this.pushStatus(`You need $${selectedOption.cost - this.chapterElevenMoney} more for ${selectedOption.label}.`, 2.4);
+      this.syncHud();
+      return;
+    }
+
+    if (action.optionId.startsWith('juice:')) {
+      const cropId = action.optionId.slice('juice:'.length) as ChapterElevenCropId;
+      const count = this.chapterElevenCropInventory.get(cropId) ?? 0;
+      const crop = this.getChapterElevenSellableCrop(cropId);
+      if (count <= 0 || !crop) {
+        this.pushStatus('That fruit is no longer in your inventory.', 2.2);
+        this.syncHud();
+        return;
+      }
+
+      if (count === 1) {
+        this.chapterElevenCropInventory.delete(cropId);
+      } else {
+        this.chapterElevenCropInventory.set(cropId, count - 1);
+      }
+      const drinkValue = Math.round(crop.value * 1.55);
+      this.chapterElevenMoney += drinkValue - selectedOption.cost;
+      this.pushStatus(`The blender made ${crop.label} juice/smoothie for $${drinkValue} after a $${selectedOption.cost} blending fee.`, 3.2);
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenMoney -= selectedOption.cost;
+
+    if (action.optionId.startsWith('event:')) {
+      this.triggerChapterElevenPurchasedEvent(action.optionId, selectedOption.label);
+      this.syncHud();
+      return;
+    }
+
+    if (action.optionId === 'machine:fertilizer-3000') {
+      this.pushStatus('Bought Fertilizer 3000. It can spray five times farther than a sprinkler once fertilizer packets are loaded.', 3.2);
+    } else if (action.optionId === 'machine:fertilizer-packets') {
+      this.pushStatus('Bought fertilizer packets. Fertilizer 3000 reads one packet loaded out of 100 and burns packets over time.', 3.1);
+    } else if (action.optionId.startsWith('machine:')) {
+      this.pushStatus(`${selectedOption.label} bought from the scientist.`, 2.8);
+    } else if (action.optionId.startsWith('buff:')) {
+      this.pushStatus(`${selectedOption.label} spell applied to your farm.`, 2.8);
+    } else if (action.optionId.startsWith('mutation:')) {
+      this.pushStatus(`${selectedOption.label} mutation research bought.`, 2.8);
+    } else if (action.optionId === 'decoration:organizer-machine') {
+      this.pushStatus('Organizer Machine bought. It will sort plants into neat rows for five days before breaking.', 3.1);
+    } else if (action.optionId.startsWith('decoration:')) {
+      this.pushStatus(`${selectedOption.label} decoration bought.`, 2.6);
+    }
+
+    this.syncHud();
+  };
+
   private handleChapterElevenInteract(): void {
     if (this.useChapterElevenBiomePortal()) {
       return;
@@ -13162,8 +13519,8 @@ export class Game {
 
     const specialStall = this.getNearbyChapterElevenSpecialStall();
     if (specialStall) {
-      this.pushStatus(`${specialStall.label} stall is set up on the outer path. Its full menu will open here.`, 2.8);
-      this.syncHud();
+      this.setChapterElevenSpecialStallMenuOpen(true, specialStall.id);
+      this.pushStatus(`${specialStall.label} stall opens.`, 2.2);
       return;
     }
 
@@ -13197,7 +13554,7 @@ export class Game {
 
     if (this.isNearChapterElevenEquipmentStand()) {
       this.setChapterElevenEquipmentShopOpen(true);
-      this.pushStatus('The Tools shop opens.', 2.2);
+      this.pushStatus('The Equipment shop opens.', 2.2);
       return;
     }
 
@@ -19743,6 +20100,10 @@ export class Game {
       this.chapterElevenMoney,
       this.getChapterElevenEquipmentShopItems(),
     );
+    this.hud.setChapterElevenSpecialStallMenu(
+      this.chapterElevenActive && this.chapterElevenTwoActive && this.chapterElevenSpecialStallMenuOpen,
+      this.getChapterElevenSpecialStallMenuView(),
+    );
     this.hud.setChapterElevenSellMenu(
       this.chapterElevenActive && this.chapterElevenTwoActive && this.chapterElevenSellMenuOpen,
       this.chapterElevenMoney,
@@ -25942,7 +26303,7 @@ export class Game {
       }
 
       if (this.isNearChapterElevenEquipmentStand()) {
-        return 'Press E by the Tools seller to buy tools and water refills.';
+        return 'Press E by the Equipment seller to buy tools and water refills.';
       }
 
       if (this.isNearChapterElevenSellStand()) {
