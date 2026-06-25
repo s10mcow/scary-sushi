@@ -239,6 +239,10 @@ const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
 const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
 const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
 const CHAPTER_ELEVEN_STARTING_MONEY = 50;
+const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{ seedId: ChapterElevenSeedId; count: number }> = [
+  { seedId: 'coconut-tree-seeds', count: 5 },
+  { seedId: 'dragon-fruit-seeds', count: 5 },
+];
 const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = -3.82;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_Z = -50.47;
@@ -3732,6 +3736,27 @@ export class Game {
     this.placementPreview.visible = false;
     this.chapterElevenHeldSeedAnchor.visible = false;
     return hotbarIndex + 2;
+  }
+
+  private grantChapterElevenStartingSeeds(): void {
+    CHAPTER_ELEVEN_STARTING_SEEDS.forEach(({ seedId, count }) => {
+      const item = this.getChapterElevenSeedItem(seedId);
+      if (!item || (item.copyOnly && !this.chapterElevenTwoActive) || (item.normalOnly && this.chapterElevenTwoActive)) {
+        return;
+      }
+
+      let hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === seedId);
+      if (hotbarIndex < 0) {
+        hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === null);
+      }
+
+      if (hotbarIndex < 0) {
+        return;
+      }
+
+      this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
+      this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + count);
+    });
   }
 
   private getChapterSevenGrandpaTrades(): ChapterSevenGrandpaTradeView[] {
@@ -32157,6 +32182,7 @@ export class Game {
     this.chapterElevenSellSelectedCrops.clear();
     this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
     this.clearChapterElevenGardenState(true);
+    this.grantChapterElevenStartingSeeds();
     this.setPlacementToolActive(true);
     this.player.teleport(this.chapterEleven.spawn);
     this.player.lookToward(this.chapterEleven.lookTarget, 1);
