@@ -66,6 +66,7 @@ import { createChapterTen, type ChapterTenData } from '../scene/createChapterTen
 import {
   createChapterEleven,
   type ChapterElevenBiomePortal,
+  type ChapterElevenBiomePortalId,
   type ChapterElevenData,
   type ChapterElevenDirtPatch,
   type ChapterElevenSpecialStall,
@@ -2111,6 +2112,7 @@ export class Game {
   private readonly chapterElevenCropInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenPetEggInventory = new Map<ChapterElevenPetType, number>();
   private readonly chapterElevenEquipmentInventory = new Map<ChapterElevenEquipmentId, number>();
+  private readonly chapterElevenPortalKeys = new Set<ChapterElevenBiomePortalId>();
   private readonly chapterElevenPlacedPetEggs: ChapterElevenPlacedPetEgg[] = [];
   private readonly chapterElevenPets: ChapterElevenPet[] = [];
   private chapterElevenNextPlantId = 1;
@@ -3958,8 +3960,24 @@ export class Game {
     return MathUtils.randInt(minStock, safeMaxStock);
   }
 
-  private getChapterElevenRandomEquipmentShopStock(): number {
-    return MathUtils.randInt(1, 5);
+  private getChapterElevenRandomEquipmentShopStock(item: typeof CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS[number]): number {
+    return MathUtils.randInt(1, Math.max(1, item.maxStock ?? 5));
+  }
+
+  private ensureChapterElevenSeedLifeSectionStock(section: 'uncommon' | 'rare', minimumStocked: number): void {
+    const candidates = this.getChapterElevenSeedShopCatalog().filter((item) => item.section === section);
+    let stockedCount = candidates.filter((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0).length;
+    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+    for (const item of shuffled) {
+      if (stockedCount >= minimumStocked) {
+        break;
+      }
+      if ((this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0) {
+        continue;
+      }
+      this.chapterElevenSeedShopStock.set(item.id, MathUtils.randInt(Math.max(1, item.minStock ?? 1), Math.max(1, Math.min(item.maxStock ?? 2, section === 'rare' ? 2 : 4))));
+      stockedCount += 1;
+    }
   }
 
   private getChapterElevenSeedStock(seedId: ChapterElevenSeedId): number {
@@ -3978,8 +3996,18 @@ export class Game {
     this.getChapterElevenSeedShopCatalog().forEach((item) => {
       this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomSeedShopStock(item));
     });
+    if (this.chapterElevenTwoActive) {
+      this.ensureChapterElevenSeedLifeSectionStock('uncommon', 3);
+      this.ensureChapterElevenSeedLifeSectionStock('rare', 2);
+      const legendaryItems = this.getChapterElevenSeedShopCatalog().filter((item) => item.section === 'legendary');
+      const hasLegendary = legendaryItems.some((item) => (this.chapterElevenSeedShopStock.get(item.id) ?? 0) > 0);
+      if (!hasLegendary && legendaryItems.length > 0 && Math.random() < 0.38) {
+        const item = legendaryItems[MathUtils.randInt(0, legendaryItems.length - 1)];
+        this.chapterElevenSeedShopStock.set(item.id, 1);
+      }
+    }
     CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.forEach((item) => {
-      this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomEquipmentShopStock());
+      this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomEquipmentShopStock(item));
     });
     this.chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
   }
@@ -10088,6 +10116,76 @@ export class Game {
       return;
     }
 
+    if (config.cropId === 'potato') {
+      const stalkMaterial = new MeshStandardMaterial({ color: 0x3f8b38, roughness: 0.88 });
+      const potatoMaterial = new MeshStandardMaterial({ color: 0xa97743, roughness: 0.92 });
+      const stalk = new Mesh(new CylinderGeometry(0.04, 0.06, 0.62, 8), stalkMaterial);
+      stalk.name = 'Chapter 11 mature potato green stalk';
+      stalk.position.y = 0.38;
+      stalk.castShadow = true;
+      plant.root.add(stalk);
+      for (let index = 0; index < 6; index += 1) {
+        const angle = (index / 6) * Math.PI * 2;
+        const leaf = new Mesh(new SphereGeometry(0.12, 10, 8), stalkMaterial);
+        leaf.name = 'Chapter 11 mature potato leaf';
+        leaf.position.set(Math.cos(angle) * 0.14, 0.42 + (index % 3) * 0.08, Math.sin(angle) * 0.14);
+        leaf.scale.set(1.25, 0.22, 0.62);
+        leaf.rotation.y = angle;
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      }
+      const potato = new Mesh(new SphereGeometry(0.19, 14, 10), potatoMaterial);
+      potato.name = 'Chapter 11 potato nub sticking from soil';
+      potato.position.set(0.16, 0.18, -0.08);
+      potato.scale.set(1.25, 0.72, 0.92);
+      potato.castShadow = true;
+      plant.root.add(potato);
+      if (plant.charged) {
+        this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.35, 0), 0.4, plant.golden);
+      }
+      return;
+    }
+
+    if (config.cropId === 'corn' || config.cropId === 'seed-life-golden-corn') {
+      const stalkMaterial = new MeshStandardMaterial({ color: 0x347d2e, roughness: 0.88 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x4f9a3a, roughness: 0.86 });
+      const cobMaterial = new MeshStandardMaterial({
+        color: config.cropId === 'seed-life-golden-corn' || plant.golden ? 0xf3c94b : 0xf2d15a,
+        roughness: 0.62,
+        metalness: config.cropId === 'seed-life-golden-corn' || plant.golden ? 0.2 : 0,
+      });
+      const stalk = new Mesh(new CylinderGeometry(0.07, 0.09, 1.32, 10), stalkMaterial);
+      stalk.name = 'Chapter 11 semi realistic corn stalk';
+      stalk.position.y = 0.72;
+      stalk.castShadow = true;
+      plant.root.add(stalk);
+      for (let index = 0; index < 6; index += 1) {
+        const side = index % 2 === 0 ? -1 : 1;
+        const leaf = new Mesh(new BoxGeometry(0.08, 0.62, 0.035), leafMaterial);
+        leaf.name = 'Chapter 11 corn long blade leaf';
+        leaf.position.set(side * 0.18, 0.38 + index * 0.14, 0);
+        leaf.rotation.z = side * 0.82;
+        leaf.rotation.y = index * 0.32;
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      }
+      const cob = new Mesh(new CylinderGeometry(0.105, 0.13, 0.52, 16), cobMaterial);
+      cob.name = 'Chapter 11 upright corn cob at top';
+      cob.position.y = 1.42;
+      cob.castShadow = true;
+      plant.root.add(cob);
+      for (let row = 0; row < 5; row += 1) {
+        const kernelRing = new Mesh(new CylinderGeometry(0.112, 0.118, 0.018, 16), cobMaterial);
+        kernelRing.name = 'Chapter 11 corn cob kernel ring';
+        kernelRing.position.y = 1.22 + row * 0.08;
+        plant.root.add(kernelRing);
+      }
+      if (plant.charged) {
+        this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.78, 0), plant.golden ? 0.72 : 0.54, plant.golden);
+      }
+      return;
+    }
+
     if (
       config.cropId === 'strawberry'
       || config.cropId === 'blackberry'
@@ -10918,13 +11016,8 @@ export class Game {
     if (this.chapterElevenTwoActive) {
       this.chapterElevenWeatherStreak = 0;
       const eventDelay = MathUtils.randFloat(12, Math.max(18, phaseSeconds - 12));
-      if (Math.random() < 0.82) {
-        this.chapterElevenNextEventTimer = eventDelay;
-        this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
-      } else {
-        this.chapterElevenNextTraderTimer = eventDelay;
-        this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
-      }
+      this.chapterElevenNextEventTimer = eventDelay;
+      this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
       return;
     }
 
@@ -10983,6 +11076,40 @@ export class Game {
       this.chapterElevenDailyEventUsed = false;
       this.scheduleChapterElevenDailyEvent();
       this.pushStatus(`Day ${this.chapterElevenDayCount} started in ${this.chapterElevenTwoActive ? 'Seed Life' : 'Grow a Garden'}.`, 2.4);
+      if (this.chapterElevenTwoActive) {
+        this.maybeTriggerChapterElevenRealmEvent();
+      }
+    }
+  }
+
+  private maybeTriggerChapterElevenRealmEvent(): void {
+    if (this.chapterElevenDayCount % 2 !== 0 || Math.random() > 0.48) {
+      return;
+    }
+
+    const position = this.player.getPosition();
+    const currentRealm = this.chapterEleven.biomePortals.find((portal) => (
+      Math.hypot(position.x - portal.targetPosition.x, position.z - portal.targetPosition.z) <= 45
+    ));
+    if (!currentRealm) {
+      return;
+    }
+
+    const messages: Record<ChapterElevenBiomePortalId, string> = {
+      'miskel-mushroom-forest': 'Spore Rain drifts through Miskel Forest. Native crops feel fungal and faster.',
+      'frozen-tundra': 'Blizzard Harvest rolls through the Frozen Tundra. Frost value can rise today.',
+      'volcanic-valley': 'Volcanic Eruption shakes the valley. Lava heat can bless crops with molten power.',
+      'cholesterol-garden': 'Meteor Shower crosses Star Garden. Stardust makes cosmic crops sparkle.',
+      'dragon-jungle': 'Dragon Awakening begins. A dragon shadow circles the jungle and blesses random crops.',
+      'rainbow-dimension': 'Rainbow Surge floods the secret dimension. Prism luck rises for this day.',
+    };
+    this.pushStatus(messages[currentRealm.id], 3.6);
+    if (currentRealm.id === 'volcanic-valley' || currentRealm.id === 'dragon-jungle' || currentRealm.id === 'cholesterol-garden') {
+      this.stopChapterElevenEvent();
+      this.startChapterElevenEvent('lightning');
+    } else if (currentRealm.id === 'miskel-mushroom-forest' || currentRealm.id === 'frozen-tundra') {
+      this.stopChapterElevenEvent();
+      this.startChapterElevenEvent('rain');
     }
   }
 
@@ -11681,6 +11808,7 @@ export class Game {
       this.chapterElevenSeedInventory.clear();
       this.chapterElevenPetEggInventory.clear();
       this.chapterElevenEquipmentInventory.clear();
+      this.chapterElevenPortalKeys.clear();
       this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
       this.restockChapterElevenSeedShop();
       this.chapterElevenSelectedSeedId = null;
@@ -11777,6 +11905,60 @@ export class Game {
       enabled: this.chapterElevenMoney >= cost,
     });
 
+    const portalKeyOptions: Array<{ id: ChapterElevenBiomePortalId; label: string; cost: number }> = [
+      { id: 'miskel-mushroom-forest', label: 'Miskel Forest Key', cost: 500000 },
+      { id: 'frozen-tundra', label: 'Frozen Tundra Key', cost: 1000000 },
+      { id: 'volcanic-valley', label: 'Volcanic Valley Key', cost: 5000000 },
+      { id: 'cholesterol-garden', label: 'Star Garden Key', cost: 10000000 },
+      { id: 'dragon-jungle', label: 'Dragon Jungle Key', cost: 15000000 },
+      { id: 'rainbow-dimension', label: 'Rainbow Dimension Key', cost: 25000000 },
+    ];
+
+    if (this.chapterElevenSpecialStallMenuId === 'portal-key-master') {
+      return {
+        title: 'Portal Key Master',
+        money: this.chapterElevenMoney,
+        visual: 'event',
+        options: portalKeyOptions.map((entry) => ({
+          id: `portal-key:${entry.id}`,
+          label: entry.label,
+          cost: this.chapterElevenPortalKeys.has(entry.id) ? 0 : entry.cost,
+          description: this.chapterElevenPortalKeys.has(entry.id)
+            ? 'Owned. This portal gate is unlocked.'
+            : 'Buy this key to use that realm portal.',
+          section: 'Portal keys',
+          enabled: !this.chapterElevenPortalKeys.has(entry.id) && this.chapterElevenMoney >= entry.cost,
+        })),
+      };
+    }
+
+    const realmSeedGroups: Record<string, ChapterElevenSeedId[]> = {
+      'miskel-forest-seeds': ['mushroom', 'crystal-berry-seeds', 'lucky-clover-seeds'],
+      'frozen-tundra-seeds': ['moonflower-seeds', 'crystal-berry-seeds', 'starfruit-seeds'],
+      'volcanic-valley-seeds': ['pepper-seeds', 'phoenix-pepper-seeds', 'dragon-fruit-seeds'],
+      'star-garden-seeds': ['moonflower-seeds', 'starfruit-seeds', 'galaxy-pumpkin-seeds', 'cholesterol-lily-seeds'],
+      'dragon-jungle-seeds': ['dragon-fruit-seeds', 'vine-seeds', 'bamboo-seeds', 'void-vine-seeds'],
+      'rainbow-gate-seeds': ['rainbow-melon-seeds', 'lucky-clover-seeds', 'mimic-plant-seeds'],
+    };
+    const realmSeedIds = realmSeedGroups[this.chapterElevenSpecialStallMenuId];
+    if (realmSeedIds) {
+      return {
+        title: 'Realm Seeds',
+        money: this.chapterElevenMoney,
+        visual: 'decoration',
+        options: realmSeedIds.map((seedId) => {
+          const seed = this.getChapterElevenSeedItem(seedId);
+          return option(
+            `realm-seed:${seedId}`,
+            seed?.label ?? seedId,
+            seed?.cost ?? 1000,
+            'Native seed from this realm. It goes straight into your hotbar.',
+            'Exclusive realm seeds',
+          );
+        }),
+      };
+    }
+
     if (this.chapterElevenSpecialStallMenuId === 'juice-smoothie') {
       const cropOptions: ChapterElevenSpecialStallOptionView[] = [];
       this.chapterElevenCropInventory.forEach((count, cropId) => {
@@ -11845,11 +12027,21 @@ export class Game {
     }
 
     if (this.chapterElevenSpecialStallMenuId === 'event-shop') {
+      const eventSeedOptions = (['starfruit-seeds', 'moonflower-seeds', 'galaxy-pumpkin-seeds', 'cholesterol-lily-seeds'] as ChapterElevenSeedId[]).map((seedId) => {
+        const seed = this.getChapterElevenSeedItem(seedId);
+        return option(
+          `realm-seed:${seedId}`,
+          seed?.label ?? seedId,
+          seed?.cost ?? 1500,
+          'Special event seed. Availability matches the event-shop theme.',
+          'Special Event seeds',
+        );
+      });
       return {
         title: 'Event Shop',
         money: this.chapterElevenMoney,
         visual: 'event',
-        options: eventOptions,
+        options: [...eventOptions, ...eventSeedOptions],
       };
     }
 
@@ -11926,6 +12118,12 @@ export class Game {
       return false;
     }
 
+    if (nearbyPortal.side === 'garden' && !this.chapterElevenPortalKeys.has(nearbyPortal.portal.id)) {
+      this.pushStatus(`${nearbyPortal.portal.label} needs its portal key. Buy it from the Portal Key Master stall.`, 3);
+      this.syncHud();
+      return true;
+    }
+
     const destination = nearbyPortal.side === 'garden'
       ? nearbyPortal.portal.targetPosition
       : nearbyPortal.portal.position;
@@ -11978,7 +12176,8 @@ export class Game {
 
   private getChapterElevenEquipmentStock(equipmentId: ChapterElevenEquipmentId): number {
     if (!this.chapterElevenEquipmentShopStock.has(equipmentId)) {
-      this.chapterElevenEquipmentShopStock.set(equipmentId, this.getChapterElevenRandomEquipmentShopStock());
+      const item = this.getChapterElevenEquipmentItem(equipmentId);
+      this.chapterElevenEquipmentShopStock.set(equipmentId, item ? this.getChapterElevenRandomEquipmentShopStock(item) : 0);
     }
 
     return this.chapterElevenEquipmentShopStock.get(equipmentId) ?? 0;
@@ -13459,6 +13658,36 @@ export class Game {
 
     if (this.chapterElevenMoney < selectedOption.cost) {
       this.pushStatus(`You need $${selectedOption.cost - this.chapterElevenMoney} more for ${selectedOption.label}.`, 2.4);
+      this.syncHud();
+      return;
+    }
+
+    if (action.optionId.startsWith('portal-key:')) {
+      const portalId = action.optionId.slice('portal-key:'.length) as ChapterElevenBiomePortalId;
+      if (this.chapterElevenPortalKeys.has(portalId)) {
+        this.pushStatus('You already own that portal key.', 2.2);
+        this.syncHud();
+        return;
+      }
+
+      this.chapterElevenMoney -= selectedOption.cost;
+      this.chapterElevenPortalKeys.add(portalId);
+      this.pushStatus(`${selectedOption.label} bought. That portal gate is now unlocked.`, 3);
+      this.syncHud();
+      return;
+    }
+
+    if (action.optionId.startsWith('realm-seed:')) {
+      const seedId = action.optionId.slice('realm-seed:'.length) as ChapterElevenSeedId;
+      const hotbarSlot = this.putChapterElevenSeedInHotbar(seedId);
+      if (!hotbarSlot) {
+        this.pushStatus('Your seed hotbar is full. Make room before buying realm seeds.', 2.6);
+        this.syncHud();
+        return;
+      }
+
+      this.chapterElevenMoney -= selectedOption.cost;
+      this.pushStatus(`Bought ${selectedOption.label}. It is in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 3);
       this.syncHud();
       return;
     }

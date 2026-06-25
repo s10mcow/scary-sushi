@@ -3257,7 +3257,7 @@ export function createHud(host: HTMLElement): HudController {
         title.textContent = `${option.label} $${option.cost}`;
         const description = document.createElement('span');
         description.className = 'hud__chapter-seven-trade-description';
-        description.textContent = option.enabled
+        description.textContent = option.enabled || option.cost <= 0
           ? option.description
           : `Need $${Math.max(0, option.cost - safeMoney)} more - ${option.description}`;
         button.append(title, description);

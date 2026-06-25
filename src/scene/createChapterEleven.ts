@@ -505,6 +505,7 @@ export function createChapterEleven(): ChapterElevenData {
       const cloud = new Group();
       cloud.name = 'Seed Life weather stall happy cloud worker';
       cloud.position.set(0.38, 1.58, 0);
+      cloud.rotation.y = Math.PI / 2;
       const cloudMaterial = new MeshStandardMaterial({ color: 0xf4f7fb, roughness: 0.62 });
       const cheekMaterial = new MeshStandardMaterial({ color: 0xf2a1b6, roughness: 0.64 });
       [
@@ -552,6 +553,7 @@ export function createChapterEleven(): ChapterElevenData {
       const cup = new Group();
       cup.name = 'Seed Life juice stall smiling floating cup worker';
       cup.position.set(0.34, 1.42, 0);
+      cup.rotation.y = Math.PI / 2;
       const cupMaterial = new MeshStandardMaterial({ color: 0xf7f0df, roughness: 0.56 });
       const juiceMaterial = new MeshStandardMaterial({ color: 0xf48b32, roughness: 0.36, transparent: true, opacity: 0.84 });
       const cupBody = new Mesh(new CylinderGeometry(0.3, 0.24, 0.72, 22), cupMaterial);
@@ -931,6 +933,7 @@ export function createChapterEleven(): ChapterElevenData {
       portalRoot.add(sign);
       root.add(portalRoot);
       seedLifeOnlyGroups.push(portalRoot);
+      copyOnlyColliders.push({ centerX: x, centerZ: z, halfWidth: 1.75, halfDepth: 0.22 });
       return portalRoot;
     };
 
@@ -978,6 +981,7 @@ export function createChapterEleven(): ChapterElevenData {
     copyOnlyColliders.push({ centerX: targetX - halfRealmSize, centerZ: targetZ, halfWidth: 0.18, halfDepth: halfRealmSize + 0.1 });
     copyOnlyColliders.push({ centerX: targetX + halfRealmSize, centerZ: targetZ, halfWidth: 0.18, halfDepth: halfRealmSize + 0.1 });
     addDirtPatch(targetX, targetZ + 9, 26, 22, true);
+    addSeedLifeStall(`${label} Seeds`, targetX + 18, targetZ + 24, Math.PI);
     const addRealmFeature = (feature: Mesh, localX: number, localY: number, localZ: number): void => {
       feature.position.set(targetX + localX, localY, targetZ + localZ);
       feature.castShadow = true;
@@ -1013,20 +1017,75 @@ export function createChapterEleven(): ChapterElevenData {
         rock.name = 'Seed Life volcanic valley dark lava rock';
         rock.scale.set(1.2, 0.48, 0.9);
         addRealmFeature(rock, localX, 0.36, localZ);
+        if (featureIndex % 4 === 0) {
+          const lava = new Mesh(new CylinderGeometry(1.6 + (featureIndex % 3) * 0.5, 1.4, 0.055, 28), new MeshStandardMaterial({
+            color: 0xff6b18,
+            emissive: 0xff2a00,
+            emissiveIntensity: 1.15,
+            roughness: 0.36,
+          }));
+          lava.name = 'Seed Life volcanic valley glowing lava pool';
+          lava.scale.set(1.5, 1, 0.72);
+          addRealmFeature(lava, localX + 3.2, 0.055, localZ + 1.8);
+        }
       } else if (id === 'cholesterol-garden') {
         const star = new Mesh(new SphereGeometry(0.32 + (featureIndex % 3) * 0.06, 10, 8), portalGoldMaterial);
         star.name = 'Seed Life star garden glowing star stone';
         addRealmFeature(star, localX, 0.5 + (featureIndex % 3) * 0.22, localZ);
       } else if (id === 'dragon-jungle') {
-        const ruinHeight = 2.4 + (featureIndex % 3) * 0.4;
-        const ruin = new Mesh(new BoxGeometry(0.8, ruinHeight, 0.8), new MeshStandardMaterial({ color: 0x69624e, roughness: 0.9 }));
-        ruin.name = 'Seed Life dragon jungle ancient stone ruin';
-        addRealmFeature(ruin, localX, ruinHeight / 2, localZ);
+        const trunkHeight = 3.4 + (featureIndex % 4) * 0.55;
+        const trunk = new Mesh(new CylinderGeometry(0.28, 0.46, trunkHeight, 10), new MeshStandardMaterial({ color: 0x5a3b24, roughness: 0.92 }));
+        trunk.name = 'Seed Life dragon jungle real tree trunk';
+        addRealmFeature(trunk, localX, trunkHeight / 2, localZ);
+        const canopy = new Mesh(new SphereGeometry(1.35 + (featureIndex % 3) * 0.2, 18, 12), new MeshStandardMaterial({ color: featureIndex % 2 === 0 ? 0x245d2a : 0x2f7530, roughness: 0.88 }));
+        canopy.name = 'Seed Life dragon jungle leafy tree canopy';
+        canopy.scale.set(1.2, 0.72, 1.05);
+        addRealmFeature(canopy, localX, trunkHeight + 0.42, localZ);
+        for (let vineIndex = 0; vineIndex < 3; vineIndex += 1) {
+          const vine = new Mesh(new CylinderGeometry(0.035, 0.045, 2.7 + vineIndex * 0.28, 7), new MeshStandardMaterial({ color: 0x1f6d29, roughness: 0.9 }));
+          vine.name = 'Seed Life dragon jungle hanging vine';
+          vine.rotation.z = vineIndex % 2 === 0 ? 0.16 : -0.18;
+          addRealmFeature(vine, localX + (vineIndex - 1) * 0.34, trunkHeight - 0.6, localZ + 0.38);
+        }
+        if (featureIndex % 3 === 0) {
+          const statueMaterial = new MeshStandardMaterial({ color: 0x69624e, roughness: 0.9 });
+          const body = new Mesh(new BoxGeometry(0.9, 0.62, 1.45), statueMaterial);
+          body.name = 'Seed Life dragon jungle stone dragon sculpture body';
+          addRealmFeature(body, localX + 2.0, 0.62, localZ - 1.6);
+          const head = new Mesh(new BoxGeometry(0.58, 0.46, 0.58), statueMaterial);
+          head.name = 'Seed Life dragon jungle stone dragon sculpture head';
+          addRealmFeature(head, localX + 2.0, 1.02, localZ - 2.42);
+          const wing = new Mesh(new ConeGeometry(0.45, 1.05, 4), statueMaterial);
+          wing.name = 'Seed Life dragon jungle folded stone dragon wing';
+          wing.rotation.z = 0.6;
+          addRealmFeature(wing, localX + 1.5, 1.12, localZ - 1.5);
+        }
       } else {
         const prism = new Mesh(new ConeGeometry(0.5, 1.8, 5), new MeshStandardMaterial({ color: 0xb7d9ff, roughness: 0.46, emissive: 0x714dff, emissiveIntensity: 0.22 }));
         prism.name = 'Seed Life rainbow dimension prismatic crystal';
         addRealmFeature(prism, localX, 0.9, localZ);
       }
+    }
+    if (id === 'volcanic-valley') {
+      const volcanoMaterial = new MeshStandardMaterial({ color: 0x4a342d, roughness: 0.94, emissive: 0x2b0500, emissiveIntensity: 0.12 });
+      const volcano = new Mesh(new ConeGeometry(7.6, 12.5, 28), volcanoMaterial);
+      volcano.name = 'Seed Life volcanic valley huge central volcano';
+      volcano.position.set(targetX + 24, 6.25, targetZ - 24);
+      volcano.castShadow = true;
+      volcano.receiveShadow = true;
+      root.add(volcano);
+      seedLifeOnlyGroups.push(volcano);
+      const crater = new Mesh(new CylinderGeometry(2.05, 2.4, 0.18, 28), new MeshStandardMaterial({
+        color: 0xff7a18,
+        emissive: 0xff2400,
+        emissiveIntensity: 1.35,
+        roughness: 0.32,
+      }));
+      crater.name = 'Seed Life volcanic valley glowing lava crater';
+      crater.position.set(targetX + 24, 12.58, targetZ - 24);
+      crater.castShadow = true;
+      root.add(crater);
+      seedLifeOnlyGroups.push(crater);
     }
     for (let index = 0; index < 8; index += 1) {
       const angle = (index / 8) * Math.PI * 2;
@@ -1046,6 +1105,7 @@ export function createChapterEleven(): ChapterElevenData {
   addPortalPair('dragon-jungle', 'Dragon Jungle', 30, -72, 0, -430, biomeMaterials.jungle);
   addPortalPair('rainbow-dimension', 'Rainbow Gate', 50, -72, 0, 430, biomeMaterials.rainbow);
 
+  addSeedLifeStall('Portal Key Master', 0, -55.4, 0);
   addSeedLifeStall('Mutation', -47, 54.8, Math.PI / 2);
   addSeedLifeStall('Decoration', -32, 54.8, Math.PI / 2);
   addSeedLifeStall('Weather', -17, 54.8, Math.PI / 2);
