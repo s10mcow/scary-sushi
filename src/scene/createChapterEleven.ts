@@ -380,33 +380,37 @@ export function createChapterEleven(): ChapterElevenData {
   root.add(stand);
   addCollider(colliders, -53.46, 11.34, 1.55, 3.02);
 
-  const girlStand = stand.clone(true);
-  girlStand.name = 'Chapter 11 second old fashioned garden stand with girl worker';
-  girlStand.position.set(-52.82, 0, -2.42);
-  const girlWorker = girlStand.getObjectByName('Chapter 11 garden stand person facing counter') as Group | undefined;
-  if (girlWorker) {
-    addGardeningSuitDetails(girlWorker, girlGardenSuitMaterial, 'Chapter 11 girl worker');
+  const decorateGirlWorker = (worker: Group, prefix: string): void => {
+    addGardeningSuitDetails(worker, girlGardenSuitMaterial, prefix);
     [
       'Chapter 11 stand person hair cap',
       'Chapter 11 stand person left eyebrow',
       'Chapter 11 stand person right eyebrow',
     ].forEach((name) => {
-      const hairPiece = girlWorker.getObjectByName(name) as Mesh | undefined;
+      const hairPiece = worker.getObjectByName(name) as Mesh | undefined;
       if (hairPiece) {
         hairPiece.material = girlHairMaterial;
       }
     });
     const backHair = new Mesh(new SphereGeometry(0.32, 16, 10), girlHairMaterial);
-    backHair.name = 'Chapter 11 girl worker rounded black hair running down back';
+    backHair.name = `${prefix} rounded black hair running down back`;
     backHair.position.set(-0.09, 1.5, 0);
     backHair.scale.set(0.5, 1.45, 0.82);
     backHair.castShadow = true;
-    girlWorker.add(backHair);
-    addBox(girlWorker, 'Chapter 11 girl worker smooth black lower back hair', [0.16, 0.88, 0.5], [-0.14, 1.32, 0], girlHairMaterial);
-    addBox(girlWorker, 'Chapter 11 girl worker left black hair side strand', [0.12, 0.76, 0.12], [0.17, 1.55, -0.26], girlHairMaterial).rotation.z = -0.06;
-    addBox(girlWorker, 'Chapter 11 girl worker right black hair side strand', [0.12, 0.76, 0.12], [0.17, 1.55, 0.26], girlHairMaterial).rotation.z = -0.06;
-    addBox(girlWorker, 'Chapter 11 girl worker short black front bang', [0.08, 0.18, 0.34], [0.24, 1.99, 0], girlHairMaterial).rotation.z = -0.16;
-    addBox(girlWorker, 'Chapter 11 girl worker garden hat brim', [0.08, 0.05, 0.72], [0.31, 2.03, 0], dirtFenceMaterial);
+    worker.add(backHair);
+    addBox(worker, `${prefix} smooth black lower back hair`, [0.16, 0.88, 0.5], [-0.14, 1.32, 0], girlHairMaterial);
+    addBox(worker, `${prefix} left black hair side strand`, [0.12, 0.76, 0.12], [0.17, 1.55, -0.26], girlHairMaterial).rotation.z = -0.06;
+    addBox(worker, `${prefix} right black hair side strand`, [0.12, 0.76, 0.12], [0.17, 1.55, 0.26], girlHairMaterial).rotation.z = -0.06;
+    addBox(worker, `${prefix} short black front bang`, [0.08, 0.18, 0.34], [0.24, 1.99, 0], girlHairMaterial).rotation.z = -0.16;
+    addBox(worker, `${prefix} garden hat brim`, [0.08, 0.05, 0.72], [0.31, 2.03, 0], dirtFenceMaterial);
+  };
+
+  const girlStand = stand.clone(true);
+  girlStand.name = 'Chapter 11 second old fashioned garden stand with girl worker';
+  girlStand.position.set(-52.82, 0, -2.42);
+  const girlWorker = girlStand.getObjectByName('Chapter 11 garden stand person facing counter') as Group | undefined;
+  if (girlWorker) {
+    decorateGirlWorker(girlWorker, 'Chapter 11 girl worker');
   }
   root.add(girlStand);
   addCollider(colliders, -52.82, -2.42, 1.55, 3.02);
@@ -429,17 +433,27 @@ export function createChapterEleven(): ChapterElevenData {
   addCollider(colliders, -2.61, 52.33, 3.02, 1.55);
 
   const equipmentStand = stand.clone(true);
-  equipmentStand.name = 'Chapter 11 equipment old fashioned garden stand';
-  equipmentStand.position.set(2.61, 0, 52.33);
-  equipmentStand.rotation.y = Math.PI / 2;
-  equipmentStand.visible = false;
+  equipmentStand.name = 'Chapter 11 tools old fashioned garden stand with girl worker';
+  equipmentStand.position.set(-3.82, 0, -50.47);
+  equipmentStand.rotation.y = -Math.PI / 2;
+  const toolsWorker = equipmentStand.getObjectByName('Chapter 11 garden stand person facing counter') as Group | undefined;
+  if (toolsWorker) {
+    decorateGirlWorker(toolsWorker, 'Chapter 11 tools girl worker');
+  }
+  addBox(equipmentStand, 'Chapter 11 tools stand green watering can body', [0.42, 0.32, 0.26], [1.1, 1.12, -0.62], gardenSuitMaterial);
+  addBox(equipmentStand, 'Chapter 11 tools stand watering can handle', [0.08, 0.42, 0.08], [0.86, 1.2, -0.62], standDarkWoodMaterial);
+  addBox(equipmentStand, 'Chapter 11 tools stand watering can spout', [0.34, 0.07, 0.07], [1.38, 1.2, -0.62], standDarkWoodMaterial).rotation.z = -0.18;
+  addBox(equipmentStand, 'Chapter 11 tools stand bucket of water', [0.42, 0.28, 0.42], [1.08, 1.08, -0.08], new MeshStandardMaterial({ color: 0x7f8b92, roughness: 0.5, metalness: 0.18 }));
+  addBox(equipmentStand, 'Chapter 11 tools stand blue bucket water top', [0.36, 0.035, 0.36], [1.08, 1.24, -0.08], new MeshStandardMaterial({ color: 0x66b5dc, roughness: 0.24, transparent: true, opacity: 0.72 }));
+  addBox(equipmentStand, 'Chapter 11 tools stand small hoe handle', [0.64, 0.055, 0.055], [1.08, 1.2, 0.44], standDarkWoodMaterial).rotation.z = 0.32;
+  addBox(equipmentStand, 'Chapter 11 tools stand small hoe blade', [0.08, 0.22, 0.2], [1.34, 1.3, 0.44], dirtFenceMaterial);
   root.add(equipmentStand);
-  addCollider(copyOnlyColliders, 2.61, 52.33, 3.02, 1.55);
+  addCollider(colliders, -3.82, -50.47, 3.02, 1.55);
 
   addStandLabel(stand, 'sell');
   addStandLabel(girlStand, 'Buy Seeds');
   addStandLabel(petEggsStand, 'Pet Eggs');
-  addStandLabel(equipmentStand, 'Equipment');
+  addStandLabel(equipmentStand, 'Tools');
 
   const addPetEggDisplay = (x: number, y: number, z: number): void => {
     const eggGroup = new Group();

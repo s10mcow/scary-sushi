@@ -1281,7 +1281,7 @@ export function createHud(host: HTMLElement): HudController {
 
   const chapterElevenEquipmentShopTitle = document.createElement('h2');
   chapterElevenEquipmentShopTitle.className = 'hud__chapter-seven-cookie-picker-title';
-  chapterElevenEquipmentShopTitle.textContent = 'Equipment';
+  chapterElevenEquipmentShopTitle.textContent = 'Tools';
 
   const chapterElevenEquipmentShopMoney = document.createElement('p');
   chapterElevenEquipmentShopMoney.className = 'hud__chapter-seven-trading-cookies';
@@ -3065,14 +3065,18 @@ export function createHud(host: HTMLElement): HudController {
         title.textContent = `${item.label} $${item.cost}`;
         const description = document.createElement('span');
         description.className = 'hud__chapter-seven-trade-description';
-        const stockText = typeof item.stock === 'number' ? `Stock: ${item.stock}` : 'Available';
+        const stockText = typeof item.stock === 'number'
+          ? item.stock > 0
+            ? `In stock (${item.stock})`
+            : 'Out of stock'
+          : 'In stock';
         const restockText = typeof item.restockSeconds === 'number' && item.restockSeconds > 0
           ? ` / restocks in ${Math.ceil(item.restockSeconds)}s`
           : '';
         description.textContent = item.enabled
           ? `${stockText}${restockText} / ${item.description}`
           : typeof item.stock === 'number' && item.stock <= 0
-            ? `Sold out${restockText} / ${item.description}`
+            ? `Out of stock${restockText} / ${item.description}`
             : `Need $${Math.max(0, item.cost - safeMoney)} more${restockText} / ${item.description}`;
         button.append(title, description);
         let purchaseHandled = false;

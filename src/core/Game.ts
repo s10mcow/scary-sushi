@@ -240,8 +240,8 @@ const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
 const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
 const CHAPTER_ELEVEN_STARTING_MONEY = 50;
 const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
-const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = 2.61;
-const CHAPTER_ELEVEN_EQUIPMENT_STALL_Z = 52.33;
+const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = -3.82;
+const CHAPTER_ELEVEN_EQUIPMENT_STALL_Z = -50.47;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE = 5.5;
 const CHAPTER_ELEVEN_WATERING_CAN_MAX_USES = 10;
 const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
@@ -250,17 +250,17 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   cost: number;
   description: string;
   maxStock?: number;
-  seedShopOnly?: boolean;
+  copyOnly?: boolean;
 }> = [
-  { id: 'watering-can', label: 'Watering Can', cost: 100, description: 'Hold E while aiming at plants to water them so they grow twice as fast.', maxStock: 99, seedShopOnly: true },
-  { id: 'bucket-of-water', label: 'Bucket of Water', cost: 25, description: 'Refills the Watering Can back to 10 uses.', maxStock: 99, seedShopOnly: true },
-  { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.', maxStock: 4 },
-  { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.', maxStock: 5 },
-  { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5 },
-  { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.', maxStock: 2 },
-  { id: 'fertilizer', label: 'Fertilizer', cost: 180, description: 'Boost one crop faster than water.', maxStock: 4 },
-  { id: 'cheap-auto-harvester', label: 'Cheap Auto Harvester', cost: 500, description: 'Place a small drone. Carries 5 fruits per run and retires after 200 harvests.', maxStock: 2 },
-  { id: 'auto-harvester', label: 'Auto Harvester', cost: 2000, description: 'Place a strong drone. Carries 50 fruits per run and lasts 10 garden days.', maxStock: 1 },
+  { id: 'watering-can', label: 'Watering Can', cost: 100, description: 'Hold E while aiming at plants to water them so they grow twice as fast.', maxStock: 5 },
+  { id: 'bucket-of-water', label: 'Bucket of Water', cost: 25, description: 'Refills the Watering Can back to 10 uses.', maxStock: 8 },
+  { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.', maxStock: 4, copyOnly: true },
+  { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.', maxStock: 5, copyOnly: true },
+  { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5, copyOnly: true },
+  { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.', maxStock: 2, copyOnly: true },
+  { id: 'fertilizer', label: 'Fertilizer', cost: 180, description: 'Boost one crop faster than water.', maxStock: 4, copyOnly: true },
+  { id: 'cheap-auto-harvester', label: 'Cheap Auto Harvester', cost: 500, description: 'Place a small drone. Carries 5 fruits per run and retires after 200 harvests.', maxStock: 2, copyOnly: true },
+  { id: 'auto-harvester', label: 'Auto Harvester', cost: 2000, description: 'Place a strong drone. Carries 50 fruits per run and lasts 10 garden days.', maxStock: 1, copyOnly: true },
 ];
 const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
@@ -3441,7 +3441,7 @@ export class Game {
   }
 
   private setChapterElevenEquipmentShopOpen(open: boolean): void {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+    if (!this.chapterElevenActive) {
       open = false;
     }
 
@@ -3606,9 +3606,6 @@ export class Game {
       this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenSeedMaxStock(item.id)));
     });
     CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.forEach((item) => {
-      if (item.seedShopOnly) {
-        return;
-      }
       this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenEquipmentMaxStock(item.id)));
     });
     this.chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
@@ -3629,23 +3626,6 @@ export class Game {
 
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
     const items: ChapterElevenSeedShopItemView[] = [];
-    if (!this.chapterElevenTraderShopOpen) {
-      (['watering-can', 'bucket-of-water'] as const).forEach((equipmentId) => {
-        const tool = this.getChapterElevenEquipmentItem(equipmentId);
-        if (!tool) {
-          return;
-        }
-        items.push({
-          kind: 'equipment',
-          id: equipmentId,
-          label: tool.label,
-          cost: tool.cost,
-          section: 'tools',
-          enabled: this.chapterElevenMoney >= tool.cost,
-        });
-      });
-    }
-
     items.push(...this.getChapterElevenSeedShopCatalog().map((item) => {
       const stock = this.getChapterElevenSeedStock(item.id);
       const stocked = stock > 0;
@@ -9858,7 +9838,7 @@ export class Game {
     if (!this.chapterElevenWateringCanActive) {
       if (this.chapterElevenWateringCanUsesRemaining <= 0) {
         if (!this.chapterElevenWateringCanOutOfWaterShown) {
-          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Buy Seeds stand.', 2.6);
+          this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Tools stand.', 2.6);
           this.chapterElevenWateringCanOutOfWaterShown = true;
           this.syncHud();
         }
@@ -10573,7 +10553,7 @@ export class Game {
   }
 
   private findChapterElevenCowCropTarget(pet: ChapterElevenPet): ChapterElevenPlanting | null {
-    if (pet.petType !== 'cow') {
+    if (pet.petType !== 'cow' && pet.petType !== 'dinosaur') {
       return null;
     }
 
@@ -10700,7 +10680,7 @@ export class Game {
           : dogSeed
             ? 1.85
             : cowCrop
-              ? 1.55
+              ? pet.petType === 'dinosaur' ? 1.75 : 1.55
               : pet.petType === 'dinosaur'
                 ? 1.1
                 : pet.petType === 'rabbit'
@@ -10715,6 +10695,8 @@ export class Game {
         pet.root.position.set(pet.x, 0, pet.z);
         pet.root.rotation.y = Math.atan2(-toTarget.z, toTarget.x);
       }
+
+      this.animateChapterElevenPet(pet, deltaSeconds, distance >= 0.25);
 
       pet.actionTimer -= deltaSeconds;
       if (pet.actionTimer <= 0) {
@@ -10857,10 +10839,6 @@ export class Game {
   }
 
   private getChapterElevenEquipmentStock(equipmentId: ChapterElevenEquipmentId): number {
-    if (!this.chapterElevenTwoActive) {
-      return this.getChapterElevenEquipmentMaxStock(equipmentId);
-    }
-
     if (!this.chapterElevenEquipmentShopStock.has(equipmentId)) {
       const item = this.getChapterElevenEquipmentItem(equipmentId);
       this.chapterElevenEquipmentShopStock.set(
@@ -10873,27 +10851,28 @@ export class Game {
   }
 
   private getChapterElevenEquipmentShopItems(): ChapterElevenEquipmentShopItemView[] {
-    return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.filter((item) => !item.seedShopOnly).map((item) => {
+    return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.filter((item) => this.chapterElevenTwoActive || !item.copyOnly).map((item) => {
       const stock = this.getChapterElevenEquipmentStock(item.id);
-      const stocked = !this.chapterElevenTwoActive || stock > 0;
+      const stocked = stock > 0;
       return {
         ...item,
         enabled: this.chapterElevenMoney >= item.cost && stocked,
-        stock: this.chapterElevenTwoActive ? stock : undefined,
-        restockSeconds: this.chapterElevenTwoActive ? this.chapterElevenSeedShopRestockTimer : undefined,
+        stock,
+        restockSeconds: this.chapterElevenSeedShopRestockTimer,
       };
     });
   }
 
   private readonly handleChapterElevenEquipmentPurchase = (equipmentId: ChapterElevenEquipmentId): void => {
-    const buyingSeedShopTool = (equipmentId === 'watering-can' || equipmentId === 'bucket-of-water') && this.chapterElevenSeedShopOpen && !this.chapterElevenTraderShopOpen;
-    const buyingEquipmentShopTool = this.chapterElevenTwoActive && this.chapterElevenEquipmentShopOpen;
-    if (!this.chapterElevenActive || (!buyingSeedShopTool && !buyingEquipmentShopTool)) {
+    if (!this.chapterElevenActive || !this.chapterElevenEquipmentShopOpen) {
       return;
     }
 
     const item = this.getChapterElevenEquipmentItem(equipmentId);
     if (!item) {
+      return;
+    }
+    if (item.copyOnly && !this.chapterElevenTwoActive) {
       return;
     }
 
@@ -10903,29 +10882,28 @@ export class Game {
       return;
     }
 
-    if (!buyingSeedShopTool && this.getChapterElevenEquipmentStock(equipmentId) <= 0) {
+    if (this.getChapterElevenEquipmentStock(equipmentId) <= 0) {
       this.pushStatus(`${item.label} is sold out until the next restock.`, 2.4);
       this.syncHud();
       return;
     }
 
-    this.chapterElevenMoney -= item.cost;
-    if (!buyingSeedShopTool) {
-      this.chapterElevenEquipmentShopStock.set(equipmentId, Math.max(0, this.getChapterElevenEquipmentStock(equipmentId) - 1));
-    }
     if (equipmentId === 'bucket-of-water') {
       if ((this.chapterElevenEquipmentInventory.get('watering-can') ?? 0) <= 0) {
-        this.chapterElevenMoney += item.cost;
         this.pushStatus('Buy a Watering Can before buying a Bucket of Water refill.', 2.5);
         this.syncHud();
         return;
       }
+      this.chapterElevenMoney -= item.cost;
+      this.chapterElevenEquipmentShopStock.set(equipmentId, Math.max(0, this.getChapterElevenEquipmentStock(equipmentId) - 1));
       this.chapterElevenWateringCanUsesRemaining = CHAPTER_ELEVEN_WATERING_CAN_MAX_USES;
       this.chapterElevenWateringCanOutOfWaterShown = false;
       this.pushStatus(`Bucket of Water refilled the Watering Can to ${CHAPTER_ELEVEN_WATERING_CAN_MAX_USES} uses. Money left: $${this.chapterElevenMoney}.`, 2.8);
       this.syncHud();
       return;
     }
+    this.chapterElevenMoney -= item.cost;
+    this.chapterElevenEquipmentShopStock.set(equipmentId, Math.max(0, this.getChapterElevenEquipmentStock(equipmentId) - 1));
     this.chapterElevenEquipmentInventory.set(equipmentId, (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) + 1);
     if (equipmentId === 'watering-can') {
       this.chapterElevenWateringCanUsesRemaining = CHAPTER_ELEVEN_WATERING_CAN_MAX_USES;
@@ -11136,10 +11114,19 @@ export class Game {
     } else {
       for (let index = 0; index < 5; index += 1) {
         const plate = new Mesh(new ConeGeometry(0.055, 0.18, 5), new MeshStandardMaterial({ color: 0x3f6d35, roughness: 0.78 }));
+        plate.name = 'Chapter 11 cute dinosaur rounded back plate';
         plate.position.set(-0.32 + index * 0.16, 0.78, 0);
         plate.rotation.x = Math.PI / 2;
         root.add(plate);
       }
+      const cheekMaterial = new MeshStandardMaterial({ color: 0xe7a084, roughness: 0.72 });
+      [-0.11, 0.11].forEach((z) => {
+        const cheek = new Mesh(new SphereGeometry(0.045, 10, 6), cheekMaterial);
+        cheek.name = 'Chapter 11 cute dinosaur soft cheek';
+        cheek.position.set(0.51, 0.58, z);
+        cheek.scale.set(0.55, 0.28, 0.55);
+        root.add(cheek);
+      });
       const tail = new Mesh(new ConeGeometry(0.12, 0.58, 10), bodyMaterial);
       tail.name = 'Chapter 11 dinosaur tapered tail';
       tail.position.set(-0.62, 0.43, 0);
@@ -11150,13 +11137,55 @@ export class Game {
     const legZs = petType === 'cow' ? [-0.24, 0.24] : [-0.16, 0.16];
     legXs.forEach((x) => legZs.forEach((z) => {
       const leg = new Mesh(new CylinderGeometry(petType === 'cow' ? 0.05 : 0.035, petType === 'cow' ? 0.06 : 0.045, petType === 'cow' ? 0.36 : 0.24, 8), darkMaterial);
+      leg.name = `Chapter 11 pet ${x < 0 ? 'back' : 'front'} ${z < 0 ? 'left' : 'right'} walking leg`;
       leg.position.set(x, petType === 'cow' ? 0.2 : 0.16, z);
       const paw = new Mesh(new SphereGeometry(petType === 'cow' ? 0.07 : 0.055, 10, 6), pawMaterial);
+      paw.name = `Chapter 11 pet ${x < 0 ? 'back' : 'front'} ${z < 0 ? 'left' : 'right'} moving paw`;
       paw.position.set(x + (petType === 'cow' ? 0.04 : 0.03), 0.035, z);
       paw.scale.set(petType === 'cow' ? 1.5 : 1.3, 0.36, petType === 'cow' ? 1.12 : 0.95);
       root.add(leg, paw);
     }));
     return root;
+  }
+
+  private animateChapterElevenPet(pet: ChapterElevenPet, deltaSeconds: number, moving: boolean): void {
+    const phase = Number(pet.root.userData.walkPhase ?? 0) + deltaSeconds * (moving ? (pet.petType === 'rabbit' ? 9 : 5.8) : 1.4);
+    pet.root.userData.walkPhase = phase;
+    const stride = moving ? Math.sin(phase) : Math.sin(phase) * 0.18;
+    const oppositeStride = moving ? Math.sin(phase + Math.PI) : Math.sin(phase + Math.PI) * 0.18;
+
+    const animateLimb = (name: string, value: number): void => {
+      const limb = pet.root.getObjectByName(name) as Mesh | undefined;
+      if (limb) {
+        limb.rotation.z = value;
+      }
+    };
+
+    animateLimb('Chapter 11 pet front left walking leg', stride * 0.34);
+    animateLimb('Chapter 11 pet back right walking leg', stride * 0.34);
+    animateLimb('Chapter 11 pet front right walking leg', oppositeStride * 0.34);
+    animateLimb('Chapter 11 pet back left walking leg', oppositeStride * 0.34);
+
+    if (pet.petType === 'rabbit') {
+      pet.root.position.y = moving ? Math.max(0, Math.sin(phase * 1.25)) * 0.18 : 0;
+      const tail = pet.root.getObjectByName('Chapter 11 rabbit round tail');
+      if (tail) {
+        tail.scale.setScalar(1 + Math.max(0, Math.sin(phase * 1.25)) * 0.12);
+      }
+      return;
+    }
+
+    pet.root.position.y = 0;
+    const tail = pet.root.getObjectByName(
+      pet.petType === 'cow'
+        ? 'Chapter 11 cow tail'
+        : pet.petType === 'dog'
+          ? 'Chapter 11 dog raised tail'
+          : 'Chapter 11 dinosaur tapered tail',
+    );
+    if (tail) {
+      tail.rotation.y = Math.sin(phase * 0.8) * 0.16;
+    }
   }
 
   private createChapterElevenVineStickWorldModel(): Group {
@@ -11627,7 +11656,7 @@ export class Game {
 
     if (equipmentId === 'watering-can') {
       if (this.chapterElevenWateringCanUsesRemaining <= 0) {
-        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Buy Seeds stand.', 2.6);
+        this.pushStatus('Watering can is out of water. Buy a Bucket of Water refill at the Tools stand.', 2.6);
         this.syncHud();
         return true;
       }
@@ -18743,7 +18772,7 @@ export class Game {
       this.getChapterElevenSeedShopItems(),
     );
     this.hud.setChapterElevenEquipmentShop(
-      this.chapterElevenActive && this.chapterElevenTwoActive && this.chapterElevenEquipmentShopOpen,
+      this.chapterElevenActive && this.chapterElevenEquipmentShopOpen,
       this.chapterElevenMoney,
       this.getChapterElevenEquipmentShopItems(),
     );
@@ -24932,7 +24961,7 @@ export class Game {
       }
 
       if (this.isNearChapterElevenEquipmentStand()) {
-        return 'Press E by the Equipment seller to buy tools.';
+        return 'Press E by the Tools seller to buy tools and water refills.';
       }
 
       if (this.isNearChapterElevenSellStand()) {
@@ -31935,7 +31964,7 @@ export class Game {
     this.chapterNine.root.visible = false;
     this.chapterTen.root.visible = false;
     this.chapterEleven.reset();
-    this.chapterEleven.equipmentStand.visible = copyMode;
+    this.chapterEleven.equipmentStand.visible = true;
     this.chapterEleven.root.visible = true;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
