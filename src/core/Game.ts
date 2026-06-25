@@ -249,7 +249,9 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   cost: number;
   description: string;
   maxStock?: number;
+  seedShopOnly?: boolean;
 }> = [
+  { id: 'watering-can', label: 'Watering Can', cost: 100, description: 'Hold E while aiming at plants to water them so they grow twice as fast.', maxStock: 99, seedShopOnly: true },
   { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.', maxStock: 4 },
   { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.', maxStock: 5 },
   { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5 },
@@ -3598,6 +3600,9 @@ export class Game {
       this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenSeedMaxStock(item.id)));
     });
     CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.forEach((item) => {
+      if (item.seedShopOnly) {
+        return;
+      }
       this.chapterElevenEquipmentShopStock.set(item.id, this.getChapterElevenRandomShopStock(item.cost, this.getChapterElevenEquipmentMaxStock(item.id)));
     });
     this.chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
@@ -3617,7 +3622,20 @@ export class Game {
   }
 
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
-    const items: ChapterElevenSeedShopItemView[] = this.getChapterElevenSeedShopCatalog().map((item) => {
+    const items: ChapterElevenSeedShopItemView[] = [];
+    const wateringCan = this.getChapterElevenEquipmentItem('watering-can');
+    if (!this.chapterElevenTraderShopOpen && wateringCan) {
+      items.push({
+        kind: 'equipment',
+        id: 'watering-can',
+        label: wateringCan.label,
+        cost: wateringCan.cost,
+        section: 'tools',
+        enabled: this.chapterElevenMoney >= wateringCan.cost,
+      });
+    }
+
+    items.push(...this.getChapterElevenSeedShopCatalog().map((item) => {
       const stock = this.getChapterElevenSeedStock(item.id);
       const stocked = stock > 0;
       return {
@@ -3626,7 +3644,7 @@ export class Game {
         stock,
         restockSeconds: this.chapterElevenSeedShopRestockTimer,
       };
-    });
+    }));
 
     if (this.chapterElevenTraderShopOpen) {
       items.push({
@@ -4727,6 +4745,7 @@ export class Game {
     } else if (this.chapterElevenActive) {
       this.chapterEleven.update(deltaSeconds, this.player.getPosition());
       this.updateChapterElevenDayNight(deltaSeconds);
+      this.updateChapterElevenWateringCan(deltaSeconds);
       this.updateChapterElevenPlants(deltaSeconds);
       this.updateChapterElevenAutoHarvesters(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
@@ -8681,6 +8700,41 @@ export class Game {
       water.position.set(-0.04, 0.16, -0.02);
       water.rotation.x = -Math.PI / 2;
       root.add(bucket, water);
+    } else if (equipmentId === 'watering-can') {
+      const canMaterial = new MeshStandardMaterial({ color: 0x2f9b46, roughness: 0.58, metalness: 0.08 });
+      const darkGreenMaterial = new MeshStandardMaterial({ color: 0x1f6f34, roughness: 0.62 });
+      const waterMaterial = new MeshBasicMaterial({ color: 0x77ccff, transparent: true, opacity: 0.72 });
+      const body = new Mesh(new CylinderGeometry(0.16, 0.2, 0.28, 20), canMaterial);
+      body.name = 'Held green watering can body';
+      body.position.set(-0.04, 0.08, -0.02);
+      body.rotation.z = -0.12;
+      const top = new Mesh(new CylinderGeometry(0.12, 0.14, 0.055, 18), darkGreenMaterial);
+      top.name = 'Held watering can open top';
+      top.position.set(-0.04, 0.25, -0.02);
+      top.rotation.z = -0.12;
+      const spout = new Mesh(new CylinderGeometry(0.028, 0.04, 0.48, 10), canMaterial);
+      spout.name = 'Held watering can long spout';
+      spout.position.set(-0.26, 0.17, -0.02);
+      spout.rotation.set(0, 0, Math.PI / 2.7);
+      const rose = new Mesh(new CylinderGeometry(0.065, 0.05, 0.035, 14), darkGreenMaterial);
+      rose.name = 'Held watering can sprinkler rose';
+      rose.position.set(-0.46, 0.27, -0.02);
+      rose.rotation.z = Math.PI / 2.7;
+      const handle = new Mesh(new TorusGeometry(0.14, 0.018, 8, 22, Math.PI * 1.35), canMaterial);
+      handle.name = 'Held watering can curved handle';
+      handle.position.set(0.12, 0.12, -0.02);
+      handle.rotation.set(Math.PI / 2, 0, -0.2);
+      const stream = new Group();
+      stream.name = 'Held watering can water stream';
+      stream.visible = false;
+      for (let index = 0; index < 9; index += 1) {
+        const drop = new Mesh(new CylinderGeometry(0.011, 0.014, 0.18, 6), waterMaterial);
+        drop.name = 'Held watering can falling water drop';
+        drop.position.set(-0.5 - index * 0.035, 0.16 - index * 0.055, (index % 3 - 1) * 0.025);
+        drop.rotation.z = -0.42;
+        stream.add(drop);
+      }
+      root.add(body, top, spout, rose, handle, stream);
     } else if (equipmentId === 'sprinkler') {
       const base = new Mesh(new CylinderGeometry(0.12, 0.16, 0.1, 18), new MeshStandardMaterial({ color: 0x52666c, roughness: 0.58, metalness: 0.28 }));
       base.name = 'Held sprinkler base';
@@ -9738,6 +9792,71 @@ export class Game {
       && nextZ <= bounds.maxZ - margin;
   }
 
+  private updateChapterElevenWateringCan(deltaSeconds: number): void {
+    const stream = this.chapterElevenHeldSeedModel?.getObjectByName('Held watering can water stream');
+    const canWater = this.chapterElevenActive
+      && this.player.isLocked()
+      && this.chapterElevenSelectedEquipmentId === 'watering-can'
+      && (this.chapterElevenEquipmentInventory.get('watering-can') ?? 0) > 0
+      && this.input.isInteractHeld()
+      && !this.chapterMenuOpen
+      && !this.chapterElevenSeedShopOpen
+      && !this.chapterElevenEquipmentShopOpen
+      && !this.chapterElevenSellMenuOpen
+      && !this.chapterElevenAutoHarvestChestOpen;
+
+    if (stream) {
+      stream.visible = canWater;
+      if (canWater) {
+        stream.children.forEach((drop, index) => {
+          drop.position.y = 0.16 - ((this.elapsed * 2.8 + index * 0.12) % 0.62);
+          drop.position.x = -0.5 - index * 0.035;
+        });
+      }
+    }
+
+    if (!canWater) {
+      return;
+    }
+
+    const targetPlant = this.findChapterElevenTargetPlant(this.getChapterElevenAimGroundPoint());
+    if (!targetPlant) {
+      return;
+    }
+
+    this.waterChapterElevenPlant(targetPlant, deltaSeconds);
+  }
+
+  private waterChapterElevenPlant(plant: ChapterElevenPlanting, deltaSeconds: number): void {
+    if (!plant.mature) {
+      plant.age += deltaSeconds;
+      return;
+    }
+
+    if (!this.isChapterElevenPickableFruitCrop(plant.cropId) || !plant.pickableFruits) {
+      return;
+    }
+
+    let fruitsChanged = false;
+    plant.pickableFruits.forEach((fruit) => {
+      if (fruit.visible) {
+        return;
+      }
+      fruit.regrowTimer -= deltaSeconds;
+      if (fruit.regrowTimer <= 0) {
+        fruit.visible = true;
+        fruit.regrowTimer = 0;
+        fruit.golden = Math.random() < fruit.goldenChance;
+        fruit.charged = false;
+        fruitsChanged = true;
+      }
+    });
+
+    if (fruitsChanged) {
+      this.rebuildChapterElevenPlantVisual(plant);
+    }
+  }
+
   private updateChapterElevenPlants(deltaSeconds: number): void {
     if (!this.chapterElevenActive) {
       return;
@@ -10643,7 +10762,7 @@ export class Game {
   }
 
   private getChapterElevenEquipmentShopItems(): ChapterElevenEquipmentShopItemView[] {
-    return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.map((item) => {
+    return CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS.filter((item) => !item.seedShopOnly).map((item) => {
       const stock = this.getChapterElevenEquipmentStock(item.id);
       const stocked = !this.chapterElevenTwoActive || stock > 0;
       return {
@@ -10656,7 +10775,9 @@ export class Game {
   }
 
   private readonly handleChapterElevenEquipmentPurchase = (equipmentId: ChapterElevenEquipmentId): void => {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenEquipmentShopOpen) {
+    const buyingSeedShopTool = equipmentId === 'watering-can' && this.chapterElevenSeedShopOpen && !this.chapterElevenTraderShopOpen;
+    const buyingEquipmentShopTool = this.chapterElevenTwoActive && this.chapterElevenEquipmentShopOpen;
+    if (!this.chapterElevenActive || (!buyingSeedShopTool && !buyingEquipmentShopTool)) {
       return;
     }
 
@@ -10671,14 +10792,16 @@ export class Game {
       return;
     }
 
-    if (this.getChapterElevenEquipmentStock(equipmentId) <= 0) {
+    if (!buyingSeedShopTool && this.getChapterElevenEquipmentStock(equipmentId) <= 0) {
       this.pushStatus(`${item.label} is sold out until the next restock.`, 2.4);
       this.syncHud();
       return;
     }
 
     this.chapterElevenMoney -= item.cost;
-    this.chapterElevenEquipmentShopStock.set(equipmentId, Math.max(0, this.getChapterElevenEquipmentStock(equipmentId) - 1));
+    if (!buyingSeedShopTool) {
+      this.chapterElevenEquipmentShopStock.set(equipmentId, Math.max(0, this.getChapterElevenEquipmentStock(equipmentId) - 1));
+    }
     this.chapterElevenEquipmentInventory.set(equipmentId, (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) + 1);
     this.chapterElevenSelectedSeedId = null;
     this.chapterElevenSelectedCropId = null;
@@ -11370,6 +11493,17 @@ export class Game {
       }
       targetPlant.age += 8;
       this.pushStatus('Watered the plant. It will grow faster.', 2.1);
+      this.syncHud();
+      return true;
+    }
+
+    if (equipmentId === 'watering-can') {
+      if (!targetPlant) {
+        this.pushStatus('Aim the watering can at a planted crop and hold E to water it.', 2.1);
+        return true;
+      }
+      this.waterChapterElevenPlant(targetPlant, 0.45);
+      this.pushStatus('Watering can started. Hold E to keep watering this plant.', 1.8);
       this.syncHud();
       return true;
     }
@@ -24689,6 +24823,9 @@ export class Game {
 
       const targetPlant = this.findChapterElevenTargetPlant(point) ?? this.findNearbyChapterElevenPickablePlant();
       if (targetPlant) {
+        if (this.chapterElevenSelectedEquipmentId === 'watering-can') {
+          return 'Hold E to water this plant with the Watering Can.';
+        }
         const config = CHAPTER_ELEVEN_CROP_CONFIGS[targetPlant.seedId];
         if (this.isChapterElevenPickableFruitCrop(config.cropId) && targetPlant.mature) {
           return `${config.label} plant is ready. Press E to pick the next ripe fruit.`;
@@ -24716,6 +24853,9 @@ export class Game {
         }
         if (this.chapterElevenSelectedEquipmentId === 'water-bucket') {
           return 'Aim at a plant and left click or press E to water it.';
+        }
+        if (this.chapterElevenSelectedEquipmentId === 'watering-can') {
+          return 'Aim at a plant and hold E to pour water from the Watering Can.';
         }
         if (this.chapterElevenSelectedEquipmentId === 'fertilizer') {
           return 'Aim at a plant and left click or press E to fertilize it.';

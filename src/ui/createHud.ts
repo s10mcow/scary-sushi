@@ -199,6 +199,7 @@ export type ChapterElevenEquipmentId =
   | 'vine-stick'
   | 'hoe'
   | 'water-bucket'
+  | 'watering-can'
   | 'sprinkler'
   | 'fertilizer'
   | 'cheap-auto-harvester'
@@ -213,7 +214,7 @@ export interface ChapterSevenGrandpaTradeView {
   enabled: boolean;
 }
 
-export type ChapterElevenSeedShopItemView = ChapterElevenSeedShopSeedItemView | ChapterElevenSeedShopEggItemView;
+export type ChapterElevenSeedShopItemView = ChapterElevenSeedShopSeedItemView | ChapterElevenSeedShopEggItemView | ChapterElevenSeedShopEquipmentItemView;
 
 export interface ChapterElevenSeedShopSeedItemView {
   kind?: 'seed';
@@ -232,6 +233,17 @@ export interface ChapterElevenSeedShopEggItemView {
   label: string;
   cost: number;
   section: 'eggs';
+  enabled: boolean;
+  stock?: number;
+  restockSeconds?: number;
+}
+
+export interface ChapterElevenSeedShopEquipmentItemView {
+  kind: 'equipment';
+  id: ChapterElevenEquipmentId;
+  label: string;
+  cost: number;
+  section: 'tools';
   enabled: boolean;
   stock?: number;
   restockSeconds?: number;
@@ -2968,6 +2980,7 @@ export function createHud(host: HTMLElement): HudController {
       const rows: HTMLElement[] = [];
       let currentSection: ChapterElevenSeedShopItemView['section'] | null = null;
       const sectionLabels: Record<ChapterElevenSeedShopItemView['section'], string> = {
+        tools: 'Tools',
         cheap: 'Cheap seeds',
         expensive: 'Expensive seeds',
         eggs: 'Pet eggs',
@@ -2987,6 +3000,8 @@ export function createHud(host: HTMLElement): HudController {
         button.disabled = !item.enabled;
         if (item.kind === 'egg') {
           button.dataset.petEgg = item.id;
+        } else if (item.kind === 'equipment') {
+          button.dataset.equipment = item.id;
         } else {
           button.dataset.seed = item.id;
         }
@@ -3020,6 +3035,8 @@ export function createHud(host: HTMLElement): HudController {
           purchaseHandled = true;
           if (item.kind === 'egg') {
             chapterElevenTraderPetEggPurchaseHandler?.();
+          } else if (item.kind === 'equipment') {
+            chapterElevenEquipmentPurchaseHandler?.(item.id);
           } else {
             chapterElevenSeedPurchaseHandler?.(item.id);
           }
