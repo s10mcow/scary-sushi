@@ -33,6 +33,7 @@ const CHUNK_VIEW_RADIUS = 2;
 const TREE_SPACING = 32;
 const TREE_SKIP_CHANCE = 0.38;
 const RAINBOW_CHANCE = 0.12;
+const JACKALOPE_CHANCE = 0.16;
 
 const grassMaterial = new MeshStandardMaterial({ color: 0xf3a1ca, roughness: 0.92 });
 const grassPatchMaterial = new MeshStandardMaterial({ color: 0xf8bad7, roughness: 0.96 });
@@ -196,41 +197,100 @@ function addSphere(root: Group, name: string, position: [number, number, number]
   return mesh;
 }
 
-function createMagicalDeer(): Group {
-  const deer = new Group();
-  deer.name = "Maggie's World magical deer bunny";
-  deer.position.set(8, 0, -16);
-  deer.rotation.y = -0.38;
+function addCylinderBetween(root: Group, name: string, start: Vector3, end: Vector3, radius: number, material: MeshStandardMaterial): Mesh {
+  const direction = end.clone().sub(start);
+  const length = direction.length();
+  const mesh = new Mesh(new CylinderGeometry(radius, radius, length, 7), material);
+  mesh.name = name;
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
+  mesh.castShadow = true;
+  root.add(mesh);
+  return mesh;
+}
 
-  addSphere(deer, 'Magical deer soft body', [0, 1.1, 0], [1.05, 0.55, 0.42], magicalDeerBodyMaterial);
-  addSphere(deer, 'Magical deer pale belly', [0.08, 1.03, -0.05], [0.82, 0.38, 0.34], magicalDeerBellyMaterial);
-  addSphere(deer, 'Magical deer bunny-deer head', [0.92, 1.48, 0], [0.43, 0.36, 0.34], magicalDeerBodyMaterial);
-  addSphere(deer, 'Magical deer little nose', [1.28, 1.44, 0], [0.13, 0.09, 0.1], magicalDeerBellyMaterial);
-  addSphere(deer, 'Magical deer left eye', [1.14, 1.56, -0.18], [0.045, 0.045, 0.045], magicalDeerEyeMaterial);
-  addSphere(deer, 'Magical deer right eye', [1.14, 1.56, 0.18], [0.045, 0.045, 0.045], magicalDeerEyeMaterial);
-  addSphere(deer, 'Magical deer cotton tail', [-0.95, 1.24, 0], [0.22, 0.22, 0.22], magicalDeerBellyMaterial);
+function addJackalopeAntler(root: Group, side: -1 | 1): void {
+  const base = new Vector3(0.51, 1.12, side * 0.095);
+  const tip = new Vector3(0.58, 1.46, side * 0.13);
+  addCylinderBetween(root, 'Branching jackalope antler main stem', base, tip, 0.018, magicalDeerAntlerMaterial);
+  addCylinderBetween(
+    root,
+    'Branching jackalope antler front tine',
+    new Vector3(0.55, 1.32, side * 0.12),
+    new Vector3(0.42, 1.43, side * 0.25),
+    0.014,
+    magicalDeerAntlerMaterial,
+  );
+  addCylinderBetween(
+    root,
+    'Branching jackalope antler rear tine',
+    new Vector3(0.57, 1.37, side * 0.12),
+    new Vector3(0.72, 1.48, side * 0.24),
+    0.013,
+    magicalDeerAntlerMaterial,
+  );
+}
 
-  for (const z of [-0.27, 0.27]) {
-    addBox(deer, 'Magical deer slim deer leg', [0.12, 0.9, 0.12], [-0.44, 0.45, z], magicalDeerBodyMaterial);
-    addBox(deer, 'Magical deer slim deer leg', [0.12, 0.86, 0.12], [0.5, 0.43, z], magicalDeerBodyMaterial);
+function createJackalope(localX: number, localZ: number, seed: number): Group {
+  const jackalope = new Group();
+  jackalope.name = "Maggie's World wandering jackalope";
+  jackalope.userData.baseX = localX;
+  jackalope.userData.baseZ = localZ;
+  jackalope.userData.seed = seed;
+  jackalope.position.set(localX, 0, localZ);
+  jackalope.rotation.y = hash2d(seed, seed, 1) * Math.PI * 2;
+
+  addSphere(jackalope, 'Small jackalope rabbit-deer body', [0, 0.56, 0], [0.56, 0.3, 0.25], magicalDeerBodyMaterial);
+  addSphere(jackalope, 'Small jackalope pale belly', [0.03, 0.52, -0.01], [0.43, 0.2, 0.2], magicalDeerBellyMaterial);
+  addSphere(jackalope, 'Small jackalope head with deer muzzle', [0.55, 0.82, 0], [0.24, 0.22, 0.2], magicalDeerBodyMaterial);
+  addSphere(jackalope, 'Small jackalope pale muzzle', [0.76, 0.78, 0], [0.11, 0.075, 0.085], magicalDeerBellyMaterial);
+  addSphere(jackalope, 'Small jackalope left visible eye', [0.66, 0.88, -0.105], [0.038, 0.038, 0.038], magicalDeerEyeMaterial);
+  addSphere(jackalope, 'Small jackalope right visible eye', [0.66, 0.88, 0.105], [0.038, 0.038, 0.038], magicalDeerEyeMaterial);
+  addSphere(jackalope, 'Small jackalope bunny tail', [-0.55, 0.64, 0], [0.13, 0.13, 0.13], magicalDeerBellyMaterial);
+
+  for (const [index, z] of [-0.15, 0.15].entries()) {
+    const rearLeg = addBox(jackalope, 'Small jackalope back hopping leg', [0.08, 0.46, 0.08], [-0.28, 0.25, z], magicalDeerBodyMaterial);
+    rearLeg.userData.legPhase = index === 0 ? 0 : Math.PI;
+    const frontLeg = addBox(jackalope, 'Small jackalope front deer leg', [0.065, 0.42, 0.065], [0.28, 0.22, z], magicalDeerBodyMaterial);
+    frontLeg.userData.legPhase = index === 0 ? Math.PI : 0;
   }
 
-  const leftEar = addBox(deer, 'Magical deer tall bunny ear', [0.15, 0.86, 0.12], [0.74, 2.08, -0.16], magicalDeerEarMaterial);
-  leftEar.rotation.z = 0.22;
-  const rightEar = addBox(deer, 'Magical deer tall bunny ear', [0.15, 0.86, 0.12], [0.74, 2.08, 0.16], magicalDeerEarMaterial);
-  rightEar.rotation.z = 0.22;
+  const leftEar = addBox(jackalope, 'Small jackalope long bunny ear', [0.08, 0.48, 0.055], [0.45, 1.18, -0.1], magicalDeerEarMaterial);
+  leftEar.rotation.z = 0.2;
+  const rightEar = addBox(jackalope, 'Small jackalope long bunny ear', [0.08, 0.48, 0.055], [0.45, 1.18, 0.1], magicalDeerEarMaterial);
+  rightEar.rotation.z = 0.2;
 
-  const leftAntler = new Mesh(new CylinderGeometry(0.025, 0.035, 0.62, 7), magicalDeerAntlerMaterial);
-  leftAntler.name = 'Tiny glowing magical deer antler';
-  leftAntler.position.set(0.96, 1.9, -0.12);
-  leftAntler.rotation.z = -0.4;
-  leftAntler.castShadow = true;
-  deer.add(leftAntler);
-  const rightAntler = leftAntler.clone();
-  rightAntler.position.z = 0.12;
-  deer.add(rightAntler);
+  addJackalopeAntler(jackalope, -1);
+  addJackalopeAntler(jackalope, 1);
 
-  return deer;
+  return jackalope;
+}
+
+function animateJackalopes(root: Group, timeSeconds: number): void {
+  root.traverse((object) => {
+    if (!(object instanceof Group) || object.name !== "Maggie's World wandering jackalope") {
+      return;
+    }
+    const seed = Number(object.userData.seed ?? 0);
+    const baseX = Number(object.userData.baseX ?? object.position.x);
+    const baseZ = Number(object.userData.baseZ ?? object.position.z);
+    const speed = 0.22 + hash2d(seed, seed, 5) * 0.18;
+    const phase = timeSeconds * speed + seed * 0.11;
+    const walkX = Math.sin(phase) * 4.2;
+    const walkZ = Math.cos(phase * 0.82) * 3.6;
+    const nextX = baseX + Math.sin(phase + 0.08) * 4.2;
+    const nextZ = baseZ + Math.cos((phase + 0.08) * 0.82) * 3.6;
+    object.position.set(baseX + walkX, Math.max(0, Math.sin(timeSeconds * speed * 8 + seed) * 0.035), baseZ + walkZ);
+    object.rotation.y = Math.atan2(nextX - object.position.x, nextZ - object.position.z) + Math.PI / 2;
+
+    object.children.forEach((child) => {
+      if (!child.name.includes('leg')) {
+        return;
+      }
+      const legPhase = Number(child.userData.legPhase ?? 0);
+      child.rotation.z = Math.sin(timeSeconds * speed * 12 + legPhase) * 0.18;
+    });
+  });
 }
 
 function createChunk(chunkX: number, chunkZ: number): Group {
@@ -267,6 +327,21 @@ function createChunk(chunkX: number, chunkZ: number): Group {
     const butterflyX = 7 + hash2d(chunkX, chunkZ, 80 + index) * (CHUNK_SIZE - 14);
     const butterflyZ = 7 + hash2d(chunkX, chunkZ, 90 + index) * (CHUNK_SIZE - 14);
     chunk.add(createButterfly(butterflyX, butterflyZ, seed));
+  }
+
+  const forcedOriginJackalope = chunkX === 0 && chunkZ === 0;
+  if (forcedOriginJackalope || hash2d(chunkX, chunkZ, 120) < JACKALOPE_CHANCE) {
+    const count = forcedOriginJackalope ? 2 : 1;
+    for (let index = 0; index < count; index += 1) {
+      const seed = chunkX * 613 + chunkZ * 769 + index * 101;
+      const jackalopeX = forcedOriginJackalope
+        ? 16 + index * 18
+        : 12 + hash2d(chunkX, chunkZ, 121 + index) * (CHUNK_SIZE - 24);
+      const jackalopeZ = forcedOriginJackalope
+        ? 20 + index * 12
+        : 12 + hash2d(chunkX, chunkZ, 131 + index) * (CHUNK_SIZE - 24);
+      chunk.add(createJackalope(jackalopeX, jackalopeZ, seed));
+    }
   }
 
   const treePositions: Array<{ x: number; z: number; scale: number }> = [];
@@ -327,8 +402,6 @@ export function createChapterThirteen(): ChapterThirteenData {
   const chunkRoot = new Group();
   chunkRoot.name = "Maggie's World endless generated chunks";
   root.add(chunkRoot);
-  const magicalDeer = createMagicalDeer();
-  root.add(magicalDeer);
 
   const chunks = new Map<string, Group>();
   const colliders: CollisionBox[] = [];
@@ -370,8 +443,7 @@ export function createChapterThirteen(): ChapterThirteenData {
       ensureChunks(playerPosition);
       const timeSeconds = performance.now() / 1000;
       animateButterflies(chunkRoot, timeSeconds);
-      magicalDeer.position.y = Math.sin(timeSeconds * 1.4) * 0.025;
-      magicalDeer.rotation.z = Math.sin(timeSeconds * 1.8) * 0.018;
+      animateJackalopes(chunkRoot, timeSeconds);
     },
     reset(): void {
       ensureChunks(spawn);
