@@ -73,6 +73,7 @@ import {
   type ChapterElevenSpecialStall,
 } from '../scene/createChapterEleven';
 import { createChapterTwelve, type ChapterTwelveData, type ChapterTwelveEventCue } from '../scene/createChapterTwelve';
+import { createChapterThirteen, type ChapterThirteenData } from '../scene/createChapterThirteen';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -228,6 +229,7 @@ const START_IN_CHAPTER_NINE = false;
 const START_IN_CHAPTER_TEN = false;
 const START_IN_CHAPTER_ELEVEN = true;
 const START_IN_CHAPTER_TWELVE = false;
+const START_IN_CHAPTER_THIRTEEN = false;
 const CURRENT_CHAPTER_STORAGE_KEY = 'scary-sushi:current-chapter';
 const UPDATE_SEQUENCE_DURATION_SECONDS = 2.4;
 const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
@@ -245,6 +247,7 @@ const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
   'chapter-11',
   'chapter-11-two',
   'chapter-12',
+  'chapter-13',
   'zombie-fps',
   'doom-fps',
 ];
@@ -1995,6 +1998,7 @@ export class Game {
   private readonly chapterTen: ChapterTenData;
   private readonly chapterEleven: ChapterElevenData;
   private readonly chapterTwelve: ChapterTwelveData;
+  private readonly chapterThirteen: ChapterThirteenData;
   private readonly chapterNineCameraRenderTarget = new WebGLRenderTarget(256, 144);
   private readonly zombieMode: ZombieModeData;
   private readonly doomMode: DoomModeData;
@@ -2154,6 +2158,7 @@ export class Game {
   private chapterElevenActive = false;
   private chapterElevenTwoActive = false;
   private chapterTwelveActive = false;
+  private chapterThirteenActive = false;
   private zombieModeActive = false;
   private doomModeActive = false;
   private chapterMenuOpen = false;
@@ -2517,6 +2522,8 @@ export class Game {
     this.chapterEleven.root.visible = false;
     this.chapterTwelve = createChapterTwelve();
     this.chapterTwelve.root.visible = false;
+    this.chapterThirteen = createChapterThirteen();
+    this.chapterThirteen.root.visible = false;
     this.zombieMode = createZombieMode();
     this.zombieMode.root.visible = false;
     this.doomMode = createDoomMode();
@@ -2540,6 +2547,7 @@ export class Game {
         ...this.chapterTen.colliders,
         ...this.chapterEleven.colliders,
         ...this.chapterTwelve.colliders,
+        ...this.chapterThirteen.colliders,
         ...this.zombieMode.colliders,
         ...this.doomMode.colliders,
       ],
@@ -2587,6 +2595,7 @@ export class Game {
     this.scene.add(this.chapterTen.root);
     this.scene.add(this.chapterEleven.root);
     this.scene.add(this.chapterTwelve.root);
+    this.scene.add(this.chapterThirteen.root);
     this.scene.add(this.zombieMode.root);
     this.scene.add(this.doomMode.root);
     this.scene.add(this.camera);
@@ -2743,6 +2752,8 @@ export class Game {
     const savedChapter = this.loadSavedChapter();
     if (savedChapter) {
       this.beginChapterById(savedChapter);
+    } else if (START_IN_CHAPTER_THIRTEEN) {
+      this.beginChapterById('chapter-13');
     } else if (START_IN_CHAPTER_TWELVE) {
       this.beginChapterById('chapter-12');
     } else if (START_IN_CHAPTER_ELEVEN) {
@@ -2825,7 +2836,7 @@ export class Game {
               ? 0.9
               : this.chapterSevenActive
                 ? 0.9
-                : this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive
+                : this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive
                   ? 0.9
                 : 1;
     const renderWidth = Math.max(1, Math.round(width * renderScale));
@@ -2840,7 +2851,7 @@ export class Game {
     this.renderer.toneMapping = this.doomModeActive ? NoToneMapping : ACESFilmicToneMapping;
     this.renderer.setPixelRatio(
       this.doomModeActive || this.officeChapterActive || this.chapterFourActive
-        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive
+        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive
         ? PERFORMANCE_RENDER_PIXEL_RATIO
         : Math.min(window.devicePixelRatio, DEFAULT_RENDER_PIXEL_RATIO),
     );
@@ -3115,6 +3126,8 @@ export class Game {
     this.chapterEleven.root.visible = false;
     this.chapterTwelveActive = false;
     this.chapterTwelve.root.visible = false;
+    this.chapterThirteenActive = false;
+    this.chapterThirteen.root.visible = false;
     this.beginChapterById(chapterId);
 
     this.setChapterMenuOpen(false);
@@ -3164,6 +3177,9 @@ export class Game {
         return;
       case 'chapter-12':
         this.beginChapterTwelve();
+        return;
+      case 'chapter-13':
+        this.beginChapterThirteen();
         return;
       case 'doom-fps':
         this.beginDoomMode();
@@ -5367,7 +5383,7 @@ export class Game {
       this.updateZombieMode(deltaSeconds);
     } else if (this.doomModeActive) {
       this.updateDoomMode(deltaSeconds);
-    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive) {
+    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive) {
       this.monsterState = this.unlockedMonsterState;
       this.touchingMonster = null;
     } else {
@@ -5378,7 +5394,7 @@ export class Game {
     this.updateChapterSevenDayNightCycle(deltaSeconds);
     this.updateChapterSevenAmbientAudio(deltaSeconds);
     this.updateAtmosphere();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
     }
     this.updateOfficeGlassThrows(deltaSeconds);
@@ -5386,7 +5402,7 @@ export class Game {
     this.updateOfficeVentBoyJumpscare(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateMachineJobs(deltaSeconds);
     }
 
@@ -5516,7 +5532,9 @@ export class Game {
       this.gameplaySfxAudio.updateGardenEventAmbient(deltaSeconds);
     } else if (this.chapterTwelveActive && !this.chapterTwelve.isDriving()) {
       this.chapterTwelve.update(deltaSeconds);
-    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive) {
+    } else if (this.chapterThirteenActive) {
+      this.chapterThirteen.update(this.player.getPosition());
+    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
       this.chapterTwo.update(deltaSeconds, this.player.getPosition());
@@ -5596,7 +5614,7 @@ export class Game {
     this.updateChapterFourGreenJumpscareModel();
     this.updateOfficeGlassDisplay();
     this.updateOfficePrizeItemDisplay();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateStoveLight();
     }
     if (this.shouldSyncHudThisFrame(deltaSeconds, jumpscareLocked)) {
@@ -22856,7 +22874,7 @@ export class Game {
   private updateAtmosphere(): void {
     this.lighting.flashlight.angle = GAME_CONFIG.flashlight.angle;
     this.lighting.flashlight.penumbra = GAME_CONFIG.flashlight.penumbra;
-    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive ? 980 : GAME_CONFIG.camera.far;
+    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive ? 980 : GAME_CONFIG.camera.far;
     if (Math.abs(this.camera.far - targetCameraFar) > 0.01) {
       this.camera.far = targetCameraFar;
       this.camera.updateProjectionMatrix();
@@ -23169,6 +23187,25 @@ export class Game {
       return;
     }
 
+    if (this.chapterThirteenActive) {
+      this.lighting.ambient.intensity = 0.82;
+      this.lighting.hemisphere.intensity = 1.08;
+      this.lighting.flashlight.intensity = 0;
+      this.lighting.flashlight.distance = 0;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0xffd7ef);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0xffd7ef);
+        this.scene.fog.near = 155;
+        this.scene.fog.far = 430;
+      }
+
+      return;
+    }
+
     const playerZ = this.player.getPosition().z;
     const threshold = this.level.pantryEntrancePosition.z + 10;
     const mazeBlend = MathUtils.clamp((threshold - playerZ) / 18, 0, 1);
@@ -23243,6 +23280,10 @@ export class Game {
 
     if (this.chapterTwelveActive) {
       return this.chapterTwelve.colliders;
+    }
+
+    if (this.chapterThirteenActive) {
+      return this.chapterThirteen.colliders;
     }
 
     if (this.zombieModeActive) {
@@ -23433,6 +23474,10 @@ export class Game {
       return 'chapter-12';
     }
 
+    if (this.chapterThirteenActive) {
+      return 'chapter-13';
+    }
+
     return this.chapterTwoActive ? 'chapter-2' : 'chapter-1';
   }
 
@@ -23469,6 +23514,15 @@ export class Game {
   }
 
   private getIntroHudState(): { eyebrow: string; title: string; summary: string; buttonText: string } {
+    if (this.chapterThirteenActive) {
+      return {
+        eyebrow: 'Chapter Thirteen',
+        title: "Maggie's World",
+        summary: 'Explore an endless pink plain dotted with cherry blossom trees.',
+        buttonText: "Enter Maggie's World",
+      };
+    }
+
     if (this.chapterElevenActive) {
       return {
         eyebrow: this.chapterElevenTwoActive ? 'Seed Life' : 'Chapter Eleven',
@@ -27659,6 +27713,16 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterThirteenActive) {
+      return [
+        "Chapter 13: Maggie's World",
+        '',
+        'An endless pink grass plain filled with cherry blossom trees.',
+        'The world keeps generating as you walk, so the map does not end.',
+        'Use the Coordinate Tool to mark where Maggie\'s World details should go next.',
+      ].join('\n');
+    }
+
     if (this.chapterEightActive) {
       return [
         'Chapter 8: The Woods',
@@ -28166,7 +28230,7 @@ export class Game {
 
     return {
       text: this.getChapterExitNoticeText(),
-      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.zombieModeActive && !this.doomModeActive,
+      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.zombieModeActive && !this.doomModeActive,
       label: 'Chapter Shift',
     };
   }
@@ -29922,6 +29986,10 @@ export class Game {
       return 'Chapter 12: The Truck Game loaded. Drive the F250, use the tow truck chain if you get stuck, and repair engine damage at the garage.';
     }
 
+    if (this.chapterThirteenActive) {
+      return "Chapter 13: Maggie's World loaded. Walk through endless pink grass and cherry blossom trees.";
+    }
+
     if (this.chapterEightActive) {
       const fireplaceState = this.chapterEight.isFireLit() ? 'lit' : 'unlit';
       return `Chapter 8: The Woods loaded. Holding: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}. The cabin fireplace is ${fireplaceState}.`;
@@ -30721,6 +30789,10 @@ export class Game {
 
     if (this.chapterTwelveActive) {
       return GAME_CONFIG.player.height;
+    }
+
+    if (this.chapterThirteenActive) {
+      return this.chapterThirteen.getSupportedFloorY(this.player.getPosition());
     }
 
     return null;
@@ -36941,6 +37013,7 @@ export class Game {
     this.chapterElevenActive = false;
     this.chapterElevenTwoActive = false;
     this.chapterTwelveActive = true;
+    this.chapterThirteenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -36973,6 +37046,8 @@ export class Game {
     this.chapterEleven.root.visible = false;
     this.chapterTwelve.reset();
     this.chapterTwelve.root.visible = true;
+    this.chapterThirteen.reset();
+    this.chapterThirteen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -37047,6 +37122,133 @@ export class Game {
     this.player.teleport(this.chapterTwelve.spawn);
     this.player.lookToward(this.chapterTwelve.lookTarget, 1);
     this.pushStatus('The Truck Game loaded. Press E near the Ford F250 Super Duty to drive through the mud field.', 3.2);
+    this.resize();
+  }
+
+  private beginChapterThirteen(): void {
+    this.saveCurrentChapter('chapter-13');
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
+    this.chapterEightActive = false;
+    this.chapterNineActive = false;
+    this.chapterTenActive = false;
+    this.chapterElevenActive = false;
+    this.chapterElevenTwoActive = false;
+    this.chapterTwelveActive = false;
+    this.chapterThirteenActive = true;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = "Chapter 13: Maggie's World";
+    this.chapterCardBody = 'An endless pink grass plain filled with cherry blossom trees.';
+    this.activeJumpscare = null;
+    this.chapterNineJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.clearPaintbrushState();
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.officeSandboxChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
+    this.chapterEleven.root.visible = false;
+    this.chapterTwelve.root.visible = false;
+    this.chapterThirteen.reset();
+    this.chapterThirteen.root.visible = true;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
+    this.chapterEight.reset();
+    this.chapterNine.reset();
+    this.chapterTen.reset();
+    this.chapterEleven.reset();
+    this.chapterTwelve.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.resetOfficeTabletState();
+    this.clearChapterElevenGardenState(true);
+    this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenEquipmentShopOpen = false;
+    this.chapterElevenSellMenuOpen = false;
+    this.chapterElevenSellChoosing = false;
+    this.chapterElevenSellSelectedCrops.clear();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
+    this.chapterSevenBoxHidden = false;
+    this.chapterSevenOvenHidden = false;
+    this.chapterSevenSwingSeated = false;
+    this.chapterSeven.setSwingOccupied(false);
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
+    this.chapterEightHeldItemAnchor.visible = false;
+    this.chapterNine.shoulderCamera.visible = false;
+    this.chapterElevenHeldSeedAnchor.visible = false;
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.setPlacementToolActive(true);
+    this.player.teleport(this.chapterThirteen.spawn);
+    this.player.lookToward(this.chapterThirteen.lookTarget, 1);
+    this.pushStatus("Maggie's World loaded. Walk through endless pink grass and cherry blossom trees.", 3.2);
     this.resize();
   }
 

@@ -15,6 +15,7 @@ export type HudChapterId =
   | 'chapter-11'
   | 'chapter-11-two'
   | 'chapter-12'
+  | 'chapter-13'
   | 'zombie-fps'
   | 'doom-fps';
 export type HudJumpScareVariant = MonsterVariant | 'bear' | 'quacky' | 'fluffle' | 'bori' | 'foxy' | 'purple' | 'blue' | 'green';
@@ -1884,6 +1885,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-12' as const,
       label: 'Chapter 12: The Truck Game',
       body: 'A big forest mud field with truck trails, jumps, and a drivable Ford F250 Super Duty.',
+    },
+    {
+      id: 'chapter-13' as const,
+      label: "Chapter 13: Maggie's World",
+      body: 'An endless pink-grass plain dotted with cherry blossom trees.',
     },
     {
       id: 'zombie-fps' as const,
