@@ -127,7 +127,7 @@ export interface HudController {
   setChapterElevenSellMenu(active: boolean, money: number, items: ChapterElevenSellItemView[], choosing: boolean, selectedIds: string[]): void;
   setChapterElevenAutoHarvestChest(active: boolean, chestItems: ChapterElevenChestItemView[], inventorySlots: HotbarSlotView[]): void;
   setChapterElevenSeedHotbar(active: boolean, slots: HotbarSlotView[]): void;
-  setMoney(value: number): void;
+  setMoney(value: number, active?: boolean): void;
   setChapterSevenPhaseTimer(active: boolean, phase: 'day' | 'night', secondsLeft: number, urgent: boolean): void;
   setChapterMenu(active: boolean, currentChapter: HudChapterId): void;
   setCompass(active: boolean, headingDegrees: number): void;
@@ -1892,11 +1892,6 @@ export function createHud(host: HTMLElement): HudController {
       body: 'An endless pink-grass plain dotted with cherry blossom trees.',
     },
     {
-      id: 'zombie-fps' as const,
-      label: 'Zombie First Person Shooter',
-      body: 'Forest survival with weapons, barricades, and zombie nights.',
-    },
-    {
       id: 'doom-fps' as const,
       label: 'Doom Run',
       body: 'Retro techbase corridors, key-card doors, demons, and an exit switch.',
@@ -3530,7 +3525,8 @@ export function createHud(host: HTMLElement): HudController {
         slot.countText.textContent = `x${value?.filled ? value.count : 0}`;
       });
     },
-    setMoney(value): void {
+    setMoney(value, active = true): void {
+      moneyPanel.dataset.active = String(active);
       moneyValue.textContent = `$${Math.max(0, Math.floor(value))}`;
     },
     setChapterSevenPhaseTimer(active, phase, secondsLeft, urgent): void {

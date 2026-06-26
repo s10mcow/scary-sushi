@@ -248,7 +248,6 @@ const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
   'chapter-11-two',
   'chapter-12',
   'chapter-13',
-  'zombie-fps',
   'doom-fps',
 ];
 const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
@@ -23599,7 +23598,7 @@ export class Game {
         : 0,
     );
     this.hud.setFlashlight(this.flashlight.isEnabled());
-    this.hud.setMoney(this.chapterElevenMoney);
+    this.hud.setMoney(this.chapterElevenMoney, this.chapterElevenActive);
     this.chapterNine.shoulderCamera.visible = this.chapterNineActive && locked && !this.chapterMenuOpen && this.chapterNine.getHeldItem() === 'camera';
     this.hud.setHealthLabel('Health');
     this.hud.setStaminaLabel(this.doomModeActive ? 'Armor' : 'Stamina');

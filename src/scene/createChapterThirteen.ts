@@ -1,12 +1,15 @@
 import {
   BoxGeometry,
+  CatmullRomCurve3,
   CylinderGeometry,
   Group,
   InstancedMesh,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
   SphereGeometry,
+  TubeGeometry,
   Vector3,
 } from 'three';
 
@@ -34,6 +37,15 @@ const barkMaterial = new MeshStandardMaterial({ color: 0x7a4b37, roughness: 0.82
 const blossomMaterial = new MeshStandardMaterial({ color: 0xffb6d8, roughness: 0.84 });
 const paleBlossomMaterial = new MeshStandardMaterial({ color: 0xffd9e9, roughness: 0.86 });
 const darkBlossomMaterial = new MeshStandardMaterial({ color: 0xec82bd, roughness: 0.88 });
+const rainbowMaterials = [
+  0xff4d5e,
+  0xff9f1c,
+  0xffef3d,
+  0x4eda63,
+  0x31b7ff,
+  0x5b5cff,
+  0xb45cff,
+].map((color) => new MeshBasicMaterial({ color }));
 
 function hash2d(x: number, z: number, salt = 0): number {
   const value = Math.sin(x * 127.1 + z * 311.7 + salt * 74.7) * 43758.5453123;
@@ -67,6 +79,28 @@ function createGroundPatch(localX: number, localZ: number, width: number, depth:
   return patch;
 }
 
+function createRainbowArc(localX: number, localZ: number, rotationY: number, scale: number): Group {
+  const rainbow = new Group();
+  rainbow.name = "Maggie's World sky rainbow";
+  rainbow.position.set(localX, 11 + scale * 2.4, localZ);
+  rainbow.rotation.y = rotationY;
+
+  rainbowMaterials.forEach((material, index) => {
+    const radius = (13.8 - index * 0.45) * scale;
+    const points: Vector3[] = [];
+    for (let step = 0; step <= 28; step += 1) {
+      const angle = Math.PI - (step / 28) * Math.PI;
+      points.push(new Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0));
+    }
+    const curve = new CatmullRomCurve3(points);
+    const band = new Mesh(new TubeGeometry(curve, 34, 0.16 * scale, 8, false), material);
+    band.name = "Maggie's World colored rainbow band";
+    rainbow.add(band);
+  });
+
+  return rainbow;
+}
+
 function createChunk(chunkX: number, chunkZ: number): Group {
   const chunk = new Group();
   chunk.name = `Maggie's World chunk ${chunkX},${chunkZ}`;
@@ -87,6 +121,12 @@ function createChunk(chunkX: number, chunkZ: number): Group {
     const depth = 7 + hash2d(chunkX, chunkZ, 40 + index) * 12;
     chunk.add(createGroundPatch(patchX, patchZ, width, depth));
   }
+
+  const rainbowX = 18 + hash2d(chunkX, chunkZ, 70) * (CHUNK_SIZE - 36);
+  const rainbowZ = 18 + hash2d(chunkX, chunkZ, 71) * (CHUNK_SIZE - 36);
+  const rainbowRotation = hash2d(chunkX, chunkZ, 72) * Math.PI * 2;
+  const rainbowScale = 0.86 + hash2d(chunkX, chunkZ, 73) * 0.32;
+  chunk.add(createRainbowArc(rainbowX, rainbowZ, rainbowRotation, rainbowScale));
 
   const treePositions: Array<{ x: number; z: number; scale: number }> = [];
   const cells = Math.floor(CHUNK_SIZE / TREE_SPACING);

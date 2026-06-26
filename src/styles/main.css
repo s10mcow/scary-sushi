@@ -5019,6 +5019,10 @@ select {
   pointer-events: none;
 }
 
+.hud__money[data-active="false"] {
+  display: none;
+}
+
 .hud__money-icon {
   flex: 0 0 auto;
   width: 1.78rem;
