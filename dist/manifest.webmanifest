@@ -1,0 +1,19 @@
+{
+  "name": "Static Bloom",
+  "short_name": "Static Bloom",
+  "description": "A touch-friendly offline web game for tablets and desktop browsers.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#08090c",
+  "theme_color": "#08090c",
+  "icons": [
+    {
+      "src": "/icons/static-bloom.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -16,6 +16,7 @@ interface TouchLookDelta {
 }
 
 type TouchControlKind = 'move' | 'look';
+type TouchActionKind = 'interact' | 'jump' | 'fire' | 'cycle';
 
 export class InputController {
   private readonly pressed = new Set<string>();
@@ -43,6 +44,9 @@ export class InputController {
   private itemCycleQueued = 0;
   private touchMovePointerId: number | null = null;
   private touchLookPointerId: number | null = null;
+  private touchInteractPointerId: number | null = null;
+  private touchJumpPointerId: number | null = null;
+  private touchFirePointerId: number | null = null;
   private touchMovePad: HTMLElement | null = null;
   private touchLookPad: HTMLElement | null = null;
   private touchLookLastX = 0;
@@ -184,7 +188,7 @@ export class InputController {
   }
 
   isFireHeld(): boolean {
-    return this.fireHeld && Boolean(this.target.document.pointerLockElement);
+    return (this.fireHeld && Boolean(this.target.document.pointerLockElement)) || this.touchFirePointerId !== null;
   }
 
   consumeChoiceYes(): boolean {
@@ -226,7 +230,11 @@ export class InputController {
   }
 
   hasActiveTouchControls(): boolean {
-    return this.touchMovePointerId !== null || this.touchLookPointerId !== null;
+    return this.touchMovePointerId !== null
+      || this.touchLookPointerId !== null
+      || this.touchInteractPointerId !== null
+      || this.touchJumpPointerId !== null
+      || this.touchFirePointerId !== null;
   }
 
   destroy(): void {
@@ -374,6 +382,7 @@ export class InputController {
     this.pressed.clear();
     this.resetTouchMove();
     this.resetTouchLook();
+    this.resetTouchActions();
   };
 
   private readonly handleContextMenu = (event: MouseEvent): void => {
@@ -384,6 +393,13 @@ export class InputController {
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
     const targetElement = event.target instanceof Element ? event.target : null;
+    const actionButton = targetElement?.closest<HTMLElement>('[data-touch-action]');
+    const action = actionButton?.dataset.touchAction as TouchActionKind | undefined;
+    if (actionButton && action) {
+      this.handleTouchActionDown(event, actionButton, action);
+      return;
+    }
+
     const pad = targetElement?.closest<HTMLElement>('[data-touch-control]');
     const control = pad?.dataset.touchControl as TouchControlKind | undefined;
     if (!pad || (control !== 'move' && control !== 'look')) {
@@ -438,6 +454,21 @@ export class InputController {
   };
 
   private readonly handlePointerUp = (event: PointerEvent): void => {
+    if (event.pointerId === this.touchInteractPointerId) {
+      this.touchInteractPointerId = null;
+      this.pressed.delete('KeyE');
+    }
+
+    if (event.pointerId === this.touchJumpPointerId) {
+      this.touchJumpPointerId = null;
+      this.pressed.delete('Space');
+    }
+
+    if (event.pointerId === this.touchFirePointerId) {
+      this.touchFirePointerId = null;
+      this.fireHeld = false;
+    }
+
     if (event.pointerId === this.touchMovePointerId) {
       this.resetTouchMove();
     }
@@ -446,6 +477,39 @@ export class InputController {
       this.resetTouchLook();
     }
   };
+
+  private handleTouchActionDown(event: PointerEvent, button: HTMLElement, action: TouchActionKind): void {
+    event.preventDefault();
+    try {
+      button.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture can fail if the browser already cancelled this pointer.
+    }
+
+    if (action === 'interact') {
+      this.touchInteractPointerId = event.pointerId;
+      this.pressed.add('KeyE');
+      this.interactQueued = true;
+      return;
+    }
+
+    if (action === 'jump') {
+      this.touchJumpPointerId = event.pointerId;
+      this.pressed.add('Space');
+      this.spacePressedAt = performance.now();
+      this.jumpQueued = true;
+      return;
+    }
+
+    if (action === 'fire') {
+      this.touchFirePointerId = event.pointerId;
+      this.fireHeld = true;
+      this.fireQueued = true;
+      return;
+    }
+
+    this.itemCycleQueued += 1;
+  }
 
   private updateTouchMove(event: PointerEvent, pad: HTMLElement): void {
     const offset = this.getTouchPadOffset(event, pad, this.touchMoveRadius);
@@ -495,6 +559,15 @@ export class InputController {
       this.updateTouchKnob(this.touchLookPad, 0, 0);
       this.touchLookPad = null;
     }
+  }
+
+  private resetTouchActions(): void {
+    this.touchInteractPointerId = null;
+    this.touchJumpPointerId = null;
+    this.touchFirePointerId = null;
+    this.fireHeld = false;
+    this.pressed.delete('KeyE');
+    this.pressed.delete('Space');
   }
 
   private static clamp(value: number, min: number, max: number): number {

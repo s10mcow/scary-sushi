@@ -210,6 +210,8 @@ export type ChapterElevenSeedId =
   | 'rainbow-melon-seeds'
   | 'moonflower-seeds'
   | 'starfruit-seeds'
+  | 'giant-blackberry-seeds'
+  | 'giant-raspberry-seeds'
   | 'galaxy-pumpkin-seeds'
   | 'phoenix-pepper-seeds'
   | 'diamond-rose-seeds'
@@ -2382,7 +2384,26 @@ export function createHud(host: HTMLElement): HudController {
   touchLookKnob.className = 'hud__touch-knob';
   touchLookPad.append(touchLookKnob);
 
-  touchControls.append(touchMovePad, touchLookPad);
+  const touchActions = document.createElement('div');
+  touchActions.className = 'hud__touch-actions';
+
+  const createTouchActionButton = (label: string, action: string): HTMLButtonElement => {
+    const button = document.createElement('button');
+    button.className = 'hud__touch-action';
+    button.type = 'button';
+    button.textContent = label;
+    button.dataset.touchAction = action;
+    return button;
+  };
+
+  touchActions.append(
+    createTouchActionButton('E', 'interact'),
+    createTouchActionButton('Use', 'fire'),
+    createTouchActionButton('Jump', 'jump'),
+    createTouchActionButton('Next', 'cycle'),
+  );
+
+  touchControls.append(touchMovePad, touchLookPad, touchActions);
 
   root.append(
     intro,

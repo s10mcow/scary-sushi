@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Static Bloom icon">
+  <rect width="512" height="512" rx="92" fill="#08090c"/>
+  <circle cx="256" cy="256" r="156" fill="#18241d" stroke="#6ee28c" stroke-width="18"/>
+  <path d="M256 126c40 58 86 104 146 136-67 24-115 63-146 124-31-61-79-100-146-124 60-32 106-78 146-136Z" fill="#f5d76b"/>
+  <circle cx="256" cy="256" r="52" fill="#45b36a"/>
+  <path d="M154 352c58-34 126-34 204 0" fill="none" stroke="#f2f4f1" stroke-width="22" stroke-linecap="round"/>
+</svg>

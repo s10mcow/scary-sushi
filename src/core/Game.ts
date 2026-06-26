@@ -343,17 +343,19 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'pepper-seeds', label: 'Chili pepper seeds', singularLabel: 'Chili pepper seed', cost: 350, section: 'uncommon', maxStock: 5, minStock: 1, stockChance: 0.58, seedLifeShop: true },
   { id: 'bamboo-seeds', label: 'Bamboo seeds', singularLabel: 'Bamboo seed', cost: 420, section: 'uncommon', maxStock: 4, minStock: 1, stockChance: 0.52, copyOnly: true, seedLifeShop: true },
   { id: 'sunflower-seeds', label: 'Sunflower seeds', singularLabel: 'Sunflower seed', cost: 380, section: 'uncommon', maxStock: 5, minStock: 1, stockChance: 0.56, copyOnly: true, seedLifeShop: true },
-  { id: 'crystal-berry-seeds', label: 'Crystal berry seeds', singularLabel: 'Crystal berry seed', cost: 900, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.32, copyOnly: true, seedLifeShop: true },
-  { id: 'golden-corn-seeds', label: 'Golden corn seeds', singularLabel: 'Golden corn seed', cost: 1050, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.3, copyOnly: true, seedLifeShop: true },
-  { id: 'rainbow-melon-seeds', label: 'Rainbow melon seeds', singularLabel: 'Rainbow melon seed', cost: 1250, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.27, copyOnly: true, seedLifeShop: true },
-  { id: 'moonflower-seeds', label: 'Moonflower seeds', singularLabel: 'Moonflower seed', cost: 1500, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.24, copyOnly: true, seedLifeShop: true },
-  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 800, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.36, seedLifeShop: true },
-  { id: 'starfruit-seeds', label: 'Starfruit seeds', singularLabel: 'Starfruit seed', cost: 1800, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.2, copyOnly: true, seedLifeShop: true },
-  { id: 'galaxy-pumpkin-seeds', label: 'Galaxy pumpkin seeds', singularLabel: 'Galaxy pumpkin seed', cost: 4500, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.08, copyOnly: true, seedLifeShop: true },
-  { id: 'phoenix-pepper-seeds', label: 'Phoenix pepper seeds', singularLabel: 'Phoenix pepper seed', cost: 5200, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.07, copyOnly: true, seedLifeShop: true },
-  { id: 'diamond-rose-seeds', label: 'Diamond rose seeds', singularLabel: 'Diamond rose seed', cost: 6800, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.06, copyOnly: true, seedLifeShop: true },
-  { id: 'void-vine-seeds', label: 'Void vine seeds', singularLabel: 'Void vine seed', cost: 8500, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.045, copyOnly: true, seedLifeShop: true },
-  { id: 'cholesterol-lily-seeds', label: 'Cholesterol lily seeds', singularLabel: 'Cholesterol lily seed', cost: 12000, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.035, copyOnly: true, seedLifeShop: true },
+  { id: 'crystal-berry-seeds', label: 'Crystal berry seeds', singularLabel: 'Crystal berry seed', cost: 1800, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.32, copyOnly: true, seedLifeShop: true },
+  { id: 'golden-corn-seeds', label: 'Golden corn seeds', singularLabel: 'Golden corn seed', cost: 2100, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.3, copyOnly: true, seedLifeShop: true },
+  { id: 'rainbow-melon-seeds', label: 'Rainbow melon seeds', singularLabel: 'Rainbow melon seed', cost: 2500, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.27, copyOnly: true, seedLifeShop: true },
+  { id: 'moonflower-seeds', label: 'Moonflower seeds', singularLabel: 'Moonflower seed', cost: 3000, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.24, copyOnly: true, seedLifeShop: true },
+  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 1600, section: 'rare', maxStock: 3, minStock: 1, stockChance: 0.36, seedLifeShop: true },
+  { id: 'starfruit-seeds', label: 'Starfruit seeds', singularLabel: 'Starfruit seed', cost: 3600, section: 'rare', maxStock: 2, minStock: 1, stockChance: 0.2, copyOnly: true, seedLifeShop: true },
+  { id: 'giant-blackberry-seeds', label: 'Giant blackberry seeds', singularLabel: 'Giant blackberry seed', cost: 4200, section: 'rare', maxStock: 1, minStock: 1, stockChance: 0.18, copyOnly: true, seedLifeShop: true },
+  { id: 'giant-raspberry-seeds', label: 'Giant raspberry seeds', singularLabel: 'Giant raspberry seed', cost: 3900, section: 'rare', maxStock: 1, minStock: 1, stockChance: 0.2, copyOnly: true, seedLifeShop: true },
+  { id: 'galaxy-pumpkin-seeds', label: 'Galaxy pumpkin seeds', singularLabel: 'Galaxy pumpkin seed', cost: 45000, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.08, copyOnly: true, seedLifeShop: true },
+  { id: 'phoenix-pepper-seeds', label: 'Phoenix pepper seeds', singularLabel: 'Phoenix pepper seed', cost: 52000, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.07, copyOnly: true, seedLifeShop: true },
+  { id: 'diamond-rose-seeds', label: 'Diamond rose seeds', singularLabel: 'Diamond rose seed', cost: 68000, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.06, copyOnly: true, seedLifeShop: true },
+  { id: 'void-vine-seeds', label: 'Void vine seeds', singularLabel: 'Void vine seed', cost: 85000, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.045, copyOnly: true, seedLifeShop: true },
+  { id: 'cholesterol-lily-seeds', label: 'Cholesterol lily seeds', singularLabel: 'Cholesterol lily seed', cost: 120000, section: 'legendary', maxStock: 1, minStock: 1, stockChance: 0.035, copyOnly: true, seedLifeShop: true },
   { id: 'time-blossom-seeds', label: 'Time blossom seeds', singularLabel: 'Time blossom seed', cost: 15000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.2, copyOnly: true, secretScientistOnly: true },
   { id: 'lucky-clover-seeds', label: 'Lucky clover seeds', singularLabel: 'Lucky clover seed', cost: 9000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.3, copyOnly: true, secretScientistOnly: true },
   { id: 'mimic-plant-seeds', label: 'Mimic plant seeds', singularLabel: 'Mimic plant seed', cost: 18000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.14, copyOnly: true, secretScientistOnly: true },
@@ -422,6 +424,8 @@ type ChapterElevenCropId =
   | 'rainbow-melon'
   | 'moonflower'
   | 'starfruit'
+  | 'giant-blackberry'
+  | 'giant-raspberry'
   | 'galaxy-pumpkin'
   | 'phoenix-pepper'
   | 'diamond-rose'
@@ -880,7 +884,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'crystal-berry',
     label: 'Crystal Berry',
     pluralLabel: 'Crystal Berries',
-    sellValue: 1250,
+    sellValue: 12500,
     babySeconds: 24,
     matureSeconds: 90,
     regrows: true,
@@ -890,7 +894,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'seed-life-golden-corn',
     label: 'Golden Corn',
     pluralLabel: 'Golden Corn',
-    sellValue: 1450,
+    sellValue: 14500,
     babySeconds: 26,
     matureSeconds: 95,
     regrows: false,
@@ -900,7 +904,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'rainbow-melon',
     label: 'Rainbow Melon',
     pluralLabel: 'Rainbow Melons',
-    sellValue: 1800,
+    sellValue: 18000,
     babySeconds: 30,
     matureSeconds: 110,
     regrows: true,
@@ -910,7 +914,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'moonflower',
     label: 'Moonflower',
     pluralLabel: 'Moonflowers',
-    sellValue: 2100,
+    sellValue: 21000,
     babySeconds: 34,
     matureSeconds: 126,
     regrows: false,
@@ -920,7 +924,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'dragon-fruit',
     label: 'Dragon Fruit',
     pluralLabel: 'Dragon Fruits',
-    sellValue: 900,
+    sellValue: 9000,
     babySeconds: 34,
     matureSeconds: 135,
     regrows: true,
@@ -930,9 +934,29 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'starfruit',
     label: 'Starfruit',
     pluralLabel: 'Starfruit',
-    sellValue: 2500,
+    sellValue: 25000,
     babySeconds: 38,
     matureSeconds: 145,
+    regrows: true,
+  },
+  'giant-blackberry-seeds': {
+    seedId: 'giant-blackberry-seeds',
+    cropId: 'giant-blackberry',
+    label: 'Giant Blackberry',
+    pluralLabel: 'Giant Blackberries',
+    sellValue: 30000,
+    babySeconds: 42,
+    matureSeconds: 160,
+    regrows: true,
+  },
+  'giant-raspberry-seeds': {
+    seedId: 'giant-raspberry-seeds',
+    cropId: 'giant-raspberry',
+    label: 'Giant Raspberry',
+    pluralLabel: 'Giant Raspberries',
+    sellValue: 27000,
+    babySeconds: 40,
+    matureSeconds: 152,
     regrows: true,
   },
   'galaxy-pumpkin-seeds': {
@@ -940,7 +964,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'galaxy-pumpkin',
     label: 'Galaxy Pumpkin',
     pluralLabel: 'Galaxy Pumpkins',
-    sellValue: 7200,
+    sellValue: 72000,
     babySeconds: 58,
     matureSeconds: 230,
     regrows: true,
@@ -950,7 +974,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'phoenix-pepper',
     label: 'Phoenix Pepper',
     pluralLabel: 'Phoenix Peppers',
-    sellValue: 8300,
+    sellValue: 83000,
     babySeconds: 62,
     matureSeconds: 245,
     regrows: true,
@@ -960,7 +984,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'diamond-rose',
     label: 'Diamond Rose',
     pluralLabel: 'Diamond Roses',
-    sellValue: 10500,
+    sellValue: 105000,
     babySeconds: 68,
     matureSeconds: 270,
     regrows: false,
@@ -970,7 +994,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'void-vine',
     label: 'Void Vine',
     pluralLabel: 'Void Vines',
-    sellValue: 13200,
+    sellValue: 132000,
     babySeconds: 75,
     matureSeconds: 310,
     regrows: true,
@@ -980,7 +1004,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     cropId: 'cholesterol-lily',
     label: 'Cholesterol Lily',
     pluralLabel: 'Cholesterol Lilies',
-    sellValue: 20000,
+    sellValue: 200000,
     babySeconds: 92,
     matureSeconds: 380,
     regrows: false,
@@ -10098,6 +10122,8 @@ export class Game {
       || cropId === 'raspberry'
       || cropId === 'blueberry'
       || cropId === 'crystal-berry'
+      || cropId === 'giant-blackberry'
+      || cropId === 'giant-raspberry'
       || cropId === 'diamond'
       || cropId === 'pumpkin'
       || cropId === 'watermelon'
@@ -10116,6 +10142,14 @@ export class Game {
       || cropId === 'garden-corn'
       || cropId === 'garden-cucumber'
       || cropId === 'seed-life-golden-corn'
+      || cropId === 'rainbow-melon'
+      || cropId === 'moonflower'
+      || cropId === 'starfruit'
+      || cropId === 'galaxy-pumpkin'
+      || cropId === 'phoenix-pepper'
+      || cropId === 'diamond-rose'
+      || cropId === 'void-vine'
+      || cropId === 'cholesterol-lily'
       || cropId === 'dragon-fruit'
       || cropId === 'vine-fruit'
       || cropId === 'cactus';
@@ -10200,6 +10234,24 @@ export class Game {
       ];
     }
 
+    if (cropId === 'giant-blackberry') {
+      return [
+        makeFruit(new Vector3(0.5, 1.18, 0.1), 'Giant Blackberry', regrow(20), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blackberry', 'Golden Giant Blackberry'),
+        makeFruit(new Vector3(-0.46, 1.36, -0.18), 'Giant Blackberry', regrow(20), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blackberry', 'Golden Giant Blackberry'),
+        makeFruit(new Vector3(0.12, 1.62, -0.38), 'Giant Blackberry', regrow(20), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blackberry', 'Golden Giant Blackberry'),
+        makeFruit(new Vector3(-0.18, 0.94, 0.4), 'Giant Blackberry', regrow(20), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-blackberry', 'Golden Giant Blackberry'),
+      ];
+    }
+
+    if (cropId === 'giant-raspberry') {
+      return [
+        makeFruit(new Vector3(0.44, 1.12, 0.14), 'Giant Raspberry', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Giant Raspberry'),
+        makeFruit(new Vector3(-0.42, 1.32, -0.16), 'Giant Raspberry', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Giant Raspberry'),
+        makeFruit(new Vector3(0.1, 1.54, -0.34), 'Giant Raspberry', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Giant Raspberry'),
+        makeFruit(new Vector3(-0.18, 0.9, 0.38), 'Giant Raspberry', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-raspberry', 'Golden Giant Raspberry'),
+      ];
+    }
+
     if (cropId === 'diamond') {
       return [
         makeFruit(new Vector3(0.3, 0.46, 0.08), 'Diamond Fruit', regrow(12)),
@@ -10253,6 +10305,61 @@ export class Game {
     if (cropId === 'corn' || cropId === 'seed-life-golden-corn') {
       return [
         makeFruit(new Vector3(0.08, 1.32, 0.04), 'Corn Cob', regrow(16), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-corn', 'Golden Corn Cob'),
+      ];
+    }
+
+    if (cropId === 'starfruit') {
+      return [
+        makeFruit(new Vector3(0.34, 2.1, 0.08), 'Starfruit', regrow(24), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-starfruit', 'Golden Starfruit'),
+        makeFruit(new Vector3(-0.3, 2.34, -0.16), 'Starfruit', regrow(24), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-starfruit', 'Golden Starfruit'),
+        makeFruit(new Vector3(0.08, 2.52, -0.32), 'Starfruit', regrow(24), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-starfruit', 'Golden Starfruit'),
+        makeFruit(new Vector3(-0.12, 2.0, 0.32), 'Starfruit', regrow(24), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-starfruit', 'Golden Starfruit'),
+      ];
+    }
+
+    if (cropId === 'rainbow-melon') {
+      return [
+        makeFruit(new Vector3(0, 0.38, 0), 'Rainbow Melon', regrow(26), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-rainbow-melon', 'Golden Rainbow Melon'),
+      ];
+    }
+
+    if (cropId === 'moonflower') {
+      return [
+        makeFruit(new Vector3(0, 1.66, 0.06), 'Moonflower Moon', regrow(30), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-moonflower', 'Golden Moonflower Moon'),
+      ];
+    }
+
+    if (cropId === 'galaxy-pumpkin') {
+      return [
+        makeFruit(new Vector3(0, 0.42, 0), 'Galaxy Pumpkin', regrow(34), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-galaxy-pumpkin', 'Golden Galaxy Pumpkin'),
+      ];
+    }
+
+    if (cropId === 'phoenix-pepper') {
+      return [
+        makeFruit(new Vector3(0.14, 0.74, 0.04), 'Phoenix Pepper', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-phoenix-pepper', 'Golden Phoenix Pepper'),
+        makeFruit(new Vector3(-0.18, 0.62, 0.12), 'Phoenix Pepper', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-phoenix-pepper', 'Golden Phoenix Pepper'),
+        makeFruit(new Vector3(0.26, 0.92, -0.16), 'Phoenix Pepper', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-phoenix-pepper', 'Golden Phoenix Pepper'),
+      ];
+    }
+
+    if (cropId === 'diamond-rose') {
+      return [
+        makeFruit(new Vector3(0, 1.3, 0.06), 'Diamond Rose Diamond', regrow(32), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-diamond-rose', 'Golden Diamond Rose'),
+      ];
+    }
+
+    if (cropId === 'void-vine') {
+      return [
+        makeFruit(new Vector3(0.18, 1.0, 0.05), 'Void Orb', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-void-vine', 'Golden Void Orb'),
+        makeFruit(new Vector3(-0.16, 1.26, -0.06), 'Void Orb', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-void-vine', 'Golden Void Orb'),
+        makeFruit(new Vector3(0.12, 1.54, -0.12), 'Void Orb', regrow(18), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-void-vine', 'Golden Void Orb'),
+      ];
+    }
+
+    if (cropId === 'cholesterol-lily') {
+      return [
+        makeFruit(new Vector3(0, 1.24, 0.06), 'Cholesterol Lily Orb', regrow(38), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-cholesterol-lily', 'Golden Cholesterol Lily Orb'),
       ];
     }
 
@@ -10439,6 +10546,12 @@ export class Game {
       dragonFruit: new MeshStandardMaterial({ color: 0xd9367c, roughness: 0.58 }),
       vineFruit: new MeshStandardMaterial({ color: 0x6d42bd, roughness: 0.58 }),
       cactusFruit: new MeshStandardMaterial({ color: 0xe45b76, roughness: 0.64 }),
+      starfruit: new MeshStandardMaterial({ color: 0xf7d64a, roughness: 0.5, emissive: 0x6c5600, emissiveIntensity: 0.12 }),
+      moonSilver: new MeshStandardMaterial({ color: 0xd7dde8, roughness: 0.34, metalness: 0.18, emissive: 0x6e7fa4, emissiveIntensity: 0.12 }),
+      voidOrb: new MeshStandardMaterial({ color: 0xf4f6ff, roughness: 0.24, emissive: 0xdadfff, emissiveIntensity: 0.44 }),
+      galaxyBlue: new MeshStandardMaterial({ color: 0x4554d8, roughness: 0.48, emissive: 0x1f2e88, emissiveIntensity: 0.18 }),
+      galaxyPurple: new MeshStandardMaterial({ color: 0x7d3fd1, roughness: 0.48, emissive: 0x3f1388, emissiveIntensity: 0.18 }),
+      flame: new MeshStandardMaterial({ color: 0xffb02e, roughness: 0.38, emissive: 0xff4b00, emissiveIntensity: 0.86, transparent: true, opacity: 0.82 }),
       pumpkin: new MeshStandardMaterial({ color: 0xd87522, roughness: 0.78 }),
       watermelon: new MeshStandardMaterial({ color: 0x4fac48, roughness: 0.72 }),
       watermelonStripe: new MeshStandardMaterial({ color: 0x1f6f34, roughness: 0.76 }),
@@ -10461,6 +10574,25 @@ export class Game {
       strawberryLeaf: new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }),
     };
 
+    const createStarFruitMesh = (material: MeshStandardMaterial): Mesh => {
+      const shape = new Shape();
+      for (let pointIndex = 0; pointIndex < 10; pointIndex += 1) {
+        const radius = pointIndex % 2 === 0 ? 0.15 : 0.07;
+        const angle = -Math.PI / 2 + pointIndex * Math.PI / 5;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (pointIndex === 0) {
+          shape.moveTo(x, y);
+        } else {
+          shape.lineTo(x, y);
+        }
+      }
+      shape.closePath();
+      const mesh = new Mesh(new ShapeGeometry(shape), material);
+      mesh.scale.set(1, 1, 1);
+      return mesh;
+    };
+
     plant.pickableFruits.forEach((fruitState, index) => {
       fruitState.mesh = null;
       if (!fruitState.visible) {
@@ -10471,7 +10603,86 @@ export class Game {
       }
 
       let fruit: Mesh;
-      if (fruitState.cropId === 'pumpkin') {
+      if (fruitState.cropId === 'starfruit') {
+        fruit = createStarFruitMesh(fruitState.golden ? materials.genericGold : materials.starfruit);
+        fruit.rotation.set(0.08, index * 0.34, index % 2 === 0 ? 0.14 : -0.14);
+        fruit.scale.setScalar(1.25);
+      } else if (fruitState.cropId === 'rainbow-melon') {
+        fruit = new Mesh(new SphereGeometry(0.36, 28, 16), fruitState.golden ? materials.genericGold : materials.watermelon);
+        fruit.scale.set(1.36, 0.74, 1.06);
+        const rainbowMaterials = [0xff4646, 0xffa231, 0xffe45c, 0x43d269, 0x4b95ff, 0x8d5dff].map((color) => new MeshStandardMaterial({ color, roughness: 0.58 }));
+        rainbowMaterials.forEach((material, stripeIndex) => {
+          const stripe = new Mesh(new TorusGeometry(0.18 + stripeIndex * 0.022, 0.015, 6, 40), material);
+          stripe.name = 'Chapter 11 rainbow melon bright stripe';
+          stripe.position.copy(fruitState.offset).add(new Vector3(0, -0.02 + stripeIndex * 0.012, 0));
+          stripe.scale.set(1.42, 0.36, 0.78);
+          stripe.rotation.set(Math.PI / 2, stripeIndex * 0.36, stripeIndex % 2 === 0 ? 0.12 : -0.12);
+          stripe.castShadow = true;
+          plant.root.add(stripe);
+        });
+      } else if (fruitState.cropId === 'moonflower') {
+        fruit = new Mesh(new SphereGeometry(0.13, 18, 12), fruitState.golden ? materials.genericGold : materials.moonSilver);
+        fruit.scale.set(0.72, 1.0, 1.0);
+        const crescentCut = new Mesh(new SphereGeometry(0.12, 14, 10), new MeshBasicMaterial({ color: 0x08090c }));
+        crescentCut.name = 'Chapter 11 moonflower dark crescent shadow';
+        crescentCut.position.copy(fruitState.offset).add(new Vector3(0.055, 0.015, 0.02));
+        crescentCut.scale.set(0.7, 0.92, 0.8);
+        plant.root.add(crescentCut);
+      } else if (fruitState.cropId === 'galaxy-pumpkin') {
+        fruit = new Mesh(new SphereGeometry(0.31, 28, 16), fruitState.golden ? materials.genericGold : materials.galaxyPurple);
+        fruit.scale.set(1.28, 0.84, 1.08);
+        [materials.watermelonStripe, materials.galaxyBlue, materials.galaxyPurple].forEach((material, waveIndex) => {
+          const wave = new Mesh(new TorusGeometry(0.18 + waveIndex * 0.05, 0.015, 6, 36), material);
+          wave.name = 'Chapter 11 galaxy pumpkin green blue purple wave';
+          wave.position.copy(fruitState.offset).add(new Vector3(0, -0.04 + waveIndex * 0.05, 0));
+          wave.scale.set(1.35, 0.4, 0.82);
+          wave.rotation.set(Math.PI / 2, waveIndex * 0.55, 0.2);
+          wave.castShadow = true;
+          plant.root.add(wave);
+        });
+      } else if (fruitState.cropId === 'phoenix-pepper') {
+        fruit = new Mesh(new ConeGeometry(0.075, 0.34, 12), fruitState.golden ? materials.genericGold : materials.pepper);
+        fruit.scale.set(0.75, 1.08, 0.6);
+        fruit.rotation.set(Math.PI, 0, index % 2 === 0 ? -0.34 : 0.24);
+        const flame = new Mesh(new ConeGeometry(0.12, 0.32, 10), materials.flame);
+        flame.name = 'Chapter 11 phoenix pepper fire flame';
+        flame.position.copy(fruitState.offset).add(new Vector3(0, 0.15, 0));
+        flame.rotation.z = index % 2 === 0 ? 0.12 : -0.12;
+        flame.castShadow = true;
+        plant.root.add(flame);
+      } else if (fruitState.cropId === 'diamond-rose') {
+        fruit = new Mesh(new OctahedronGeometry(0.14, 0), fruitState.golden ? materials.genericGold : materials.diamond);
+        fruit.scale.set(0.9, 1.35, 0.9);
+        fruit.rotation.set(0.28, index * 0.7, 0.16);
+      } else if (fruitState.cropId === 'void-vine') {
+        fruit = new Mesh(new SphereGeometry(0.105, 16, 10), fruitState.golden ? materials.genericGold : materials.voidOrb);
+        fruit.scale.set(1.08, 1.08, 1.08);
+      } else if (fruitState.cropId === 'cholesterol-lily') {
+        fruit = new Mesh(new SphereGeometry(0.16, 18, 12), fruitState.golden ? materials.genericGold : materials.voidOrb);
+        const rainbowRing = new Mesh(new TorusGeometry(0.22, 0.018, 8, 32), materials.galaxyPurple);
+        rainbowRing.name = 'Chapter 11 cholesterol lily rainbow orb ring';
+        rainbowRing.position.copy(fruitState.offset);
+        rainbowRing.rotation.x = Math.PI / 2;
+        plant.root.add(rainbowRing);
+      } else if (fruitState.cropId === 'giant-blackberry') {
+        fruit = new Mesh(new SphereGeometry(0.18, 16, 10), fruitState.golden ? materials.goldenBlackberry : materials.blackberry);
+        for (let beadIndex = 0; beadIndex < 8; beadIndex += 1) {
+          const bead = new Mesh(new SphereGeometry(0.065, 10, 6), fruitState.golden ? materials.goldenBlackberry : materials.blackberry);
+          bead.name = 'Chapter 11 giant blackberry round bead';
+          bead.position.copy(fruitState.offset).add(new Vector3(Math.cos(beadIndex * 0.78) * 0.12, Math.sin(beadIndex * 0.78) * 0.08, Math.sin(beadIndex * 1.2) * 0.08));
+          bead.castShadow = true;
+          plant.root.add(bead);
+        }
+      } else if (fruitState.cropId === 'giant-raspberry') {
+        fruit = new Mesh(new SphereGeometry(0.17, 16, 10), fruitState.golden ? materials.goldenBlackberry : materials.raspberry);
+        for (let beadIndex = 0; beadIndex < 8; beadIndex += 1) {
+          const bead = new Mesh(new SphereGeometry(0.06, 10, 6), fruitState.golden ? materials.goldenBlackberry : materials.raspberry);
+          bead.name = 'Chapter 11 giant raspberry round bead';
+          bead.position.copy(fruitState.offset).add(new Vector3(Math.cos(beadIndex * 0.78) * 0.11, Math.sin(beadIndex * 0.78) * 0.075, Math.sin(beadIndex * 1.2) * 0.075));
+          bead.castShadow = true;
+          plant.root.add(bead);
+        }
+      } else if (fruitState.cropId === 'pumpkin') {
         fruit = new Mesh(new SphereGeometry(0.26, 24, 14), fruitState.golden ? materials.genericGold : materials.pumpkin);
         fruit.scale.set(1.22, 0.82, 1.04);
         const stem = new Mesh(new CylinderGeometry(0.035, 0.05, 0.15, 8), materials.stem);
@@ -10794,6 +11005,8 @@ export class Game {
         return 0.78;
       case 'pumpkin':
       case 'watermelon':
+      case 'rainbow-melon':
+      case 'galaxy-pumpkin':
       case 'garden-cucumber':
         return 0.9;
       case 'pineapple':
@@ -10813,9 +11026,20 @@ export class Game {
         return 0.82;
       case 'dragon-fruit':
       case 'vine-fruit':
+      case 'void-vine':
       case 'cactus':
         return 0.74;
+      case 'starfruit':
+        return 0.82;
+      case 'moonflower':
+      case 'diamond-rose':
+      case 'cholesterol-lily':
+        return 0.68;
+      case 'phoenix-pepper':
+        return 0.64;
       case 'blackberry':
+      case 'giant-blackberry':
+      case 'giant-raspberry':
       case 'raspberry':
       case 'blueberry':
       case 'diamond':
@@ -10843,6 +11067,8 @@ export class Game {
         return 0.32;
       case 'pumpkin':
       case 'watermelon':
+      case 'rainbow-melon':
+      case 'galaxy-pumpkin':
       case 'garden-cucumber':
         return 0.54;
       case 'pineapple':
@@ -10862,9 +11088,20 @@ export class Game {
         return 0.42;
       case 'dragon-fruit':
       case 'vine-fruit':
+      case 'void-vine':
       case 'cactus':
         return 0.4;
+      case 'starfruit':
+        return 0.42;
+      case 'moonflower':
+      case 'diamond-rose':
+      case 'cholesterol-lily':
+        return 0.38;
+      case 'phoenix-pepper':
+        return 0.36;
       case 'blackberry':
+      case 'giant-blackberry':
+      case 'giant-raspberry':
       case 'raspberry':
       case 'blueberry':
       case 'diamond':
@@ -11089,8 +11326,16 @@ export class Game {
     }
 
     if (config.cropId === 'corn' || config.cropId === 'garden-corn' || config.cropId === 'seed-life-golden-corn') {
-      const stalkMaterial = new MeshStandardMaterial({ color: 0x347d2e, roughness: 0.88 });
-      const leafMaterial = new MeshStandardMaterial({ color: 0x4f9a3a, roughness: 0.86 });
+      const stalkMaterial = new MeshStandardMaterial({
+        color: config.cropId === 'seed-life-golden-corn' ? 0xe6c24a : 0x347d2e,
+        roughness: config.cropId === 'seed-life-golden-corn' ? 0.42 : 0.88,
+        metalness: config.cropId === 'seed-life-golden-corn' ? 0.34 : 0,
+      });
+      const leafMaterial = new MeshStandardMaterial({
+        color: config.cropId === 'seed-life-golden-corn' ? 0xf0d35b : 0x4f9a3a,
+        roughness: config.cropId === 'seed-life-golden-corn' ? 0.44 : 0.86,
+        metalness: config.cropId === 'seed-life-golden-corn' ? 0.26 : 0,
+      });
       const stalk = new Mesh(new CylinderGeometry(config.cropId === 'garden-corn' ? 0.055 : 0.07, config.cropId === 'garden-corn' ? 0.08 : 0.09, 1.32, 10), stalkMaterial);
       stalk.name = config.cropId === 'garden-corn' ? 'Chapter 11 normal corn wheat-like stalk' : 'Chapter 11 semi realistic corn stalk';
       stalk.position.y = 0.72;
@@ -11235,6 +11480,8 @@ export class Game {
       || config.cropId === 'raspberry'
       || config.cropId === 'blueberry'
       || config.cropId === 'crystal-berry'
+      || config.cropId === 'giant-blackberry'
+      || config.cropId === 'giant-raspberry'
       || config.cropId === 'diamond'
       || config.cropId === 'tomato'
     ) {
@@ -11275,23 +11522,24 @@ export class Game {
         cluster.receiveShadow = true;
         plant.root.add(cluster);
       });
-      if (config.cropId === 'blackberry' || config.cropId === 'raspberry') {
-        const caneAngles = [-0.52, -0.2, 0.18, 0.48];
+      if (config.cropId === 'blackberry' || config.cropId === 'raspberry' || config.cropId === 'giant-blackberry' || config.cropId === 'giant-raspberry') {
+        const isGiantBerry = config.cropId === 'giant-blackberry' || config.cropId === 'giant-raspberry';
+        const caneAngles = isGiantBerry ? [-0.82, -0.45, -0.12, 0.22, 0.58, 0.9] : [-0.52, -0.2, 0.18, 0.48];
         caneAngles.forEach((rotationZ, index) => {
-          const cane = new Mesh(new CylinderGeometry(0.025, 0.04, 0.85, 8), stemMaterial);
+          const cane = new Mesh(new CylinderGeometry(isGiantBerry ? 0.04 : 0.025, isGiantBerry ? 0.065 : 0.04, isGiantBerry ? 1.7 : 0.85, 8), stemMaterial);
           cane.name = `Chapter 11 ${config.label.toLowerCase()} thorn cane`;
-          cane.position.set((index - 1.5) * 0.12, 0.42, index % 2 === 0 ? 0.08 : -0.08);
+          cane.position.set((index - (caneAngles.length - 1) / 2) * 0.14, isGiantBerry ? 0.92 : 0.42, index % 2 === 0 ? 0.12 : -0.1);
           cane.rotation.z = rotationZ;
           cane.rotation.x = index % 2 === 0 ? 0.16 : -0.12;
           cane.castShadow = true;
           plant.root.add(cane);
         });
 
-        for (let index = 0; index < 18; index += 1) {
+        for (let index = 0; index < (isGiantBerry ? 30 : 18); index += 1) {
           const angle = index * 1.2;
           const thorn = new Mesh(new ConeGeometry(0.018, 0.11, 6), thornMaterial);
           thorn.name = `Chapter 11 ${config.label.toLowerCase()} sharp thorn`;
-          thorn.position.set(Math.cos(angle) * 0.28, 0.22 + (index % 5) * 0.12, Math.sin(angle) * 0.2);
+          thorn.position.set(Math.cos(angle) * 0.34, 0.22 + (index % 8) * 0.17, Math.sin(angle) * 0.24);
           thorn.rotation.set(Math.PI / 2 + (index % 2) * 0.32, angle, 0);
           thorn.castShadow = true;
           plant.root.add(thorn);
@@ -11301,22 +11549,108 @@ export class Game {
       if (config.cropId === 'diamond') {
         plant.root.scale.setScalar(1.36);
       }
+      if (config.cropId === 'giant-blackberry' || config.cropId === 'giant-raspberry') {
+        plant.root.scale.set(1.75, 1.95, 1.75);
+      }
       if (this.chapterElevenTwoActive) {
         plant.root.scale.setScalar(1.58);
+        if (config.cropId === 'giant-blackberry' || config.cropId === 'giant-raspberry') {
+          plant.root.scale.set(2.0, 2.2, 2.0);
+        }
       }
       return;
     }
 
-    if (config.cropId === 'vine-fruit') {
+    if (config.cropId === 'starfruit') {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
 
-      const vineMaterial = new MeshStandardMaterial({ color: 0x236f2e, roughness: 0.84 });
-      const leafMaterial = new MeshStandardMaterial({ color: 0x319644, roughness: 0.82 });
+      const stalkMaterial = new MeshStandardMaterial({ color: 0x3f8c36, roughness: 0.82 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x4aa63d, roughness: 0.82 });
+      const stalk = new Mesh(new CylinderGeometry(0.09, 0.16, 2.65, 14), stalkMaterial);
+      stalk.name = 'Chapter 11 starfruit huge tall stalk';
+      stalk.position.y = 1.35;
+      stalk.castShadow = true;
+      plant.root.add(stalk);
+      for (let index = 0; index < 12; index += 1) {
+        const side = index % 2 === 0 ? -1 : 1;
+        const leaf = new Mesh(new SphereGeometry(0.22, 12, 8), leafMaterial);
+        leaf.name = 'Chapter 11 starfruit big broad leaf';
+        leaf.position.set(side * 0.22, 0.68 + index * 0.15, Math.sin(index) * 0.12);
+        leaf.scale.set(1.9, 0.2, 0.72);
+        leaf.rotation.set(0.3, index * 0.4, side * 0.72);
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      }
+      this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
+    if (config.cropId === 'moonflower' || config.cropId === 'diamond-rose' || config.cropId === 'cholesterol-lily') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const stalkMaterial = new MeshStandardMaterial({ color: 0x357c35, roughness: 0.84 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x2f7d35, roughness: 0.84 });
+      const petalMaterial = new MeshStandardMaterial({
+        color: config.cropId === 'moonflower' ? 0xcfd7e8 : config.cropId === 'diamond-rose' ? 0x9eeaff : 0xff5fc8,
+        roughness: config.cropId === 'diamond-rose' ? 0.2 : 0.48,
+        metalness: config.cropId === 'diamond-rose' || config.cropId === 'moonflower' ? 0.22 : 0.05,
+        emissive: config.cropId === 'cholesterol-lily' ? 0x8b2aff : 0x203060,
+        emissiveIntensity: config.cropId === 'cholesterol-lily' ? 0.28 : 0.08,
+      });
+      const stalk = new Mesh(new CylinderGeometry(0.045, 0.075, 1.35, 10), stalkMaterial);
+      stalk.name = `Chapter 11 ${config.label.toLowerCase()} flower stalk`;
+      stalk.position.y = 0.74;
+      stalk.castShadow = true;
+      plant.root.add(stalk);
+      [-1, 1].forEach((side, index) => {
+        const leaf = new Mesh(new SphereGeometry(0.16, 12, 8), leafMaterial);
+        leaf.name = `Chapter 11 ${config.label.toLowerCase()} stalk leaf`;
+        leaf.position.set(side * 0.16, 0.54 + index * 0.22, 0);
+        leaf.scale.set(1.5, 0.22, 0.7);
+        leaf.rotation.z = side * 0.68;
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      });
+      for (let index = 0; index < 12; index += 1) {
+        const angle = (index / 12) * Math.PI * 2;
+        const petal = new Mesh(new SphereGeometry(0.095, 12, 8), petalMaterial);
+        petal.name = `Chapter 11 ${config.label.toLowerCase()} special petal`;
+        petal.position.set(Math.cos(angle) * 0.25, 1.42 + Math.sin(angle) * 0.22, 0.02);
+        petal.scale.set(0.62, 1.42, 0.18);
+        petal.rotation.z = -angle;
+        petal.castShadow = true;
+        plant.root.add(petal);
+      }
+      if (config.cropId === 'cholesterol-lily') {
+        const colors = [0xff4646, 0xffd84a, 0x42d96b, 0x4d8cff, 0x9a55ff];
+        colors.forEach((color, index) => {
+          const rainbowPetal = new Mesh(new SphereGeometry(0.075, 10, 8), new MeshStandardMaterial({ color, roughness: 0.44, emissive: color, emissiveIntensity: 0.08 }));
+          rainbowPetal.name = 'Chapter 11 cholesterol lily rainbow petal';
+          const angle = (index / colors.length) * Math.PI * 2;
+          rainbowPetal.position.set(Math.cos(angle) * 0.32, 1.42 + Math.sin(angle) * 0.28, 0.04);
+          rainbowPetal.scale.set(0.58, 1.25, 0.16);
+          rainbowPetal.rotation.z = -angle;
+          plant.root.add(rainbowPetal);
+        });
+      }
+      this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
+    if (config.cropId === 'vine-fruit' || config.cropId === 'void-vine') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const vineMaterial = new MeshStandardMaterial({ color: config.cropId === 'void-vine' ? 0x21143a : 0x236f2e, roughness: 0.84, emissive: config.cropId === 'void-vine' ? 0x090018 : 0x000000, emissiveIntensity: config.cropId === 'void-vine' ? 0.2 : 0 });
+      const leafMaterial = new MeshStandardMaterial({ color: config.cropId === 'void-vine' ? 0x33205a : 0x319644, roughness: 0.82 });
       const supportMaterial = new MeshStandardMaterial({ color: 0x8a5a2f, roughness: 0.9 });
       const support = new Mesh(new CylinderGeometry(0.05, 0.06, 1.55, 8), supportMaterial);
-      support.name = 'Chapter 11 vine fruit support stick in plant';
+      support.name = config.cropId === 'void-vine' ? 'Chapter 11 void vine required support stick' : 'Chapter 11 vine fruit support stick in plant';
       support.position.y = 0.82;
       support.castShadow = true;
       plant.root.add(support);
@@ -11512,6 +11846,32 @@ export class Game {
       return;
     }
 
+    if (config.cropId === 'phoenix-pepper') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const vineMaterial = new MeshStandardMaterial({ color: 0x5f4b1f, roughness: 0.78, emissive: 0x411100, emissiveIntensity: 0.18 });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x7e6822, roughness: 0.78, emissive: 0x3d1400, emissiveIntensity: 0.12 });
+      for (let index = 0; index < 5; index += 1) {
+        const vine = new Mesh(new CylinderGeometry(0.03, 0.048, 0.72, 8), vineMaterial);
+        vine.name = 'Chapter 11 phoenix pepper fiery vine';
+        vine.position.set((index - 2) * 0.12, 0.38 + (index % 3) * 0.12, index % 2 === 0 ? 0.1 : -0.1);
+        vine.rotation.z = -0.36 + index * 0.18;
+        vine.castShadow = true;
+        plant.root.add(vine);
+        const leaf = new Mesh(new SphereGeometry(0.13, 12, 8), leafMaterial);
+        leaf.name = 'Chapter 11 phoenix pepper ember leaf';
+        leaf.position.set(vine.position.x + 0.08, vine.position.y + 0.14, vine.position.z);
+        leaf.scale.set(1.32, 0.24, 0.66);
+        leaf.rotation.z = index % 2 === 0 ? 0.36 : -0.36;
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      }
+      this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
     if (config.cropId === 'mushroom') {
       const stemMaterial = new MeshStandardMaterial({ color: 0xf1dec7, roughness: 0.72 });
       const capMaterial = new MeshStandardMaterial({
@@ -11595,7 +11955,7 @@ export class Game {
       return;
     }
 
-    if (config.cropId === 'pumpkin' || config.cropId === 'watermelon') {
+    if (config.cropId === 'pumpkin' || config.cropId === 'watermelon' || config.cropId === 'rainbow-melon' || config.cropId === 'galaxy-pumpkin') {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
@@ -11612,7 +11972,7 @@ export class Game {
       ];
       vineSegments.forEach(([vineX, vineY, vineZ, rotationY]) => {
         const vine = new Mesh(new BoxGeometry(0.12, 0.06, 0.88), vineMaterial);
-        vine.name = 'Chapter 11 permanent pumpkin vine';
+        vine.name = `Chapter 11 permanent ${config.label.toLowerCase()} vine`;
         vine.position.set(vineX, vineY, vineZ);
         vine.rotation.y = rotationY;
         vine.castShadow = true;
@@ -15398,7 +15758,7 @@ export class Game {
       return;
     }
 
-    const needsVineStick = seedId === 'vine-seeds';
+    const needsVineStick = seedId === 'vine-seeds' || seedId === 'void-vine-seeds';
     const vineStick = (needsVineStick || seedId === 'garden-cucumber-seeds')
       ? this.findNearbyChapterElevenVineStick(point.x, point.z)
       : null;

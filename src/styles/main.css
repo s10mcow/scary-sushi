@@ -33,6 +33,8 @@ body {
     radial-gradient(circle at top, rgba(255, 204, 122, 0.22), transparent 42%),
     linear-gradient(180deg, #faf6ee 0%, #f0eee6 55%, #e5e7dc 100%);
   color: var(--text);
+  touch-action: none;
+  user-select: none;
 }
 
 button,
@@ -2254,6 +2256,40 @@ select {
     0 0.35rem 0.9rem rgba(0, 0, 0, 0.22);
   transform: translate(calc(-50% + var(--touch-x)), calc(-50% + var(--touch-y)));
   transition: opacity 100ms ease;
+}
+
+.hud__touch-actions {
+  position: absolute;
+  right: max(7.4rem, calc(env(safe-area-inset-right) + 7.4rem));
+  bottom: max(1.15rem, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(2, 3.65rem);
+  gap: 0.45rem;
+  pointer-events: auto;
+}
+
+.hud__touch-action {
+  width: 3.65rem;
+  height: 3.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.78), rgba(190, 197, 205, 0.52));
+  color: rgba(22, 27, 33, 0.9);
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow:
+    inset 0 0.22rem 0.45rem rgba(255, 255, 255, 0.32),
+    0 0.45rem 1rem rgba(0, 0, 0, 0.22);
+  opacity: 0.78;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.hud__touch-action:active {
+  transform: translateY(1px) scale(0.98);
+  opacity: 0.94;
 }
 
 @media (pointer: coarse) {
