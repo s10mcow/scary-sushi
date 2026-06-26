@@ -850,7 +850,7 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     seedId: 'rainbow-fruit-seeds',
     cropId: 'rainbow-fruit',
     label: 'Rainbow Fruit',
-    pluralLabel: 'Rainbow Fruits',
+    pluralLabel: 'Rainbow Fruit',
     sellValue: 5000,
     babySeconds: 28,
     matureSeconds: 104,
@@ -16472,6 +16472,10 @@ export class Game {
   }
 
   private getChapterElevenSellableCrop(cropId: ChapterElevenCropId): { label: string; value: number } | null {
+    if (cropId === 'rainbow-fruit') {
+      return { label: 'Rainbow Fruit', value: 5000 };
+    }
+
     const mutation = this.getChapterElevenCropMutationPrefix(cropId);
     if (mutation) {
       const baseSellable = this.getChapterElevenSellableCrop(mutation.baseCropId);
