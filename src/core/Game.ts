@@ -620,7 +620,7 @@ interface ChapterElevenPet {
   z: number;
   targetX: number;
   targetZ: number;
-  targetKind: 'wander' | 'carrot' | 'seed' | 'crop';
+  targetKind: 'wander' | 'carrot' | 'seed' | 'produce';
   actionTimer: number;
   homePatch: ChapterElevenDirtPatch;
 }
@@ -9080,7 +9080,7 @@ export class Game {
       return `Golden ${this.getChapterElevenCropLabel(base)}`;
     }
     const config = Object.values(CHAPTER_ELEVEN_CROP_CONFIGS).find((candidate) => candidate.cropId === cropId);
-    return config?.label ?? 'Crop';
+    return config?.label ?? 'Produce';
   }
 
   private getChapterElevenMutationLabel(mutation: ChapterElevenMutationId): string {
@@ -12735,7 +12735,7 @@ export class Game {
         fruit.regrowTimer = 0;
         fruit.golden = Math.random() < fruit.goldenChance;
         fruit.charged = false;
-        fruit.frozenTimer = this.chapterElevenEvent === 'snow' && !this.isChapterElevenPlantNearPhoenix(plant)
+        fruit.frozenTimer = this.chapterElevenEvent === 'snow' && !this.isChapterElevenFruitProtectedByPhoenix(plant, fruit)
           ? CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS
           : 0;
         fruitsChanged = true;
@@ -12836,7 +12836,7 @@ export class Game {
         let fruitsChanged = false;
         plant.pickableFruits.forEach((fruit) => {
           if (fruit.visible) {
-            const protectedByPhoenix = this.isChapterElevenPlantNearPhoenix(plant);
+            const protectedByPhoenix = this.isChapterElevenFruitProtectedByPhoenix(plant, fruit);
             if (protectedByPhoenix && fruit.frozenTimer > 0) {
               fruit.frozenTimer = 0;
               fruitsChanged = true;
@@ -12860,7 +12860,7 @@ export class Game {
             fruit.regrowTimer = 0;
             fruit.golden = Math.random() < fruit.goldenChance;
             fruit.charged = false;
-            fruit.frozenTimer = this.chapterElevenEvent === 'snow' && !this.isChapterElevenPlantNearPhoenix(plant)
+            fruit.frozenTimer = this.chapterElevenEvent === 'snow' && !this.isChapterElevenFruitProtectedByPhoenix(plant, fruit)
               ? CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS
               : 0;
             fruitsChanged = true;
@@ -12913,6 +12913,24 @@ export class Game {
       && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
       && Math.hypot(pet.x - plant.x, pet.z - plant.z) <= CHAPTER_ELEVEN_PHOENIX_PROTECTION_RADIUS
     ));
+  }
+
+  private isChapterElevenFruitProtectedByPhoenix(plant: ChapterElevenPlanting, fruit?: ChapterElevenPickableFruit): boolean {
+    const fruitPosition = fruit ? this.getChapterElevenFruitWorldPosition(plant, fruit) : null;
+    return this.chapterElevenPets.some((pet) => {
+      if (pet.petType !== 'phoenix' || !this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)) {
+        return false;
+      }
+
+      const plantDistance = Math.hypot(pet.x - plant.x, pet.z - plant.z);
+      if (plantDistance <= CHAPTER_ELEVEN_PHOENIX_PROTECTION_RADIUS) {
+        return true;
+      }
+
+      return fruitPosition
+        ? Math.hypot(pet.x - fruitPosition.x, pet.z - fruitPosition.z) <= CHAPTER_ELEVEN_PHOENIX_PROTECTION_RADIUS
+        : false;
+    });
   }
 
   private configureChapterElevenPrecipitation(event: 'rain' | 'lightning' | 'snow'): void {
@@ -13047,11 +13065,11 @@ export class Game {
       }
 
       let changed = false;
-      if (this.isChapterElevenPlantNearPhoenix(plant)) {
-        return;
-      }
       plant.pickableFruits.forEach((fruit) => {
         if (!fruit.visible || fruit.frozenTimer > 0) {
+          return;
+        }
+        if (this.isChapterElevenFruitProtectedByPhoenix(plant, fruit)) {
           return;
         }
         fruit.frozenTimer = CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS;
@@ -13747,6 +13765,18 @@ export class Game {
     return true;
   }
 
+  private resetChapterElevenPlantAfterPetHarvest(plant: ChapterElevenPlanting): void {
+    const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
+    plant.age = Math.max(0, config.babySeconds * 0.35);
+    plant.stage = 'planted';
+    plant.mature = false;
+    plant.golden = Math.random() < CHAPTER_ELEVEN_GOLDEN_CHANCE;
+    plant.charged = false;
+    plant.mutation = undefined;
+    plant.pickableFruits = undefined;
+    this.rebuildChapterElevenPlantVisual(plant);
+  }
+
   private trampleChapterElevenProduceIntoInventory(plant: ChapterElevenPlanting): number {
     if (!this.chapterElevenPlantHasTrampleProduce(plant)) {
       return 0;
@@ -13772,8 +13802,7 @@ export class Game {
     }
 
     this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId(plant.cropId, plant.golden, plant.charged, plant.mutation));
-    this.chapterEleven.root.remove(plant.root);
-    this.chapterElevenPlants.splice(this.chapterElevenPlants.indexOf(plant), 1);
+    this.resetChapterElevenPlantAfterPetHarvest(plant);
     return 1;
   }
 
@@ -13943,7 +13972,7 @@ export class Game {
     return !plant.mutation;
   }
 
-  private applyChapterElevenPetMutation(plant: ChapterElevenPlanting, mutation: ChapterElevenMutationId, chance: number): boolean {
+  private applyChapterElevenPetMutation(plant: ChapterElevenPlanting, mutation: ChapterElevenMutationId, chance: number, pet?: ChapterElevenPet): boolean {
     if (Math.random() > chance) {
       return false;
     }
@@ -13954,11 +13983,20 @@ export class Game {
         if (!fruit.visible || fruit.mutation) {
           return;
         }
+        if (pet?.petType === 'unicorn') {
+          const fruitPosition = this.getChapterElevenFruitWorldPosition(plant, fruit);
+          if (Math.hypot(pet.x - fruitPosition.x, pet.z - fruitPosition.z) > 0.95) {
+            return;
+          }
+        }
 
         fruit.mutation = mutation;
         changed = true;
       });
     } else if (!plant.mutation) {
+      if (pet?.petType === 'unicorn' && Math.hypot(pet.x - plant.x, pet.z - plant.z) > Math.max(0.85, this.getChapterElevenPlantFootprintRadius(plant.seedId) + 0.2)) {
+        return false;
+      }
       plant.mutation = mutation;
       changed = true;
     }
@@ -13974,9 +14012,8 @@ export class Game {
       const carrot = this.findChapterElevenRabbitCarrotTarget(pet);
       if (carrot) {
         this.addChapterElevenCropToInventory(this.getChapterElevenHarvestCropId('carrot', carrot.golden, carrot.charged, carrot.mutation));
-        this.chapterEleven.root.remove(carrot.root);
-        this.chapterElevenPlants.splice(this.chapterElevenPlants.indexOf(carrot), 1);
-        this.pushStatus('Your rabbit dug up a carrot for you.', 2.2);
+        this.resetChapterElevenPlantAfterPetHarvest(carrot);
+        this.pushStatus('Your rabbit picked a carrot for you. The carrot plant will grow back.', 2.2);
       }
       return;
     }
@@ -14024,7 +14061,7 @@ export class Game {
       if (crop) {
         const harvested = this.trampleChapterElevenProduceIntoInventory(crop);
         if (harvested > 0) {
-          this.pushStatus('Your cow trampled ripe food into your inventory.', 2.4);
+          this.pushStatus('Your cow trampled ripe fruit and vegetables into your inventory.', 2.4);
         }
       }
       return;
@@ -14035,7 +14072,7 @@ export class Game {
       if (crop) {
         const harvested = this.trampleChapterElevenProduceIntoInventory(crop);
         if (harvested > 0) {
-          this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} gathered ripe food into your inventory.`, 2.4);
+          this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} gathered ripe fruit and vegetables into your inventory.`, 2.4);
         }
       }
       return;
@@ -14067,8 +14104,8 @@ export class Game {
                 ? 'cosmic'
                 : 'golden';
         const chance = pet.petType === 'unicorn' ? 1 : pet.petType === 'dragon' ? 0.34 : 0.24;
-        if (this.applyChapterElevenPetMutation(plant, mutation, chance)) {
-          this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} gave a crop the ${this.getChapterElevenMutationLabel(mutation)} mutation.`, 2.6);
+        if (this.applyChapterElevenPetMutation(plant, mutation, chance, pet)) {
+          this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} gave ripe produce the ${this.getChapterElevenMutationLabel(mutation)} mutation.`, 2.6);
         }
       }
       return;
@@ -14084,7 +14121,7 @@ export class Game {
       .slice(0, pet.petType === 'dinosaur' ? 2 : 1);
     const harvested = trampled.reduce((total, plant) => total + this.trampleChapterElevenProduceIntoInventory(plant), 0);
     if (harvested > 0) {
-      this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} trampled ripe food into your inventory.`, 2.4);
+      this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} trampled ripe fruit and vegetables into your inventory.`, 2.4);
     }
   }
 
@@ -14128,7 +14165,7 @@ export class Game {
         const targetCrop = cowCrop ?? gatherCrop!;
         pet.targetX = targetCrop.x;
         pet.targetZ = targetCrop.z;
-        pet.targetKind = 'crop';
+        pet.targetKind = 'produce';
       } else if (growthPlant) {
         pet.targetX = growthPlant.x;
         pet.targetZ = growthPlant.z;
@@ -14136,7 +14173,7 @@ export class Game {
       } else if (mutationPlant) {
         pet.targetX = mutationPlant.x;
         pet.targetZ = mutationPlant.z;
-        pet.targetKind = 'crop';
+        pet.targetKind = 'produce';
       }
 
       const toTarget = new Vector3(pet.targetX - pet.x, 0, pet.targetZ - pet.z);
@@ -15241,7 +15278,7 @@ export class Game {
       });
       [[0.22, -0.24], [0.22, 0.24], [-0.32, -0.24], [-0.32, 0.24]].forEach(([x, z]) => {
         const flipper = new Mesh(new SphereGeometry(0.075, 10, 7), bodyMaterial);
-        flipper.name = 'Chapter 11 turtle little webbed foot flipper';
+        flipper.name = `Chapter 11 turtle ${x < 0 ? 'back' : 'front'} ${z < 0 ? 'left' : 'right'} little webbed foot flipper`;
         flipper.position.set(x, 0.18, z);
         flipper.scale.set(1.35, 0.32, 0.72);
         flipper.rotation.y = z < 0 ? -0.28 : 0.28;
@@ -15403,8 +15440,18 @@ export class Game {
     animateLimb('Chapter 11 pet back right walking leg', stride * 0.34);
     animateLimb('Chapter 11 pet front right walking leg', oppositeStride * 0.34);
     animateLimb('Chapter 11 pet back left walking leg', oppositeStride * 0.34);
+    animateLimb('Chapter 11 pet front left moving paw', stride * 0.18);
+    animateLimb('Chapter 11 pet back right moving paw', stride * 0.18);
+    animateLimb('Chapter 11 pet front right moving paw', oppositeStride * 0.18);
+    animateLimb('Chapter 11 pet back left moving paw', oppositeStride * 0.18);
     animateLimb('Chapter 11 phoenix left bird leg', stride * 0.28);
     animateLimb('Chapter 11 phoenix right bird leg', oppositeStride * 0.28);
+    animateLimb('Chapter 11 phoenix left bird foot claws', stride * 0.18);
+    animateLimb('Chapter 11 phoenix right bird foot claws', oppositeStride * 0.18);
+    animateLimb('Chapter 11 turtle front left little webbed foot flipper', stride * 0.24);
+    animateLimb('Chapter 11 turtle back right little webbed foot flipper', stride * 0.24);
+    animateLimb('Chapter 11 turtle front right little webbed foot flipper', oppositeStride * 0.24);
+    animateLimb('Chapter 11 turtle back left little webbed foot flipper', oppositeStride * 0.24);
 
     if (pet.petType === 'rabbit') {
       pet.root.position.y = moving ? Math.max(0, Math.sin(phase * 1.25)) * 0.18 : 0;
