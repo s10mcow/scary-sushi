@@ -10,6 +10,13 @@ export interface MovementStateOptions {
 
 export type WeaponSelectId = 'pistol' | 'shotgun';
 
+interface TouchLookDelta {
+  x: number;
+  y: number;
+}
+
+type TouchControlKind = 'move' | 'look';
+
 export class InputController {
   private readonly pressed = new Set<string>();
   private flashlightToggleQueued = false;
@@ -33,6 +40,18 @@ export class InputController {
   private hotbarSlotQueued: number | null = null;
   private weaponSelectQueued: WeaponSelectId | null = null;
   private itemCycleQueued = 0;
+  private touchMovePointerId: number | null = null;
+  private touchLookPointerId: number | null = null;
+  private touchMovePad: HTMLElement | null = null;
+  private touchLookPad: HTMLElement | null = null;
+  private touchLookLastX = 0;
+  private touchLookLastY = 0;
+  private touchMoveForward = 0;
+  private touchMoveStrafe = 0;
+  private touchLookDeltaX = 0;
+  private touchLookDeltaY = 0;
+  private readonly touchMoveRadius = 38;
+  private readonly touchLookRadius = 42;
 
   constructor(private readonly target: Window = window) {
     this.target.addEventListener('keydown', this.handleKeyDown);
@@ -42,13 +61,22 @@ export class InputController {
     this.target.addEventListener('wheel', this.handleWheel, { passive: false });
     this.target.addEventListener('blur', this.handleBlur);
     this.target.addEventListener('contextmenu', this.handleContextMenu);
+    this.target.document.addEventListener('pointerdown', this.handlePointerDown, { passive: false });
+    this.target.document.addEventListener('pointermove', this.handlePointerMove, { passive: false });
+    this.target.document.addEventListener('pointerup', this.handlePointerUp, { passive: false });
+    this.target.document.addEventListener('pointercancel', this.handlePointerUp, { passive: false });
   }
 
   getMovementState(options: MovementStateOptions = {}): MovementState {
+    const keyboardForward = Number(this.pressed.has('KeyW')) - Number(!options.ignoreBackward && this.pressed.has('KeyS'));
+    const keyboardStrafe = Number(this.pressed.has('KeyD')) - Number(this.pressed.has('KeyA'));
+    const touchForward = options.ignoreBackward ? Math.max(0, this.touchMoveForward) : this.touchMoveForward;
+    const touchStrength = Math.hypot(this.touchMoveForward, this.touchMoveStrafe);
+
     return {
-      forward: Number(this.pressed.has('KeyW')) - Number(!options.ignoreBackward && this.pressed.has('KeyS')),
-      strafe: Number(this.pressed.has('KeyD')) - Number(this.pressed.has('KeyA')),
-      sprint: this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight'),
+      forward: InputController.clamp(keyboardForward + touchForward, -1, 1),
+      strafe: InputController.clamp(keyboardStrafe + this.touchMoveStrafe, -1, 1),
+      sprint: this.pressed.has('ShiftLeft') || this.pressed.has('ShiftRight') || touchStrength > 0.88,
     };
   }
 
@@ -182,6 +210,18 @@ export class InputController {
     return value;
   }
 
+  consumeTouchLookDelta(target: TouchLookDelta = { x: 0, y: 0 }): TouchLookDelta {
+    target.x = this.touchLookDeltaX;
+    target.y = this.touchLookDeltaY;
+    this.touchLookDeltaX = 0;
+    this.touchLookDeltaY = 0;
+    return target;
+  }
+
+  hasActiveTouchControls(): boolean {
+    return this.touchMovePointerId !== null || this.touchLookPointerId !== null;
+  }
+
   destroy(): void {
     this.target.removeEventListener('keydown', this.handleKeyDown);
     this.target.removeEventListener('keyup', this.handleKeyUp);
@@ -190,6 +230,10 @@ export class InputController {
     this.target.removeEventListener('wheel', this.handleWheel);
     this.target.removeEventListener('blur', this.handleBlur);
     this.target.removeEventListener('contextmenu', this.handleContextMenu);
+    this.target.document.removeEventListener('pointerdown', this.handlePointerDown);
+    this.target.document.removeEventListener('pointermove', this.handlePointerMove);
+    this.target.document.removeEventListener('pointerup', this.handlePointerUp);
+    this.target.document.removeEventListener('pointercancel', this.handlePointerUp);
   }
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
@@ -317,6 +361,8 @@ export class InputController {
     this.fireHeld = false;
     this.spacePressedAt = 0;
     this.pressed.clear();
+    this.resetTouchMove();
+    this.resetTouchLook();
   };
 
   private readonly handleContextMenu = (event: MouseEvent): void => {
@@ -324,4 +370,123 @@ export class InputController {
       event.preventDefault();
     }
   };
+
+  private readonly handlePointerDown = (event: PointerEvent): void => {
+    const targetElement = event.target instanceof Element ? event.target : null;
+    const pad = targetElement?.closest<HTMLElement>('[data-touch-control]');
+    const control = pad?.dataset.touchControl as TouchControlKind | undefined;
+    if (!pad || (control !== 'move' && control !== 'look')) {
+      return;
+    }
+
+    event.preventDefault();
+    try {
+      pad.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture can fail if the browser already cancelled this pointer.
+    }
+
+    if (control === 'move') {
+      if (this.touchMovePointerId !== null) {
+        return;
+      }
+      this.touchMovePointerId = event.pointerId;
+      this.touchMovePad = pad;
+      pad.dataset.active = 'true';
+      this.updateTouchMove(event, pad);
+      return;
+    }
+
+    if (this.touchLookPointerId !== null) {
+      return;
+    }
+    this.touchLookPointerId = event.pointerId;
+    this.touchLookPad = pad;
+    this.touchLookLastX = event.clientX;
+    this.touchLookLastY = event.clientY;
+    pad.dataset.active = 'true';
+    this.updateTouchKnob(pad, 0, 0);
+  };
+
+  private readonly handlePointerMove = (event: PointerEvent): void => {
+    if (event.pointerId === this.touchMovePointerId && this.touchMovePad) {
+      event.preventDefault();
+      this.updateTouchMove(event, this.touchMovePad);
+      return;
+    }
+
+    if (event.pointerId === this.touchLookPointerId && this.touchLookPad) {
+      event.preventDefault();
+      this.touchLookDeltaX += event.clientX - this.touchLookLastX;
+      this.touchLookDeltaY += event.clientY - this.touchLookLastY;
+      this.touchLookLastX = event.clientX;
+      this.touchLookLastY = event.clientY;
+      const lookOffset = this.getTouchPadOffset(event, this.touchLookPad, this.touchLookRadius);
+      this.updateTouchKnob(this.touchLookPad, lookOffset.x, lookOffset.y);
+    }
+  };
+
+  private readonly handlePointerUp = (event: PointerEvent): void => {
+    if (event.pointerId === this.touchMovePointerId) {
+      this.resetTouchMove();
+    }
+
+    if (event.pointerId === this.touchLookPointerId) {
+      this.resetTouchLook();
+    }
+  };
+
+  private updateTouchMove(event: PointerEvent, pad: HTMLElement): void {
+    const offset = this.getTouchPadOffset(event, pad, this.touchMoveRadius);
+    this.updateTouchKnob(pad, offset.x, offset.y);
+    this.touchMoveStrafe = InputController.clamp(offset.x / this.touchMoveRadius, -1, 1);
+    this.touchMoveForward = InputController.clamp(-offset.y / this.touchMoveRadius, -1, 1);
+  }
+
+  private getTouchPadOffset(event: PointerEvent, pad: HTMLElement, radius: number): { x: number; y: number } {
+    const rect = pad.getBoundingClientRect();
+    const rawX = event.clientX - (rect.left + rect.width / 2);
+    const rawY = event.clientY - (rect.top + rect.height / 2);
+    const distance = Math.hypot(rawX, rawY);
+    if (distance <= radius || distance === 0) {
+      return { x: rawX, y: rawY };
+    }
+
+    const scale = radius / distance;
+    return {
+      x: rawX * scale,
+      y: rawY * scale,
+    };
+  }
+
+  private updateTouchKnob(pad: HTMLElement, x: number, y: number): void {
+    pad.style.setProperty('--touch-x', `${x.toFixed(2)}px`);
+    pad.style.setProperty('--touch-y', `${y.toFixed(2)}px`);
+  }
+
+  private resetTouchMove(): void {
+    this.touchMoveForward = 0;
+    this.touchMoveStrafe = 0;
+    this.touchMovePointerId = null;
+    if (this.touchMovePad) {
+      this.touchMovePad.dataset.active = 'false';
+      this.updateTouchKnob(this.touchMovePad, 0, 0);
+      this.touchMovePad = null;
+    }
+  }
+
+  private resetTouchLook(): void {
+    this.touchLookPointerId = null;
+    this.touchLookLastX = 0;
+    this.touchLookLastY = 0;
+    if (this.touchLookPad) {
+      this.touchLookPad.dataset.active = 'false';
+      this.updateTouchKnob(this.touchLookPad, 0, 0);
+      this.touchLookPad = null;
+    }
+  }
+
+  private static clamp(value: number, min: number, max: number): number {
+    return Math.min(max, Math.max(min, value));
+  }
 }

@@ -2322,6 +2322,27 @@ export function createHud(host: HTMLElement): HudController {
     curatorLayout,
   );
 
+  const touchControls = document.createElement('div');
+  touchControls.className = 'hud__touch-controls';
+
+  const touchMovePad = document.createElement('div');
+  touchMovePad.className = 'hud__touch-pad hud__touch-pad--move';
+  touchMovePad.dataset.touchControl = 'move';
+  touchMovePad.dataset.active = 'false';
+  const touchMoveKnob = document.createElement('div');
+  touchMoveKnob.className = 'hud__touch-knob';
+  touchMovePad.append(touchMoveKnob);
+
+  const touchLookPad = document.createElement('div');
+  touchLookPad.className = 'hud__touch-pad hud__touch-pad--look';
+  touchLookPad.dataset.touchControl = 'look';
+  touchLookPad.dataset.active = 'false';
+  const touchLookKnob = document.createElement('div');
+  touchLookKnob.className = 'hud__touch-knob';
+  touchLookPad.append(touchLookKnob);
+
+  touchControls.append(touchMovePad, touchLookPad);
+
   root.append(
     intro,
     jumpscare,
@@ -2357,6 +2378,7 @@ export function createHud(host: HTMLElement): HudController {
     curatorTool,
     officeJumpscareMenu,
     officeModeMenu,
+    touchControls,
   );
   host.replaceChildren(root);
 

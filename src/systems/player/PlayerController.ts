@@ -32,6 +32,7 @@ export class PlayerController {
   private readonly lookEuler = new Euler(0, 0, 0, 'YXZ');
   private pendingLookDeltaX = 0;
   private pendingLookDeltaY = 0;
+  private touchControlsActive = false;
   private verticalVelocity = 0;
   private grounded = true;
   private supportedFloorY: number | null = null;
@@ -64,7 +65,7 @@ export class PlayerController {
   }
 
   isLocked(): boolean {
-    return this.controls.isLocked;
+    return this.controls.isLocked || this.touchControlsActive;
   }
 
   getPosition(): Vector3 {
@@ -87,6 +88,23 @@ export class PlayerController {
     target.y = this.pendingLookDeltaY;
     this.clearLookBuffer();
     return target;
+  }
+
+  queueLookDelta(deltaX: number, deltaY: number): void {
+    this.pendingLookDeltaX = MathUtils.clamp(
+      this.pendingLookDeltaX + deltaX,
+      -LOOK_BUFFER_LIMIT,
+      LOOK_BUFFER_LIMIT,
+    );
+    this.pendingLookDeltaY = MathUtils.clamp(
+      this.pendingLookDeltaY + deltaY,
+      -LOOK_BUFFER_LIMIT,
+      LOOK_BUFFER_LIMIT,
+    );
+  }
+
+  setTouchControlsActive(active: boolean): void {
+    this.touchControlsActive = active;
   }
 
   lookToward(target: Vector3, blend = 1): void {
@@ -140,7 +158,7 @@ export class PlayerController {
     jumpVelocityMultiplier = 1,
     movementOptions: PlayerMovementOptions = {},
   ): void {
-    if (!this.controls.isLocked) {
+    if (!this.controls.isLocked && !this.touchControlsActive) {
       return;
     }
 
@@ -258,7 +276,7 @@ export class PlayerController {
     }
 
     (this.controls as unknown as { isLocked: boolean }).isLocked = locked;
-    if (!locked) {
+    if (!locked && !this.touchControlsActive) {
       this.clearLookBuffer();
     }
 

@@ -4738,6 +4738,11 @@ export class Game {
       && this.input.isSpaceHeld()
       && this.input.getSpaceHeldMilliseconds() >= CHAPTER_SEVEN_CRAWL_HOLD_MS;
     const movementState = this.input.getMovementState();
+    const touchLookDelta = this.input.consumeTouchLookDelta();
+    this.player.setTouchControlsActive(this.input.hasActiveTouchControls());
+    if (touchLookDelta.x !== 0 || touchLookDelta.y !== 0) {
+      this.player.queueLookDelta(touchLookDelta.x * 1.18, touchLookDelta.y * 1.18);
+    }
     this.chapterFourCrouching = this.chapterFourActive
       && this.player.isLocked()
       && !jumpscareLocked
@@ -13724,15 +13729,48 @@ export class Game {
       return true;
     }
 
-    const destination = nearbyPortal.side === 'garden'
-      ? nearbyPortal.portal.targetPosition
-      : nearbyPortal.portal.position;
+    const destination = this.getChapterElevenBiomePortalExitPosition(nearbyPortal.portal, nearbyPortal.side);
     this.player.teleport(destination);
+    const lookTarget = this.getChapterElevenBiomePortalLookTarget(nearbyPortal.portal, nearbyPortal.side, destination);
+    this.player.lookToward(lookTarget, 1);
     this.pushStatus(nearbyPortal.side === 'garden'
       ? `${nearbyPortal.portal.label} portal pulls you into the exclusive biome.`
       : `${nearbyPortal.portal.label} return portal brings you back to the main garden.`, 3.0);
     this.syncHud();
     return true;
+  }
+
+  private getChapterElevenBiomePortalExitPosition(
+    portal: ChapterElevenBiomePortal,
+    side: 'garden' | 'biome',
+  ): Vector3 {
+    if (side === 'garden') {
+      return portal.targetPosition.clone().add(new Vector3(0, 0, 8.4));
+    }
+
+    const towardGarden = new Vector3(-portal.position.x, 0, -portal.position.z);
+    if (towardGarden.lengthSq() < 0.0001) {
+      towardGarden.set(0, 0, 1);
+    }
+    towardGarden.normalize();
+    return portal.position.clone().addScaledVector(towardGarden, 8.6);
+  }
+
+  private getChapterElevenBiomePortalLookTarget(
+    portal: ChapterElevenBiomePortal,
+    side: 'garden' | 'biome',
+    destination: Vector3,
+  ): Vector3 {
+    if (side === 'garden') {
+      return destination.clone().add(new Vector3(0, 0, 8));
+    }
+
+    const towardGarden = new Vector3(-portal.position.x, 0, -portal.position.z);
+    if (towardGarden.lengthSq() < 0.0001) {
+      towardGarden.set(0, 0, 1);
+    }
+    towardGarden.normalize();
+    return destination.clone().addScaledVector(towardGarden, 8);
   }
 
   private getChapterElevenEquipmentStandPosition(): { x: number; z: number; rotationY: number } {
