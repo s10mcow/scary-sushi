@@ -364,25 +364,25 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'garden-corn-seeds', label: 'Corn seeds', singularLabel: 'Corn seed', cost: 25, section: 'cheap', maxStock: 5, normalOnly: true },
   { id: 'garden-cucumber-seeds', label: 'Cucumber seeds', singularLabel: 'Cucumber seed', cost: 5, section: 'cheap', maxStock: 5, normalOnly: true },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 25, section: 'cheap', maxStock: 6 },
-  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 75, section: 'expensive', maxStock: 5 },
-  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 100, section: 'expensive', maxStock: 4 },
-  { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 40, section: 'expensive', maxStock: 7 },
-  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 190, section: 'expensive', maxStock: 3 },
-  { id: 'watermelon-seeds', label: 'Watermelon seeds', singularLabel: 'Watermelon seed', cost: 150, section: 'expensive', maxStock: 3, normalOnly: true },
-  { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 650, section: 'expensive', maxStock: 1 },
-  { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 260, section: 'expensive', maxStock: 3 },
-  { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 380, section: 'expensive', maxStock: 2 },
-  { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 380, section: 'expensive', maxStock: 2 },
-  { id: 'pineapple-seeds', label: 'Pineapple seeds', singularLabel: 'Pineapple seed', cost: 325, section: 'expensive', maxStock: 2, normalOnly: true },
-  { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 500, section: 'expensive', maxStock: 2 },
-  { id: 'coconut-tree-seeds', label: 'Coconut tree seeds', singularLabel: 'Coconut tree seed', cost: 1000, section: 'expensive', maxStock: 1, normalOnly: true },
-  { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 450, section: 'expensive', maxStock: 3 },
-  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 1000, section: 'expensive', maxStock: 1 },
-  { id: 'olive-tree-seeds', label: 'Olive tree seeds', singularLabel: 'Olive tree seed', cost: 1200, section: 'rare-expensive', maxStock: 1, normalOnly: true },
-  { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 1200, section: 'rare-expensive', maxStock: 1, normalOnly: true },
-  { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 1200, section: 'rare-expensive', maxStock: 1, normalOnly: true },
-  { id: 'golden-tree-seeds', label: 'Golden tree seeds', singularLabel: 'Golden tree seed', cost: 5000, section: 'rare-magical', maxStock: 1, normalOnly: true },
-  { id: 'diamond-bush-seeds', label: 'Diamond bush seeds', singularLabel: 'Diamond bush seed', cost: 10000, section: 'rare-magical', maxStock: 1, normalOnly: true },
+  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 125, section: 'expensive', maxStock: 5 },
+  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 175, section: 'expensive', maxStock: 4 },
+  { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 75, section: 'expensive', maxStock: 7 },
+  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 300, section: 'expensive', maxStock: 3 },
+  { id: 'watermelon-seeds', label: 'Watermelon seeds', singularLabel: 'Watermelon seed', cost: 250, section: 'expensive', maxStock: 3, normalOnly: true },
+  { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 1000, section: 'expensive', maxStock: 1 },
+  { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 420, section: 'expensive', maxStock: 3 },
+  { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 600, section: 'expensive', maxStock: 2 },
+  { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 600, section: 'expensive', maxStock: 2 },
+  { id: 'pineapple-seeds', label: 'Pineapple seeds', singularLabel: 'Pineapple seed', cost: 500, section: 'expensive', maxStock: 2, normalOnly: true },
+  { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 850, section: 'expensive', maxStock: 2 },
+  { id: 'coconut-tree-seeds', label: 'Coconut tree seeds', singularLabel: 'Coconut tree seed', cost: 1500, section: 'expensive', maxStock: 1, normalOnly: true },
+  { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 700, section: 'expensive', maxStock: 3 },
+  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 1800, section: 'expensive', maxStock: 1 },
+  { id: 'olive-tree-seeds', label: 'Olive tree seeds', singularLabel: 'Olive tree seed', cost: 1800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 1800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 1800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'golden-tree-seeds', label: 'Golden tree seeds', singularLabel: 'Golden tree seed', cost: 10000, section: 'rare-magical', maxStock: 1, normalOnly: true },
+  { id: 'diamond-bush-seeds', label: 'Diamond bush seeds', singularLabel: 'Diamond bush seed', cost: 20000, section: 'rare-magical', maxStock: 1, normalOnly: true },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
   { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1, copyOnly: true },
   { id: 'corn-seeds', label: 'Western corn seeds', singularLabel: 'Western corn seed', cost: 750, section: 'expensive', maxStock: 2, copyOnly: true, traderOnly: true },
@@ -4212,6 +4212,15 @@ export class Game {
   private isChapterElevenSeedLifeCommonSeed(seedId: ChapterElevenSeedId): boolean {
     return this.chapterElevenTwoActive
       && CHAPTER_ELEVEN_SEED_SHOP_ITEMS.some((item) => item.id === seedId && item.seedLifeShop && item.section === 'common');
+  }
+
+  private getChapterElevenSeedGrowthMultiplier(seedId: ChapterElevenSeedId): number {
+    if (this.isChapterElevenSeedLifeCommonSeed(seedId)) {
+      return 0.5;
+    }
+
+    const item = this.getChapterElevenSeedItem(seedId);
+    return !this.chapterElevenTwoActive && item?.section === 'cheap' ? 1.75 : 1;
   }
 
   private getChapterElevenRandomEquipmentShopStock(item: typeof CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS[number]): number {
@@ -9416,7 +9425,7 @@ export class Game {
       case 'magical':
         return new MeshStandardMaterial({ color: 0xff91e7, emissive: 0x8b39ff, emissiveIntensity: 0.42, roughness: 0.28, metalness: 0.12 });
       case 'golden':
-        return new MeshStandardMaterial({ color: 0xf1c84b, emissive: 0x8f6818, emissiveIntensity: 0.28, roughness: 0.38, metalness: 0.28 });
+        return new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x6f4200, emissiveIntensity: 0.34, roughness: 0.22, metalness: 0.78 });
       case 'large':
       case 'giant':
       case 'basic':
@@ -9477,7 +9486,7 @@ export class Game {
     const displayCropId = mutationPrefix?.baseCropId ?? cropId;
     const golden = displayCropId.startsWith('golden-');
     const baseCrop = (golden ? displayCropId.replace('golden-', '') : displayCropId) as ChapterElevenCropId;
-    const goldMaterial = new MeshStandardMaterial({ color: 0xf1c84b, roughness: 0.42, metalness: 0.28 });
+    const goldMaterial = new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.2, roughness: 0.22, metalness: 0.78 });
     const mutationMaterial = mutationPrefix ? this.createChapterElevenMutationMaterial(mutationPrefix.mutation) : null;
     const materialFor = (color: number, roughness = 0.7) => mutationMaterial
       ? mutationMaterial
@@ -10641,12 +10650,12 @@ export class Game {
 
     const materials = {
       blackberry: new MeshStandardMaterial({ color: 0x1b0c26, roughness: 0.56, metalness: 0.02 }),
-      goldenBlackberry: new MeshStandardMaterial({ color: 0xf2c84b, roughness: 0.42, metalness: 0.28 }),
+      goldenBlackberry: new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.18, roughness: 0.22, metalness: 0.78 }),
       strawberry: new MeshStandardMaterial({ color: 0xd73535, roughness: 0.62 }),
       raspberry: new MeshStandardMaterial({ color: 0xc93668, roughness: 0.62 }),
       blueberry: new MeshStandardMaterial({ color: 0x2b5ab4, roughness: 0.62 }),
       crystalBerry: new MeshStandardMaterial({ color: 0x86eaff, emissive: 0x1e7fa0, emissiveIntensity: 0.28, roughness: 0.22, metalness: 0.12 }),
-      goldenCrystalBerry: new MeshStandardMaterial({ color: 0xf3d76a, emissive: 0x8b681d, emissiveIntensity: 0.22, roughness: 0.28, metalness: 0.3 }),
+      goldenCrystalBerry: new MeshStandardMaterial({ color: 0xdba32b, emissive: 0x6f4200, emissiveIntensity: 0.28, roughness: 0.18, metalness: 0.82 }),
       diamond: new MeshStandardMaterial({ color: 0x57c8ff, emissive: 0x1479ad, emissiveIntensity: 0.34, roughness: 0.16, metalness: 0.22 }),
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
       pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
@@ -10669,7 +10678,7 @@ export class Game {
       pineappleMark: new MeshStandardMaterial({ color: 0x7d5524, roughness: 0.78 }),
       pineappleLeaf: new MeshStandardMaterial({ color: 0x2f8f3b, roughness: 0.82 }),
       peach: new MeshStandardMaterial({ color: 0xf2a36f, roughness: 0.64 }),
-      goldenPeach: new MeshStandardMaterial({ color: 0xf2ca4d, roughness: 0.42, metalness: 0.22 }),
+      goldenPeach: new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.16, roughness: 0.22, metalness: 0.78 }),
       apple: new MeshStandardMaterial({ color: 0xd7392e, roughness: 0.58 }),
       appleDark: new MeshStandardMaterial({ color: 0x9f241e, roughness: 0.62 }),
       coconut: new MeshStandardMaterial({ color: 0x14100d, roughness: 0.86 }),
@@ -10678,7 +10687,7 @@ export class Game {
       lemon: new MeshStandardMaterial({ color: 0xe8d34a, roughness: 0.6 }),
       banana: new MeshStandardMaterial({ color: 0xe6c72f, roughness: 0.62 }),
       bananaTip: new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.8 }),
-      genericGold: new MeshStandardMaterial({ color: 0xf1c84b, roughness: 0.42, metalness: 0.28 }),
+      genericGold: new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.18, roughness: 0.2, metalness: 0.82 }),
       iceShell: new MeshStandardMaterial({ color: 0xc8f2ff, emissive: 0x5fa5c8, emissiveIntensity: 0.22, transparent: true, opacity: 0.62, roughness: 0.18, metalness: 0.04 }),
       stem: new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }),
       strawberryLeaf: new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }),
@@ -11345,9 +11354,11 @@ export class Game {
     if (config.cropId === 'carrot') {
       const carrotLeafMaterial = new MeshStandardMaterial({ color: 0x2f7d35, roughness: 0.86 });
       const carrot = new Mesh(new ConeGeometry(0.13, 0.58, 16), new MeshStandardMaterial({
-        color: plant.golden ? 0xf1c84b : 0xe87920,
-        roughness: plant.golden ? 0.42 : 0.74,
-        metalness: plant.golden ? 0.28 : 0,
+        color: plant.golden ? 0xd49a22 : 0xe87920,
+        emissive: plant.golden ? 0x5f3900 : 0x000000,
+        emissiveIntensity: plant.golden ? 0.16 : 0,
+        roughness: plant.golden ? 0.22 : 0.74,
+        metalness: plant.golden ? 0.78 : 0,
       }));
       carrot.name = 'Chapter 11 mature carrot crop';
       carrot.position.set(0, 0.28, 0);
@@ -11486,9 +11497,11 @@ export class Game {
       const stalkMaterial = new MeshStandardMaterial({ color: 0x3f8f34, roughness: 0.86 });
       const leafMaterial = new MeshStandardMaterial({ color: 0x4f9f3b, roughness: 0.84 });
       const petalMaterial = new MeshStandardMaterial({
-        color: plant.golden ? 0xf4cf42 : 0xf5c431,
-        roughness: plant.golden ? 0.42 : 0.62,
-        metalness: plant.golden ? 0.16 : 0,
+        color: plant.golden ? 0xd49a22 : 0xf5c431,
+        emissive: plant.golden ? 0x5f3900 : 0x000000,
+        emissiveIntensity: plant.golden ? 0.14 : 0,
+        roughness: plant.golden ? 0.22 : 0.62,
+        metalness: plant.golden ? 0.78 : 0,
       });
       const centerMaterial = new MeshStandardMaterial({ color: plant.golden ? 0x8d641b : 0x4b2b17, roughness: 0.72 });
       const stalk = new Mesh(new CylinderGeometry(0.055, 0.075, 1.72, 12), stalkMaterial);
@@ -11530,9 +11543,11 @@ export class Game {
 
     if (config.cropId === 'bamboo') {
       const stalkMaterial = new MeshStandardMaterial({
-        color: plant.golden ? 0xe5c75d : 0x5cae3e,
-        roughness: plant.golden ? 0.42 : 0.68,
-        metalness: plant.golden ? 0.22 : 0,
+        color: plant.golden ? 0xd49a22 : 0x5cae3e,
+        emissive: plant.golden ? 0x5f3900 : 0x000000,
+        emissiveIntensity: plant.golden ? 0.14 : 0,
+        roughness: plant.golden ? 0.22 : 0.68,
+        metalness: plant.golden ? 0.78 : 0,
       });
       const nodeMaterial = new MeshStandardMaterial({
         color: plant.golden ? 0xa77f24 : 0x38762b,
@@ -11985,9 +12000,11 @@ export class Game {
     if (config.cropId === 'mushroom') {
       const stemMaterial = new MeshStandardMaterial({ color: 0xf1dec7, roughness: 0.72 });
       const capMaterial = new MeshStandardMaterial({
-        color: plant.golden ? 0xf1c84b : 0xb9433f,
-        roughness: plant.golden ? 0.42 : 0.68,
-        metalness: plant.golden ? 0.28 : 0,
+        color: plant.golden ? 0xd49a22 : 0xb9433f,
+        emissive: plant.golden ? 0x5f3900 : 0x000000,
+        emissiveIntensity: plant.golden ? 0.16 : 0,
+        roughness: plant.golden ? 0.22 : 0.68,
+        metalness: plant.golden ? 0.78 : 0,
       });
       const spotMaterial = new MeshStandardMaterial({ color: 0xf8f1df, roughness: 0.62 });
       const stem = new Mesh(new CylinderGeometry(0.4, 0.64, 2.7, 16), stemMaterial);
@@ -12345,9 +12362,11 @@ export class Game {
     }
 
     const nutMaterial = new MeshStandardMaterial({
-      color: plant.golden ? 0xf1c84b : 0xc6a16f,
-      roughness: plant.golden ? 0.42 : 0.78,
-      metalness: plant.golden ? 0.35 : 0.02,
+      color: plant.golden ? 0xd49a22 : 0xc6a16f,
+      emissive: plant.golden ? 0x5f3900 : 0x000000,
+      emissiveIntensity: plant.golden ? 0.16 : 0,
+      roughness: plant.golden ? 0.22 : 0.78,
+      metalness: plant.golden ? 0.8 : 0.02,
     });
     const nut = new Mesh(new SphereGeometry(0.36, 24, 16), nutMaterial);
     nut.name = plant.golden ? 'Chapter 11 mature golden nut crop' : 'Chapter 11 mature big nut crop';
@@ -12543,7 +12562,7 @@ export class Game {
   }
 
   private waterChapterElevenPlant(plant: ChapterElevenPlanting, deltaSeconds: number): void {
-    const growthDelta = deltaSeconds * this.getChapterElevenGrowthPhaseMultiplier();
+    const growthDelta = deltaSeconds * this.getChapterElevenGrowthPhaseMultiplier() * this.getChapterElevenSeedGrowthMultiplier(plant.seedId);
     if (!plant.mature) {
       plant.age += growthDelta;
       return;
@@ -12624,7 +12643,7 @@ export class Game {
       this.syncChapterElevenPlantSnowFrost(plant);
       const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
       const phaseGrowthDelta = deltaSeconds * this.getChapterElevenGrowthPhaseMultiplier();
-      const growthDelta = this.isChapterElevenSeedLifeCommonSeed(plant.seedId) ? phaseGrowthDelta * 0.5 : phaseGrowthDelta;
+      const growthDelta = phaseGrowthDelta * this.getChapterElevenSeedGrowthMultiplier(plant.seedId);
       plant.age += growthDelta;
       if (this.chapterElevenPhase === 'night' && this.isChapterElevenPlantNearPhoenix(plant)) {
         plant.age += growthDelta;
@@ -12681,7 +12700,8 @@ export class Game {
             return;
           }
 
-          const regrowDelta = (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') ? phaseGrowthDelta * 2 : phaseGrowthDelta;
+          const regrowDeltaBase = phaseGrowthDelta * this.getChapterElevenSeedGrowthMultiplier(plant.seedId);
+          const regrowDelta = (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') ? regrowDeltaBase * 2 : regrowDeltaBase;
           fruit.regrowTimer -= regrowDelta;
           if (fruit.regrowTimer <= 0) {
             fruit.visible = true;
