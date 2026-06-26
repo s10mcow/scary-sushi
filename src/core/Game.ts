@@ -9557,8 +9557,8 @@ export class Game {
     }
 
     if (baseCrop === 'garden-cucumber') {
-      const cucumberMaterial = materialFor(0x2f8f3b, 0.72);
-      const darkMaterial = new MeshStandardMaterial({ color: 0x1f6f34, roughness: 0.78 });
+      const cucumberMaterial = materialFor(0x1f6f34, 0.74);
+      const darkMaterial = new MeshStandardMaterial({ color: 0x0f421d, roughness: 0.8 });
       const cucumber = new Mesh(new CylinderGeometry(0.07, 0.085, 0.5, 18), cucumberMaterial);
       cucumber.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
       cucumber.position.set(-0.03, 0.12, -0.02);
@@ -10284,8 +10284,8 @@ export class Game {
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
       pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
       potato: new MeshStandardMaterial({ color: 0xa97743, roughness: 0.9 }),
-      cucumber: new MeshStandardMaterial({ color: 0x2f8f3b, roughness: 0.72 }),
-      cucumberDark: new MeshStandardMaterial({ color: 0x1f6f34, roughness: 0.78 }),
+      cucumber: new MeshStandardMaterial({ color: 0x1f6f34, roughness: 0.74 }),
+      cucumberDark: new MeshStandardMaterial({ color: 0x0f421d, roughness: 0.8 }),
       dragonFruit: new MeshStandardMaterial({ color: 0xd9367c, roughness: 0.58 }),
       vineFruit: new MeshStandardMaterial({ color: 0x6d42bd, roughness: 0.58 }),
       cactusFruit: new MeshStandardMaterial({ color: 0xe45b76, roughness: 0.64 }),
