@@ -384,7 +384,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'lime-tree-seeds', label: 'Lime tree seeds', singularLabel: 'Lime tree seed', cost: 18000, section: 'rare-expensive', maxStock: 1, normalOnly: true },
   { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 2800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
   { id: 'golden-tree-seeds', label: 'Golden tree seeds', singularLabel: 'Golden tree seed', cost: 15000, section: 'rare-magical', maxStock: 1, normalOnly: true },
-  { id: 'rainbow-fruit-seeds', label: 'Rainbow fruit seeds', singularLabel: 'Rainbow fruit seed', cost: 7500, section: 'rare-magical', maxStock: 1, normalOnly: true },
+  { id: 'rainbow-fruit-seeds', label: 'Rainbow berry seeds', singularLabel: 'Rainbow berry seed', cost: 7500, section: 'rare-magical', maxStock: 1, normalOnly: true },
   { id: 'diamond-bush-seeds', label: 'Diamond bush seeds', singularLabel: 'Diamond bush seed', cost: 30000, section: 'rare-magical', maxStock: 1, normalOnly: true },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 700, section: 'expensive', maxStock: 2, copyOnly: true },
   { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 850, section: 'expensive', maxStock: 1, copyOnly: true },
@@ -849,8 +849,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
   'rainbow-fruit-seeds': {
     seedId: 'rainbow-fruit-seeds',
     cropId: 'rainbow-fruit',
-    label: 'Rainbow Fruit',
-    pluralLabel: 'Rainbow Fruit',
+    label: 'Rainbow Berry',
+    pluralLabel: 'Rainbow Berry',
     sellValue: 5000,
     babySeconds: 28,
     matureSeconds: 104,
@@ -9738,14 +9738,14 @@ export class Game {
       root.add(berry);
       rainbowColors.forEach((color, index) => {
         const bead = new Mesh(new SphereGeometry(0.052, 10, 7), materialFor(color, 0.48));
-        bead.name = 'Held rainbow fruit color fade bead';
+        bead.name = 'Held rainbow berry color fade bead';
         bead.position.set(-0.12 + index * 0.046, 0.15 + Math.sin(index * 0.9) * 0.018, 0.08);
         bead.scale.set(0.9, 0.72, 0.58);
         root.add(bead);
       });
       const leafMaterial = new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.82 });
       const stem = new Mesh(new CylinderGeometry(0.012, 0.017, 0.1, 7), leafMaterial);
-      stem.name = 'Held rainbow fruit small stem';
+      stem.name = 'Held rainbow berry small stem';
       stem.position.set(-0.03, 0.265, -0.02);
       stem.rotation.z = -0.18;
       root.add(stem);
@@ -10479,11 +10479,11 @@ export class Game {
 
     if (cropId === 'rainbow-fruit') {
       return [
-        makeFruit(new Vector3(0.3, 0.46, 0.08), 'Rainbow Fruit', regrow(12)),
-        makeFruit(new Vector3(-0.26, 0.58, -0.12), 'Rainbow Fruit', regrow(12)),
-        makeFruit(new Vector3(0.06, 0.72, -0.26), 'Rainbow Fruit', regrow(12)),
-        makeFruit(new Vector3(-0.12, 0.4, 0.26), 'Rainbow Fruit', regrow(12)),
-        makeFruit(new Vector3(0.25, 0.66, 0.24), 'Rainbow Fruit', regrow(12)),
+        makeFruit(new Vector3(0.3, 0.46, 0.08), 'Rainbow Berry', regrow(12)),
+        makeFruit(new Vector3(-0.26, 0.58, -0.12), 'Rainbow Berry', regrow(12)),
+        makeFruit(new Vector3(0.06, 0.72, -0.26), 'Rainbow Berry', regrow(12)),
+        makeFruit(new Vector3(-0.12, 0.4, 0.26), 'Rainbow Berry', regrow(12)),
+        makeFruit(new Vector3(0.25, 0.66, 0.24), 'Rainbow Berry', regrow(12)),
       ];
     }
 
@@ -11210,7 +11210,7 @@ export class Game {
         ];
         rainbowMaterials.forEach((material, bandIndex) => {
           const band = new Mesh(new SphereGeometry(0.032, 8, 6), material);
-          band.name = 'Chapter 11 rainbow fruit color fade bead';
+          band.name = 'Chapter 11 rainbow berry color fade bead';
           band.position.copy(fruitState.offset).add(new Vector3(-0.074 + bandIndex * 0.037, 0.01 + Math.sin(bandIndex * 0.9) * 0.014, 0.047));
           band.scale.set(0.92, 0.78, 0.58);
           band.castShadow = true;
@@ -12922,6 +12922,10 @@ export class Game {
         return false;
       }
 
+      if (this.chapterElevenEvent === 'snow') {
+        return true;
+      }
+
       const plantDistance = Math.hypot(pet.x - plant.x, pet.z - plant.z);
       if (plantDistance <= CHAPTER_ELEVEN_PHOENIX_PROTECTION_RADIUS) {
         return true;
@@ -13010,7 +13014,7 @@ export class Game {
 
   private syncChapterElevenPlantSnowFrost(plant: ChapterElevenPlanting): void {
     const existing = plant.root.getObjectByName('Chapter 11 snow event frosty plant coating');
-    if (this.chapterElevenEvent !== 'snow' || this.isChapterElevenPlantNearPhoenix(plant)) {
+    if (this.chapterElevenEvent !== 'snow' || this.isChapterElevenFruitProtectedByPhoenix(plant)) {
       if (existing) {
         plant.root.remove(existing);
       }
@@ -16520,7 +16524,7 @@ export class Game {
 
   private getChapterElevenSellableCrop(cropId: ChapterElevenCropId): { label: string; value: number } | null {
     if (cropId === 'rainbow-fruit') {
-      return { label: 'Rainbow Fruit', value: 5000 };
+      return { label: 'Rainbow Berry', value: 5000 };
     }
 
     const mutation = this.getChapterElevenCropMutationPrefix(cropId);
