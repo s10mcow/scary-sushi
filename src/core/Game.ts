@@ -350,7 +350,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 5, section: 'cheap', maxStock: 9 },
   { id: 'garden-potato-seeds', label: 'Potato seeds', singularLabel: 'Potato seed', cost: 15, section: 'cheap', maxStock: 7, normalOnly: true },
   { id: 'garden-corn-seeds', label: 'Corn seeds', singularLabel: 'Corn seed', cost: 25, section: 'cheap', maxStock: 5, normalOnly: true },
-  { id: 'garden-cucumber-seeds', label: 'Cucumber seeds', singularLabel: 'Cucumber seed', cost: 20, section: 'cheap', maxStock: 5, normalOnly: true },
+  { id: 'garden-cucumber-seeds', label: 'Cucumber seeds', singularLabel: 'Cucumber seed', cost: 5, section: 'cheap', maxStock: 5, normalOnly: true },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 25, section: 'cheap', maxStock: 6 },
   { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 75, section: 'expensive', maxStock: 5 },
   { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 100, section: 'expensive', maxStock: 4 },
