@@ -16,7 +16,7 @@ export type OfficeJumpscareCue =
   | 'curtain-snap'
   | 'pirate-spin';
 
-export type GardenEventCue = 'cheerful' | 'rain' | 'lightning' | 'wind' | 'magic' | 'dragon' | 'volcanic';
+export type GardenEventCue = 'cheerful' | 'rain' | 'lightning' | 'snow' | 'wind' | 'magic' | 'dragon' | 'volcanic';
 
 export class GameplaySfxAudio {
   private readonly context?: AudioContext;
@@ -296,6 +296,11 @@ export class GameplaySfxAudio {
 
     if (cue === 'rain') {
       this.playGardenRainCue(3.4, 0.07);
+      return;
+    }
+
+    if (cue === 'snow') {
+      this.playGardenWindCue();
       return;
     }
 
@@ -1416,7 +1421,7 @@ export class GameplaySfxAudio {
     const ambientGain = this.context.createGain();
     ambientGain.gain.setValueAtTime(0.0001, now);
     ambientGain.gain.exponentialRampToValueAtTime(
-      cue === 'rain' ? 0.074 : cue === 'lightning' ? 0.066 : cue === 'wind' ? 0.062 : cue === 'volcanic' ? 0.052 : 0.042,
+      cue === 'rain' ? 0.074 : cue === 'lightning' ? 0.066 : cue === 'snow' ? 0.038 : cue === 'wind' ? 0.062 : cue === 'volcanic' ? 0.052 : 0.042,
       now + 0.45,
     );
     ambientGain.connect(this.masterGain);
@@ -1431,6 +1436,11 @@ export class GameplaySfxAudio {
     }
 
     if (cue === 'wind') {
+      this.startGardenWindAmbient(now, ambientGain);
+      return;
+    }
+
+    if (cue === 'snow') {
       this.startGardenWindAmbient(now, ambientGain);
       return;
     }

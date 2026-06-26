@@ -549,6 +549,7 @@ interface ChapterElevenPickableFruit {
   visible: boolean;
   golden: boolean;
   charged: boolean;
+  frozenTimer: number;
   mutation?: ChapterElevenMutationId;
   goldenChance: number;
   regrowTimer: number;
@@ -1016,6 +1017,7 @@ const CHAPTER_ELEVEN_STRAWBERRY_REGROW_SECONDS = 5;
 const CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS = 10;
 const CHAPTER_ELEVEN_PEACH_REGROW_SECONDS = 10;
 const CHAPTER_ELEVEN_GOLDEN_CHANCE = 0.035;
+const CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS = 180;
 const CHAPTER_ELEVEN_PET_EGG_COST = 5000;
 const CHAPTER_ELEVEN_PET_EGG_HATCH_SECONDS = 60;
 const CHAPTER_ELEVEN_PET_SHOP_X = -2.61;
@@ -2131,7 +2133,7 @@ export class Game {
   private chapterElevenDayCount = 1;
   private chapterElevenDailyEventUsed = false;
   private chapterElevenWeatherStreak = 0;
-  private chapterElevenEvent: 'none' | 'rain' | 'lightning' = 'none';
+  private chapterElevenEvent: 'none' | 'rain' | 'lightning' | 'snow' = 'none';
   private chapterElevenEventTimer = 0;
   private chapterElevenEventNoticeText = '';
   private chapterElevenEventNoticeLabel = 'Garden Event';
@@ -9892,6 +9894,7 @@ export class Game {
       visible: true,
       golden: Math.random() < goldenChance,
       charged: false,
+      frozenTimer: 0,
       mutation: undefined,
       goldenChance,
       regrowTimer: 0,
@@ -10134,6 +10137,7 @@ export class Game {
       banana: new MeshStandardMaterial({ color: 0xe6c72f, roughness: 0.62 }),
       bananaTip: new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.8 }),
       genericGold: new MeshStandardMaterial({ color: 0xf1c84b, roughness: 0.42, metalness: 0.28 }),
+      iceShell: new MeshStandardMaterial({ color: 0xc8f2ff, emissive: 0x5fa5c8, emissiveIntensity: 0.16, transparent: true, opacity: 0.48, roughness: 0.18, metalness: 0.04 }),
       stem: new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }),
       strawberryLeaf: new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }),
     };
@@ -10375,6 +10379,18 @@ export class Game {
       fruit.position.copy(fruitState.offset);
       fruit.castShadow = true;
       plant.root.add(fruit);
+      if (fruitState.frozenTimer > 0) {
+        const ice = new Mesh(new SphereGeometry(0.16, 14, 10), materials.iceShell);
+        ice.name = 'Chapter 11 frozen fruit clear ice shell';
+        ice.position.copy(fruitState.offset);
+        ice.scale.set(
+          Math.max(1.05, fruit.scale.x * 1.42),
+          Math.max(0.9, fruit.scale.y * 1.22),
+          Math.max(1.05, fruit.scale.z * 1.42),
+        );
+        ice.castShadow = true;
+        plant.root.add(ice);
+      }
       if (mutation) {
         this.addChapterElevenMutationEffect(plant.root, fruitState.offset, mutation, mutation === 'cosmic' || mutation === 'prismatic' ? 0.34 : 0.25);
       }
@@ -11505,6 +11521,7 @@ export class Game {
         fruit.regrowTimer = 0;
         fruit.golden = Math.random() < fruit.goldenChance;
         fruit.charged = false;
+        fruit.frozenTimer = this.chapterElevenEvent === 'snow' ? CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS : 0;
         fruitsChanged = true;
       }
     });
@@ -11594,6 +11611,15 @@ export class Game {
         let fruitsChanged = false;
         plant.pickableFruits.forEach((fruit) => {
           if (fruit.visible) {
+            if (this.chapterElevenEvent === 'snow' && fruit.frozenTimer <= 0) {
+              fruit.frozenTimer = CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS;
+              fruitsChanged = true;
+            } else if (fruit.frozenTimer > 0) {
+              fruit.frozenTimer = Math.max(0, fruit.frozenTimer - deltaSeconds);
+              if (fruit.frozenTimer <= 0) {
+                fruitsChanged = true;
+              }
+            }
             return;
           }
 
@@ -11604,6 +11630,7 @@ export class Game {
             fruit.regrowTimer = 0;
             fruit.golden = Math.random() < fruit.goldenChance;
             fruit.charged = false;
+            fruit.frozenTimer = this.chapterElevenEvent === 'snow' ? CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS : 0;
             fruitsChanged = true;
           }
         });
@@ -11621,7 +11648,7 @@ export class Game {
       : text;
     this.chapterElevenEventNoticeLabel = label;
     this.chapterElevenEventNoticeTimer = Math.max(this.chapterElevenEventNoticeTimer, duration);
-    if (cue !== 'rain' && cue !== 'lightning' && cue !== 'wind') {
+    if (cue !== 'rain' && cue !== 'lightning' && cue !== 'snow' && cue !== 'wind') {
       this.gameplaySfxAudio.playGardenEventAlarm();
     }
   }
@@ -11636,24 +11663,67 @@ export class Game {
     this.gameplaySfxAudio.setGardenEventAmbient(null);
   }
 
-  private startChapterElevenEvent(event: 'rain' | 'lightning'): void {
+  private configureChapterElevenPrecipitation(event: 'rain' | 'lightning' | 'snow'): void {
+    const material = new MeshBasicMaterial({
+      color: event === 'snow' ? 0xf4fbff : 0x9fd9ff,
+      transparent: true,
+      opacity: event === 'snow' ? 0.82 : 0.62,
+    });
+    this.chapterElevenRainRoot.children.forEach((drop) => {
+      if (!(drop instanceof Mesh)) {
+        return;
+      }
+      drop.material = material;
+      drop.scale.set(event === 'snow' ? 4.2 : 1, event === 'snow' ? 0.12 : 1, event === 'snow' ? 4.2 : 1);
+      drop.rotation.z = event === 'snow' ? MathUtils.randFloat(-0.12, 0.12) : -0.28;
+    });
+  }
+
+  private freezeVisibleChapterElevenFruit(): number {
+    let frozen = 0;
+    this.chapterElevenPlants.forEach((plant) => {
+      if (!plant.pickableFruits || !this.isChapterElevenPickableFruitCrop(plant.cropId) || plant.stage !== 'mature') {
+        return;
+      }
+
+      let changed = false;
+      plant.pickableFruits.forEach((fruit) => {
+        if (!fruit.visible || fruit.frozenTimer > 0) {
+          return;
+        }
+        fruit.frozenTimer = CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS;
+        frozen += 1;
+        changed = true;
+      });
+      if (changed) {
+        this.rebuildChapterElevenPlantVisual(plant);
+      }
+    });
+    return frozen;
+  }
+
+  private startChapterElevenEvent(event: 'rain' | 'lightning' | 'snow'): void {
     this.chapterElevenEvent = event;
-    this.chapterElevenEventTimer = event === 'rain' ? MathUtils.randFloat(85, 125) : MathUtils.randFloat(80, 115);
+    this.chapterElevenEventTimer = event === 'rain' ? MathUtils.randFloat(85, 125) : event === 'snow' ? MathUtils.randFloat(80, 120) : MathUtils.randFloat(80, 115);
     this.chapterElevenDailyEventUsed = true;
     this.chapterElevenNextEventTimer = Number.POSITIVE_INFINITY;
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
-    this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning';
+    this.configureChapterElevenPrecipitation(event);
+    this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning' || event === 'snow';
     this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(4.5, 8) : 0;
+    const frozen = event === 'snow' ? this.freezeVisibleChapterElevenFruit() : 0;
     this.startChapterElevenEventAudio(event, this.chapterElevenEventTimer);
     this.showChapterElevenEventNotice(
-      event === 'rain' ? 'Rain event is happening.' : 'Thunderstorm event is happening.',
+      event === 'rain' ? 'Rain event is happening.' : event === 'snow' ? 'Snowing event is happening.' : 'Thunderstorm event is happening.',
       'Garden Event',
       5.8,
       event,
     );
     this.pushStatus(event === 'rain'
       ? 'Rain storm started. Crops are growing faster.'
-      : 'Lightning storm started. Lightning can charge plants into valuable glowing crops.', 3.2);
+      : event === 'snow'
+        ? `Snow started. ${frozen} fruit${frozen === 1 ? '' : 's'} froze in ice for three minutes.`
+        : 'Lightning storm started. Lightning can charge plants into valuable glowing crops.', 3.2);
   }
 
   private stopChapterElevenEvent(): void {
@@ -11923,12 +11993,15 @@ export class Game {
     if (this.chapterElevenRainRoot.visible) {
       const bounds = this.chapterEleven.fieldBounds;
       this.chapterElevenRainRoot.children.forEach((drop) => {
-        drop.position.y -= deltaSeconds * (this.chapterElevenEvent === 'lightning' ? 12.5 : 10.4);
-        drop.position.x -= deltaSeconds * (this.chapterElevenEvent === 'lightning' ? 2.2 : 1.55);
+        drop.position.y -= deltaSeconds * (this.chapterElevenEvent === 'snow' ? 2.8 : this.chapterElevenEvent === 'lightning' ? 12.5 : 10.4);
+        drop.position.x -= deltaSeconds * (this.chapterElevenEvent === 'snow' ? Math.sin(this.elapsed * 0.9 + drop.id) * 0.55 : this.chapterElevenEvent === 'lightning' ? 2.2 : 1.55);
         if (drop.position.y < 0.2) {
           drop.position.y = MathUtils.randFloat(9, 15);
           drop.position.x = MathUtils.randFloat(bounds.minX + 2, bounds.maxX - 2);
           drop.position.z = MathUtils.randFloat(bounds.minZ + 2, bounds.maxZ - 2);
+          if (this.chapterElevenEvent === 'snow') {
+            drop.rotation.z = MathUtils.randFloat(-0.12, 0.12);
+          }
         }
       });
     }
@@ -11950,7 +12023,8 @@ export class Game {
       }
       this.chapterElevenNextEventTimer -= deltaSeconds;
       if (canStartDailyEvent && this.chapterElevenNextEventTimer <= 0) {
-        this.startChapterElevenEvent(Math.random() < 0.5 ? 'rain' : 'lightning');
+        const roll = Math.random();
+        this.startChapterElevenEvent(roll < 0.42 ? 'rain' : roll < 0.78 ? 'lightning' : 'snow');
       }
     } else {
       this.chapterElevenEventTimer -= deltaSeconds;
@@ -12019,7 +12093,7 @@ export class Game {
       }
 
       plant.pickableFruits.forEach((fruit, index) => {
-        if (!fruit.visible) {
+        if (!fruit.visible || fruit.frozenTimer > 0) {
           return;
         }
 
@@ -12053,7 +12127,7 @@ export class Game {
 
     const plant = this.chapterElevenPlants.find((candidate) => candidate.id === harvester.targetPlantId);
     const fruit = plant?.pickableFruits?.[harvester.targetFruitIndex] ?? null;
-    if (!plant || !fruit?.visible || plant.stage !== 'mature') {
+    if (!plant || !fruit?.visible || fruit.frozenTimer > 0 || plant.stage !== 'mature') {
       return null;
     }
 
@@ -12133,6 +12207,7 @@ export class Game {
 
     target.fruit.visible = false;
     target.fruit.regrowTimer = target.fruit.regrowSeconds;
+    target.fruit.frozenTimer = 0;
     const cropId = this.getChapterElevenHarvestCropId(target.fruit.cropId, target.fruit.golden, target.fruit.charged, target.fruit.mutation ?? target.plant.mutation);
     this.rebuildChapterElevenPlantVisual(target.plant);
     harvester.cargoCropIds.push(cropId);
@@ -12234,7 +12309,7 @@ export class Game {
     }
 
     if (plant.pickableFruits && this.isChapterElevenPickableFruitCrop(plant.cropId)) {
-      return plant.pickableFruits.some((fruit) => fruit.visible);
+      return plant.pickableFruits.some((fruit) => fruit.visible && fruit.frozenTimer <= 0);
     }
 
     return true;
@@ -12248,13 +12323,14 @@ export class Game {
     if (plant.pickableFruits && this.isChapterElevenPickableFruitCrop(plant.cropId)) {
       let harvested = 0;
       plant.pickableFruits.forEach((fruit) => {
-        if (!fruit.visible) {
+        if (!fruit.visible || fruit.frozenTimer > 0) {
           return;
         }
         const cropId = this.getChapterElevenHarvestCropId(fruit.cropId, fruit.golden, fruit.charged, fruit.mutation ?? plant.mutation);
         this.addChapterElevenCropToInventory(cropId);
         fruit.visible = false;
         fruit.regrowTimer = fruit.regrowSeconds;
+        fruit.frozenTimer = 0;
         harvested += 1;
       });
       if (harvested > 0) {
@@ -12926,6 +13002,7 @@ export class Game {
     const eventOptions = [
       option('event:sunny-day', 'Sunny Day', 250, '+25 growth speed feeling for this day.', 'OK events'),
       option('event:rainstorm', 'Rainstorm', 500, 'Starts real rain. Crops grow faster while it rains.', 'OK events'),
+      option('event:snowing', 'Snowing', 850, 'Light snow freezes visible fruit for three minutes.', 'OK events'),
       option('event:pollinator-day', 'Pollinator Day', 900, 'Better mutation luck for the day.', 'Good events'),
       option('event:windy-day', 'Windy Day', 1200, 'Seeds feel like they could spread to nearby open slots.', 'Good events'),
       option('event:harvest-festival', 'Harvest Festival', 2000, '+50 crop value feeling for the day.', 'Very good events'),
@@ -12946,6 +13023,7 @@ export class Game {
         options: [
           option('event:sunny-day', 'Sunny Day', 250, 'Clears stormy weather and makes the garden bright.', 'Weather'),
           option('event:rainstorm', 'Rainstorm', 500, 'Starts rain immediately and speeds crop growth.', 'Weather'),
+          option('event:snowing', 'Snowing', 850, 'Starts light snow. Visible fruits freeze in ice for three minutes.', 'Weather'),
           option('event:thunderstorm', 'Thunderstorm', 1200, 'Starts thunder and lightning that can charge crops.', 'Weather'),
         ],
       };
@@ -14377,13 +14455,18 @@ export class Game {
     }
 
     if (this.isChapterElevenPickableFruitCrop(config.cropId)) {
-      const nextFruitIndex = plant.pickableFruits?.findIndex((fruit) => fruit.visible) ?? -1;
+      const nextFruitIndex = plant.pickableFruits?.findIndex((fruit) => fruit.visible && fruit.frozenTimer <= 0) ?? -1;
       if (nextFruitIndex >= 0 && plant.pickableFruits?.[nextFruitIndex]) {
         this.harvestChapterElevenPickableFruit({
           plant,
           fruit: plant.pickableFruits[nextFruitIndex],
           index: nextFruitIndex,
         });
+        return;
+      }
+
+      if (plant.pickableFruits?.some((fruit) => fruit.visible && fruit.frozenTimer > 0)) {
+        this.pushStatus(`${config.label} has icy fruit right now. Wait for the snow ice to melt.`, 2.4);
         return;
       }
 
@@ -14409,8 +14492,14 @@ export class Game {
   }
 
   private harvestChapterElevenPickableFruit(target: { plant: ChapterElevenPlanting; fruit: ChapterElevenPickableFruit; index: number }): void {
+    if (target.fruit.frozenTimer > 0) {
+      this.pushStatus(`${target.fruit.golden ? target.fruit.goldenLabel ?? target.fruit.label : target.fruit.label} is frozen in ice. Wait for it to thaw before picking it.`, 2.5);
+      return;
+    }
+
     target.fruit.visible = false;
     target.fruit.regrowTimer = target.fruit.regrowSeconds;
+    target.fruit.frozenTimer = 0;
     const cropId = this.getChapterElevenHarvestCropId(target.fruit.cropId, target.fruit.golden, target.fruit.charged, target.fruit.mutation ?? target.plant.mutation);
     this.chapterElevenCropInventory.set(cropId, (this.chapterElevenCropInventory.get(cropId) ?? 0) + 1);
     this.rebuildChapterElevenPlantVisual(target.plant);
@@ -14664,6 +14753,10 @@ export class Game {
       return 'lightning';
     }
 
+    if (optionId.includes('snowing')) {
+      return 'snow';
+    }
+
     if (optionId.includes('windy')) {
       return 'wind';
     }
@@ -14705,6 +14798,12 @@ export class Game {
     if (optionId === 'event:thunderstorm') {
       this.stopChapterElevenEvent();
       this.startChapterElevenEvent('lightning');
+      return;
+    }
+
+    if (optionId === 'event:snowing') {
+      this.stopChapterElevenEvent();
+      this.startChapterElevenEvent('snow');
       return;
     }
 
@@ -20982,15 +21081,16 @@ export class Game {
     if (this.chapterElevenActive) {
       const nightBlend = this.getChapterElevenNightBlend();
       const rainBlend = this.chapterElevenEvent === 'rain' ? 0.38 : 0;
-      const stormBlend = this.chapterElevenEvent === 'lightning' ? 0.72 : rainBlend;
+      const snowBlend = this.chapterElevenEvent === 'snow' ? 0.48 : 0;
+      const stormBlend = this.chapterElevenEvent === 'lightning' ? 0.72 : Math.max(rainBlend, snowBlend);
       const darknessBlend = Math.max(nightBlend, stormBlend);
-      this.lighting.ambient.intensity = MathUtils.lerp(0.78, this.chapterElevenEvent === 'lightning' ? 0.34 : 0.18, darknessBlend);
-      this.lighting.hemisphere.intensity = MathUtils.lerp(0.98, this.chapterElevenEvent === 'lightning' ? 0.5 : 0.28, darknessBlend);
+      this.lighting.ambient.intensity = MathUtils.lerp(0.78, this.chapterElevenEvent === 'lightning' ? 0.34 : this.chapterElevenEvent === 'snow' ? 0.58 : 0.18, darknessBlend);
+      this.lighting.hemisphere.intensity = MathUtils.lerp(0.98, this.chapterElevenEvent === 'lightning' ? 0.5 : this.chapterElevenEvent === 'snow' ? 0.7 : 0.28, darknessBlend);
       this.lighting.flashlight.intensity = GAME_CONFIG.flashlight.intensity * 0.65;
       this.lighting.flashlight.distance = 26;
 
       if (this.scene.background instanceof Color) {
-        const stormSky = this.chapterElevenEvent === 'lightning' ? new Color(0x202936) : new Color(0x677d88);
+        const stormSky = this.chapterElevenEvent === 'lightning' ? new Color(0x202936) : this.chapterElevenEvent === 'snow' ? new Color(0xd8e5ee) : new Color(0x677d88);
         this.scene.background.copy(new Color(0x9fc8df).lerp(new Color(0x070915), nightBlend));
         if (stormBlend > 0) {
           this.scene.background.lerp(stormSky, stormBlend);
@@ -20998,13 +21098,13 @@ export class Game {
       }
 
       if (this.scene.fog instanceof Fog) {
-        const stormFog = this.chapterElevenEvent === 'lightning' ? new Color(0x4c5660) : new Color(0x87958e);
+        const stormFog = this.chapterElevenEvent === 'lightning' ? new Color(0x4c5660) : this.chapterElevenEvent === 'snow' ? new Color(0xe4edf2) : new Color(0x87958e);
         this.scene.fog.color.copy(new Color(0xc1d6b8).lerp(new Color(0x10131c), nightBlend));
         if (stormBlend > 0) {
           this.scene.fog.color.lerp(stormFog, stormBlend);
         }
-        this.scene.fog.near = MathUtils.lerp(92, this.chapterElevenEvent === 'lightning' ? 42 : 55, darknessBlend);
-        this.scene.fog.far = MathUtils.lerp(300, this.chapterElevenEvent === 'lightning' ? 185 : 210, darknessBlend);
+        this.scene.fog.near = MathUtils.lerp(92, this.chapterElevenEvent === 'lightning' ? 42 : this.chapterElevenEvent === 'snow' ? 58 : 55, darknessBlend);
+        this.scene.fog.far = MathUtils.lerp(300, this.chapterElevenEvent === 'lightning' ? 185 : this.chapterElevenEvent === 'snow' ? 230 : 210, darknessBlend);
       }
 
       return;
