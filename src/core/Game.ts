@@ -382,6 +382,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 1800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
   { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 1800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
   { id: 'golden-tree-seeds', label: 'Golden tree seeds', singularLabel: 'Golden tree seed', cost: 10000, section: 'rare-magical', maxStock: 1, normalOnly: true },
+  { id: 'rainbow-fruit-seeds', label: 'Rainbow fruit seeds', singularLabel: 'Rainbow fruit seed', cost: 5000, section: 'rare-magical', maxStock: 1, normalOnly: true },
   { id: 'diamond-bush-seeds', label: 'Diamond bush seeds', singularLabel: 'Diamond bush seed', cost: 20000, section: 'rare-magical', maxStock: 1, normalOnly: true },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
   { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1, copyOnly: true },
@@ -414,6 +415,7 @@ type ChapterElevenCropId =
   | 'lemon'
   | 'banana'
   | 'gold-fruit'
+  | 'rainbow-fruit'
   | 'diamond'
   | 'tomato'
   | 'pepper'
@@ -828,6 +830,16 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     sellValue: 900,
     babySeconds: 28,
     matureSeconds: 96,
+    regrows: true,
+  },
+  'rainbow-fruit-seeds': {
+    seedId: 'rainbow-fruit-seeds',
+    cropId: 'rainbow-fruit',
+    label: 'Rainbow Fruit',
+    pluralLabel: 'Rainbow Fruits',
+    sellValue: 5000,
+    babySeconds: 28,
+    matureSeconds: 104,
     regrows: true,
   },
   'diamond-bush-seeds': {
@@ -4442,6 +4454,12 @@ export class Game {
       this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
       this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + count);
     });
+
+    if (!this.chapterElevenTwoActive) {
+      (['dinosaur', 'turtle', 'unicorn', 'phoenix'] as ChapterElevenPetType[]).forEach((petType) => {
+        this.chapterElevenPetEggInventory.set(petType, Math.max(1, this.chapterElevenPetEggInventory.get(petType) ?? 0));
+      });
+    }
   }
 
   private getChapterSevenGrandpaTrades(): ChapterSevenGrandpaTradeView[] {
@@ -9344,6 +9362,8 @@ export class Game {
                         ? '#e0c83d'
                         : seedId === 'banana-tree-seeds'
                           ? '#e4c32e'
+                          : seedId === 'rainbow-fruit-seeds'
+                            ? '#f24fae'
                           : seedId === 'tomato-seeds'
                             ? '#c83d30'
                             : seedId === 'pepper-seeds'
@@ -9667,6 +9687,30 @@ export class Game {
       glint.position.set(0.02, 0.2, 0.02);
       glint.scale.set(0.5, 0.86, 0.5);
       root.add(glint);
+      root.scale.setScalar(1.12);
+      return root;
+    }
+
+    if (baseCrop === 'rainbow-fruit') {
+      const rainbowColors = [0xf04444, 0xff8c32, 0xffdf4a, 0x42d76a, 0x4b8dff];
+      const berry = new Mesh(new SphereGeometry(0.15, 20, 14), materialFor(rainbowColors[2], 0.48));
+      berry.name = `Held ${this.getChapterElevenCropLabel(cropId)} rainbow berry`;
+      berry.position.set(-0.03, 0.13, -0.02);
+      berry.scale.set(1.08, 0.94, 1.02);
+      root.add(berry);
+      rainbowColors.forEach((color, index) => {
+        const bead = new Mesh(new SphereGeometry(0.052, 10, 7), materialFor(color, 0.48));
+        bead.name = 'Held rainbow fruit color fade bead';
+        bead.position.set(-0.12 + index * 0.046, 0.15 + Math.sin(index * 0.9) * 0.018, 0.08);
+        bead.scale.set(0.9, 0.72, 0.58);
+        root.add(bead);
+      });
+      const leafMaterial = new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.82 });
+      const stem = new Mesh(new CylinderGeometry(0.012, 0.017, 0.1, 7), leafMaterial);
+      stem.name = 'Held rainbow fruit small stem';
+      stem.position.set(-0.03, 0.265, -0.02);
+      stem.rotation.z = -0.18;
+      root.add(stem);
       root.scale.setScalar(1.12);
       return root;
     }
@@ -10254,6 +10298,7 @@ export class Game {
       || cropId === 'lemon'
       || cropId === 'banana'
       || cropId === 'gold-fruit'
+      || cropId === 'rainbow-fruit'
       || cropId === 'tomato'
       || cropId === 'pepper'
       || cropId === 'corn'
@@ -10378,6 +10423,16 @@ export class Game {
         makeFruit(new Vector3(0.06, 0.72, -0.26), 'Diamond Fruit', regrow(12)),
         makeFruit(new Vector3(-0.12, 0.4, 0.26), 'Diamond Fruit', regrow(12)),
         makeFruit(new Vector3(0.25, 0.66, 0.24), 'Diamond Fruit', regrow(12)),
+      ];
+    }
+
+    if (cropId === 'rainbow-fruit') {
+      return [
+        makeFruit(new Vector3(0.3, 0.46, 0.08), 'Rainbow Fruit', regrow(12)),
+        makeFruit(new Vector3(-0.26, 0.58, -0.12), 'Rainbow Fruit', regrow(12)),
+        makeFruit(new Vector3(0.06, 0.72, -0.26), 'Rainbow Fruit', regrow(12)),
+        makeFruit(new Vector3(-0.12, 0.4, 0.26), 'Rainbow Fruit', regrow(12)),
+        makeFruit(new Vector3(0.25, 0.66, 0.24), 'Rainbow Fruit', regrow(12)),
       ];
     }
 
@@ -10657,6 +10712,11 @@ export class Game {
       crystalBerry: new MeshStandardMaterial({ color: 0x86eaff, emissive: 0x1e7fa0, emissiveIntensity: 0.28, roughness: 0.22, metalness: 0.12 }),
       goldenCrystalBerry: new MeshStandardMaterial({ color: 0xdba32b, emissive: 0x6f4200, emissiveIntensity: 0.28, roughness: 0.18, metalness: 0.82 }),
       diamond: new MeshStandardMaterial({ color: 0x57c8ff, emissive: 0x1479ad, emissiveIntensity: 0.34, roughness: 0.16, metalness: 0.22 }),
+      rainbowFruitRed: new MeshStandardMaterial({ color: 0xf04444, emissive: 0x4a0808, emissiveIntensity: 0.1, roughness: 0.46 }),
+      rainbowFruitOrange: new MeshStandardMaterial({ color: 0xff8c32, emissive: 0x4f2300, emissiveIntensity: 0.1, roughness: 0.46 }),
+      rainbowFruitYellow: new MeshStandardMaterial({ color: 0xffdf4a, emissive: 0x4f4300, emissiveIntensity: 0.1, roughness: 0.46 }),
+      rainbowFruitGreen: new MeshStandardMaterial({ color: 0x42d76a, emissive: 0x083d19, emissiveIntensity: 0.1, roughness: 0.46 }),
+      rainbowFruitBlue: new MeshStandardMaterial({ color: 0x4b8dff, emissive: 0x0a1d59, emissiveIntensity: 0.1, roughness: 0.46 }),
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
       pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
       potato: new MeshStandardMaterial({ color: 0xa97743, roughness: 0.9 }),
@@ -11054,6 +11114,24 @@ export class Game {
         glint.scale.set(0.48, 0.82, 0.48);
         glint.castShadow = true;
         plant.root.add(glint);
+      } else if (fruitState.cropId === 'rainbow-fruit') {
+        fruit = new Mesh(new SphereGeometry(0.072, 16, 10), materials.rainbowFruitYellow);
+        fruit.scale.set(1.08, 0.96, 1.02);
+        const rainbowMaterials = [
+          materials.rainbowFruitRed,
+          materials.rainbowFruitOrange,
+          materials.rainbowFruitYellow,
+          materials.rainbowFruitGreen,
+          materials.rainbowFruitBlue,
+        ];
+        rainbowMaterials.forEach((material, bandIndex) => {
+          const band = new Mesh(new SphereGeometry(0.032, 8, 6), material);
+          band.name = 'Chapter 11 rainbow fruit color fade bead';
+          band.position.copy(fruitState.offset).add(new Vector3(-0.074 + bandIndex * 0.037, 0.01 + Math.sin(bandIndex * 0.9) * 0.014, 0.047));
+          band.scale.set(0.92, 0.78, 0.58);
+          band.castShadow = true;
+          plant.root.add(band);
+        });
       } else {
         fruit = new Mesh(
           new SphereGeometry(fruitState.golden ? 0.062 : 0.052, 12, 8),
@@ -11139,6 +11217,7 @@ export class Game {
       case 'banana':
         return 0.95;
       case 'gold-fruit':
+      case 'rainbow-fruit':
         return 0.82;
       case 'peach':
       case 'apple':
@@ -11162,6 +11241,7 @@ export class Game {
       case 'raspberry':
       case 'blueberry':
       case 'diamond':
+      case 'rainbow-fruit':
       case 'strawberry':
       case 'tomato':
         return 0.64;
@@ -11201,6 +11281,7 @@ export class Game {
       case 'banana':
         return 0.46;
       case 'gold-fruit':
+      case 'rainbow-fruit':
         return 0.42;
       case 'peach':
       case 'apple':
@@ -11224,6 +11305,7 @@ export class Game {
       case 'raspberry':
       case 'blueberry':
       case 'diamond':
+      case 'rainbow-fruit':
       case 'strawberry':
       case 'tomato':
         return 0.36;
@@ -11608,6 +11690,7 @@ export class Game {
       || config.cropId === 'giant-blackberry'
       || config.cropId === 'giant-raspberry'
       || config.cropId === 'diamond'
+      || config.cropId === 'rainbow-fruit'
       || config.cropId === 'tomato'
     ) {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
@@ -11619,6 +11702,8 @@ export class Game {
           ? 0x1f6d58
           : config.cropId === 'diamond'
             ? 0x245f72
+            : config.cropId === 'rainbow-fruit'
+              ? 0x2f6f42
             : config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x2d7f33 : 0x1f5f2d,
         roughness: 0.88,
       });
@@ -11627,6 +11712,8 @@ export class Game {
           ? 0x164b45
           : config.cropId === 'diamond'
             ? 0x163e4f
+            : config.cropId === 'rainbow-fruit'
+              ? 0x1d5234
             : config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x1f5f29 : 0x174521,
         roughness: 0.9,
       });
