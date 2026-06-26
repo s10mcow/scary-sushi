@@ -279,6 +279,8 @@ function updateForwardWanderer(
 
   let localX = Number(object.userData.localX);
   let localZ = Number(object.userData.localZ);
+  const previousX = localX;
+  const previousZ = localZ;
   let heading = Number(object.userData.heading);
   let turnTimer = Math.max(0, Number(object.userData.turnTimer) - deltaSeconds);
   let pauseTimer = Math.max(0, Number(object.userData.pauseTimer) - deltaSeconds);
@@ -304,6 +306,9 @@ function updateForwardWanderer(
     localX += forward.x * speed * deltaSeconds;
     localZ += forward.z * speed * deltaSeconds;
     moving = deltaSeconds > 0.001;
+    if (moving) {
+      heading = rotationYForPositiveX(localX - previousX, localZ - previousZ);
+    }
   }
 
   object.userData.localX = localX;
@@ -352,10 +357,10 @@ function createJackalope(localX: number, localZ: number, seed: number): Group {
   addSphere(jackalope, 'Small jackalope pale belly', [0.03, 0.52, -0.01], [0.43, 0.2, 0.2], magicalDeerBellyMaterial);
   addSphere(jackalope, 'Small jackalope head with deer muzzle', [0.55, 0.82, 0], [0.25, 0.22, 0.2], magicalDeerBodyMaterial);
   addSphere(jackalope, 'Small jackalope pale muzzle', [0.77, 0.78, 0], [0.12, 0.08, 0.09], magicalDeerBellyMaterial);
-  addSphere(jackalope, 'Small jackalope left visible eye', [0.74, 0.9, -0.08], [0.058, 0.058, 0.058], magicalDeerEyeMaterial);
-  addSphere(jackalope, 'Small jackalope right visible eye', [0.74, 0.9, 0.08], [0.058, 0.058, 0.058], magicalDeerEyeMaterial);
-  addSphere(jackalope, 'Small jackalope left eye shine', [0.775, 0.918, -0.103], [0.018, 0.018, 0.018], magicalDeerBellyMaterial);
-  addSphere(jackalope, 'Small jackalope right eye shine', [0.775, 0.918, 0.103], [0.018, 0.018, 0.018], magicalDeerBellyMaterial);
+  addSphere(jackalope, 'Small jackalope large left visible eye', [0.78, 0.91, -0.085], [0.07, 0.07, 0.07], magicalDeerEyeMaterial);
+  addSphere(jackalope, 'Small jackalope large right visible eye', [0.78, 0.91, 0.085], [0.07, 0.07, 0.07], magicalDeerEyeMaterial);
+  addSphere(jackalope, 'Small jackalope left eye shine', [0.823, 0.934, -0.111], [0.019, 0.019, 0.019], magicalDeerBellyMaterial);
+  addSphere(jackalope, 'Small jackalope right eye shine', [0.823, 0.934, 0.111], [0.019, 0.019, 0.019], magicalDeerBellyMaterial);
   addSphere(jackalope, 'Small jackalope bunny tail', [-0.55, 0.64, 0], [0.13, 0.13, 0.13], magicalDeerBellyMaterial);
 
   for (const [index, z] of [-0.15, 0.15].entries()) {
@@ -398,21 +403,30 @@ function addMagicalFoxTail(root: Group, sideOffset: number, lift: number, fan: n
   const tailRoot = new Group();
   tailRoot.name = 'Magical fox connected five-tail plume';
   tailRoot.position.set(-0.72, 0.76 + lift, sideOffset);
-  tailRoot.rotation.y = fan;
-  tailRoot.rotation.z = -0.58;
   root.add(tailRoot);
 
   const tail = new Mesh(new SphereGeometry(1, 16, 10), magicalFoxFurMaterial);
-  tail.name = 'Magical fox flowing connected orange tail';
+  tail.name = 'Magical fox flowing orange tail';
   tail.position.set(0, 0, 0);
   tail.scale.set(0.16, 0.18, 0.72);
+  tail.rotation.y = fan;
+  tail.rotation.z = -0.58;
   tail.castShadow = true;
   tailRoot.add(tail);
 
+  addCylinderBetween(
+    tailRoot,
+    'Magical fox orange fur bridge connecting white cap',
+    new Vector3(-0.13, 0.13, Math.sin(fan) * 0.12),
+    new Vector3(-0.31, 0.31, Math.sin(fan) * 0.31),
+    0.075,
+    magicalFoxFurMaterial,
+  );
+
   const tip = new Mesh(new SphereGeometry(1, 12, 8), magicalFoxTailTipMaterial);
-  tip.name = 'Magical fox connected white tail cap';
-  tip.position.set(0, 0, 0.58);
-  tip.scale.set(0.135, 0.15, 0.24);
+  tip.name = 'Magical fox connected glowing white tail tip';
+  tip.position.set(-0.32, 0.32, Math.sin(fan) * 0.34);
+  tip.scale.set(0.13, 0.12, 0.2);
   tip.castShadow = true;
   tailRoot.add(tip);
 }
@@ -430,10 +444,10 @@ function createMagicalFox(localX: number, localZ: number, seed: number): Group {
   addSphere(fox, 'Magical fox white chest', [0.22, 0.7, 0], [0.26, 0.22, 0.18], magicalFoxWhiteFurMaterial);
   addSphere(fox, 'Magical fox sharp head', [0.68, 0.9, 0], [0.24, 0.18, 0.17], magicalFoxFurMaterial);
   addPointedCone(fox, 'Magical fox pointy muzzle', [0.91, 0.86, 0], 0.12, 0.28, magicalFoxWhiteFurMaterial, [0, 0, -Math.PI / 2]);
-  addSphere(fox, 'Magical fox large black left eye', [0.84, 0.96, -0.08], [0.065, 0.065, 0.065], magicalFoxEyeMaterial);
-  addSphere(fox, 'Magical fox large black right eye', [0.84, 0.96, 0.08], [0.065, 0.065, 0.065], magicalFoxEyeMaterial);
-  addSphere(fox, 'Magical fox left eye small shine', [0.878, 0.982, -0.104], [0.011, 0.011, 0.011], magicalFoxWhiteFurMaterial);
-  addSphere(fox, 'Magical fox right eye small shine', [0.878, 0.982, 0.104], [0.011, 0.011, 0.011], magicalFoxWhiteFurMaterial);
+  addSphere(fox, 'Magical fox large black left eye', [0.88, 0.965, -0.09], [0.075, 0.075, 0.075], magicalFoxEyeMaterial);
+  addSphere(fox, 'Magical fox large black right eye', [0.88, 0.965, 0.09], [0.075, 0.075, 0.075], magicalFoxEyeMaterial);
+  addSphere(fox, 'Magical fox left eye small shine', [0.925, 0.993, -0.12], [0.013, 0.013, 0.013], magicalFoxWhiteFurMaterial);
+  addSphere(fox, 'Magical fox right eye small shine', [0.925, 0.993, 0.12], [0.013, 0.013, 0.013], magicalFoxWhiteFurMaterial);
 
   addSphere(fox, 'Magical fox left ear base connected to head', [0.56, 1.03, -0.11], [0.085, 0.07, 0.07], magicalFoxFurMaterial);
   addSphere(fox, 'Magical fox right ear base connected to head', [0.56, 1.03, 0.11], [0.085, 0.07, 0.07], magicalFoxFurMaterial);
@@ -490,8 +504,8 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
 
   addSphere(dragon, 'Chinese dragon whiskered head', [0.55, 0.04, 0], [0.42, 0.3, 0.27], dragonScaleMaterial);
   addSphere(dragon, 'Chinese dragon golden muzzle', [0.9, 0, 0], [0.24, 0.16, 0.16], dragonBellyMaterial);
-  addSphere(dragon, 'Chinese dragon left black eye', [0.82, 0.14, -0.15], [0.05, 0.05, 0.05], dragonEyeMaterial);
-  addSphere(dragon, 'Chinese dragon right black eye', [0.82, 0.14, 0.15], [0.05, 0.05, 0.05], dragonEyeMaterial);
+  addSphere(dragon, 'Chinese dragon large left black eye', [0.86, 0.15, -0.15], [0.075, 0.075, 0.075], dragonEyeMaterial);
+  addSphere(dragon, 'Chinese dragon large right black eye', [0.86, 0.15, 0.15], [0.075, 0.075, 0.075], dragonEyeMaterial);
   addPointedCone(dragon, 'Chinese dragon left horn', [0.35, 0.42, -0.12], 0.055, 0.36, dragonHornMaterial, [-0.34, 0, 0.22]);
   addPointedCone(dragon, 'Chinese dragon right horn', [0.35, 0.42, 0.12], 0.055, 0.36, dragonHornMaterial, [0.34, 0, 0.22]);
   addCylinderBetween(dragon, 'Chinese dragon left whisker', new Vector3(0.88, 0.02, -0.14), new Vector3(1.3, -0.08, -0.46), 0.01, dragonHornMaterial);
