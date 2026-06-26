@@ -248,6 +248,7 @@ export type ChapterElevenEquipmentId =
   | 'fertilizer'
   | 'cheap-auto-harvester'
   | 'auto-harvester'
+  | 'organizer-machine'
   | 'decoration-fence'
   | 'decoration-light-post';
 
