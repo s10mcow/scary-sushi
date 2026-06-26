@@ -1154,7 +1154,7 @@ const CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS: Array<{
   {
     id: 'dinosaur-egg',
     label: 'Dinosaur Egg',
-    cost: 5000,
+    cost: 15000,
     petType: 'dinosaur',
     description: 'The animal does: tramples ripe fruit into your inventory.',
   },
@@ -1175,7 +1175,7 @@ const CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS: Array<{
   {
     id: 'phoenix-egg',
     label: 'Phoenix Egg',
-    cost: 15000,
+    cost: 10000,
     petType: 'phoenix',
     description: 'The animal does: protects nearby plants from snow and gives night light so plants grow faster.',
   },
