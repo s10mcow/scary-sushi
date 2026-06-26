@@ -9443,6 +9443,26 @@ export class Game {
     }
   }
 
+  private createChapterElevenGoldMaterial(): MeshStandardMaterial {
+    return new MeshStandardMaterial({
+      color: 0xffd83d,
+      emissive: 0xffb800,
+      emissiveIntensity: 0.34,
+      roughness: 0.14,
+      metalness: 0.9,
+    });
+  }
+
+  private createChapterElevenDarkGoldMaterial(): MeshStandardMaterial {
+    return new MeshStandardMaterial({
+      color: 0xb98212,
+      emissive: 0x5f3900,
+      emissiveIntensity: 0.16,
+      roughness: 0.28,
+      metalness: 0.72,
+    });
+  }
+
   private createChapterElevenMutationMaterial(mutation: ChapterElevenMutationId): MeshStandardMaterial {
     switch (mutation) {
       case 'cosmic':
@@ -9463,7 +9483,7 @@ export class Game {
       case 'magical':
         return new MeshStandardMaterial({ color: 0xff91e7, emissive: 0x8b39ff, emissiveIntensity: 0.42, roughness: 0.28, metalness: 0.12 });
       case 'golden':
-        return new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x6f4200, emissiveIntensity: 0.34, roughness: 0.22, metalness: 0.78 });
+        return this.createChapterElevenGoldMaterial();
       case 'large':
       case 'giant':
       case 'basic':
@@ -9524,7 +9544,7 @@ export class Game {
     const displayCropId = mutationPrefix?.baseCropId ?? cropId;
     const golden = displayCropId.startsWith('golden-');
     const baseCrop = (golden ? displayCropId.replace('golden-', '') : displayCropId) as ChapterElevenCropId;
-    const goldMaterial = new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.2, roughness: 0.22, metalness: 0.78 });
+    const goldMaterial = this.createChapterElevenGoldMaterial();
     const mutationMaterial = mutationPrefix ? this.createChapterElevenMutationMaterial(mutationPrefix.mutation) : null;
     const materialFor = (color: number, roughness = 0.7) => mutationMaterial
       ? mutationMaterial
@@ -9833,7 +9853,10 @@ export class Game {
             : baseCrop === 'gold-fruit'
               ? 0xf1c84b
               : 0x76823c;
-      const fruit = new Mesh(new SphereGeometry(baseCrop === 'olive' ? 0.085 : 0.15, 20, 14), materialFor(fruitColor, baseCrop === 'lemon' || baseCrop === 'lime' ? 0.58 : 0.64));
+      const fruitMaterial = baseCrop === 'gold-fruit' && !mutationMaterial
+        ? goldMaterial
+        : materialFor(fruitColor, baseCrop === 'lemon' || baseCrop === 'lime' ? 0.58 : 0.64);
+      const fruit = new Mesh(new SphereGeometry(baseCrop === 'olive' ? 0.085 : 0.15, 20, 14), fruitMaterial);
       fruit.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
       fruit.position.set(-0.03, 0.12, -0.02);
       fruit.scale.set(
@@ -10742,12 +10765,12 @@ export class Game {
 
     const materials = {
       blackberry: new MeshStandardMaterial({ color: 0x1b0c26, roughness: 0.56, metalness: 0.02 }),
-      goldenBlackberry: new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.18, roughness: 0.22, metalness: 0.78 }),
+      goldenBlackberry: this.createChapterElevenGoldMaterial(),
       strawberry: new MeshStandardMaterial({ color: 0xd73535, roughness: 0.62 }),
       raspberry: new MeshStandardMaterial({ color: 0xc93668, roughness: 0.62 }),
       blueberry: new MeshStandardMaterial({ color: 0x2b5ab4, roughness: 0.62 }),
       crystalBerry: new MeshStandardMaterial({ color: 0x86eaff, emissive: 0x1e7fa0, emissiveIntensity: 0.28, roughness: 0.22, metalness: 0.12 }),
-      goldenCrystalBerry: new MeshStandardMaterial({ color: 0xdba32b, emissive: 0x6f4200, emissiveIntensity: 0.28, roughness: 0.18, metalness: 0.82 }),
+      goldenCrystalBerry: this.createChapterElevenGoldMaterial(),
       diamond: new MeshStandardMaterial({ color: 0x57c8ff, emissive: 0x1479ad, emissiveIntensity: 0.34, roughness: 0.16, metalness: 0.22 }),
       rainbowFruitRed: new MeshStandardMaterial({ color: 0xf04444, emissive: 0x4a0808, emissiveIntensity: 0.1, roughness: 0.46 }),
       rainbowFruitOrange: new MeshStandardMaterial({ color: 0xff8c32, emissive: 0x4f2300, emissiveIntensity: 0.1, roughness: 0.46 }),
@@ -10775,7 +10798,7 @@ export class Game {
       pineappleMark: new MeshStandardMaterial({ color: 0x7d5524, roughness: 0.78 }),
       pineappleLeaf: new MeshStandardMaterial({ color: 0x2f8f3b, roughness: 0.82 }),
       peach: new MeshStandardMaterial({ color: 0xf2a36f, roughness: 0.64 }),
-      goldenPeach: new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.16, roughness: 0.22, metalness: 0.78 }),
+      goldenPeach: this.createChapterElevenGoldMaterial(),
       apple: new MeshStandardMaterial({ color: 0xd7392e, roughness: 0.58 }),
       appleDark: new MeshStandardMaterial({ color: 0x9f241e, roughness: 0.62 }),
       coconut: new MeshStandardMaterial({ color: 0x14100d, roughness: 0.86 }),
@@ -10786,7 +10809,7 @@ export class Game {
       limeStripe: new MeshStandardMaterial({ color: 0xf0e15a, roughness: 0.62 }),
       banana: new MeshStandardMaterial({ color: 0xe6c72f, roughness: 0.62 }),
       bananaTip: new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.8 }),
-      genericGold: new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.18, roughness: 0.2, metalness: 0.82 }),
+      genericGold: this.createChapterElevenGoldMaterial(),
       iceShell: new MeshStandardMaterial({ color: 0xc8f2ff, emissive: 0x5fa5c8, emissiveIntensity: 0.22, transparent: true, opacity: 0.62, roughness: 0.18, metalness: 0.04 }),
       stem: new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }),
       strawberryLeaf: new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }),
@@ -11498,13 +11521,9 @@ export class Game {
 
     if (config.cropId === 'carrot') {
       const carrotLeafMaterial = new MeshStandardMaterial({ color: 0x2f7d35, roughness: 0.86 });
-      const carrot = new Mesh(new ConeGeometry(0.13, 0.58, 16), new MeshStandardMaterial({
-        color: plant.golden ? 0xd49a22 : 0xe87920,
-        emissive: plant.golden ? 0x5f3900 : 0x000000,
-        emissiveIntensity: plant.golden ? 0.16 : 0,
-        roughness: plant.golden ? 0.22 : 0.74,
-        metalness: plant.golden ? 0.78 : 0,
-      }));
+      const carrot = new Mesh(new ConeGeometry(0.13, 0.58, 16), plant.golden
+        ? this.createChapterElevenGoldMaterial()
+        : new MeshStandardMaterial({ color: 0xe87920, roughness: 0.74 }));
       carrot.name = 'Chapter 11 mature carrot crop';
       carrot.position.set(0, 0.28, 0);
       carrot.rotation.z = Math.PI;
@@ -11641,14 +11660,12 @@ export class Game {
     if (config.cropId === 'sunflower') {
       const stalkMaterial = new MeshStandardMaterial({ color: 0x3f8f34, roughness: 0.86 });
       const leafMaterial = new MeshStandardMaterial({ color: 0x4f9f3b, roughness: 0.84 });
-      const petalMaterial = new MeshStandardMaterial({
-        color: plant.golden ? 0xd49a22 : 0xf5c431,
-        emissive: plant.golden ? 0x5f3900 : 0x000000,
-        emissiveIntensity: plant.golden ? 0.14 : 0,
-        roughness: plant.golden ? 0.22 : 0.62,
-        metalness: plant.golden ? 0.78 : 0,
-      });
-      const centerMaterial = new MeshStandardMaterial({ color: plant.golden ? 0x8d641b : 0x4b2b17, roughness: 0.72 });
+      const petalMaterial = plant.golden
+        ? this.createChapterElevenGoldMaterial()
+        : new MeshStandardMaterial({ color: 0xf5c431, roughness: 0.62 });
+      const centerMaterial = plant.golden
+        ? this.createChapterElevenDarkGoldMaterial()
+        : new MeshStandardMaterial({ color: 0x4b2b17, roughness: 0.72 });
       const stalk = new Mesh(new CylinderGeometry(0.055, 0.075, 1.72, 12), stalkMaterial);
       stalk.name = 'Chapter 11 mature sunflower tall green stalk';
       stalk.position.y = 0.9;
@@ -11687,18 +11704,12 @@ export class Game {
     }
 
     if (config.cropId === 'bamboo') {
-      const stalkMaterial = new MeshStandardMaterial({
-        color: plant.golden ? 0xd49a22 : 0x5cae3e,
-        emissive: plant.golden ? 0x5f3900 : 0x000000,
-        emissiveIntensity: plant.golden ? 0.14 : 0,
-        roughness: plant.golden ? 0.22 : 0.68,
-        metalness: plant.golden ? 0.78 : 0,
-      });
-      const nodeMaterial = new MeshStandardMaterial({
-        color: plant.golden ? 0xa77f24 : 0x38762b,
-        roughness: 0.78,
-        metalness: plant.golden ? 0.14 : 0,
-      });
+      const stalkMaterial = plant.golden
+        ? this.createChapterElevenGoldMaterial()
+        : new MeshStandardMaterial({ color: 0x5cae3e, roughness: 0.68 });
+      const nodeMaterial = plant.golden
+        ? this.createChapterElevenDarkGoldMaterial()
+        : new MeshStandardMaterial({ color: 0x38762b, roughness: 0.78 });
       const leafMaterial = new MeshStandardMaterial({ color: 0x3c8c35, roughness: 0.86 });
       const stalks: Array<[number, number, number, number, number]> = [
         [0, 0, 0, 0.11, 2.65],
@@ -12149,13 +12160,9 @@ export class Game {
 
     if (config.cropId === 'mushroom') {
       const stemMaterial = new MeshStandardMaterial({ color: 0xf1dec7, roughness: 0.72 });
-      const capMaterial = new MeshStandardMaterial({
-        color: plant.golden ? 0xd49a22 : 0xb9433f,
-        emissive: plant.golden ? 0x5f3900 : 0x000000,
-        emissiveIntensity: plant.golden ? 0.16 : 0,
-        roughness: plant.golden ? 0.22 : 0.68,
-        metalness: plant.golden ? 0.78 : 0,
-      });
+      const capMaterial = plant.golden
+        ? this.createChapterElevenGoldMaterial()
+        : new MeshStandardMaterial({ color: 0xb9433f, roughness: 0.68 });
       const spotMaterial = new MeshStandardMaterial({ color: 0xf8f1df, roughness: 0.62 });
       const stem = new Mesh(new CylinderGeometry(0.4, 0.64, 2.7, 16), stemMaterial);
       stem.name = 'Chapter 11 huge mature mushroom stem';
@@ -12511,22 +12518,17 @@ export class Game {
       return;
     }
 
-    const nutMaterial = new MeshStandardMaterial({
-      color: plant.golden ? 0xd49a22 : 0xc6a16f,
-      emissive: plant.golden ? 0x5f3900 : 0x000000,
-      emissiveIntensity: plant.golden ? 0.16 : 0,
-      roughness: plant.golden ? 0.22 : 0.78,
-      metalness: plant.golden ? 0.8 : 0.02,
-    });
+    const nutMaterial = plant.golden
+      ? this.createChapterElevenGoldMaterial()
+      : new MeshStandardMaterial({ color: 0xc6a16f, roughness: 0.78, metalness: 0.02 });
     const nut = new Mesh(new SphereGeometry(0.36, 24, 16), nutMaterial);
     nut.name = plant.golden ? 'Chapter 11 mature golden nut crop' : 'Chapter 11 mature big nut crop';
     nut.position.y = 0.38;
     nut.scale.set(1.12, 0.86, 0.96);
     nut.castShadow = true;
-    const seam = new Mesh(new TorusGeometry(0.29, 0.014, 8, 32), new MeshStandardMaterial({
-      color: plant.golden ? 0x8f6818 : 0x7b5632,
-      roughness: 0.8,
-    }));
+    const seam = new Mesh(new TorusGeometry(0.29, 0.014, 8, 32), plant.golden
+      ? this.createChapterElevenDarkGoldMaterial()
+      : new MeshStandardMaterial({ color: 0x7b5632, roughness: 0.8 }));
     seam.position.y = 0.38;
     seam.rotation.set(Math.PI / 2, 0.12, 0.08);
     plant.root.add(nut, seam);
