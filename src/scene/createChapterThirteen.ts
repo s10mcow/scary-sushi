@@ -1,6 +1,7 @@
 import {
   BoxGeometry,
   CatmullRomCurve3,
+  ConeGeometry,
   CylinderGeometry,
   DoubleSide,
   Group,
@@ -33,7 +34,8 @@ const CHUNK_VIEW_RADIUS = 2;
 const TREE_SPACING = 32;
 const TREE_SKIP_CHANCE = 0.38;
 const RAINBOW_CHANCE = 0.12;
-const JACKALOPE_CHANCE = 0.16;
+const JACKALOPE_CHANCE = 0.36;
+const MAGICAL_FOX_CHANCE = 0.12;
 
 const grassMaterial = new MeshStandardMaterial({ color: 0xf3a1ca, roughness: 0.92 });
 const grassPatchMaterial = new MeshStandardMaterial({ color: 0xf8bad7, roughness: 0.96 });
@@ -53,6 +55,10 @@ const magicalDeerBellyMaterial = new MeshStandardMaterial({ color: 0xffe2d2, rou
 const magicalDeerEarMaterial = new MeshStandardMaterial({ color: 0xffb7d3, roughness: 0.8 });
 const magicalDeerAntlerMaterial = new MeshStandardMaterial({ color: 0xfff4c8, roughness: 0.5, emissive: 0xffd38a, emissiveIntensity: 0.18 });
 const magicalDeerEyeMaterial = new MeshBasicMaterial({ color: 0x25131b });
+const magicalFoxFurMaterial = new MeshStandardMaterial({ color: 0xff8b38, roughness: 0.72, emissive: 0x7d2400, emissiveIntensity: 0.08 });
+const magicalFoxWhiteFurMaterial = new MeshStandardMaterial({ color: 0xffefe0, roughness: 0.82 });
+const magicalFoxTailTipMaterial = new MeshStandardMaterial({ color: 0xfff8d8, roughness: 0.5, emissive: 0xffd36f, emissiveIntensity: 0.18 });
+const magicalFoxEyeMaterial = new MeshBasicMaterial({ color: 0x1c1111 });
 const rainbowMaterials = [
   0xff4d5e,
   0xff9f1c,
@@ -66,6 +72,10 @@ const rainbowMaterials = [
 function hash2d(x: number, z: number, salt = 0): number {
   const value = Math.sin(x * 127.1 + z * 311.7 + salt * 74.7) * 43758.5453123;
   return value - Math.floor(value);
+}
+
+function rotationYForPositiveX(deltaX: number, deltaZ: number): number {
+  return Math.atan2(-deltaZ, deltaX);
 }
 
 function chunkKey(chunkX: number, chunkZ: number): string {
@@ -227,6 +237,17 @@ function addCylinderBetween(root: Group, name: string, start: Vector3, end: Vect
   return mesh;
 }
 
+function addPointedCone(root: Group, name: string, position: [number, number, number], radius: number, height: number, material: MeshStandardMaterial, rotation: [number, number, number]): Mesh {
+  const cone = new Mesh(new ConeGeometry(radius, height, 10), material);
+  cone.name = name;
+  cone.position.set(position[0], position[1], position[2]);
+  cone.rotation.set(rotation[0], rotation[1], rotation[2]);
+  cone.castShadow = true;
+  cone.receiveShadow = true;
+  root.add(cone);
+  return cone;
+}
+
 function addJackalopeAntler(root: Group, side: -1 | 1): void {
   const base = new Vector3(0.51, 1.12, side * 0.095);
   const tip = new Vector3(0.58, 1.46, side * 0.13);
@@ -299,7 +320,7 @@ function animateJackalopes(root: Group, timeSeconds: number): void {
     const nextX = baseX + Math.sin(phase + 0.08) * 4.2;
     const nextZ = baseZ + Math.cos((phase + 0.08) * 0.82) * 3.6;
     object.position.set(baseX + walkX, Math.max(0, Math.sin(timeSeconds * speed * 8 + seed) * 0.035), baseZ + walkZ);
-    object.rotation.y = Math.atan2(nextX - object.position.x, nextZ - object.position.z);
+    object.rotation.y = rotationYForPositiveX(nextX - object.position.x, nextZ - object.position.z);
 
     object.children.forEach((child) => {
       if (!child.name.includes('leg')) {
@@ -307,6 +328,88 @@ function animateJackalopes(root: Group, timeSeconds: number): void {
       }
       const legPhase = Number(child.userData.legPhase ?? 0);
       child.rotation.z = Math.sin(timeSeconds * speed * 12 + legPhase) * 0.18;
+    });
+  });
+}
+
+function addMagicalFoxTail(root: Group, sideOffset: number, lift: number, fan: number): void {
+  const tail = new Mesh(new SphereGeometry(1, 16, 10), magicalFoxFurMaterial);
+  tail.name = 'Magical fox flowing orange tail';
+  tail.position.set(-0.72, 0.76 + lift, sideOffset);
+  tail.scale.set(0.16, 0.18, 0.72);
+  tail.rotation.y = fan;
+  tail.rotation.z = -0.58;
+  tail.castShadow = true;
+  root.add(tail);
+
+  const tip = new Mesh(new SphereGeometry(1, 12, 8), magicalFoxTailTipMaterial);
+  tip.name = 'Magical fox glowing white tail tip';
+  tip.position.set(-1.04, 1.08 + lift, sideOffset + Math.sin(fan) * 0.34);
+  tip.scale.set(0.13, 0.12, 0.2);
+  tip.castShadow = true;
+  root.add(tip);
+}
+
+function createMagicalFox(localX: number, localZ: number, seed: number): Group {
+  const fox = new Group();
+  fox.name = "Maggie's World magical five-tailed fox";
+  fox.userData.baseX = localX;
+  fox.userData.baseZ = localZ;
+  fox.userData.seed = seed;
+  fox.position.set(localX, 0, localZ);
+  fox.rotation.y = hash2d(seed, seed, 20) * Math.PI * 2;
+
+  addSphere(fox, 'Magical fox slim pointed body', [0, 0.66, 0], [0.64, 0.27, 0.22], magicalFoxFurMaterial);
+  addSphere(fox, 'Magical fox white chest', [0.22, 0.7, 0], [0.26, 0.22, 0.18], magicalFoxWhiteFurMaterial);
+  addSphere(fox, 'Magical fox sharp head', [0.68, 0.9, 0], [0.24, 0.18, 0.17], magicalFoxFurMaterial);
+  addPointedCone(fox, 'Magical fox pointy muzzle', [0.91, 0.86, 0], 0.12, 0.28, magicalFoxWhiteFurMaterial, [0, 0, -Math.PI / 2]);
+  addSphere(fox, 'Magical fox left clear eye', [0.78, 0.96, -0.085], [0.045, 0.045, 0.045], magicalFoxEyeMaterial);
+  addSphere(fox, 'Magical fox right clear eye', [0.78, 0.96, 0.085], [0.045, 0.045, 0.045], magicalFoxEyeMaterial);
+  addSphere(fox, 'Magical fox left eye shine', [0.805, 0.976, -0.106], [0.014, 0.014, 0.014], magicalFoxWhiteFurMaterial);
+  addSphere(fox, 'Magical fox right eye shine', [0.805, 0.976, 0.106], [0.014, 0.014, 0.014], magicalFoxWhiteFurMaterial);
+
+  addPointedCone(fox, 'Magical fox tall pointed ear', [0.58, 1.16, -0.11], 0.08, 0.32, magicalFoxFurMaterial, [0.12, 0, -0.18]);
+  addPointedCone(fox, 'Magical fox tall pointed ear', [0.58, 1.16, 0.11], 0.08, 0.32, magicalFoxFurMaterial, [-0.12, 0, -0.18]);
+
+  for (const [index, z] of [-0.14, 0.14].entries()) {
+    const rearLeg = addBox(fox, 'Magical fox back leg', [0.065, 0.42, 0.06], [-0.3, 0.28, z], magicalFoxFurMaterial);
+    rearLeg.userData.legPhase = index === 0 ? 0 : Math.PI;
+    const frontLeg = addBox(fox, 'Magical fox front leg', [0.055, 0.4, 0.055], [0.34, 0.27, z], magicalFoxFurMaterial);
+    frontLeg.userData.legPhase = index === 0 ? Math.PI : 0;
+  }
+
+  [-0.48, -0.24, 0, 0.24, 0.48].forEach((offset, index) => {
+    addMagicalFoxTail(fox, offset, index === 2 ? 0.1 : 0, offset * 0.7);
+  });
+
+  return fox;
+}
+
+function animateMagicalFoxes(root: Group, timeSeconds: number): void {
+  root.traverse((object) => {
+    if (!(object instanceof Group) || object.name !== "Maggie's World magical five-tailed fox") {
+      return;
+    }
+    const seed = Number(object.userData.seed ?? 0);
+    const baseX = Number(object.userData.baseX ?? object.position.x);
+    const baseZ = Number(object.userData.baseZ ?? object.position.z);
+    const speed = 0.18 + hash2d(seed, seed, 24) * 0.16;
+    const phase = timeSeconds * speed + seed * 0.07;
+    const walkX = Math.sin(phase * 0.9) * 5.8;
+    const walkZ = Math.cos(phase * 0.7) * 5;
+    const nextX = baseX + Math.sin((phase + 0.08) * 0.9) * 5.8;
+    const nextZ = baseZ + Math.cos((phase + 0.08) * 0.7) * 5;
+    object.position.set(baseX + walkX, Math.max(0, Math.sin(timeSeconds * speed * 8 + seed) * 0.026), baseZ + walkZ);
+    object.rotation.y = rotationYForPositiveX(nextX - object.position.x, nextZ - object.position.z);
+
+    object.children.forEach((child, index) => {
+      if (child.name.includes('leg')) {
+        const legPhase = Number(child.userData.legPhase ?? 0);
+        child.rotation.z = Math.sin(timeSeconds * speed * 14 + legPhase) * 0.18;
+      }
+      if (child.name.includes('tail')) {
+        child.rotation.x = Math.sin(timeSeconds * 1.3 + seed + index) * 0.08;
+      }
     });
   });
 }
@@ -347,19 +450,18 @@ function createChunk(chunkX: number, chunkZ: number): Group {
     chunk.add(createButterfly(butterflyX, butterflyZ, seed));
   }
 
-  const forcedOriginJackalope = chunkX === 0 && chunkZ === 0;
-  if (forcedOriginJackalope || hash2d(chunkX, chunkZ, 120) < JACKALOPE_CHANCE) {
-    const count = forcedOriginJackalope ? 2 : 1;
-    for (let index = 0; index < count; index += 1) {
-      const seed = chunkX * 613 + chunkZ * 769 + index * 101;
-      const jackalopeX = forcedOriginJackalope
-        ? 16 + index * 18
-        : 12 + hash2d(chunkX, chunkZ, 121 + index) * (CHUNK_SIZE - 24);
-      const jackalopeZ = forcedOriginJackalope
-        ? 20 + index * 12
-        : 12 + hash2d(chunkX, chunkZ, 131 + index) * (CHUNK_SIZE - 24);
-      chunk.add(createJackalope(jackalopeX, jackalopeZ, seed));
-    }
+  if (hash2d(chunkX, chunkZ, 120) < JACKALOPE_CHANCE) {
+    const seed = chunkX * 613 + chunkZ * 769;
+    const jackalopeX = 12 + hash2d(chunkX, chunkZ, 121) * (CHUNK_SIZE - 24);
+    const jackalopeZ = 12 + hash2d(chunkX, chunkZ, 131) * (CHUNK_SIZE - 24);
+    chunk.add(createJackalope(jackalopeX, jackalopeZ, seed));
+  }
+
+  if (hash2d(chunkX, chunkZ, 150) < MAGICAL_FOX_CHANCE) {
+    const seed = chunkX * 811 + chunkZ * 977;
+    const foxX = 14 + hash2d(chunkX, chunkZ, 151) * (CHUNK_SIZE - 28);
+    const foxZ = 14 + hash2d(chunkX, chunkZ, 161) * (CHUNK_SIZE - 28);
+    chunk.add(createMagicalFox(foxX, foxZ, seed));
   }
 
   const treePositions: Array<{ x: number; z: number; scale: number }> = [];
@@ -462,6 +564,7 @@ export function createChapterThirteen(): ChapterThirteenData {
       const timeSeconds = performance.now() / 1000;
       animateButterflies(chunkRoot, timeSeconds);
       animateJackalopes(chunkRoot, timeSeconds);
+      animateMagicalFoxes(chunkRoot, timeSeconds);
     },
     reset(): void {
       ensureChunks(spawn);
