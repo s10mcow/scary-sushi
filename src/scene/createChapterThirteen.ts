@@ -32,6 +32,7 @@ const CHUNK_SIZE = 96;
 const CHUNK_VIEW_RADIUS = 2;
 const TREE_SPACING = 32;
 const TREE_SKIP_CHANCE = 0.38;
+const RAINBOW_CHANCE = 0.12;
 
 const grassMaterial = new MeshStandardMaterial({ color: 0xf3a1ca, roughness: 0.92 });
 const grassPatchMaterial = new MeshStandardMaterial({ color: 0xf8bad7, roughness: 0.96 });
@@ -109,6 +110,7 @@ function createRainbowArc(localX: number, localZ: number, rotationY: number, sca
     const curve = new CatmullRomCurve3(points);
     const band = new Mesh(new TubeGeometry(curve, 34, 0.16 * scale, 8, false), material);
     band.name = "Maggie's World colored rainbow band";
+    band.raycast = () => undefined;
     rainbow.add(band);
   });
 
@@ -129,16 +131,19 @@ function createButterfly(localX: number, localZ: number, seed: number): Group {
   leftWing.name = 'Flat butterfly left wing';
   leftWing.position.x = -0.075;
   leftWing.rotation.y = -0.5;
+  leftWing.raycast = () => undefined;
   butterfly.add(leftWing);
 
   const rightWing = new Mesh(butterflyWingGeometry, material);
   rightWing.name = 'Flat butterfly right wing';
   rightWing.position.x = 0.075;
   rightWing.rotation.y = 0.5;
+  rightWing.raycast = () => undefined;
   butterfly.add(rightWing);
 
   const body = new Mesh(new BoxGeometry(0.035, 0.13, 0.035), new MeshBasicMaterial({ color: 0x3b2536, side: DoubleSide }));
   body.name = 'Flat butterfly body';
+  body.raycast = () => undefined;
   butterfly.add(body);
 
   return butterfly;
@@ -249,11 +254,13 @@ function createChunk(chunkX: number, chunkZ: number): Group {
     chunk.add(createGroundPatch(patchX, patchZ, width, depth));
   }
 
-  const rainbowX = 18 + hash2d(chunkX, chunkZ, 70) * (CHUNK_SIZE - 36);
-  const rainbowZ = 18 + hash2d(chunkX, chunkZ, 71) * (CHUNK_SIZE - 36);
-  const rainbowRotation = hash2d(chunkX, chunkZ, 72) * Math.PI * 2;
-  const rainbowScale = 0.86 + hash2d(chunkX, chunkZ, 73) * 0.32;
-  chunk.add(createRainbowArc(rainbowX, rainbowZ, rainbowRotation, rainbowScale));
+  if (hash2d(chunkX, chunkZ, 69) < RAINBOW_CHANCE) {
+    const rainbowX = 18 + hash2d(chunkX, chunkZ, 70) * (CHUNK_SIZE - 36);
+    const rainbowZ = 18 + hash2d(chunkX, chunkZ, 71) * (CHUNK_SIZE - 36);
+    const rainbowRotation = hash2d(chunkX, chunkZ, 72) * Math.PI * 2;
+    const rainbowScale = 0.86 + hash2d(chunkX, chunkZ, 73) * 0.32;
+    chunk.add(createRainbowArc(rainbowX, rainbowZ, rainbowRotation, rainbowScale));
+  }
 
   for (let index = 0; index < 7; index += 1) {
     const seed = chunkX * 1009 + chunkZ * 917 + index * 37;
@@ -281,7 +288,7 @@ function createChunk(chunkX: number, chunkZ: number): Group {
       treePositions.push({
         x,
         z,
-        scale: 0.82 + hash2d(chunkX * 23 + gridX, chunkZ * 23 + gridZ, 4) * 0.48,
+        scale: 1.18 + hash2d(chunkX * 23 + gridX, chunkZ * 23 + gridZ, 4) * 0.62,
       });
     }
   }
