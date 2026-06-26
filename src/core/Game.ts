@@ -380,6 +380,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 1800, section: 'expensive', maxStock: 1 },
   { id: 'olive-tree-seeds', label: 'Olive tree seeds', singularLabel: 'Olive tree seed', cost: 1800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
   { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 1800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'lime-tree-seeds', label: 'Lime tree seeds', singularLabel: 'Lime tree seed', cost: 13000, section: 'rare-expensive', maxStock: 1, normalOnly: true },
   { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 1800, section: 'rare-expensive', maxStock: 1, normalOnly: true },
   { id: 'golden-tree-seeds', label: 'Golden tree seeds', singularLabel: 'Golden tree seed', cost: 10000, section: 'rare-magical', maxStock: 1, normalOnly: true },
   { id: 'rainbow-fruit-seeds', label: 'Rainbow fruit seeds', singularLabel: 'Rainbow fruit seed', cost: 5000, section: 'rare-magical', maxStock: 1, normalOnly: true },
@@ -413,6 +414,7 @@ type ChapterElevenCropId =
   | 'coconut'
   | 'olive'
   | 'lemon'
+  | 'lime'
   | 'banana'
   | 'gold-fruit'
   | 'rainbow-fruit'
@@ -450,6 +452,7 @@ type ChapterElevenCropId =
   | 'golden-coconut'
   | 'golden-olive'
   | 'golden-lemon'
+  | 'golden-lime'
   | 'golden-banana'
   | 'golden-pineapple'
   | 'golden-tomato'
@@ -810,6 +813,16 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     sellValue: 680,
     babySeconds: 24,
     matureSeconds: 88,
+    regrows: true,
+  },
+  'lime-tree-seeds': {
+    seedId: 'lime-tree-seeds',
+    cropId: 'lime',
+    label: 'Lime',
+    pluralLabel: 'Limes',
+    sellValue: 15000,
+    babySeconds: 28,
+    matureSeconds: 104,
     regrows: true,
   },
   'banana-tree-seeds': {
@@ -9193,6 +9206,8 @@ export class Game {
         return 'golden-olive';
       case 'lemon':
         return 'golden-lemon';
+      case 'lime':
+        return 'golden-lime';
       case 'banana':
         return 'golden-banana';
       case 'tomato':
@@ -9360,6 +9375,8 @@ export class Game {
                       ? '#72823c'
                       : seedId === 'lemon-tree-seeds'
                         ? '#e0c83d'
+                        : seedId === 'lime-tree-seeds'
+                          ? '#8dbd35'
                         : seedId === 'banana-tree-seeds'
                           ? '#e4c32e'
                           : seedId === 'rainbow-fruit-seeds'
@@ -9803,23 +9820,25 @@ export class Game {
       return root;
     }
 
-    if (baseCrop === 'apple' || baseCrop === 'peach' || baseCrop === 'lemon' || baseCrop === 'olive' || baseCrop === 'gold-fruit') {
+    if (baseCrop === 'apple' || baseCrop === 'peach' || baseCrop === 'lemon' || baseCrop === 'lime' || baseCrop === 'olive' || baseCrop === 'gold-fruit') {
       const fruitColor = baseCrop === 'apple'
         ? 0xd7392e
         : baseCrop === 'peach'
           ? 0xf2a36f
           : baseCrop === 'lemon'
             ? 0xe8d34a
+            : baseCrop === 'lime'
+              ? 0x9ac43a
             : baseCrop === 'gold-fruit'
               ? 0xf1c84b
               : 0x76823c;
-      const fruit = new Mesh(new SphereGeometry(baseCrop === 'olive' ? 0.085 : 0.15, 20, 14), materialFor(fruitColor, baseCrop === 'lemon' ? 0.58 : 0.64));
+      const fruit = new Mesh(new SphereGeometry(baseCrop === 'olive' ? 0.085 : 0.15, 20, 14), materialFor(fruitColor, baseCrop === 'lemon' || baseCrop === 'lime' ? 0.58 : 0.64));
       fruit.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
       fruit.position.set(-0.03, 0.12, -0.02);
       fruit.scale.set(
-        baseCrop === 'lemon' ? 1.35 : baseCrop === 'olive' ? 1.08 : 1.02,
-        baseCrop === 'lemon' ? 0.82 : baseCrop === 'olive' ? 0.78 : baseCrop === 'peach' ? 0.95 : 0.98,
-        baseCrop === 'lemon' ? 0.9 : baseCrop === 'olive' ? 0.9 : 1,
+        baseCrop === 'lemon' || baseCrop === 'lime' ? 1.35 : baseCrop === 'olive' ? 1.08 : 1.02,
+        baseCrop === 'lemon' || baseCrop === 'lime' ? 0.82 : baseCrop === 'olive' ? 0.78 : baseCrop === 'peach' ? 0.95 : 0.98,
+        baseCrop === 'lemon' || baseCrop === 'lime' ? 0.9 : baseCrop === 'olive' ? 0.9 : 1,
       );
       root.add(fruit);
       const stemMaterial = new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.82 });
@@ -9827,7 +9846,7 @@ export class Game {
       const stem = new Mesh(new CylinderGeometry(baseCrop === 'olive' ? 0.007 : 0.012, baseCrop === 'olive' ? 0.01 : 0.016, baseCrop === 'olive' ? 0.07 : 0.11, 7), stemMaterial);
       stem.name = `Held ${baseCrop} little stem`;
       stem.position.set(-0.03, baseCrop === 'olive' ? 0.19 : 0.255, -0.02);
-      stem.rotation.z = baseCrop === 'lemon' ? -0.18 : 0.24;
+      stem.rotation.z = baseCrop === 'lemon' || baseCrop === 'lime' ? -0.18 : 0.24;
       root.add(stem);
       const leaf = new Mesh(new SphereGeometry(baseCrop === 'olive' ? 0.04 : 0.055, 10, 6), leafMaterial);
       leaf.name = `Held ${baseCrop} small leaf`;
@@ -9835,6 +9854,13 @@ export class Game {
       leaf.scale.set(1.55, 0.22, 0.72);
       leaf.rotation.set(0.25, 0.2, -0.45);
       root.add(leaf);
+      if (baseCrop === 'olive') {
+        const oliveDimple = new Mesh(new SphereGeometry(0.022, 8, 5), new MeshStandardMaterial({ color: 0x39431f, roughness: 0.8 }));
+        oliveDimple.name = 'Held olive tiny dark dimple';
+        oliveDimple.position.set(-0.03, 0.13, 0.052);
+        oliveDimple.scale.set(1, 0.45, 1);
+        root.add(oliveDimple);
+      }
       if (baseCrop === 'peach') {
         const crease = new Mesh(new BoxGeometry(0.012, 0.22, 0.01), new MeshStandardMaterial({ color: 0xd37a5e, roughness: 0.72 }));
         crease.name = 'Held peach soft center crease';
@@ -10296,6 +10322,7 @@ export class Game {
       || cropId === 'coconut'
       || cropId === 'olive'
       || cropId === 'lemon'
+      || cropId === 'lime'
       || cropId === 'banana'
       || cropId === 'gold-fruit'
       || cropId === 'rainbow-fruit'
@@ -10637,6 +10664,15 @@ export class Game {
       ];
     }
 
+    if (cropId === 'lime') {
+      return [
+        makeFruit(new Vector3(0.3, 1.04, 0.08), 'Lime', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-lime', 'Golden Lime'),
+        makeFruit(new Vector3(-0.26, 1.16, -0.12), 'Lime', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-lime', 'Golden Lime'),
+        makeFruit(new Vector3(0.08, 1.32, -0.28), 'Lime', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-lime', 'Golden Lime'),
+        makeFruit(new Vector3(-0.12, 0.96, 0.24), 'Lime', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-lime', 'Golden Lime'),
+      ];
+    }
+
     if (cropId === 'banana') {
       return [
         makeFruit(new Vector3(0.22, 1.68, 0.12), 'Banana Bundle', regrow(CHAPTER_ELEVEN_PEACH_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-banana', 'Golden Banana Bundle'),
@@ -10745,6 +10781,8 @@ export class Game {
       coconutHole: new MeshStandardMaterial({ color: 0x050403, roughness: 0.9 }),
       olive: new MeshStandardMaterial({ color: 0x76823c, roughness: 0.66 }),
       lemon: new MeshStandardMaterial({ color: 0xe8d34a, roughness: 0.6 }),
+      lime: new MeshStandardMaterial({ color: 0x9ac43a, roughness: 0.58 }),
+      limeStripe: new MeshStandardMaterial({ color: 0xf0e15a, roughness: 0.62 }),
       banana: new MeshStandardMaterial({ color: 0xe6c72f, roughness: 0.62 }),
       bananaTip: new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.8 }),
       genericGold: new MeshStandardMaterial({ color: 0xd49a22, emissive: 0x5f3900, emissiveIntensity: 0.18, roughness: 0.2, metalness: 0.82 }),
@@ -10964,11 +11002,33 @@ export class Game {
         stem.rotation.z = index % 2 === 0 ? 0.28 : -0.22;
         stem.castShadow = true;
         plant.root.add(stem);
+        const oliveDimple = new Mesh(new SphereGeometry(0.012, 6, 4), fruitState.golden ? materials.stem : new MeshStandardMaterial({ color: 0x39431f, roughness: 0.82 }));
+        oliveDimple.name = 'Chapter 11 pickable olive tiny dark dimple';
+        oliveDimple.position.copy(fruitState.offset).add(new Vector3(0.004, 0.006, 0.044));
+        oliveDimple.scale.set(1, 0.42, 1);
+        plant.root.add(oliveDimple);
       } else if (fruitState.cropId === 'lemon') {
         fruit = new Mesh(new SphereGeometry(0.085, 16, 10), fruitState.golden ? materials.genericGold : materials.lemon);
         fruit.scale.set(1.24, 0.82, 0.88);
         const stem = new Mesh(new CylinderGeometry(0.01, 0.014, 0.07, 6), materials.stem);
         stem.name = 'Chapter 11 pickable lemon tiny stem';
+        stem.position.copy(fruitState.offset).add(new Vector3(0, 0.07, 0));
+        stem.rotation.z = index % 2 === 0 ? -0.24 : 0.18;
+        stem.castShadow = true;
+        plant.root.add(stem);
+      } else if (fruitState.cropId === 'lime') {
+        fruit = new Mesh(new SphereGeometry(0.085, 16, 10), fruitState.golden ? materials.genericGold : materials.lime);
+        fruit.scale.set(1.24, 0.82, 0.88);
+        for (let stripeIndex = 0; stripeIndex < 3; stripeIndex += 1) {
+          const stripe = new Mesh(new TorusGeometry(0.07 + stripeIndex * 0.009, 0.004, 5, 20), fruitState.golden ? materials.stem : materials.limeStripe);
+          stripe.name = 'Chapter 11 pickable lime yellow-green visible line';
+          stripe.position.copy(fruitState.offset).add(new Vector3(0, -0.014 + stripeIndex * 0.014, 0));
+          stripe.scale.set(1.26, 0.42, 0.84);
+          stripe.rotation.set(Math.PI / 2, stripeIndex * 0.44, stripeIndex % 2 === 0 ? 0.12 : -0.12);
+          plant.root.add(stripe);
+        }
+        const stem = new Mesh(new CylinderGeometry(0.01, 0.014, 0.07, 6), materials.stem);
+        stem.name = 'Chapter 11 pickable lime tiny stem';
         stem.position.copy(fruitState.offset).add(new Vector3(0, 0.07, 0));
         stem.rotation.z = index % 2 === 0 ? -0.24 : 0.18;
         stem.castShadow = true;
@@ -11213,6 +11273,7 @@ export class Game {
       case 'olive':
         return 0.9;
       case 'lemon':
+      case 'lime':
         return 0.76;
       case 'banana':
         return 0.95;
@@ -11277,6 +11338,7 @@ export class Game {
       case 'olive':
         return 0.44;
       case 'lemon':
+      case 'lime':
         return 0.4;
       case 'banana':
         return 0.46;
@@ -12341,24 +12403,24 @@ export class Game {
       return;
     }
 
-    if (config.cropId === 'peach' || config.cropId === 'apple' || config.cropId === 'olive' || config.cropId === 'lemon' || config.cropId === 'gold-fruit') {
+    if (config.cropId === 'peach' || config.cropId === 'apple' || config.cropId === 'olive' || config.cropId === 'lemon' || config.cropId === 'lime' || config.cropId === 'gold-fruit') {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
 
       const trunkMaterial = new MeshStandardMaterial({ color: config.cropId === 'olive' ? 0x7b6a4c : 0x6e4227, roughness: 0.9 });
       const leafMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'lemon' ? 0x3f8732 : config.cropId === 'olive' ? 0x6f7f48 : 0x2f7d35,
+        color: config.cropId === 'lemon' ? 0x3f8732 : config.cropId === 'lime' ? 0x246b34 : config.cropId === 'olive' ? 0x6f7f48 : 0x2f7d35,
         roughness: 0.86,
       });
       const darkLeafMaterial = new MeshStandardMaterial({
-        color: config.cropId === 'lemon' ? 0x2d6928 : config.cropId === 'olive' ? 0x515f35 : 0x235f2a,
+        color: config.cropId === 'lemon' ? 0x2d6928 : config.cropId === 'lime' ? 0x174c27 : config.cropId === 'olive' ? 0x515f35 : 0x235f2a,
         roughness: 0.9,
       });
-      const trunkHeight = config.cropId === 'lemon' ? 0.36 : config.cropId === 'olive' ? 0.46 : 1.1;
+      const trunkHeight = config.cropId === 'lemon' || config.cropId === 'lime' ? 0.36 : config.cropId === 'olive' ? 0.46 : 1.1;
       const trunk = new Mesh(new CylinderGeometry(
-        config.cropId === 'olive' ? 0.085 : config.cropId === 'lemon' ? 0.075 : 0.12,
-        config.cropId === 'olive' ? 0.14 : config.cropId === 'lemon' ? 0.13 : 0.18,
+        config.cropId === 'olive' ? 0.085 : config.cropId === 'lemon' || config.cropId === 'lime' ? 0.075 : 0.12,
+        config.cropId === 'olive' ? 0.14 : config.cropId === 'lemon' || config.cropId === 'lime' ? 0.13 : 0.18,
         trunkHeight,
         12,
       ), trunkMaterial);
@@ -12367,7 +12429,7 @@ export class Game {
       trunk.castShadow = true;
       trunk.receiveShadow = true;
       plant.root.add(trunk);
-      const canopyParts: Array<[number, number, number, number, number, number]> = config.cropId === 'lemon'
+      const canopyParts: Array<[number, number, number, number, number, number]> = config.cropId === 'lemon' || config.cropId === 'lime'
         ? [
           [0, 0.88, 0, 0.9, 0.58, 0.82],
           [-0.42, 0.72, 0.16, 0.62, 0.42, 0.54],
@@ -12406,14 +12468,14 @@ export class Game {
         branch.receiveShadow = true;
         plant.root.add(branch);
       };
-      if (config.cropId === 'lemon') {
+      if (config.cropId === 'lemon' || config.cropId === 'lime') {
         [
           [new Vector3(0, 0.3, 0), new Vector3(-0.38, 0.72, 0.14), 0.04],
           [new Vector3(0.02, 0.28, 0), new Vector3(0.4, 0.74, -0.12), 0.04],
           [new Vector3(-0.02, 0.3, 0.02), new Vector3(0.02, 0.98, -0.22), 0.034],
           [new Vector3(0, 0.24, -0.02), new Vector3(-0.18, 0.62, 0.3), 0.032],
           [new Vector3(0.02, 0.24, 0.02), new Vector3(0.22, 0.64, 0.32), 0.03],
-        ].forEach(([from, to, radius]) => addBranch(from as Vector3, to as Vector3, radius as number, 'Chapter 11 lemon bush woody branch'));
+        ].forEach(([from, to, radius]) => addBranch(from as Vector3, to as Vector3, radius as number, `Chapter 11 ${config.cropId} bush woody branch`));
       } else if (config.cropId === 'olive') {
         [
           [new Vector3(0, 0.36, 0), new Vector3(-0.42, 0.84, 0.18), 0.04],
@@ -12441,7 +12503,7 @@ export class Game {
             ? 1.94
           : config.cropId === 'olive'
             ? 1.96
-            : config.cropId === 'lemon'
+            : config.cropId === 'lemon' || config.cropId === 'lime'
               ? 1.82
               : 1.82,
       );
@@ -12959,7 +13021,7 @@ export class Game {
       ? 2.6
       : plant.cropId === 'banana'
         ? 2.1
-        : plant.cropId === 'apple' || plant.cropId === 'peach' || plant.cropId === 'olive' || plant.cropId === 'lemon' || plant.cropId === 'gold-fruit'
+        : plant.cropId === 'apple' || plant.cropId === 'peach' || plant.cropId === 'olive' || plant.cropId === 'lemon' || plant.cropId === 'lime' || plant.cropId === 'gold-fruit'
           ? 1.35
           : plant.cropId === 'garden-corn' || plant.cropId === 'corn' || plant.cropId === 'seed-life-golden-corn' || plant.cropId === 'dragon-fruit' || plant.cropId === 'cactus'
             ? 1.05
