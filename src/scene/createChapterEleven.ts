@@ -23,7 +23,8 @@ export type ChapterElevenBiomePortalId =
   | 'volcanic-valley'
   | 'cholesterol-garden'
   | 'dragon-jungle'
-  | 'rainbow-dimension';
+  | 'rainbow-dimension'
+  | 'casino';
 
 export interface ChapterElevenBiomePortal {
   id: ChapterElevenBiomePortalId;
@@ -228,6 +229,7 @@ export function createChapterEleven(): ChapterElevenData {
   const normalOnlyGroups: Object3D[] = [];
   const seedLifeDirtPatches: ChapterElevenDirtPatch[] = [];
   const portalDiscs: Mesh[] = [];
+  const casinoRobots: Mesh[] = [];
   const biomePortals: ChapterElevenBiomePortal[] = [];
   const specialStalls: ChapterElevenSpecialStall[] = [];
   let seedLifeDirtPatchGroup: Group | null = null;
@@ -790,6 +792,20 @@ export function createChapterEleven(): ChapterElevenData {
     emissiveIntensity: 0.75,
     roughness: 0.42,
   });
+  const casinoGreenMaterial = new MeshStandardMaterial({
+    color: 0x154f34,
+    roughness: 0.64,
+    metalness: 0.08,
+  });
+  const casinoGoldMaterial = new MeshStandardMaterial({
+    color: 0xf3cb54,
+    emissive: 0x5f3b00,
+    emissiveIntensity: 0.22,
+    roughness: 0.36,
+    metalness: 0.38,
+  });
+  const casinoRedMaterial = new MeshStandardMaterial({ color: 0x8d1f2c, roughness: 0.7 });
+  const casinoBlackMaterial = new MeshStandardMaterial({ color: 0x171514, roughness: 0.58, metalness: 0.18 });
   const biomeMaterials = {
     mushroom: new MeshStandardMaterial({ color: 0x28452d, roughness: 0.94 }),
     frozen: new MeshStandardMaterial({ color: 0xd8f0ff, roughness: 0.56 }),
@@ -797,6 +813,7 @@ export function createChapterEleven(): ChapterElevenData {
     cosmic: new MeshStandardMaterial({ color: 0x2d2148, roughness: 0.76, emissive: 0x25135f, emissiveIntensity: 0.2 }),
     jungle: new MeshStandardMaterial({ color: 0x265a2c, roughness: 0.92 }),
     rainbow: new MeshStandardMaterial({ color: 0xb7d9ff, roughness: 0.68 }),
+    casino: new MeshStandardMaterial({ color: 0x203b2b, roughness: 0.72, emissive: 0x0c3d24, emissiveIntensity: 0.14 }),
   };
   const seedLifeGateOpenings: Array<{ side: 'south' | 'west' | 'east'; center: number; width: number }> = [];
 
@@ -948,6 +965,29 @@ export function createChapterEleven(): ChapterElevenData {
       sign.name = `${label} portal label`;
       sign.position.set(0, 3.64, 0.08);
       portalRoot.add(sign);
+      if (id === 'casino' && nameSuffix === 'garden gate') {
+        const frontSign = new Mesh(new PlaneGeometry(4.1, 0.75), createStandLabelMaterial('The Casino Portal'));
+        frontSign.name = 'Seed Life Casino portal front sign';
+        frontSign.position.set(0, 2.35, -0.34);
+        portalRoot.add(frontSign);
+        [-1, 1].forEach((side) => {
+          for (let index = 0; index < 4; index += 1) {
+            const money = new Mesh(new PlaneGeometry(0.42, 0.34), createStandLabelMaterial('$'));
+            money.name = 'Seed Life Casino portal floating money symbol';
+            money.position.set(side * (1.78 + index * 0.06), 0.72 + index * 0.72, -0.18);
+            money.rotation.z = side * (0.16 + index * 0.05);
+            portalRoot.add(money);
+          }
+        });
+        for (let stepIndex = 0; stepIndex < 3; stepIndex += 1) {
+          const step = new Mesh(new BoxGeometry(3.65 - stepIndex * 0.52, 0.16, 0.72), casinoGoldMaterial);
+          step.name = 'Seed Life Casino portal gold entry step';
+          step.position.set(0, 0.08 + stepIndex * 0.11, -1.05 - stepIndex * 0.52);
+          step.castShadow = true;
+          step.receiveShadow = true;
+          portalRoot.add(step);
+        }
+      }
       root.add(portalRoot);
       seedLifeOnlyGroups.push(portalRoot);
       copyOnlyColliders.push({ centerX: x, centerZ: z, halfWidth: 1.75, halfDepth: 0.22 });
@@ -1103,6 +1143,99 @@ export function createChapterEleven(): ChapterElevenData {
       crater.castShadow = true;
       root.add(crater);
       seedLifeOnlyGroups.push(crater);
+    } else if (id === 'casino') {
+      const addCasinoSlotMachine = (
+        tierLabel: string,
+        localX: number,
+        localZ: number,
+        bodyMaterial: MeshStandardMaterial,
+      ): void => {
+        const machine = new Group();
+        machine.name = `Seed Life Casino ${tierLabel} slot machine`;
+        machine.position.set(targetX + localX, 0, targetZ + localZ);
+        addBox(machine, `${tierLabel} slot machine cabinet`, [2.1, 2.7, 1.12], [0, 1.35, 0], bodyMaterial);
+        const screen = new Mesh(new PlaneGeometry(1.58, 0.82), createStandLabelMaterial(tierLabel));
+        screen.name = `${tierLabel} slot machine tier label`;
+        screen.position.set(0, 2.03, -0.57);
+        screen.rotation.y = Math.PI;
+        machine.add(screen);
+        [-0.5, 0, 0.5].forEach((wheelX, wheelIndex) => {
+          const wheel = new Mesh(new CylinderGeometry(0.22, 0.22, 0.18, 24), casinoGoldMaterial);
+          wheel.name = `${tierLabel} slot machine spinning wheel ${wheelIndex + 1}`;
+          wheel.position.set(wheelX, 1.36, -0.62);
+          wheel.rotation.x = Math.PI / 2;
+          machine.add(wheel);
+        });
+        const handle = new Mesh(new CylinderGeometry(0.045, 0.055, 0.78, 12), casinoGoldMaterial);
+        handle.name = `${tierLabel} slot machine side pull handle`;
+        handle.position.set(1.22, 1.35, -0.18);
+        handle.rotation.z = 0.38;
+        machine.add(handle);
+        const leverBall = new Mesh(new SphereGeometry(0.15, 16, 10), casinoRedMaterial);
+        leverBall.name = `${tierLabel} slot machine red handle ball`;
+        leverBall.position.set(1.36, 1.72, -0.29);
+        machine.add(leverBall);
+        root.add(machine);
+        seedLifeOnlyGroups.push(machine);
+        copyOnlyColliders.push({ centerX: targetX + localX, centerZ: targetZ + localZ, halfWidth: 1.1, halfDepth: 0.62 });
+      };
+
+      addCasinoSlotMachine('Cheap', -19, -17, casinoGreenMaterial);
+      addCasinoSlotMachine('Good', -19, -9, casinoRedMaterial);
+      addCasinoSlotMachine('Very Good', -19, -1, casinoBlackMaterial);
+
+      const tableRoot = new Group();
+      tableRoot.name = 'Seed Life Casino huge golden money table';
+      tableRoot.position.set(targetX + 4, 0, targetZ + 2);
+      addBox(tableRoot, 'Casino table thick green felt top', [16, 0.34, 8], [0, 0.92, 0], casinoGreenMaterial);
+      addBox(tableRoot, 'Casino table gold trim front', [16.4, 0.22, 0.32], [0, 1.12, -4.16], casinoGoldMaterial);
+      addBox(tableRoot, 'Casino table gold trim back', [16.4, 0.22, 0.32], [0, 1.12, 4.16], casinoGoldMaterial);
+      addBox(tableRoot, 'Casino table gold trim left', [0.32, 0.22, 8.4], [-8.16, 1.12, 0], casinoGoldMaterial);
+      addBox(tableRoot, 'Casino table gold trim right', [0.32, 0.22, 8.4], [8.16, 1.12, 0], casinoGoldMaterial);
+      const cashStack = new Mesh(new BoxGeometry(1.04, 0.22, 0.58), new MeshStandardMaterial({ color: 0xd6efd0, roughness: 0.76 }));
+      cashStack.name = 'Casino table spinning hundred dollar cash stack';
+      cashStack.position.set(-4.8, 1.22, 0.25);
+      cashStack.castShadow = true;
+      tableRoot.add(cashStack);
+      for (let cableIndex = 0; cableIndex < 3; cableIndex += 1) {
+        const rail = new Mesh(new CylinderGeometry(0.045, 0.045, 13.2, 12), casinoBlackMaterial);
+        rail.name = 'Casino table overhead robot cable rail';
+        rail.position.set(-3.8 + cableIndex * 3.8, 2.35, 0);
+        rail.rotation.x = Math.PI / 2;
+        tableRoot.add(rail);
+        const robot = new Mesh(new BoxGeometry(0.78, 0.42, 0.58), casinoGoldMaterial);
+        robot.name = 'Casino table sliding money printer robot';
+        robot.position.set(-3.8 + cableIndex * 3.8, 1.92, -2.6 + cableIndex * 1.3);
+        robot.userData.originZ = robot.position.z;
+        robot.userData.phase = cableIndex * 1.8;
+        casinoRobots.push(robot);
+        tableRoot.add(robot);
+      }
+      root.add(tableRoot);
+      seedLifeOnlyGroups.push(tableRoot);
+      copyOnlyColliders.push({ centerX: targetX + 4, centerZ: targetZ + 2, halfWidth: 8.2, halfDepth: 4.2 });
+
+      const vault = new Group();
+      vault.name = 'Seed Life Casino authorized personnel money cage';
+      vault.position.set(targetX + 27, 0, targetZ - 17);
+      addBox(vault, 'Casino personnel cage back wall', [9.2, 2.2, 0.22], [0, 1.1, 3.6], casinoBlackMaterial);
+      addBox(vault, 'Casino personnel cage left wall', [0.22, 2.2, 7.2], [-4.6, 1.1, 0], casinoBlackMaterial);
+      addBox(vault, 'Casino personnel cage right wall', [0.22, 2.2, 7.2], [4.6, 1.1, 0], casinoBlackMaterial);
+      addBox(vault, 'Casino personnel cage locked front gate', [9.2, 1.8, 0.18], [0, 0.9, -3.6], casinoGoldMaterial);
+      const authorizedSign = new Mesh(new PlaneGeometry(5.5, 0.75), createStandLabelMaterial('Authorized Personnel Only'));
+      authorizedSign.name = 'Casino personnel only gate sign';
+      authorizedSign.position.set(0, 2.35, -3.72);
+      authorizedSign.rotation.y = Math.PI;
+      vault.add(authorizedSign);
+      const vaultCash = new Mesh(new BoxGeometry(2.4, 0.5, 1.1), new MeshStandardMaterial({ color: 0xd8f0c4, roughness: 0.7 }));
+      vaultCash.name = 'Casino lost money storage cash pile';
+      vaultCash.position.set(0, 0.35, 1.7);
+      vault.add(vaultCash);
+      root.add(vault);
+      seedLifeOnlyGroups.push(vault);
+      copyOnlyColliders.push({ centerX: targetX + 27, centerZ: targetZ - 20.6, halfWidth: 4.7, halfDepth: 0.18 });
+      copyOnlyColliders.push({ centerX: targetX + 22.4, centerZ: targetZ - 17, halfWidth: 0.18, halfDepth: 3.7 });
+      copyOnlyColliders.push({ centerX: targetX + 31.6, centerZ: targetZ - 17, halfWidth: 0.18, halfDepth: 3.7 });
     }
     for (let index = 0; index < 8; index += 1) {
       const angle = (index / 8) * Math.PI * 2;
@@ -1121,6 +1254,7 @@ export function createChapterEleven(): ChapterElevenData {
   addPortalPair('cholesterol-garden', 'Star Garden', 10, -72, 430, 170, biomeMaterials.cosmic);
   addPortalPair('dragon-jungle', 'Dragon Jungle', 30, -72, 0, -430, biomeMaterials.jungle);
   addPortalPair('rainbow-dimension', 'Rainbow Gate', 50, -72, 0, 430, biomeMaterials.rainbow);
+  addPortalPair('casino', 'Casino', 72, 50, 650, 0, biomeMaterials.casino);
 
   addSeedLifeStall('Portal Key Master', 0, -55.4, 0);
   addSeedLifeStall('Mutation', -47, 54.8, Math.PI / 2);
@@ -1314,7 +1448,7 @@ export function createChapterEleven(): ChapterElevenData {
     snowCover,
     fieldBounds: {
       minX: -490,
-      maxX: 490,
+      maxX: 710,
       minZ: -490,
       maxZ: 490,
     },
@@ -1328,6 +1462,12 @@ export function createChapterEleven(): ChapterElevenData {
         disc.rotation.z += _deltaSeconds * (0.45 + index * 0.015);
         const material = disc.material as MeshStandardMaterial;
         material.opacity = 0.58 + Math.sin(performance.now() * 0.004 + index) * 0.12;
+      });
+      casinoRobots.forEach((robot) => {
+        const phase = Number(robot.userData.phase ?? 0);
+        const originZ = Number(robot.userData.originZ ?? robot.position.z);
+        robot.position.z = originZ + Math.sin(performance.now() * 0.0022 + phase) * 2.15;
+        robot.rotation.y = Math.sin(performance.now() * 0.002 + phase) * 0.22;
       });
     },
     setSeedLifeLayout(enabled: boolean): void {

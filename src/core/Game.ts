@@ -252,6 +252,15 @@ const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
 const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
 const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
 const CHAPTER_ELEVEN_STARTING_MONEY = 50;
+const CHAPTER_ELEVEN_CASINO_TARGET_X = 650;
+const CHAPTER_ELEVEN_CASINO_TARGET_Z = 0;
+const CHAPTER_ELEVEN_CASINO_TABLE_COST = 100;
+const CHAPTER_ELEVEN_CASINO_TABLE_PAYOUT = CHAPTER_ELEVEN_CASINO_TABLE_COST * 100;
+const CHAPTER_ELEVEN_CASINO_SLOT_MACHINES = [
+  { tier: 'cheap', label: 'Cheap gambling machine', x: CHAPTER_ELEVEN_CASINO_TARGET_X - 19, z: CHAPTER_ELEVEN_CASINO_TARGET_Z - 17, cost: 25, payout: 90, winChance: 0.18 },
+  { tier: 'good', label: 'Good gambling machine', x: CHAPTER_ELEVEN_CASINO_TARGET_X - 19, z: CHAPTER_ELEVEN_CASINO_TARGET_Z - 9, cost: 100, payout: 500, winChance: 0.1 },
+  { tier: 'very-good', label: 'Very good gambling machine', x: CHAPTER_ELEVEN_CASINO_TARGET_X - 19, z: CHAPTER_ELEVEN_CASINO_TARGET_Z - 1, cost: 300, payout: 2200, winChance: 0.055 },
+] as const;
 const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{
   seedId: ChapterElevenSeedId;
   count: number;
@@ -466,6 +475,11 @@ type ChapterElevenMutationId =
   | 'dragon-touched'
   | 'prismatic';
 type ChapterElevenPlantStage = 'planted' | 'baby' | 'mature';
+type ChapterElevenCasinoMachineTier = (typeof CHAPTER_ELEVEN_CASINO_SLOT_MACHINES)[number]['tier'];
+type ChapterElevenCasinoInteractable =
+  | { kind: 'slot'; tier: ChapterElevenCasinoMachineTier; label: string; cost: number; payout: number; winChance: number; x: number; z: number }
+  | { kind: 'table'; x: number; z: number }
+  | { kind: 'vault'; x: number; z: number };
 type ChapterElevenHotbarItem =
   | { kind: 'seed'; id: ChapterElevenSeedId }
   | { kind: 'crop'; id: ChapterElevenCropId }
@@ -557,6 +571,7 @@ interface ChapterElevenOrganizerMachine {
   z: number;
   patch: ChapterElevenDirtPatch;
   placedDay: number;
+  sortTimer: number;
 }
 
 interface ChapterElevenPickableFruit {
@@ -2185,8 +2200,12 @@ export class Game {
   private readonly chapterElevenAutoHarvestPileRoot = new Group();
   private readonly chapterElevenAutoHarvestPileInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenRainRoot = new Group();
+  private readonly chapterElevenPuddleRoot = new Group();
+  private readonly chapterElevenRainPuddles: Array<{ mesh: Mesh; targetRadius: number; growth: number }> = [];
   private readonly chapterElevenLightningRoot = new Group();
   private readonly chapterElevenTraderRoot = new Group();
+  private chapterElevenRainPuddleTimer = 0;
+  private chapterElevenCasinoBank = 0;
   private chapterElevenPhase: 'day' | 'night' = 'day';
   private chapterElevenPhaseTimer = CHAPTER_ELEVEN_COPY_DAY_SECONDS;
   private chapterElevenDayCount = 1;
@@ -2406,7 +2425,7 @@ export class Game {
     this.chapterElevenAutoHarvestPileRoot.visible = false;
     this.chapterEleven.root.add(this.chapterElevenAutoHarvestPileRoot);
     this.buildChapterElevenEventAndTraderModels();
-    this.chapterEleven.root.add(this.chapterElevenRainRoot, this.chapterElevenLightningRoot, this.chapterElevenTraderRoot);
+    this.chapterEleven.root.add(this.chapterElevenRainRoot, this.chapterElevenPuddleRoot, this.chapterElevenLightningRoot, this.chapterElevenTraderRoot);
     this.chapterEleven.root.visible = false;
     this.chapterTwelve = createChapterTwelve();
     this.chapterTwelve.root.visible = false;
@@ -5374,6 +5393,7 @@ export class Game {
       this.updateChapterElevenPlants(deltaSeconds);
       this.updateChapterElevenElectricityAnimations(deltaSeconds);
       this.updateChapterElevenAutoHarvesters(deltaSeconds);
+      this.updateChapterElevenOrganizerMachines(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
       this.updateChapterElevenSeedShopStock(deltaSeconds);
       this.updateChapterElevenEventsAndTrader(deltaSeconds);
@@ -12247,6 +12267,65 @@ export class Game {
     });
   }
 
+  private clearChapterElevenRainPuddles(): void {
+    this.chapterElevenRainPuddles.forEach((puddle) => {
+      if (puddle.mesh.parent) {
+        puddle.mesh.parent.remove(puddle.mesh);
+      }
+    });
+    this.chapterElevenRainPuddles.length = 0;
+    this.chapterElevenRainPuddleTimer = 0;
+  }
+
+  private spawnChapterElevenRainPuddle(): void {
+    const bounds = this.chapterEleven.fieldBounds;
+    const puddleMaterial = new MeshBasicMaterial({
+      color: 0x4f7888,
+      transparent: true,
+      opacity: 0.24,
+      depthWrite: false,
+    });
+    const puddle = new Mesh(new CircleGeometry(1, 28), puddleMaterial);
+    puddle.name = 'Chapter 11 rain puddle slowly growing on grass';
+    puddle.rotation.x = -Math.PI / 2;
+    puddle.position.set(
+      MathUtils.randFloat(Math.max(bounds.minX + 6, -58), Math.min(bounds.maxX - 6, 58)),
+      0.076 + this.chapterElevenRainPuddles.length * 0.0004,
+      MathUtils.randFloat(Math.max(bounds.minZ + 6, -58), Math.min(bounds.maxZ - 6, 58)),
+    );
+    puddle.scale.setScalar(0.08);
+    this.chapterElevenPuddleRoot.add(puddle);
+    this.chapterElevenRainPuddles.push({
+      mesh: puddle,
+      targetRadius: MathUtils.randFloat(0.65, 2.15 + Math.min(1.8, this.chapterElevenRainPuddles.length * 0.035)),
+      growth: MathUtils.randFloat(0.16, 0.34),
+    });
+  }
+
+  private updateChapterElevenRainPuddles(deltaSeconds: number): void {
+    const raining = this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning';
+    if (!raining) {
+      return;
+    }
+
+    const rainAge = Math.max(0, 130 - this.chapterElevenEventTimer);
+    const maxPuddles = Math.min(44, 7 + Math.floor(rainAge / 3.8));
+    this.chapterElevenRainPuddleTimer -= deltaSeconds;
+    if (this.chapterElevenRainPuddleTimer <= 0 && this.chapterElevenRainPuddles.length < maxPuddles) {
+      this.spawnChapterElevenRainPuddle();
+      this.chapterElevenRainPuddleTimer = Math.max(0.38, 2.35 - rainAge * 0.025);
+    }
+
+    this.chapterElevenRainPuddles.forEach((puddle, index) => {
+      const nextRadius = Math.min(puddle.targetRadius, puddle.mesh.scale.x + deltaSeconds * puddle.growth);
+      puddle.mesh.scale.set(nextRadius, nextRadius, nextRadius);
+      puddle.mesh.position.y = 0.076 + index * 0.0004;
+      if (puddle.mesh.material instanceof MeshBasicMaterial) {
+        puddle.mesh.material.opacity = Math.min(0.42, 0.2 + nextRadius * 0.075);
+      }
+    });
+  }
+
   private syncChapterElevenPlantSnowFrost(plant: ChapterElevenPlanting): void {
     const existing = plant.root.getObjectByName('Chapter 11 snow event frosty plant coating');
     if (this.chapterElevenEvent !== 'snow') {
@@ -12353,6 +12432,7 @@ export class Game {
     this.chapterElevenRainRoot.visible = false;
     this.chapterEleven.snowCover.visible = false;
     this.chapterElevenLightningRoot.visible = false;
+    this.clearChapterElevenRainPuddles();
     this.chapterElevenPlants.forEach((plant) => this.syncChapterElevenPlantSnowFrost(plant));
     this.stopChapterElevenEventAudio();
   }
@@ -12456,6 +12536,7 @@ export class Game {
       'cholesterol-garden': 'Meteor Shower crosses Star Garden. Stardust makes cosmic crops sparkle.',
       'dragon-jungle': 'Dragon Awakening begins. A dragon shadow circles the jungle and blesses random crops.',
       'rainbow-dimension': 'Rainbow Surge floods the secret dimension. Prism luck rises for this day.',
+      casino: 'Casino Rush starts in the casino island. The machines shine brighter for this day.',
     };
     this.pushStatus(messages[currentRealm.id], 3.6);
     if (currentRealm.id === 'volcanic-valley' || currentRealm.id === 'dragon-jungle' || currentRealm.id === 'cholesterol-garden') {
@@ -12628,6 +12709,7 @@ export class Game {
         }
       });
     }
+    this.updateChapterElevenRainPuddles(deltaSeconds);
 
     if (this.chapterElevenLightningRoot.visible) {
       const flash = this.chapterElevenLightningRoot.children.find((child) => child instanceof PointLight) as PointLight | undefined;
@@ -12920,6 +13002,64 @@ export class Game {
           }
           harvester.state = 'idle';
         }
+      }
+    }
+  }
+
+  private organizeChapterElevenPatch(machine: ChapterElevenOrganizerMachine): void {
+    const plants = this.chapterElevenPlants
+      .filter((plant) => this.isPointInChapterElevenPatch(plant.x, plant.z, machine.patch, 0.25))
+      .sort((a, b) => a.cropId.localeCompare(b.cropId) || a.id - b.id);
+    if (plants.length < 2) {
+      return;
+    }
+
+    const spacing = 2.35;
+    const usableWidth = Math.max(spacing, machine.patch.halfWidth * 2 - 1.6);
+    const usableDepth = Math.max(spacing, machine.patch.halfDepth * 2 - 1.6);
+    const columns = Math.max(1, Math.min(plants.length, Math.floor(usableWidth / spacing)));
+    const rows = Math.max(1, Math.ceil(plants.length / columns));
+    const rowSpacing = rows > 1 ? Math.min(spacing, usableDepth / Math.max(1, rows - 1)) : 0;
+    const widthUsed = (columns - 1) * spacing;
+    const depthUsed = (rows - 1) * rowSpacing;
+
+    plants.forEach((plant, index) => {
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const target = this.clampChapterElevenPointToPatch(
+        machine.patch.centerX - widthUsed / 2 + col * spacing,
+        machine.patch.centerZ - depthUsed / 2 + row * rowSpacing,
+        machine.patch,
+        this.getChapterElevenPlantFootprintRadius(plant.seedId) + 0.45,
+      );
+      plant.x = target.x;
+      plant.z = target.z;
+      plant.root.position.x = target.x;
+      plant.root.position.z = target.z;
+    });
+    this.pushStatus('Organizer Machine spread the plants into neat rows and kept their buffs.', 2.5);
+  }
+
+  private updateChapterElevenOrganizerMachines(deltaSeconds: number): void {
+    if (!this.chapterElevenActive || this.chapterElevenOrganizerMachines.length === 0) {
+      return;
+    }
+
+    for (let index = this.chapterElevenOrganizerMachines.length - 1; index >= 0; index -= 1) {
+      const machine = this.chapterElevenOrganizerMachines[index];
+      machine.root.rotation.y += deltaSeconds * 0.45;
+      machine.sortTimer -= deltaSeconds;
+      if (this.chapterElevenTwoActive && this.chapterElevenDayCount - machine.placedDay >= 5) {
+        if (machine.root.parent) {
+          machine.root.parent.remove(machine.root);
+        }
+        this.chapterElevenOrganizerMachines.splice(index, 1);
+        this.pushStatus('An Organizer Machine broke after five days.', 2.3);
+        continue;
+      }
+      if (machine.sortTimer <= 0) {
+        this.organizeChapterElevenPatch(machine);
+        machine.sortTimer = 12;
       }
     }
   }
@@ -13510,6 +13650,114 @@ export class Game {
     return null;
   }
 
+  private getNearbyChapterElevenCasinoInteractable(): ChapterElevenCasinoInteractable | null {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+      return null;
+    }
+
+    const playerPosition = this.player.getPosition();
+    const aimPoint = this.getChapterElevenAimGroundPoint();
+    const nearbyOrAimed = (x: number, z: number, radius: number): boolean => (
+      Math.hypot(playerPosition.x - x, playerPosition.z - z) <= radius
+      || Math.hypot(aimPoint.x - x, aimPoint.z - z) <= radius
+    );
+
+    for (const machine of CHAPTER_ELEVEN_CASINO_SLOT_MACHINES) {
+      if (nearbyOrAimed(machine.x, machine.z, 3.2)) {
+        return { kind: 'slot', ...machine };
+      }
+    }
+
+    if (nearbyOrAimed(CHAPTER_ELEVEN_CASINO_TARGET_X + 4, CHAPTER_ELEVEN_CASINO_TARGET_Z + 2, 6.6)) {
+      return { kind: 'table', x: CHAPTER_ELEVEN_CASINO_TARGET_X + 4, z: CHAPTER_ELEVEN_CASINO_TARGET_Z + 2 };
+    }
+
+    if (nearbyOrAimed(CHAPTER_ELEVEN_CASINO_TARGET_X + 27, CHAPTER_ELEVEN_CASINO_TARGET_Z - 20.6, 5.2)) {
+      return { kind: 'vault', x: CHAPTER_ELEVEN_CASINO_TARGET_X + 27, z: CHAPTER_ELEVEN_CASINO_TARGET_Z - 20.6 };
+    }
+
+    return null;
+  }
+
+  private spinChapterElevenCasinoSlot(machine: Extract<ChapterElevenCasinoInteractable, { kind: 'slot' }>): void {
+    if (this.chapterElevenMoney < machine.cost) {
+      this.pushStatus(`${machine.label} costs $${machine.cost}. You need $${machine.cost - this.chapterElevenMoney} more.`, 2.6);
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenMoney -= machine.cost;
+    const symbols = ['Cherry', 'Dollar', 'Diamond', 'Crown', 'Seven'];
+    const won = Math.random() <= machine.winChance;
+    let result: string[];
+    if (won) {
+      const symbol = symbols[MathUtils.randInt(0, symbols.length - 1)] ?? 'Seven';
+      result = [symbol, symbol, symbol];
+      this.chapterElevenMoney += machine.payout;
+      this.pushStatus(`${machine.label} spun ${result.join(' | ')}. Jackpot paid $${machine.payout}.`, 3.2);
+    } else {
+      result = [
+        symbols[MathUtils.randInt(0, symbols.length - 1)] ?? 'Cherry',
+        symbols[MathUtils.randInt(0, symbols.length - 1)] ?? 'Dollar',
+        symbols[MathUtils.randInt(0, symbols.length - 1)] ?? 'Diamond',
+      ];
+      if (result[0] === result[1] && result[1] === result[2]) {
+        result[2] = symbols[(symbols.indexOf(result[2]) + 1) % symbols.length] ?? 'Crown';
+      }
+      this.chapterElevenCasinoBank += machine.cost;
+      this.pushStatus(`${machine.label} spun ${result.join(' | ')}. The lost $${machine.cost} moved to Authorized Personnel.`, 3.2);
+    }
+    this.syncHud();
+  }
+
+  private playChapterElevenCasinoTable(): void {
+    if (this.chapterElevenMoney < CHAPTER_ELEVEN_CASINO_TABLE_COST) {
+      this.pushStatus(`The casino table needs $${CHAPTER_ELEVEN_CASINO_TABLE_COST}.`, 2.5);
+      this.syncHud();
+      return;
+    }
+
+    this.chapterElevenMoney -= CHAPTER_ELEVEN_CASINO_TABLE_COST;
+    const golden = Math.random() < 0.035;
+    if (golden) {
+      this.chapterElevenMoney += CHAPTER_ELEVEN_CASINO_TABLE_PAYOUT;
+      this.pushStatus(`The robot printer caught your stack and turned it golden. You won $${CHAPTER_ELEVEN_CASINO_TABLE_PAYOUT}.`, 3.5);
+    } else {
+      this.chapterElevenCasinoBank += CHAPTER_ELEVEN_CASINO_TABLE_COST;
+      this.pushStatus(`The money stack spun past the robots. The lost $${CHAPTER_ELEVEN_CASINO_TABLE_COST} went to Authorized Personnel.`, 3.2);
+    }
+    this.syncHud();
+  }
+
+  private collectChapterElevenCasinoBank(): void {
+    if (this.chapterElevenCasinoBank <= 0) {
+      this.pushStatus('Authorized Personnel money cage is empty.', 2.4);
+      return;
+    }
+
+    const collected = this.chapterElevenCasinoBank;
+    this.chapterElevenCasinoBank = 0;
+    this.chapterElevenMoney += collected;
+    this.pushStatus(`Authorized Personnel collected $${collected} from lost casino money.`, 3);
+    this.syncHud();
+  }
+
+  private useChapterElevenCasinoInteractable(): boolean {
+    const interactable = this.getNearbyChapterElevenCasinoInteractable();
+    if (!interactable) {
+      return false;
+    }
+
+    if (interactable.kind === 'slot') {
+      this.spinChapterElevenCasinoSlot(interactable);
+    } else if (interactable.kind === 'table') {
+      this.playChapterElevenCasinoTable();
+    } else {
+      this.collectChapterElevenCasinoBank();
+    }
+    return true;
+  }
+
   private getNearbyChapterElevenSpecialStall(): ChapterElevenSpecialStall | null {
     if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
       return null;
@@ -13782,7 +14030,7 @@ export class Game {
       return false;
     }
 
-    if (nearbyPortal.side === 'garden' && !this.chapterElevenPortalKeys.has(nearbyPortal.portal.id)) {
+    if (nearbyPortal.side === 'garden' && nearbyPortal.portal.id !== 'casino' && !this.chapterElevenPortalKeys.has(nearbyPortal.portal.id)) {
       this.pushStatus(`${nearbyPortal.portal.label} needs its portal key. Buy it from the Portal Key Master stall.`, 3);
       this.syncHud();
       return true;
@@ -13807,12 +14055,14 @@ export class Game {
       return portal.targetPosition.clone().add(new Vector3(0, 0, 8.4));
     }
 
-    const towardGarden = new Vector3(-portal.position.x, 0, -portal.position.z);
-    if (towardGarden.lengthSq() < 0.0001) {
-      towardGarden.set(0, 0, 1);
+    return portal.position.clone().addScaledVector(this.getChapterElevenPortalMainPathDirection(portal), 8.6);
+  }
+
+  private getChapterElevenPortalMainPathDirection(portal: ChapterElevenBiomePortal): Vector3 {
+    if (Math.abs(portal.position.x) >= Math.abs(portal.position.z)) {
+      return new Vector3(portal.position.x < 0 ? 1 : -1, 0, 0);
     }
-    towardGarden.normalize();
-    return portal.position.clone().addScaledVector(towardGarden, 8.6);
+    return new Vector3(0, 0, portal.position.z < 0 ? 1 : -1);
   }
 
   private getChapterElevenBiomePortalLookTarget(
@@ -13824,12 +14074,7 @@ export class Game {
       return destination.clone().add(new Vector3(0, 0, 8));
     }
 
-    const towardGarden = new Vector3(-portal.position.x, 0, -portal.position.z);
-    if (towardGarden.lengthSq() < 0.0001) {
-      towardGarden.set(0, 0, 1);
-    }
-    towardGarden.normalize();
-    return destination.clone().addScaledVector(towardGarden, 8);
+    return destination.clone().addScaledVector(this.getChapterElevenPortalMainPathDirection(portal), 8);
   }
 
   private getChapterElevenEquipmentStandPosition(): { x: number; z: number; rotationY: number } {
@@ -14799,6 +15044,7 @@ export class Game {
       z: root.position.z,
       patch: { ...patch },
       placedDay: this.chapterElevenDayCount,
+      sortTimer: 1.2,
     });
     this.consumeChapterElevenEquipment(equipmentId);
     this.pushStatus('Organizer Machine placed. It is ready to sort this farm plot.', 2.8);
@@ -15742,6 +15988,10 @@ export class Game {
 
   private handleChapterElevenInteract(): void {
     if (this.useChapterElevenBiomePortal()) {
+      return;
+    }
+
+    if (this.useChapterElevenCasinoInteractable()) {
       return;
     }
 
@@ -28518,6 +28768,19 @@ export class Game {
         return nearbyPortal.side === 'garden'
           ? `Press E to enter the ${nearbyPortal.portal.label} biome portal.`
           : `Press E to return from ${nearbyPortal.portal.label} to the main garden.`;
+      }
+
+      const casinoInteractable = this.getNearbyChapterElevenCasinoInteractable();
+      if (casinoInteractable) {
+        if (casinoInteractable.kind === 'slot') {
+          return `Press E to spin the ${casinoInteractable.label} for $${casinoInteractable.cost}.`;
+        }
+        if (casinoInteractable.kind === 'table') {
+          return `Press E to place a $${CHAPTER_ELEVEN_CASINO_TABLE_COST} stack on the casino table.`;
+        }
+        return this.chapterElevenCasinoBank > 0
+          ? `Press E to collect $${this.chapterElevenCasinoBank} from Authorized Personnel.`
+          : 'Authorized Personnel money cage is empty.';
       }
 
       const specialStall = this.getNearbyChapterElevenSpecialStall();
