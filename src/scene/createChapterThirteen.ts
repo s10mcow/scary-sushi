@@ -36,7 +36,7 @@ const TREE_SKIP_CHANCE = 0.38;
 const RAINBOW_CHANCE = 0.12;
 const JACKALOPE_CHANCE = 0.36;
 const MAGICAL_FOX_CHANCE = 0.12;
-const CHINESE_DRAGON_CHANCE = 0.028;
+const CHINESE_DRAGON_CHANCE = 0.085;
 
 const grassMaterial = new MeshStandardMaterial({ color: 0xf3a1ca, roughness: 0.92 });
 const grassPatchMaterial = new MeshStandardMaterial({ color: 0xf8bad7, roughness: 0.96 });
@@ -60,7 +60,13 @@ const magicalFoxFurMaterial = new MeshStandardMaterial({ color: 0xff8b38, roughn
 const magicalFoxWhiteFurMaterial = new MeshStandardMaterial({ color: 0xffefe0, roughness: 0.82 });
 const magicalFoxTailTipMaterial = new MeshStandardMaterial({ color: 0xfff8d8, roughness: 0.5, emissive: 0xffd36f, emissiveIntensity: 0.18 });
 const magicalFoxEyeMaterial = new MeshBasicMaterial({ color: 0x1c1111 });
-const dragonScaleMaterial = new MeshStandardMaterial({ color: 0xd62f2f, roughness: 0.56, metalness: 0.08 });
+const dragonScaleMaterials = [
+  new MeshStandardMaterial({ color: 0xff5eb8, roughness: 0.56, metalness: 0.08 }),
+  new MeshStandardMaterial({ color: 0x8b48ff, roughness: 0.56, metalness: 0.08 }),
+  new MeshStandardMaterial({ color: 0xd62f2f, roughness: 0.56, metalness: 0.08 }),
+  new MeshStandardMaterial({ color: 0x2f8dff, roughness: 0.56, metalness: 0.08 }),
+];
+const dragonScaleMaterial = dragonScaleMaterials[2];
 const dragonBellyMaterial = new MeshStandardMaterial({ color: 0xffcf62, roughness: 0.5, metalness: 0.12 });
 const dragonHornMaterial = new MeshStandardMaterial({ color: 0xfff3bb, roughness: 0.42, emissive: 0xffce5a, emissiveIntensity: 0.1 });
 const dragonEyeMaterial = new MeshBasicMaterial({ color: 0x101010 });
@@ -513,7 +519,8 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
 
   for (let index = 0; index < 14; index += 1) {
     const x = -index * 0.46;
-    const segment = new Mesh(new SphereGeometry(1, 14, 9), index % 2 === 0 ? dragonScaleMaterial : dragonBellyMaterial);
+    const scaleMaterial = dragonScaleMaterials[index % dragonScaleMaterials.length];
+    const segment = new Mesh(new SphereGeometry(1, 14, 9), scaleMaterial);
     segment.name = 'Chinese dragon long scaled body segment';
     segment.userData.segmentIndex = index;
     segment.position.set(x, Math.sin(index * 0.75) * 0.08, Math.sin(index * 0.55) * 0.12);
@@ -535,7 +542,7 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
           new Vector3(x, -0.12, z),
           new Vector3(x + 0.12, -0.46, z * 1.28),
           0.025,
-          dragonScaleMaterial,
+          scaleMaterial,
         );
         leg.userData.segmentIndex = index;
         leg.userData.baseY = leg.position.y;
@@ -544,7 +551,7 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
     }
   }
 
-  addPointedCone(dragon, 'Chinese dragon tapering tail', [-6.7, -0.02, 0], 0.16, 0.5, dragonScaleMaterial, [0, 0, Math.PI / 2]);
+  addPointedCone(dragon, 'Chinese dragon tapering blue tail', [-6.7, -0.02, 0], 0.16, 0.5, dragonScaleMaterials[3], [0, 0, Math.PI / 2]);
   return dragon;
 }
 
