@@ -229,6 +229,7 @@ const START_IN_CHAPTER_TEN = false;
 const START_IN_CHAPTER_ELEVEN = true;
 const START_IN_CHAPTER_TWELVE = false;
 const CURRENT_CHAPTER_STORAGE_KEY = 'scary-sushi:current-chapter';
+const UPDATE_SEQUENCE_DURATION_SECONDS = 2.4;
 const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
   'chapter-1',
   'chapter-2',
@@ -2054,6 +2055,9 @@ export class Game {
   private zombieModeActive = false;
   private doomModeActive = false;
   private chapterMenuOpen = false;
+  private updateOverlayActive = false;
+  private updateOverlayElapsed = 0;
+  private updateReloadRequested = false;
   private curatorToolOpen = false;
   private chapterTwoPuzzlePiecesCollected = 0;
   private chapterTwoRedPuzzleSolved = false;
@@ -2605,6 +2609,7 @@ export class Game {
       this.powerEventAudio.resume();
       this.player.lock();
     });
+    this.hud.onUpdate(this.startUpdateSequence);
     this.hud.onChapterSelect(this.handleChapterSelection);
     this.hud.onOfficeJumpscareSelect(this.handleOfficeJumpscareSelection);
     this.hud.onOfficeModeSelect(this.handleOfficeModeSelection);
@@ -2906,12 +2911,16 @@ export class Game {
   };
 
   private readonly handlePlayAreaClick = (event: MouseEvent): void => {
+    if (this.updateOverlayActive) {
+      return;
+    }
+
     if (this.player.isLocked()) {
       return;
     }
 
     const clickedMenu = event.target instanceof Element
-      && event.target.closest('.hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-special-stall, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest');
+      && event.target.closest('.hud__update-overlay, .hud__info-bar--update, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-special-stall, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest');
     if (this.chapterMenuOpen || this.curatorToolOpen || this.officeJumpscareMenuOpen || this.officeModeMenuOpen || this.chapterSevenCookiePickerOpen || this.chapterSevenGrandpaTradingOpen || this.chapterElevenSeedShopOpen || this.chapterElevenEquipmentShopOpen || this.chapterElevenSpecialStallMenuOpen || this.chapterElevenSellMenuOpen || this.chapterElevenAutoHarvestChestOpen) {
       if (clickedMenu) {
         return;
@@ -2930,7 +2939,7 @@ export class Game {
       this.syncHud();
     }
 
-    if (event.target instanceof Element && event.target.closest('.hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-special-stall, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest')) {
+    if (event.target instanceof Element && event.target.closest('.hud__update-overlay, .hud__info-bar--update, .hud__intro, .hud__microphone, .hud__chapter-menu, .hud__curator-tool, .hud__office-jumpscare-menu, .hud__office-mode-menu, .hud__chapter-five-monitor, .hud__minecraft-inventory, .hud__chapter-seven-cookie-picker, .hud__chapter-seven-trading, .hud__chapter-eleven-seed-shop, .hud__chapter-eleven-equipment-shop, .hud__chapter-eleven-special-stall, .hud__chapter-eleven-sell-menu, .hud__chapter-eleven-chest')) {
       return;
     }
 
@@ -3072,6 +3081,48 @@ export class Game {
       window.localStorage.setItem(CURRENT_CHAPTER_STORAGE_KEY, chapterId);
     } catch {
       // Chapter persistence is optional; gameplay still works if storage is blocked.
+    }
+  }
+
+  private readonly startUpdateSequence = (): void => {
+    if (this.updateOverlayActive) {
+      return;
+    }
+
+    this.saveCurrentChapter(this.getCurrentHudChapterId());
+    this.updateOverlayActive = true;
+    this.updateOverlayElapsed = 0;
+    this.updateReloadRequested = false;
+    this.chapterMenuOpen = false;
+    this.curatorToolOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterSevenCookiePickerOpen = false;
+    this.chapterSevenGrandpaTradingOpen = false;
+    this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenEquipmentShopOpen = false;
+    this.chapterElevenSpecialStallMenuOpen = false;
+    this.chapterElevenSellMenuOpen = false;
+    this.chapterElevenAutoHarvestChestOpen = false;
+    this.player.setTouchControlsActive(false);
+    if (this.player.controls.isLocked) {
+      this.player.controls.unlock();
+    }
+    this.hud.setUpdateOverlay(true, 0);
+    this.pushStatus('Updating. Your progress is saved.', 2.4);
+    this.syncHud();
+  };
+
+  private updateUpdateSequence(deltaSeconds: number): void {
+    this.updateOverlayElapsed += deltaSeconds;
+    const progress = MathUtils.clamp(this.updateOverlayElapsed / UPDATE_SEQUENCE_DURATION_SECONDS, 0, 1);
+    this.hud.setUpdateOverlay(true, progress);
+
+    if (progress >= 1 && !this.updateReloadRequested) {
+      this.updateReloadRequested = true;
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 80);
     }
   }
 
@@ -4516,6 +4567,14 @@ export class Game {
 
   private readonly update = (deltaSeconds: number): void => {
     this.elapsed += deltaSeconds;
+    if (this.input.consumeUpdateToggle()) {
+      this.startUpdateSequence();
+    }
+    if (this.updateOverlayActive) {
+      this.updateUpdateSequence(deltaSeconds);
+      this.renderScene();
+      return;
+    }
     this.transientStatusTime = Math.max(this.transientStatusTime - deltaSeconds, 0);
     this.chapterTwoCardTime = Math.max(this.chapterTwoCardTime - deltaSeconds, 0);
     this.chapterTwoEggQuestNoticeTime = Math.max(this.chapterTwoEggQuestNoticeTime - deltaSeconds, 0);

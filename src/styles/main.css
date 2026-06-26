@@ -2611,6 +2611,62 @@ select {
   box-shadow: 0 0.75rem 1.8rem rgba(207, 118, 50, 0.18);
 }
 
+.hud__update-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 244, 216, 0.16), transparent 30rem),
+    rgba(18, 15, 13, 0.72);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.hud__update-overlay[data-active="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hud__update-dialog {
+  width: min(30rem, 100%);
+  padding: 1.35rem 1.45rem;
+  border: 1px solid rgba(255, 231, 188, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 244, 0.97), rgba(245, 222, 190, 0.94));
+  box-shadow:
+    0 1.4rem 3.4rem rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+  text-align: center;
+}
+
+.hud__update-message {
+  margin: 0.45rem 0 0.85rem;
+  color: #6f4726;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.hud__update-track {
+  height: 0.9rem;
+  overflow: hidden;
+  border: 1px solid rgba(121, 78, 36, 0.28);
+  background: rgba(85, 67, 49, 0.16);
+  box-shadow: inset 0 0.18rem 0.45rem rgba(57, 41, 24, 0.16);
+}
+
+.hud__update-fill {
+  width: 0%;
+  height: 100%;
+  background:
+    linear-gradient(90deg, rgba(235, 136, 54, 0.98), rgba(247, 204, 86, 0.96));
+  box-shadow: 0 0 1rem rgba(247, 178, 64, 0.46);
+  transition: width 90ms linear;
+}
+
 .hud__panel {
   min-width: 15rem;
   max-width: min(24rem, calc(100% - 2rem));
@@ -4819,6 +4875,21 @@ select {
   text-align: left;
   cursor: pointer;
   padding: 0;
+}
+
+.hud__update-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.hud__update-button::after {
+  content: " U";
+  color: var(--ember);
+  letter-spacing: 0.08em;
 }
 
 .hud__info-toggle::after {

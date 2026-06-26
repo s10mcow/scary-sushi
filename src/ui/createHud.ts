@@ -89,6 +89,7 @@ export interface HudChapterFiveMonitorState {
 
 export interface HudController {
   onEngage(handler: () => void): void;
+  onUpdate(handler: () => void): void;
   onChapterSelect(handler: (chapterId: HudChapterId) => void): void;
   onOfficeJumpscareSelect(handler: (jumpscareId: string) => void): void;
   onOfficeModeSelect(handler: (selectionId: string) => void): void;
@@ -112,6 +113,7 @@ export interface HudController {
   setIntro(eyebrow: string, title: string, summary: string, buttonText: string): void;
   setObjective(text: string): void;
   setStoryNotice(text: string, active: boolean, label?: string): void;
+  setUpdateOverlay(active: boolean, progress: number): void;
   setChapterCard(active: boolean, title: string, body: string): void;
   setChapterLabel(text: string): void;
   setChapterSevenDayCounter(active: boolean, day: number): void;
@@ -1523,11 +1525,50 @@ export function createHud(host: HTMLElement): HudController {
 
   const controlsText = document.createElement('p');
   controlsText.className = 'hud__hint hud__info-bar-body';
-  controlsText.textContent = 'WASD move / Space jump / E interact / 1 Tool / 3 Mic / 4 Camera / K Creator / M Mode / J Jumpscares / F Light / V Hide panels / Esc Pointer';
+  controlsText.textContent = 'WASD move / Space jump / E interact / U Update / 1 Tool / 3 Mic / 4 Camera / K Creator / M Mode / J Jumpscares / F Light / V Hide panels / Esc Pointer';
 
   howToPlayBar.append(howToPlayLabel, controlsText);
 
-  statusPanel.append(statusBar, howToPlayBar);
+  const updateBar = document.createElement('section');
+  updateBar.className = 'hud__info-bar hud__info-bar--update';
+
+  const updateButton = document.createElement('button');
+  updateButton.className = 'hud__label hud__info-bar-title hud__update-button';
+  updateButton.type = 'button';
+  updateButton.textContent = 'Update';
+  updateBar.append(updateButton);
+
+  statusPanel.append(statusBar, howToPlayBar, updateBar);
+
+  const updateOverlay = document.createElement('section');
+  updateOverlay.className = 'hud__update-overlay';
+  updateOverlay.dataset.active = 'false';
+
+  const updateDialog = document.createElement('div');
+  updateDialog.className = 'hud__update-dialog';
+
+  const updateEyebrow = document.createElement('p');
+  updateEyebrow.className = 'hud__eyebrow';
+  updateEyebrow.textContent = 'Updating';
+
+  const updateTitle = document.createElement('h2');
+  updateTitle.className = 'hud__chapter-menu-title';
+  updateTitle.textContent = 'Updating';
+
+  const updateMessage = document.createElement('p');
+  updateMessage.className = 'hud__update-message';
+  updateMessage.textContent = 'Updating and your progress is saved.';
+
+  const updateTrack = document.createElement('div');
+  updateTrack.className = 'hud__update-track';
+
+  const updateFill = document.createElement('div');
+  updateFill.className = 'hud__update-fill';
+  updateFill.style.width = '0%';
+
+  updateTrack.append(updateFill);
+  updateDialog.append(updateEyebrow, updateTitle, updateMessage, updateTrack);
+  updateOverlay.append(updateDialog);
 
   const crouchInstructions = document.createElement('section');
   crouchInstructions.className = 'hud__crouch-instructions';
@@ -2374,6 +2415,7 @@ export function createHud(host: HTMLElement): HudController {
     cameraTool,
     photoCameraPreview,
     photoCameraFlash,
+    updateOverlay,
     chapterMenu,
     curatorTool,
     officeJumpscareMenu,
@@ -2384,6 +2426,7 @@ export function createHud(host: HTMLElement): HudController {
 
   let officeJumpscareSelectHandler: ((jumpscareId: string) => void) | null = null;
   let officeModeSelectHandler: ((selectionId: string) => void) | null = null;
+  let updateHandler: (() => void) | null = null;
   let microphoneToggleHandler: (() => void) | null = null;
   let chapterFiveMonitorActionHandler: ((action: HudChapterFiveMonitorAction) => void) | null = null;
   let curatorSaveHandler: ((slotLabel: string, summary: string) => void) | null = null;
@@ -2921,6 +2964,13 @@ export function createHud(host: HTMLElement): HudController {
     onEngage(handler): void {
       button.addEventListener('click', handler);
     },
+    onUpdate(handler): void {
+      updateHandler = handler;
+      updateButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        updateHandler?.();
+      });
+    },
     onChapterSelect(handler): void {
       featuredChapterButton.addEventListener('click', () => handler('chapter-8'));
       chapterButtons.forEach((entry) => {
@@ -3049,6 +3099,12 @@ export function createHud(host: HTMLElement): HudController {
       storyNotice.dataset.kind = label === 'Garden Event' || label === 'Realm Event' ? 'event' : 'story';
       storyNoticeLabel.textContent = label;
       storyNoticeText.textContent = text;
+    },
+    setUpdateOverlay(active, progress): void {
+      const clampedProgress = Math.max(0, Math.min(1, progress));
+      updateOverlay.dataset.active = String(active);
+      updateOverlay.setAttribute('aria-hidden', String(!active));
+      updateFill.style.width = `${Math.round(clampedProgress * 100)}%`;
     },
     setChapterCard(active, title, body): void {
       chapterCard.dataset.active = String(active);
