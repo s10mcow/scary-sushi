@@ -75,7 +75,7 @@ function hash2d(x: number, z: number, salt = 0): number {
 }
 
 function rotationYForPositiveX(deltaX: number, deltaZ: number): number {
-  return Math.atan2(-deltaZ, deltaX);
+  return Math.atan2(-deltaZ, deltaX) + Math.PI / 2;
 }
 
 function chunkKey(chunkX: number, chunkZ: number): string {
