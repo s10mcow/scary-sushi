@@ -11615,13 +11615,15 @@ export class Game {
     });
   }
 
-  private showChapterElevenEventNotice(text: string, label = 'Garden Event', duration = 5.8, _cue: GardenEventCue = 'cheerful'): void {
+  private showChapterElevenEventNotice(text: string, label = 'Garden Event', duration = 5.8, cue: GardenEventCue = 'cheerful'): void {
     this.chapterElevenEventNoticeText = label === 'Garden Event' || label === 'Realm Event'
       ? `ALARM: ${text}`
       : text;
     this.chapterElevenEventNoticeLabel = label;
     this.chapterElevenEventNoticeTimer = Math.max(this.chapterElevenEventNoticeTimer, duration);
-    this.gameplaySfxAudio.playGardenEventAlarm();
+    if (cue !== 'rain' && cue !== 'lightning' && cue !== 'wind') {
+      this.gameplaySfxAudio.playGardenEventAlarm();
+    }
   }
 
   private startChapterElevenEventAudio(cue: GardenEventCue, duration: number): void {
