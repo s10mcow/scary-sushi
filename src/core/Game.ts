@@ -281,7 +281,7 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   { id: 'watering-can', label: 'Watering Can', cost: 100, description: 'Hold E while aiming at plants to water them so they grow twice as fast.', maxStock: 5 },
   { id: 'bucket-of-water', label: 'Bucket of Water', cost: 25, description: 'Refills the Watering Can back to 10 uses.', maxStock: 8 },
   { id: 'shovel', label: 'Shovel', cost: 200, description: 'Aim at a planted crop and press E to dig it back into your seed inventory.', maxStock: 5 },
-  { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by vine seeds, or aim at a plant to remove it.', maxStock: 4, copyOnly: true },
+  { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by cucumber or vine seeds so climbing crops can wrap upward around it.', maxStock: 4 },
   { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.', maxStock: 5, copyOnly: true },
   { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5, copyOnly: true },
   { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.', maxStock: 2, copyOnly: true },
@@ -4260,6 +4260,13 @@ export class Game {
   }
 
   private grantChapterElevenStartingSeeds(): void {
+    if (!this.chapterElevenTwoActive) {
+      const normalStarterSeeds = CHAPTER_ELEVEN_STARTING_SEEDS
+        .filter((starter) => starter.normalOnly)
+        .map((starter) => starter.seedId);
+      this.chapterElevenSeedHotbar = Array.from({ length: Math.max(9, normalStarterSeeds.length) }, (_, index) => normalStarterSeeds[index] ?? null);
+    }
+
     CHAPTER_ELEVEN_STARTING_SEEDS.forEach(({ seedId, count, copyOnly, normalOnly }) => {
       const item = this.getChapterElevenSeedItem(seedId);
       if (!item
@@ -10130,7 +10137,8 @@ export class Game {
 
     if (cropId === 'garden-cucumber') {
       return [
-        makeFruit(new Vector3(0.16, 0.24, -0.02), 'Cucumber', 10),
+        makeFruit(new Vector3(0.18, 0.82, 0.08), 'Cucumber', 10),
+        makeFruit(new Vector3(-0.14, 1.18, -0.08), 'Cucumber', 10),
       ];
     }
 
@@ -10734,11 +10742,31 @@ export class Game {
 
     const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
     if (plant.stage === 'baby') {
-      if (config.cropId === 'pumpkin' || config.cropId === 'watermelon' || config.cropId === 'garden-cucumber') {
+      if (config.cropId === 'garden-cucumber') {
+        const vineMaterial = new MeshStandardMaterial({ color: 0x2f7a2f, roughness: 0.86 });
+        const supportMaterial = new MeshStandardMaterial({ color: 0x8a5a2f, roughness: 0.9 });
+        const support = new Mesh(new CylinderGeometry(0.035, 0.045, 1.05, 8), supportMaterial);
+        support.name = 'Chapter 11 baby cucumber vine stick support';
+        support.position.y = 0.62;
+        support.castShadow = true;
+        plant.root.add(support);
+        for (let index = 0; index < 4; index += 1) {
+          const angle = index * 1.35;
+          const vine = new Mesh(new CylinderGeometry(0.02, 0.026, 0.34, 7), vineMaterial);
+          vine.name = 'Chapter 11 baby cucumber vine wrapping upward';
+          vine.position.set(Math.cos(angle) * 0.08, 0.28 + index * 0.16, Math.sin(angle) * 0.08);
+          vine.rotation.set(0.42, angle, 0.18);
+          vine.castShadow = true;
+          plant.root.add(vine);
+        }
+        this.addChapterElevenLeafCluster(plant.root, 5, 0.16, 0.46);
+        return;
+      }
+      if (config.cropId === 'pumpkin' || config.cropId === 'watermelon') {
         const vineMaterial = new MeshStandardMaterial({ color: 0x2f7a2f, roughness: 0.86 });
         for (let index = 0; index < 4; index += 1) {
           const vine = new Mesh(new BoxGeometry(0.1, 0.055, 0.72), vineMaterial);
-          vine.name = 'Chapter 11 baby vine runner';
+          vine.name = 'Chapter 11 baby pumpkin vine runner';
           vine.position.set(Math.cos(index * Math.PI / 2) * 0.2, 0.12, Math.sin(index * Math.PI / 2) * 0.2);
           vine.rotation.y = index * Math.PI / 2 + (index % 2 === 0 ? 0.18 : -0.18);
           vine.castShadow = true;
@@ -11355,7 +11383,48 @@ export class Game {
       return;
     }
 
-    if (config.cropId === 'pumpkin' || config.cropId === 'watermelon' || config.cropId === 'garden-cucumber') {
+    if (config.cropId === 'garden-cucumber') {
+      if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+        plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+      }
+
+      const vineMaterial = new MeshStandardMaterial({ color: 0x287a32, roughness: 0.86 });
+      const darkVineMaterial = new MeshStandardMaterial({ color: 0x1f5f29, roughness: 0.9 });
+      const supportMaterial = new MeshStandardMaterial({ color: 0x8a5a2f, roughness: 0.9 });
+      const support = new Mesh(new CylinderGeometry(0.045, 0.06, 1.7, 10), supportMaterial);
+      support.name = 'Chapter 11 mature cucumber vine stick support';
+      support.position.y = 0.9;
+      support.castShadow = true;
+      support.receiveShadow = true;
+      plant.root.add(support);
+
+      for (let index = 0; index < 8; index += 1) {
+        const angle = index * 0.9;
+        const height = 0.22 + index * 0.17;
+        const vine = new Mesh(new CylinderGeometry(0.022, 0.028, 0.38, 8), index % 2 === 0 ? vineMaterial : darkVineMaterial);
+        vine.name = 'Chapter 11 mature cucumber vine spiraling around stick';
+        vine.position.set(Math.cos(angle) * 0.09, height, Math.sin(angle) * 0.09);
+        vine.rotation.set(0.48, angle, index % 2 === 0 ? 0.22 : -0.18);
+        vine.castShadow = true;
+        plant.root.add(vine);
+      }
+
+      for (let index = 0; index < 7; index += 1) {
+        const angle = (index / 7) * Math.PI * 2;
+        const leaf = new Mesh(new SphereGeometry(0.12, 12, 8), vineMaterial);
+        leaf.name = 'Chapter 11 cucumber broad climbing leaf';
+        leaf.position.set(Math.cos(angle) * 0.22, 0.38 + (index % 4) * 0.22, Math.sin(angle) * 0.2);
+        leaf.scale.set(1.35, 0.18, 0.8);
+        leaf.rotation.set(0.34, angle, index % 2 === 0 ? 0.4 : -0.34);
+        leaf.castShadow = true;
+        plant.root.add(leaf);
+      }
+
+      this.addChapterElevenPickableFruitMeshes(plant);
+      return;
+    }
+
+    if (config.cropId === 'pumpkin' || config.cropId === 'watermelon') {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
@@ -11371,15 +11440,15 @@ export class Game {
         [-0.34, 0.15, -0.34, Math.PI / 4],
       ];
       vineSegments.forEach(([vineX, vineY, vineZ, rotationY]) => {
-        const vine = new Mesh(new BoxGeometry(0.12, 0.06, config.cropId === 'garden-cucumber' ? 0.78 : 0.88), vineMaterial);
-        vine.name = 'Chapter 11 permanent vine runner';
+        const vine = new Mesh(new BoxGeometry(0.12, 0.06, 0.88), vineMaterial);
+        vine.name = 'Chapter 11 permanent pumpkin vine';
         vine.position.set(vineX, vineY, vineZ);
         vine.rotation.y = rotationY;
         vine.castShadow = true;
         vine.receiveShadow = true;
         plant.root.add(vine);
       });
-      this.addChapterElevenLeafCluster(plant.root, config.cropId === 'garden-cucumber' ? 7 : 9, 0.24, config.cropId === 'garden-cucumber' ? 0.26 : 0.34);
+      this.addChapterElevenLeafCluster(plant.root, 9, 0.24, 0.34);
       this.addChapterElevenPickableFruitMeshes(plant);
       return;
     }
@@ -14226,7 +14295,7 @@ export class Game {
     });
 
     this.consumeChapterElevenEquipment('vine-stick');
-    this.pushStatus('Vine Stick placed. Plant vine seeds close to it.', 2.4);
+    this.pushStatus('Vine Stick placed. Plant cucumber or vine seeds close to it.', 2.4);
     this.syncHud();
     return true;
   }
@@ -14347,12 +14416,6 @@ export class Game {
 
     const targetPlant = this.findChapterElevenTargetPlant(point);
     if (equipmentId === 'vine-stick') {
-      if (targetPlant) {
-        this.deleteChapterElevenPlant(targetPlant);
-        this.pushStatus('Vine Stick knocked out that plant.', 2.1);
-        this.syncHud();
-        return true;
-      }
       return this.placeChapterElevenVineStick(point);
     }
 
@@ -14651,16 +14714,22 @@ export class Game {
       return;
     }
 
-    const vineStick = seedId === 'vine-seeds' ? this.findNearbyChapterElevenVineStick(point.x, point.z) : null;
-    if (seedId === 'vine-seeds' && !vineStick) {
-      this.pushStatus('Vine seeds need a Vine Stick placed close by first.', 2.6);
+    const needsVineStick = seedId === 'vine-seeds' || seedId === 'garden-cucumber-seeds';
+    const vineStick = needsVineStick ? this.findNearbyChapterElevenVineStick(point.x, point.z) : null;
+    if (needsVineStick && !vineStick) {
+      this.pushStatus(seedId === 'garden-cucumber-seeds'
+        ? 'Cucumber seeds need a Vine Stick placed close by first.'
+        : 'Vine seeds need a Vine Stick placed close by first.', 2.6);
       return;
     }
+
+    const plantX = vineStick ? vineStick.x : MathUtils.clamp(point.x, patch.centerX - patch.halfWidth + 0.65, patch.centerX + patch.halfWidth - 0.65);
+    const plantZ = vineStick ? vineStick.z : MathUtils.clamp(point.z, patch.centerZ - patch.halfDepth + 0.65, patch.centerZ + patch.halfDepth - 0.65);
 
     const newPlantRadius = this.getChapterElevenPlantFootprintRadius(seedId);
     const tooClose = this.chapterElevenPlants.some((plant) => {
       const existingRadius = this.getChapterElevenPlantFootprintRadius(plant.seedId);
-      return Math.hypot(plant.x - point.x, plant.z - point.z) < Math.max(
+      return Math.hypot(plant.x - plantX, plant.z - plantZ) < Math.max(
         CHAPTER_ELEVEN_PLANT_MIN_DISTANCE,
         newPlantRadius + existingRadius + 0.18,
       );
@@ -14673,11 +14742,7 @@ export class Game {
     const config = CHAPTER_ELEVEN_CROP_CONFIGS[seedId];
     const root = new Group();
     root.name = `Chapter 11 planted ${config.label}`;
-    root.position.set(
-      MathUtils.clamp(point.x, patch.centerX - patch.halfWidth + 0.65, patch.centerX + patch.halfWidth - 0.65),
-      0,
-      MathUtils.clamp(point.z, patch.centerZ - patch.halfDepth + 0.65, patch.centerZ + patch.halfDepth - 0.65),
-    );
+    root.position.set(plantX, 0, plantZ);
     const plant: ChapterElevenPlanting = {
       id: this.chapterElevenNextPlantId,
       seedId,
@@ -28073,7 +28138,7 @@ export class Game {
 
       if (this.getChapterElevenDirtPatchAt(point)) {
         if (this.chapterElevenSelectedEquipmentId === 'vine-stick') {
-          return 'Left click or press E to place the Vine Stick here, or aim at a plant to remove it.';
+          return 'Left click or press E to place the Vine Stick here for cucumber and vine plants.';
         }
         if (this.chapterElevenSelectedEquipmentId === 'sprinkler') {
           return 'Left click or press E to place the Sprinkler in this dirt patch.';
