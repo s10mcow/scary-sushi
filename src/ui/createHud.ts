@@ -260,6 +260,7 @@ export type ChapterElevenPetEggShopId =
   | 'dinosaur-egg'
   | 'turtle-egg'
   | 'unicorn-egg'
+  | 'phoenix-egg'
   | 'farm-egg'
   | 'forest-egg'
   | 'ocean-egg'

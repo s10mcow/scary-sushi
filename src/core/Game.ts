@@ -1117,6 +1117,7 @@ const CHAPTER_ELEVEN_PET_EGG_HATCH_SECONDS = 120;
 const CHAPTER_ELEVEN_PET_SHOP_X = -2.61;
 const CHAPTER_ELEVEN_PET_SHOP_Z = 52.33;
 const CHAPTER_ELEVEN_PET_SHOP_RANGE = 5.5;
+const CHAPTER_ELEVEN_PHOENIX_PROTECTION_RADIUS = 6.5;
 const CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS: Array<{
   id: ChapterElevenPetEggShopId;
   label: string;
@@ -1144,6 +1145,13 @@ const CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS: Array<{
     cost: 15000,
     petType: 'unicorn',
     description: 'The animal does: turns ripe food magical so it sells for twice as much.',
+  },
+  {
+    id: 'phoenix-egg',
+    label: 'Phoenix Egg',
+    cost: 15000,
+    petType: 'phoenix',
+    description: 'The animal does: protects nearby plants from snow and gives night light so plants grow faster.',
   },
 ];
 const CHAPTER_ELEVEN_PET_EGG_SHOP_ITEMS: Array<{
@@ -9847,6 +9855,8 @@ export class Game {
               ? 0x6c8f4b
               : petType === 'unicorn'
                 ? 0xff87d7
+                : petType === 'phoenix'
+                  ? 0xff8a2b
                 : 0x8fc56d,
       roughness: 0.62,
     }));
@@ -9860,6 +9870,19 @@ export class Game {
         band.position.copy(egg.position).add(new Vector3(0, -0.06 + index * 0.022, 0));
         band.rotation.x = Math.PI / 2;
         root.add(band);
+      });
+    } else if (petType === 'phoenix') {
+      [0xffd25c, 0xff7a22, 0xd83a1b].forEach((color, index) => {
+        const flame = new Mesh(new ConeGeometry(0.04 - index * 0.004, 0.18 - index * 0.02, 8), new MeshStandardMaterial({
+          color,
+          emissive: color,
+          emissiveIntensity: 0.24,
+          roughness: 0.42,
+        }));
+        flame.name = 'Held phoenix egg fiery feather';
+        flame.position.copy(egg.position).add(new Vector3(-0.07 + index * 0.07, 0.17 + index * 0.012, 0));
+        flame.rotation.z = -0.15 + index * 0.15;
+        root.add(flame);
       });
     }
     return root;
@@ -12519,7 +12542,9 @@ export class Game {
         fruit.regrowTimer = 0;
         fruit.golden = Math.random() < fruit.goldenChance;
         fruit.charged = false;
-        fruit.frozenTimer = this.chapterElevenEvent === 'snow' ? CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS : 0;
+        fruit.frozenTimer = this.chapterElevenEvent === 'snow' && !this.isChapterElevenPlantNearPhoenix(plant)
+          ? CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS
+          : 0;
         fruitsChanged = true;
       }
     });
@@ -12579,6 +12604,9 @@ export class Game {
       const phaseGrowthDelta = deltaSeconds * this.getChapterElevenGrowthPhaseMultiplier();
       const growthDelta = this.isChapterElevenSeedLifeCommonSeed(plant.seedId) ? phaseGrowthDelta * 0.5 : phaseGrowthDelta;
       plant.age += growthDelta;
+      if (this.chapterElevenPhase === 'night' && this.isChapterElevenPlantNearPhoenix(plant)) {
+        plant.age += growthDelta;
+      }
       if (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') {
         plant.age += growthDelta;
       }
@@ -12615,7 +12643,11 @@ export class Game {
         let fruitsChanged = false;
         plant.pickableFruits.forEach((fruit) => {
           if (fruit.visible) {
-            if (this.chapterElevenEvent === 'snow' && fruit.frozenTimer <= 0) {
+            const protectedByPhoenix = this.isChapterElevenPlantNearPhoenix(plant);
+            if (protectedByPhoenix && fruit.frozenTimer > 0) {
+              fruit.frozenTimer = 0;
+              fruitsChanged = true;
+            } else if (this.chapterElevenEvent === 'snow' && fruit.frozenTimer <= 0 && !protectedByPhoenix) {
               fruit.frozenTimer = CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS;
               fruitsChanged = true;
             } else if (fruit.frozenTimer > 0) {
@@ -12634,7 +12666,9 @@ export class Game {
             fruit.regrowTimer = 0;
             fruit.golden = Math.random() < fruit.goldenChance;
             fruit.charged = false;
-            fruit.frozenTimer = this.chapterElevenEvent === 'snow' ? CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS : 0;
+            fruit.frozenTimer = this.chapterElevenEvent === 'snow' && !this.isChapterElevenPlantNearPhoenix(plant)
+              ? CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS
+              : 0;
             fruitsChanged = true;
           }
         });
@@ -12677,6 +12711,14 @@ export class Game {
     return deltaSeconds * (this.chapterElevenPhase === 'night'
       ? CHAPTER_ELEVEN_NIGHT_FROZEN_THAW_MULTIPLIER
       : CHAPTER_ELEVEN_DAY_FROZEN_THAW_MULTIPLIER);
+  }
+
+  private isChapterElevenPlantNearPhoenix(plant: ChapterElevenPlanting): boolean {
+    return this.chapterElevenPets.some((pet) => (
+      pet.petType === 'phoenix'
+      && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
+      && Math.hypot(pet.x - plant.x, pet.z - plant.z) <= CHAPTER_ELEVEN_PHOENIX_PROTECTION_RADIUS
+    ));
   }
 
   private configureChapterElevenPrecipitation(event: 'rain' | 'lightning' | 'snow'): void {
@@ -12756,7 +12798,7 @@ export class Game {
 
   private syncChapterElevenPlantSnowFrost(plant: ChapterElevenPlanting): void {
     const existing = plant.root.getObjectByName('Chapter 11 snow event frosty plant coating');
-    if (this.chapterElevenEvent !== 'snow') {
+    if (this.chapterElevenEvent !== 'snow' || this.isChapterElevenPlantNearPhoenix(plant)) {
       if (existing) {
         plant.root.remove(existing);
       }
@@ -12811,6 +12853,9 @@ export class Game {
       }
 
       let changed = false;
+      if (this.isChapterElevenPlantNearPhoenix(plant)) {
+        return;
+      }
       plant.pickableFruits.forEach((fruit) => {
         if (!fruit.visible || fruit.frozenTimer > 0) {
           return;
@@ -13806,7 +13851,7 @@ export class Game {
       return;
     }
 
-    if (pet.petType === 'fox' || pet.petType === 'unicorn' || pet.petType === 'alien' || pet.petType === 'astro-cat' || pet.petType === 'cosmic-bunny' || pet.petType === 'phoenix' || pet.petType === 'dragon') {
+    if (pet.petType === 'fox' || pet.petType === 'unicorn' || pet.petType === 'alien' || pet.petType === 'astro-cat' || pet.petType === 'cosmic-bunny' || (this.chapterElevenTwoActive && pet.petType === 'phoenix') || pet.petType === 'dragon') {
       const plant = this.findChapterElevenMutationPetTarget(pet);
       if (plant) {
         const mutation: ChapterElevenMutationId = pet.petType === 'dragon'
@@ -13862,7 +13907,7 @@ export class Game {
       const growthPlant = (pet.petType === 'chicken' || pet.petType === 'duck' || pet.petType === 'turtle' || pet.petType === 'dolphin' || pet.petType === 'slime' || pet.petType === 'deer')
         ? this.findChapterElevenGrowingPlantTarget(pet)
         : null;
-      const mutationPlant = (pet.petType === 'fox' || pet.petType === 'unicorn' || pet.petType === 'alien' || pet.petType === 'astro-cat' || pet.petType === 'cosmic-bunny' || pet.petType === 'phoenix' || pet.petType === 'dragon')
+      const mutationPlant = (pet.petType === 'fox' || pet.petType === 'unicorn' || pet.petType === 'alien' || pet.petType === 'astro-cat' || pet.petType === 'cosmic-bunny' || (this.chapterElevenTwoActive && pet.petType === 'phoenix') || pet.petType === 'dragon')
         ? this.findChapterElevenMutationPetTarget(pet)
         : null;
       const gatherCrop = (pet.petType === 'pig' || pet.petType === 'hedgehog' || pet.petType === 'crab')
@@ -13927,6 +13972,12 @@ export class Game {
       }
 
       this.animateChapterElevenPet(pet, deltaSeconds, distance >= 0.25);
+      const phoenixLight = pet.root.getObjectByName('Chapter 11 phoenix warm night plant light') as PointLight | undefined;
+      if (phoenixLight) {
+        const nightActive = this.chapterElevenPhase === 'night';
+        phoenixLight.intensity = nightActive ? 2.4 + Math.sin(this.elapsed * 4) * 0.25 : 0;
+        phoenixLight.distance = nightActive ? 8 : 0;
+      }
 
       pet.actionTimer -= deltaSeconds;
       if (pet.actionTimer <= 0) {
@@ -14739,6 +14790,8 @@ export class Game {
               ? 0x6f8d42
               : petType === 'unicorn'
                 ? 0xff8bdc
+                : petType === 'phoenix'
+                  ? 0xff8a2b
                 : 0x8fc56d,
       roughness: 0.62,
     }));
@@ -14754,6 +14807,8 @@ export class Game {
           ? 0x315f2e
           : petType === 'turtle'
             ? 0x375a28
+            : petType === 'phoenix'
+              ? 0xffd25c
             : 0x7a3ca8,
       roughness: 0.66,
     });
@@ -14782,6 +14837,20 @@ export class Game {
         band.rotation.x = Math.PI / 2;
         root.add(band);
       });
+    } else if (petType === 'phoenix') {
+      for (let index = 0; index < 6; index += 1) {
+        const flame = new Mesh(new ConeGeometry(0.045, 0.22, 8), new MeshStandardMaterial({
+          color: index % 2 === 0 ? 0xffd25c : 0xff5a1e,
+          emissive: index % 2 === 0 ? 0xff7a1f : 0x9d1f0c,
+          emissiveIntensity: 0.22,
+          roughness: 0.42,
+        }));
+        flame.name = 'Chapter 11 phoenix egg fiery feather';
+        const angle = (index / 6) * Math.PI * 2;
+        flame.position.set(Math.cos(angle) * 0.18, 0.7, Math.sin(angle) * 0.18);
+        flame.rotation.set(0.28, 0, -angle);
+        root.add(flame);
+      }
     } else if (petType === 'dinosaur') {
       for (let index = 0; index < 4; index += 1) {
         const plate = new Mesh(new ConeGeometry(0.045, 0.16, 5), spotMaterial);
@@ -14807,9 +14876,11 @@ export class Game {
             ? 0x6f9550
             : petType === 'unicorn'
               ? 0xf8f3ff
+              : petType === 'phoenix'
+                ? 0xff8a2b
               : 0x6e9d55;
     const bodyMaterial = new MeshStandardMaterial({ color: bodyColor, roughness: 0.72 });
-    const darkMaterial = new MeshStandardMaterial({ color: petType === 'cow' ? 0x1c1814 : petType === 'unicorn' ? 0x2a2140 : 0x2a1c12, roughness: 0.8 });
+    const darkMaterial = new MeshStandardMaterial({ color: petType === 'cow' ? 0x1c1814 : petType === 'unicorn' ? 0x2a2140 : petType === 'phoenix' ? 0x4a1608 : 0x2a1c12, roughness: 0.8 });
     const noseMaterial = new MeshStandardMaterial({ color: petType === 'rabbit' || petType === 'unicorn' ? 0xe7a8b0 : 0x17110d, roughness: 0.7 });
     const pawMaterial = new MeshStandardMaterial({
       color: petType === 'rabbit'
@@ -14823,13 +14894,13 @@ export class Game {
               : 0x4f773f,
       roughness: 0.84,
     });
-    const body = new Mesh(new SphereGeometry(petType === 'dinosaur' ? 0.36 : petType === 'cow' ? 0.38 : petType === 'turtle' ? 0.3 : 0.28, 18, 12), bodyMaterial);
-    body.position.y = petType === 'dinosaur' ? 0.48 : petType === 'cow' ? 0.52 : petType === 'turtle' ? 0.34 : 0.36;
-    body.scale.set(petType === 'dinosaur' ? 1.45 : petType === 'cow' ? 1.72 : petType === 'turtle' ? 1.34 : 1.2, petType === 'cow' ? 0.82 : petType === 'turtle' ? 0.48 : 0.72, petType === 'cow' ? 1.02 : petType === 'turtle' ? 1.0 : 0.8);
+    const body = new Mesh(new SphereGeometry(petType === 'dinosaur' ? 0.36 : petType === 'cow' ? 0.38 : petType === 'turtle' ? 0.3 : petType === 'phoenix' ? 0.24 : 0.28, 18, 12), bodyMaterial);
+    body.position.y = petType === 'dinosaur' ? 0.48 : petType === 'cow' ? 0.52 : petType === 'turtle' ? 0.34 : petType === 'phoenix' ? 0.46 : 0.36;
+    body.scale.set(petType === 'dinosaur' ? 1.45 : petType === 'cow' ? 1.72 : petType === 'turtle' ? 1.34 : petType === 'phoenix' ? 1.05 : 1.2, petType === 'cow' ? 0.82 : petType === 'turtle' ? 0.48 : petType === 'phoenix' ? 1.08 : 0.72, petType === 'cow' ? 1.02 : petType === 'turtle' ? 1.0 : petType === 'phoenix' ? 0.82 : 0.8);
     body.castShadow = true;
     root.add(body);
-    const head = new Mesh(new SphereGeometry(petType === 'cow' ? 0.25 : petType === 'unicorn' ? 0.18 : 0.16, 16, 10), bodyMaterial);
-    head.position.set(petType === 'cow' ? 0.58 : petType === 'turtle' ? 0.4 : 0.36, petType === 'dinosaur' ? 0.62 : petType === 'cow' ? 0.62 : petType === 'turtle' ? 0.42 : 0.46, 0);
+    const head = new Mesh(new SphereGeometry(petType === 'cow' ? 0.25 : petType === 'unicorn' ? 0.18 : petType === 'phoenix' ? 0.15 : 0.16, 16, 10), bodyMaterial);
+    head.position.set(petType === 'cow' ? 0.58 : petType === 'turtle' ? 0.4 : petType === 'phoenix' ? 0.26 : 0.36, petType === 'dinosaur' ? 0.62 : petType === 'cow' ? 0.62 : petType === 'turtle' ? 0.42 : petType === 'phoenix' ? 0.68 : 0.46, 0);
     if (petType === 'cow') {
       head.scale.set(1.12, 0.9, 1);
     }
@@ -14837,12 +14908,12 @@ export class Game {
     root.add(head);
     [-0.17, 0.17].forEach((z) => {
       const eye = new Mesh(new SphereGeometry(petType === 'cow' ? 0.032 : petType === 'unicorn' ? 0.028 : 0.025, 8, 6), darkMaterial);
-      eye.position.set(petType === 'cow' ? 0.76 : petType === 'turtle' ? 0.53 : 0.49, petType === 'dinosaur' ? 0.67 : petType === 'cow' ? 0.67 : petType === 'turtle' ? 0.46 : 0.5, z);
+      eye.position.set(petType === 'cow' ? 0.76 : petType === 'turtle' ? 0.53 : petType === 'phoenix' ? 0.36 : 0.49, petType === 'dinosaur' ? 0.67 : petType === 'cow' ? 0.67 : petType === 'turtle' ? 0.46 : petType === 'phoenix' ? 0.71 : 0.5, z);
       root.add(eye);
     });
     const nose = new Mesh(new SphereGeometry(petType === 'cow' ? 0.13 : 0.05, 10, 8), petType === 'cow' ? new MeshStandardMaterial({ color: 0xe5b4a9, roughness: 0.78 }) : noseMaterial);
     nose.name = `Chapter 11 ${this.getChapterElevenPetLabel(petType)} nose`;
-    nose.position.set(petType === 'cow' ? 0.84 : petType === 'turtle' ? 0.56 : 0.53, petType === 'dinosaur' ? 0.6 : petType === 'cow' ? 0.55 : petType === 'turtle' ? 0.39 : 0.43, 0);
+    nose.position.set(petType === 'cow' ? 0.84 : petType === 'turtle' ? 0.56 : petType === 'phoenix' ? 0.4 : 0.53, petType === 'dinosaur' ? 0.6 : petType === 'cow' ? 0.55 : petType === 'turtle' ? 0.39 : petType === 'phoenix' ? 0.66 : 0.43, 0);
     nose.scale.set(petType === 'cow' ? 1.25 : 1.05, petType === 'cow' ? 0.58 : 0.68, petType === 'cow' ? 1.45 : 1);
     root.add(nose);
     if (petType === 'rabbit') {
@@ -14982,6 +15053,47 @@ export class Game {
       smile.position.set(0.57, 0.39, 0);
       smile.rotation.z = 0.1;
       root.add(smile);
+    } else if (petType === 'phoenix') {
+      const featherMaterial = new MeshStandardMaterial({ color: 0xffd25c, emissive: 0xff6a16, emissiveIntensity: 0.22, roughness: 0.46 });
+      const flameMaterial = new MeshStandardMaterial({ color: 0xff4a1c, emissive: 0xb51d08, emissiveIntensity: 0.3, roughness: 0.4 });
+      [-1, 1].forEach((side) => {
+        const wing = new Mesh(new ConeGeometry(0.09, 0.46, 8), featherMaterial);
+        wing.name = 'Chapter 11 phoenix fiery wing feather';
+        wing.position.set(0, 0.47, side * 0.24);
+        wing.rotation.set(Math.PI / 2.2, 0, side * 0.78);
+        root.add(wing);
+        const wingTip = new Mesh(new ConeGeometry(0.055, 0.28, 8), flameMaterial);
+        wingTip.name = 'Chapter 11 phoenix orange red wing tip';
+        wingTip.position.set(-0.08, 0.43, side * 0.36);
+        wingTip.rotation.set(Math.PI / 2.25, 0, side * 0.92);
+        root.add(wingTip);
+      });
+      for (let index = 0; index < 4; index += 1) {
+        const tail = new Mesh(new ConeGeometry(0.05, 0.44, 8), index % 2 === 0 ? featherMaterial : flameMaterial);
+        tail.name = 'Chapter 11 phoenix fiery tail feather';
+        tail.position.set(-0.34 - index * 0.035, 0.45 - index * 0.015, -0.12 + index * 0.08);
+        tail.rotation.z = Math.PI / 2.65;
+        root.add(tail);
+      }
+      const crest = new Mesh(new ConeGeometry(0.04, 0.18, 8), flameMaterial);
+      crest.name = 'Chapter 11 phoenix cute head crest';
+      crest.position.set(0.25, 0.82, 0);
+      crest.rotation.z = -0.1;
+      root.add(crest);
+      const beak = new Mesh(new ConeGeometry(0.035, 0.12, 8), new MeshStandardMaterial({ color: 0xffdd6a, roughness: 0.62 }));
+      beak.name = 'Chapter 11 phoenix small beak';
+      beak.position.set(0.44, 0.66, 0);
+      beak.rotation.z = -Math.PI / 2;
+      root.add(beak);
+      const smile = new Mesh(new BoxGeometry(0.08, 0.01, 0.01), darkMaterial);
+      smile.name = 'Chapter 11 phoenix happy smile';
+      smile.position.set(0.39, 0.63, 0);
+      smile.rotation.z = 0.18;
+      root.add(smile);
+      const glow = new PointLight(0xff8a2b, 0, 7, 1.8);
+      glow.name = 'Chapter 11 phoenix warm night plant light';
+      glow.position.set(0, 1.0, 0);
+      root.add(glow);
     } else {
       for (let index = 0; index < 5; index += 1) {
         const plate = new Mesh(new ConeGeometry(0.055, 0.18, 5), new MeshStandardMaterial({ color: 0x3f6d35, roughness: 0.78 }));
@@ -15056,7 +15168,9 @@ export class Game {
             ? 'Chapter 11 turtle tiny tail'
             : pet.petType === 'unicorn'
               ? 'Chapter 11 unicorn rainbow tail'
-              : 'Chapter 11 dinosaur tapered tail',
+              : pet.petType === 'phoenix'
+                ? 'Chapter 11 phoenix fiery tail feather'
+                : 'Chapter 11 dinosaur tapered tail',
     );
     if (tail) {
       tail.rotation.y = Math.sin(phase * 0.8) * 0.16;
