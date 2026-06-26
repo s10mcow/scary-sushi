@@ -270,6 +270,9 @@ const CHAPTER_ELEVEN_SEED_LIFE_EQUIPMENT_STALL_X = 3.75;
 const CHAPTER_ELEVEN_SEED_LIFE_EQUIPMENT_STALL_Z = 52.33;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_RANGE = 7.5;
 const CHAPTER_ELEVEN_WATERING_CAN_MAX_USES = 10;
+const CHAPTER_ELEVEN_NIGHT_GROWTH_MULTIPLIER = 0.45;
+const CHAPTER_ELEVEN_DAY_FROZEN_THAW_MULTIPLIER = 1.65;
+const CHAPTER_ELEVEN_NIGHT_FROZEN_THAW_MULTIPLIER = 0.45;
 const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   id: ChapterElevenEquipmentId;
   label: string;
@@ -11842,8 +11845,9 @@ export class Game {
   }
 
   private waterChapterElevenPlant(plant: ChapterElevenPlanting, deltaSeconds: number): void {
+    const growthDelta = deltaSeconds * this.getChapterElevenGrowthPhaseMultiplier();
     if (!plant.mature) {
-      plant.age += deltaSeconds;
+      plant.age += growthDelta;
       return;
     }
 
@@ -11856,7 +11860,7 @@ export class Game {
       if (fruit.visible) {
         return;
       }
-      fruit.regrowTimer -= deltaSeconds;
+      fruit.regrowTimer -= growthDelta;
       if (fruit.regrowTimer <= 0) {
         fruit.visible = true;
         fruit.regrowTimer = 0;
@@ -11919,7 +11923,8 @@ export class Game {
     this.chapterElevenPlants.forEach((plant) => {
       this.syncChapterElevenPlantSnowFrost(plant);
       const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
-      const growthDelta = this.isChapterElevenSeedLifeCommonSeed(plant.seedId) ? deltaSeconds * 0.5 : deltaSeconds;
+      const phaseGrowthDelta = deltaSeconds * this.getChapterElevenGrowthPhaseMultiplier();
+      const growthDelta = this.isChapterElevenSeedLifeCommonSeed(plant.seedId) ? phaseGrowthDelta * 0.5 : phaseGrowthDelta;
       plant.age += growthDelta;
       if (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') {
         plant.age += growthDelta;
@@ -11957,7 +11962,7 @@ export class Game {
               fruit.frozenTimer = CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS;
               fruitsChanged = true;
             } else if (fruit.frozenTimer > 0) {
-              fruit.frozenTimer = Math.max(0, fruit.frozenTimer - deltaSeconds);
+              fruit.frozenTimer = Math.max(0, fruit.frozenTimer - this.getChapterElevenFrozenThawDelta(deltaSeconds));
               if (fruit.frozenTimer <= 0) {
                 fruitsChanged = true;
               }
@@ -11965,7 +11970,7 @@ export class Game {
             return;
           }
 
-          const regrowDelta = (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') ? deltaSeconds * 2 : deltaSeconds;
+          const regrowDelta = (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') ? phaseGrowthDelta * 2 : phaseGrowthDelta;
           fruit.regrowTimer -= regrowDelta;
           if (fruit.regrowTimer <= 0) {
             fruit.visible = true;
@@ -12003,6 +12008,18 @@ export class Game {
   private stopChapterElevenEventAudio(): void {
     this.chapterElevenEventAudioTimer = 0;
     this.gameplaySfxAudio.setGardenEventAmbient(null);
+  }
+
+  private getChapterElevenGrowthPhaseMultiplier(): number {
+    return this.chapterElevenPhase === 'night'
+      ? CHAPTER_ELEVEN_NIGHT_GROWTH_MULTIPLIER
+      : 1;
+  }
+
+  private getChapterElevenFrozenThawDelta(deltaSeconds: number): number {
+    return deltaSeconds * (this.chapterElevenPhase === 'night'
+      ? CHAPTER_ELEVEN_NIGHT_FROZEN_THAW_MULTIPLIER
+      : CHAPTER_ELEVEN_DAY_FROZEN_THAW_MULTIPLIER);
   }
 
   private configureChapterElevenPrecipitation(event: 'rain' | 'lightning' | 'snow'): void {
