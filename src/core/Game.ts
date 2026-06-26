@@ -806,8 +806,8 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
   'diamond-bush-seeds': {
     seedId: 'diamond-bush-seeds',
     cropId: 'diamond',
-    label: 'Diamond',
-    pluralLabel: 'Diamonds',
+    label: 'Diamond Fruit',
+    pluralLabel: 'Diamond Fruits',
     sellValue: 11000,
     babySeconds: 32,
     matureSeconds: 112,
@@ -10087,11 +10087,11 @@ export class Game {
 
     if (cropId === 'diamond') {
       return [
-        makeFruit(new Vector3(0.3, 0.46, 0.08), 'Diamond', regrow(12)),
-        makeFruit(new Vector3(-0.26, 0.58, -0.12), 'Diamond', regrow(12)),
-        makeFruit(new Vector3(0.06, 0.72, -0.26), 'Diamond', regrow(12)),
-        makeFruit(new Vector3(-0.12, 0.4, 0.26), 'Diamond', regrow(12)),
-        makeFruit(new Vector3(0.25, 0.66, 0.24), 'Diamond', regrow(12)),
+        makeFruit(new Vector3(0.3, 0.46, 0.08), 'Diamond Fruit', regrow(12)),
+        makeFruit(new Vector3(-0.26, 0.58, -0.12), 'Diamond Fruit', regrow(12)),
+        makeFruit(new Vector3(0.06, 0.72, -0.26), 'Diamond Fruit', regrow(12)),
+        makeFruit(new Vector3(-0.12, 0.4, 0.26), 'Diamond Fruit', regrow(12)),
+        makeFruit(new Vector3(0.25, 0.66, 0.24), 'Diamond Fruit', regrow(12)),
       ];
     }
 
