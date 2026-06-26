@@ -357,7 +357,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 75, section: 'expensive', maxStock: 5 },
   { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 100, section: 'expensive', maxStock: 4 },
   { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 40, section: 'expensive', maxStock: 7 },
-  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 150, section: 'expensive', maxStock: 3 },
+  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 190, section: 'expensive', maxStock: 3 },
   { id: 'watermelon-seeds', label: 'Watermelon seeds', singularLabel: 'Watermelon seed', cost: 150, section: 'expensive', maxStock: 3, normalOnly: true },
   { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 650, section: 'expensive', maxStock: 1 },
   { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 260, section: 'expensive', maxStock: 3 },
@@ -10315,7 +10315,7 @@ export class Game {
       banana: new MeshStandardMaterial({ color: 0xe6c72f, roughness: 0.62 }),
       bananaTip: new MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.8 }),
       genericGold: new MeshStandardMaterial({ color: 0xf1c84b, roughness: 0.42, metalness: 0.28 }),
-      iceShell: new MeshStandardMaterial({ color: 0xc8f2ff, emissive: 0x5fa5c8, emissiveIntensity: 0.16, transparent: true, opacity: 0.48, roughness: 0.18, metalness: 0.04 }),
+      iceShell: new MeshStandardMaterial({ color: 0xc8f2ff, emissive: 0x5fa5c8, emissiveIntensity: 0.22, transparent: true, opacity: 0.62, roughness: 0.18, metalness: 0.04 }),
       stem: new MeshStandardMaterial({ color: 0x4c6c28, roughness: 0.86 }),
       strawberryLeaf: new MeshStandardMaterial({ color: 0x2f7b34, roughness: 0.8 }),
     };
@@ -10601,16 +10601,33 @@ export class Game {
       fruit.castShadow = true;
       plant.root.add(fruit);
       if (fruitState.frozenTimer > 0) {
-        const ice = new Mesh(new SphereGeometry(0.16, 14, 10), materials.iceShell);
+        const iceRadius = fruitState.cropId === 'watermelon'
+          ? 0.44
+          : fruitState.cropId === 'pumpkin'
+            ? 0.34
+            : fruitState.cropId === 'pineapple' || fruitState.cropId === 'garden-corn' || fruitState.cropId === 'corn' || fruitState.cropId === 'seed-life-golden-corn'
+              ? 0.28
+              : fruitState.cropId === 'garden-cucumber'
+                ? 0.26
+                : fruitState.cropId === 'dragon-fruit' || fruitState.cropId === 'cactus'
+                  ? 0.2
+                  : 0.18;
+        const ice = new Mesh(new SphereGeometry(iceRadius, 18, 12), materials.iceShell);
         ice.name = 'Chapter 11 frozen fruit clear ice shell';
         ice.position.copy(fruitState.offset);
         ice.scale.set(
-          Math.max(1.05, fruit.scale.x * 1.42),
-          Math.max(0.9, fruit.scale.y * 1.22),
-          Math.max(1.05, fruit.scale.z * 1.42),
+          Math.max(1.08, fruit.scale.x * 1.28),
+          Math.max(0.92, fruit.scale.y * 1.18),
+          Math.max(1.08, fruit.scale.z * 1.28),
         );
         ice.castShadow = true;
         plant.root.add(ice);
+        const frostRing = new Mesh(new TorusGeometry(iceRadius * 0.9, iceRadius * 0.055, 6, 24), materials.iceShell);
+        frostRing.name = 'Chapter 11 frozen fruit frosty rim';
+        frostRing.position.copy(fruitState.offset);
+        frostRing.rotation.x = Math.PI / 2;
+        frostRing.castShadow = true;
+        plant.root.add(frostRing);
       }
       if (mutation) {
         this.addChapterElevenMutationEffect(plant.root, fruitState.offset, mutation, mutation === 'cosmic' || mutation === 'prismatic' ? 0.34 : 0.25);
@@ -11900,6 +11917,7 @@ export class Game {
     });
 
     this.chapterElevenPlants.forEach((plant) => {
+      this.syncChapterElevenPlantSnowFrost(plant);
       const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
       const growthDelta = this.isChapterElevenSeedLifeCommonSeed(plant.seedId) ? deltaSeconds * 0.5 : deltaSeconds;
       plant.age += growthDelta;
@@ -11991,16 +12009,65 @@ export class Game {
     const material = new MeshBasicMaterial({
       color: event === 'snow' ? 0xf4fbff : 0x9fd9ff,
       transparent: true,
-      opacity: event === 'snow' ? 0.82 : 0.62,
+      opacity: event === 'snow' ? 0.94 : 0.62,
     });
     this.chapterElevenRainRoot.children.forEach((drop) => {
       if (!(drop instanceof Mesh)) {
         return;
       }
       drop.material = material;
-      drop.scale.set(event === 'snow' ? 4.2 : 1, event === 'snow' ? 0.12 : 1, event === 'snow' ? 4.2 : 1);
+      drop.scale.set(event === 'snow' ? 6.2 : 1, event === 'snow' ? 0.13 : 1, event === 'snow' ? 6.2 : 1);
       drop.rotation.z = event === 'snow' ? MathUtils.randFloat(-0.12, 0.12) : -0.28;
     });
+  }
+
+  private syncChapterElevenPlantSnowFrost(plant: ChapterElevenPlanting): void {
+    const existing = plant.root.getObjectByName('Chapter 11 snow event frosty plant coating');
+    if (this.chapterElevenEvent !== 'snow') {
+      if (existing) {
+        plant.root.remove(existing);
+      }
+      return;
+    }
+    if (existing) {
+      return;
+    }
+
+    const frost = new Group();
+    frost.name = 'Chapter 11 snow event frosty plant coating';
+    const frostMaterial = new MeshStandardMaterial({
+      color: 0xe9f8ff,
+      emissive: 0x9bc8dc,
+      emissiveIntensity: 0.08,
+      roughness: 0.36,
+      transparent: true,
+      opacity: 0.48,
+      depthWrite: false,
+    });
+    const footprint = this.getChapterElevenPlantFootprintRadius(plant.seedId);
+    const groundFrost = new Mesh(new CircleGeometry(Math.max(0.28, footprint * 0.82), 24), frostMaterial);
+    groundFrost.name = 'Chapter 11 snow frost around plant base';
+    groundFrost.rotation.x = -Math.PI / 2;
+    groundFrost.position.y = 0.11;
+    frost.add(groundFrost);
+
+    const cropHeight = plant.cropId === 'coconut'
+      ? 2.6
+      : plant.cropId === 'banana'
+        ? 2.1
+        : plant.cropId === 'apple' || plant.cropId === 'peach' || plant.cropId === 'olive' || plant.cropId === 'lemon' || plant.cropId === 'gold-fruit'
+          ? 1.35
+          : plant.cropId === 'garden-corn' || plant.cropId === 'corn' || plant.cropId === 'seed-life-golden-corn' || plant.cropId === 'dragon-fruit' || plant.cropId === 'cactus'
+            ? 1.05
+            : plant.cropId === 'pumpkin' || plant.cropId === 'watermelon' || plant.cropId === 'garden-cucumber'
+              ? 0.62
+              : 0.45;
+    const crownFrost = new Mesh(new SphereGeometry(Math.max(0.18, footprint * 0.48), 14, 8), frostMaterial);
+    crownFrost.name = 'Chapter 11 snow frost visible icy plant crown';
+    crownFrost.position.y = cropHeight;
+    crownFrost.scale.set(1.45, 0.28, 1.2);
+    frost.add(crownFrost);
+    plant.root.add(frost);
   }
 
   private freezeVisibleChapterElevenFruit(): number {
@@ -12034,8 +12101,12 @@ export class Game {
     this.chapterElevenNextTraderTimer = Number.POSITIVE_INFINITY;
     this.configureChapterElevenPrecipitation(event);
     this.chapterElevenRainRoot.visible = event === 'rain' || event === 'lightning' || event === 'snow';
+    this.chapterEleven.snowCover.visible = event === 'snow';
     this.chapterElevenLightningStrikeTimer = event === 'lightning' ? MathUtils.randFloat(4.5, 8) : 0;
     const frozen = event === 'snow' ? this.freezeVisibleChapterElevenFruit() : 0;
+    if (event === 'snow') {
+      this.chapterElevenPlants.forEach((plant) => this.syncChapterElevenPlantSnowFrost(plant));
+    }
     this.startChapterElevenEventAudio(event, this.chapterElevenEventTimer);
     this.showChapterElevenEventNotice(
       event === 'rain' ? 'Rain event is happening.' : event === 'snow' ? 'Snowing event is happening.' : 'Thunderstorm event is happening.',
@@ -12054,7 +12125,9 @@ export class Game {
     this.chapterElevenEvent = 'none';
     this.chapterElevenEventTimer = 0;
     this.chapterElevenRainRoot.visible = false;
+    this.chapterEleven.snowCover.visible = false;
     this.chapterElevenLightningRoot.visible = false;
+    this.chapterElevenPlants.forEach((plant) => this.syncChapterElevenPlantSnowFrost(plant));
     this.stopChapterElevenEventAudio();
   }
 
@@ -14054,7 +14127,7 @@ export class Game {
   private buildChapterElevenEventAndTraderModels(): void {
     this.chapterElevenRainRoot.clear();
     const rainMaterial = new MeshBasicMaterial({ color: 0x9fd9ff, transparent: true, opacity: 0.62 });
-    for (let index = 0; index < 260; index += 1) {
+    for (let index = 0; index < 560; index += 1) {
       const drop = new Mesh(new BoxGeometry(0.022, 1.04, 0.022), rainMaterial);
       drop.name = 'Chapter 11 rain storm falling drop';
       drop.position.set(

@@ -52,6 +52,7 @@ export interface ChapterElevenData {
   specialStalls: ChapterElevenSpecialStall[];
   equipmentStand: Group;
   equipmentStandCollider: CollisionBox;
+  snowCover: Mesh;
   fieldBounds: {
     minX: number;
     maxX: number;
@@ -80,6 +81,14 @@ const FLOOR_Y = 0;
 const grassMaterial = new MeshStandardMaterial({
   color: 0x4f963f,
   roughness: 0.94,
+});
+
+const snowCoverMaterial = new MeshStandardMaterial({
+  color: 0xf2f7f8,
+  roughness: 0.86,
+  transparent: true,
+  opacity: 0.78,
+  depthWrite: false,
 });
 
 const dirtMaterial = new MeshStandardMaterial({
@@ -228,6 +237,14 @@ export function createChapterEleven(): ChapterElevenData {
   grass.position.set(0, -0.06, 0);
   grass.receiveShadow = true;
   root.add(grass);
+
+  const snowCover = new Mesh(new PlaneGeometry(FIELD_WIDTH, FIELD_DEPTH), snowCoverMaterial);
+  snowCover.name = 'Chapter 11 snow event white grass blanket';
+  snowCover.rotation.x = -Math.PI / 2;
+  snowCover.position.y = 0.04;
+  snowCover.receiveShadow = true;
+  snowCover.visible = false;
+  root.add(snowCover);
 
   const fenceHeight = 1.25;
   const fenceThickness = 0.22;
@@ -1269,6 +1286,7 @@ export function createChapterEleven(): ChapterElevenData {
     specialStalls,
     equipmentStand,
     equipmentStandCollider,
+    snowCover,
     fieldBounds: {
       minX: -490,
       maxX: 490,
