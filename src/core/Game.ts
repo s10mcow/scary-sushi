@@ -13929,9 +13929,18 @@ export class Game {
     return this.chapterElevenPlants
       .filter((plant) => (
         plant.mature
+        && this.canChapterElevenPetMutatePlant(plant)
         && this.isPointInChapterElevenPatch(plant.x, plant.z, pet.homePatch, 0.1)
       ))
       .sort((a, b) => Math.hypot(a.x - pet.x, a.z - pet.z) - Math.hypot(b.x - pet.x, b.z - pet.z))[0] ?? null;
+  }
+
+  private canChapterElevenPetMutatePlant(plant: ChapterElevenPlanting): boolean {
+    if (plant.pickableFruits && this.isChapterElevenPickableFruitCrop(plant.cropId)) {
+      return plant.pickableFruits.some((fruit) => fruit.visible && !fruit.mutation);
+    }
+
+    return !plant.mutation;
   }
 
   private applyChapterElevenPetMutation(plant: ChapterElevenPlanting, mutation: ChapterElevenMutationId, chance: number): boolean {
@@ -14169,8 +14178,8 @@ export class Game {
       const phoenixLight = pet.root.getObjectByName('Chapter 11 phoenix warm night plant light') as PointLight | undefined;
       if (phoenixLight) {
         const nightActive = this.chapterElevenPhase === 'night';
-        phoenixLight.intensity = nightActive ? 2.4 + Math.sin(this.elapsed * 4) * 0.25 : 0;
-        phoenixLight.distance = nightActive ? 8 : 0;
+        phoenixLight.intensity = (nightActive ? 3.4 : 1.85) + Math.sin(this.elapsed * 4) * 0.28;
+        phoenixLight.distance = nightActive ? 11 : 8;
       }
 
       pet.actionTimer -= deltaSeconds;
@@ -15194,11 +15203,26 @@ export class Game {
       root.add(tuft);
     } else if (petType === 'turtle') {
       const shellMaterial = new MeshStandardMaterial({ color: 0x315524, roughness: 0.78 });
+      const shellPlateMaterial = new MeshStandardMaterial({ color: 0x547538, roughness: 0.76 });
+      const shellLineMaterial = new MeshStandardMaterial({ color: 0x1f3618, roughness: 0.82 });
       const shell = new Mesh(new SphereGeometry(0.31, 18, 12), shellMaterial);
       shell.name = 'Chapter 11 turtle rounded tortoise shell';
       shell.position.set(-0.08, 0.44, 0);
       shell.scale.set(1.3, 0.52, 1.05);
       root.add(shell);
+      [
+        [0, 0.65, 0, 1.0, 0.22, 0.7],
+        [-0.18, 0.62, -0.15, 0.75, 0.18, 0.42],
+        [-0.18, 0.62, 0.15, 0.75, 0.18, 0.42],
+        [0.12, 0.6, -0.14, 0.72, 0.16, 0.4],
+        [0.12, 0.6, 0.14, 0.72, 0.16, 0.4],
+      ].forEach(([x, y, z, sx, sy, sz]) => {
+        const plate = new Mesh(new SphereGeometry(0.12, 10, 7), shellPlateMaterial);
+        plate.name = 'Chapter 11 turtle raised shell scute plate';
+        plate.position.set(x, y, z);
+        plate.scale.set(sx, sy, sz);
+        root.add(plate);
+      });
       const shellStripeMaterial = new MeshStandardMaterial({ color: 0x8aaa4c, roughness: 0.74 });
       [-0.12, 0, 0.12].forEach((z) => {
         const stripe = new Mesh(new BoxGeometry(0.5, 0.018, 0.018), shellStripeMaterial);
@@ -15206,6 +15230,22 @@ export class Game {
         stripe.position.set(-0.08, 0.62, z);
         stripe.rotation.y = z * 1.4;
         root.add(stripe);
+      });
+      [0, Math.PI / 2].forEach((rotation) => {
+        const groove = new Mesh(new TorusGeometry(0.2, 0.006, 5, 28), shellLineMaterial);
+        groove.name = 'Chapter 11 turtle shell dark realistic groove';
+        groove.position.set(-0.08, 0.64, 0);
+        groove.scale.set(1.18, 0.28, 0.72);
+        groove.rotation.set(Math.PI / 2, rotation, 0);
+        root.add(groove);
+      });
+      [[0.22, -0.24], [0.22, 0.24], [-0.32, -0.24], [-0.32, 0.24]].forEach(([x, z]) => {
+        const flipper = new Mesh(new SphereGeometry(0.075, 10, 7), bodyMaterial);
+        flipper.name = 'Chapter 11 turtle little webbed foot flipper';
+        flipper.position.set(x, 0.18, z);
+        flipper.scale.set(1.35, 0.32, 0.72);
+        flipper.rotation.y = z < 0 ? -0.28 : 0.28;
+        root.add(flipper);
       });
       const smile = new Mesh(new BoxGeometry(0.12, 0.012, 0.012), darkMaterial);
       smile.name = 'Chapter 11 turtle happy smile';
@@ -15288,6 +15328,25 @@ export class Game {
       glow.name = 'Chapter 11 phoenix warm night plant light';
       glow.position.set(0, 1.0, 0);
       root.add(glow);
+      [-0.07, 0.07].forEach((z) => {
+        const leg = new Mesh(new CylinderGeometry(0.018, 0.024, 0.24, 7), darkMaterial);
+        leg.name = z < 0 ? 'Chapter 11 phoenix left bird leg' : 'Chapter 11 phoenix right bird leg';
+        leg.position.set(0.03, 0.2, z);
+        leg.castShadow = true;
+        root.add(leg);
+        const foot = new Mesh(new BoxGeometry(0.12, 0.018, 0.035), new MeshStandardMaterial({ color: 0x5a260e, roughness: 0.78 }));
+        foot.name = z < 0 ? 'Chapter 11 phoenix left bird foot claws' : 'Chapter 11 phoenix right bird foot claws';
+        foot.position.set(0.09, 0.075, z);
+        foot.rotation.y = z < 0 ? -0.18 : 0.18;
+        root.add(foot);
+        for (let clawIndex = 0; clawIndex < 3; clawIndex += 1) {
+          const claw = new Mesh(new ConeGeometry(0.008, 0.055, 5), new MeshStandardMaterial({ color: 0x2a160d, roughness: 0.6 }));
+          claw.name = 'Chapter 11 phoenix tiny toe claw';
+          claw.position.set(0.15, 0.074, z - 0.025 + clawIndex * 0.025);
+          claw.rotation.z = -Math.PI / 2;
+          root.add(claw);
+        }
+      });
     } else {
       for (let index = 0; index < 5; index += 1) {
         const plate = new Mesh(new ConeGeometry(0.055, 0.18, 5), new MeshStandardMaterial({ color: 0x3f6d35, roughness: 0.78 }));
@@ -15310,18 +15369,20 @@ export class Game {
       tail.rotation.z = Math.PI / 2;
       root.add(tail);
     }
-    const legXs = petType === 'cow' ? [-0.46, 0.38] : [-0.22, 0.22];
-    const legZs = petType === 'cow' ? [-0.24, 0.24] : [-0.16, 0.16];
-    legXs.forEach((x) => legZs.forEach((z) => {
-      const leg = new Mesh(new CylinderGeometry(petType === 'cow' ? 0.05 : 0.035, petType === 'cow' ? 0.06 : 0.045, petType === 'cow' ? 0.36 : 0.24, 8), darkMaterial);
-      leg.name = `Chapter 11 pet ${x < 0 ? 'back' : 'front'} ${z < 0 ? 'left' : 'right'} walking leg`;
-      leg.position.set(x, petType === 'cow' ? 0.2 : 0.16, z);
-      const paw = new Mesh(new SphereGeometry(petType === 'cow' ? 0.07 : 0.055, 10, 6), pawMaterial);
-      paw.name = `Chapter 11 pet ${x < 0 ? 'back' : 'front'} ${z < 0 ? 'left' : 'right'} moving paw`;
-      paw.position.set(x + (petType === 'cow' ? 0.04 : 0.03), 0.035, z);
-      paw.scale.set(petType === 'cow' ? 1.5 : 1.3, 0.36, petType === 'cow' ? 1.12 : 0.95);
-      root.add(leg, paw);
-    }));
+    if (petType !== 'phoenix' && petType !== 'turtle') {
+      const legXs = petType === 'cow' ? [-0.46, 0.38] : [-0.22, 0.22];
+      const legZs = petType === 'cow' ? [-0.24, 0.24] : [-0.16, 0.16];
+      legXs.forEach((x) => legZs.forEach((z) => {
+        const leg = new Mesh(new CylinderGeometry(petType === 'cow' ? 0.05 : 0.035, petType === 'cow' ? 0.06 : 0.045, petType === 'cow' ? 0.36 : 0.24, 8), darkMaterial);
+        leg.name = `Chapter 11 pet ${x < 0 ? 'back' : 'front'} ${z < 0 ? 'left' : 'right'} walking leg`;
+        leg.position.set(x, petType === 'cow' ? 0.2 : 0.16, z);
+        const paw = new Mesh(new SphereGeometry(petType === 'cow' ? 0.07 : 0.055, 10, 6), pawMaterial);
+        paw.name = `Chapter 11 pet ${x < 0 ? 'back' : 'front'} ${z < 0 ? 'left' : 'right'} moving paw`;
+        paw.position.set(x + (petType === 'cow' ? 0.04 : 0.03), 0.035, z);
+        paw.scale.set(petType === 'cow' ? 1.5 : 1.3, 0.36, petType === 'cow' ? 1.12 : 0.95);
+        root.add(leg, paw);
+      }));
+    }
     return root;
   }
 
@@ -15342,6 +15403,8 @@ export class Game {
     animateLimb('Chapter 11 pet back right walking leg', stride * 0.34);
     animateLimb('Chapter 11 pet front right walking leg', oppositeStride * 0.34);
     animateLimb('Chapter 11 pet back left walking leg', oppositeStride * 0.34);
+    animateLimb('Chapter 11 phoenix left bird leg', stride * 0.28);
+    animateLimb('Chapter 11 phoenix right bird leg', oppositeStride * 0.28);
 
     if (pet.petType === 'rabbit') {
       pet.root.position.y = moving ? Math.max(0, Math.sin(phase * 1.25)) * 0.18 : 0;
