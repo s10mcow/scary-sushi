@@ -333,21 +333,26 @@ function animateJackalopes(root: Group, timeSeconds: number): void {
 }
 
 function addMagicalFoxTail(root: Group, sideOffset: number, lift: number, fan: number): void {
+  const tailRoot = new Group();
+  tailRoot.name = 'Magical fox connected five-tail plume';
+  tailRoot.position.set(-0.72, 0.76 + lift, sideOffset);
+  tailRoot.rotation.y = fan;
+  tailRoot.rotation.z = -0.58;
+  root.add(tailRoot);
+
   const tail = new Mesh(new SphereGeometry(1, 16, 10), magicalFoxFurMaterial);
-  tail.name = 'Magical fox flowing orange tail';
-  tail.position.set(-0.72, 0.76 + lift, sideOffset);
+  tail.name = 'Magical fox flowing connected orange tail';
+  tail.position.set(0, 0, 0);
   tail.scale.set(0.16, 0.18, 0.72);
-  tail.rotation.y = fan;
-  tail.rotation.z = -0.58;
   tail.castShadow = true;
-  root.add(tail);
+  tailRoot.add(tail);
 
   const tip = new Mesh(new SphereGeometry(1, 12, 8), magicalFoxTailTipMaterial);
-  tip.name = 'Magical fox glowing white tail tip';
-  tip.position.set(-1.04, 1.08 + lift, sideOffset + Math.sin(fan) * 0.34);
-  tip.scale.set(0.13, 0.12, 0.2);
+  tip.name = 'Magical fox connected white tail cap';
+  tip.position.set(0, 0, 0.58);
+  tip.scale.set(0.135, 0.15, 0.24);
   tip.castShadow = true;
-  root.add(tip);
+  tailRoot.add(tip);
 }
 
 function createMagicalFox(localX: number, localZ: number, seed: number): Group {
@@ -363,13 +368,15 @@ function createMagicalFox(localX: number, localZ: number, seed: number): Group {
   addSphere(fox, 'Magical fox white chest', [0.22, 0.7, 0], [0.26, 0.22, 0.18], magicalFoxWhiteFurMaterial);
   addSphere(fox, 'Magical fox sharp head', [0.68, 0.9, 0], [0.24, 0.18, 0.17], magicalFoxFurMaterial);
   addPointedCone(fox, 'Magical fox pointy muzzle', [0.91, 0.86, 0], 0.12, 0.28, magicalFoxWhiteFurMaterial, [0, 0, -Math.PI / 2]);
-  addSphere(fox, 'Magical fox left clear eye', [0.78, 0.96, -0.085], [0.045, 0.045, 0.045], magicalFoxEyeMaterial);
-  addSphere(fox, 'Magical fox right clear eye', [0.78, 0.96, 0.085], [0.045, 0.045, 0.045], magicalFoxEyeMaterial);
-  addSphere(fox, 'Magical fox left eye shine', [0.805, 0.976, -0.106], [0.014, 0.014, 0.014], magicalFoxWhiteFurMaterial);
-  addSphere(fox, 'Magical fox right eye shine', [0.805, 0.976, 0.106], [0.014, 0.014, 0.014], magicalFoxWhiteFurMaterial);
+  addSphere(fox, 'Magical fox large black left eye', [0.84, 0.96, -0.08], [0.065, 0.065, 0.065], magicalFoxEyeMaterial);
+  addSphere(fox, 'Magical fox large black right eye', [0.84, 0.96, 0.08], [0.065, 0.065, 0.065], magicalFoxEyeMaterial);
+  addSphere(fox, 'Magical fox left eye small shine', [0.878, 0.982, -0.104], [0.011, 0.011, 0.011], magicalFoxWhiteFurMaterial);
+  addSphere(fox, 'Magical fox right eye small shine', [0.878, 0.982, 0.104], [0.011, 0.011, 0.011], magicalFoxWhiteFurMaterial);
 
-  addPointedCone(fox, 'Magical fox tall pointed ear', [0.58, 1.16, -0.11], 0.08, 0.32, magicalFoxFurMaterial, [0.12, 0, -0.18]);
-  addPointedCone(fox, 'Magical fox tall pointed ear', [0.58, 1.16, 0.11], 0.08, 0.32, magicalFoxFurMaterial, [-0.12, 0, -0.18]);
+  addSphere(fox, 'Magical fox left ear base connected to head', [0.56, 1.03, -0.11], [0.085, 0.07, 0.07], magicalFoxFurMaterial);
+  addSphere(fox, 'Magical fox right ear base connected to head', [0.56, 1.03, 0.11], [0.085, 0.07, 0.07], magicalFoxFurMaterial);
+  addPointedCone(fox, 'Magical fox tall pointed ear connected to head', [0.56, 1.1, -0.11], 0.08, 0.32, magicalFoxFurMaterial, [0.12, 0, -0.18]);
+  addPointedCone(fox, 'Magical fox tall pointed ear connected to head', [0.56, 1.1, 0.11], 0.08, 0.32, magicalFoxFurMaterial, [-0.12, 0, -0.18]);
 
   for (const [index, z] of [-0.14, 0.14].entries()) {
     const rearLeg = addBox(fox, 'Magical fox back leg', [0.065, 0.42, 0.06], [-0.3, 0.28, z], magicalFoxFurMaterial);
