@@ -467,6 +467,7 @@ type ChapterElevenCropId =
   | `charged-${string}`;
 type ChapterElevenMutationId =
   | 'basic'
+  | 'magical'
   | 'large'
   | 'giant'
   | 'golden'
@@ -1112,11 +1113,39 @@ const CHAPTER_ELEVEN_PUMPKIN_REGROW_SECONDS = 10;
 const CHAPTER_ELEVEN_PEACH_REGROW_SECONDS = 10;
 const CHAPTER_ELEVEN_GOLDEN_CHANCE = 0.035;
 const CHAPTER_ELEVEN_FROZEN_FRUIT_SECONDS = 180;
-const CHAPTER_ELEVEN_PET_EGG_COST = 5000;
-const CHAPTER_ELEVEN_PET_EGG_HATCH_SECONDS = 60;
+const CHAPTER_ELEVEN_PET_EGG_HATCH_SECONDS = 120;
 const CHAPTER_ELEVEN_PET_SHOP_X = -2.61;
 const CHAPTER_ELEVEN_PET_SHOP_Z = 52.33;
 const CHAPTER_ELEVEN_PET_SHOP_RANGE = 5.5;
+const CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS: Array<{
+  id: ChapterElevenPetEggShopId;
+  label: string;
+  cost: number;
+  petType: ChapterElevenPetType;
+  description: string;
+}> = [
+  {
+    id: 'dinosaur-egg',
+    label: 'Dinosaur Egg',
+    cost: 5000,
+    petType: 'dinosaur',
+    description: 'The animal does: tramples ripe fruit into your inventory.',
+  },
+  {
+    id: 'turtle-egg',
+    label: 'Turtle Egg',
+    cost: 10000,
+    petType: 'turtle',
+    description: 'The animal does: hydrates nearby plants so they grow faster.',
+  },
+  {
+    id: 'unicorn-egg',
+    label: 'Unicorn Egg',
+    cost: 15000,
+    petType: 'unicorn',
+    description: 'The animal does: turns ripe food magical so it sells for twice as much.',
+  },
+];
 const CHAPTER_ELEVEN_PET_EGG_SHOP_ITEMS: Array<{
   id: ChapterElevenPetEggShopId;
   label: string;
@@ -4265,6 +4294,18 @@ export class Game {
   private getChapterElevenSeedShopItems(): ChapterElevenSeedShopItemView[] {
     const items: ChapterElevenSeedShopItemView[] = [];
     if (this.chapterElevenPetEggShopOpen) {
+      if (!this.chapterElevenTwoActive) {
+        return CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS.map((item) => ({
+          kind: 'egg',
+          id: item.id,
+          label: item.label,
+          cost: item.cost,
+          section: 'eggs',
+          enabled: this.chapterElevenMoney >= item.cost,
+          description: item.description,
+        }));
+      }
+
       return CHAPTER_ELEVEN_PET_EGG_SHOP_ITEMS.map((item) => ({
         kind: 'egg',
         id: item.id,
@@ -4325,7 +4366,7 @@ export class Game {
   };
 
   private readonly handleChapterElevenTraderPetEggPurchase = (eggId?: ChapterElevenPetEggShopId): void => {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenSeedShopOpen || (!this.chapterElevenTraderShopOpen && !this.chapterElevenPetEggShopOpen)) {
+    if (!this.chapterElevenActive || !this.chapterElevenSeedShopOpen || (!this.chapterElevenTraderShopOpen && !this.chapterElevenPetEggShopOpen)) {
       return;
     }
 
@@ -9013,6 +9054,8 @@ export class Game {
     switch (mutation) {
       case 'basic':
         return 1.5;
+      case 'magical':
+        return 2;
       case 'large':
         return 2.2;
       case 'giant':
@@ -9057,6 +9100,8 @@ export class Game {
         return 'Rainbow light bends around it and changes its color.';
       case 'golden':
         return 'Golden light coats it and makes it shine like treasure.';
+      case 'magical':
+        return 'Unicorn magic sparkles around it and makes it more valuable.';
       case 'large':
       case 'giant':
         return 'The crop swells bigger than normal.';
@@ -9066,7 +9111,7 @@ export class Game {
   }
 
   private getChapterElevenCropMutationPrefix(cropId: ChapterElevenCropId): { mutation: ChapterElevenMutationId; baseCropId: ChapterElevenCropId } | null {
-    const mutationIds: ChapterElevenMutationId[] = ['dragon-touched', 'storm-charged', 'rain-kissed', 'prismatic', 'cosmic', 'frozen', 'molten', 'rainbow', 'golden', 'giant', 'large', 'basic'];
+    const mutationIds: ChapterElevenMutationId[] = ['dragon-touched', 'storm-charged', 'rain-kissed', 'prismatic', 'cosmic', 'frozen', 'molten', 'rainbow', 'magical', 'golden', 'giant', 'large', 'basic'];
     const cropText = String(cropId);
     const mutation = mutationIds.find((candidate) => cropText.startsWith(`${candidate}-`));
     if (!mutation) {
@@ -9360,6 +9405,8 @@ export class Game {
       case 'rainbow':
       case 'prismatic':
         return new MeshStandardMaterial({ color: 0xd66cff, emissive: 0x4a2cff, emissiveIntensity: 0.38, roughness: 0.3, metalness: 0.16 });
+      case 'magical':
+        return new MeshStandardMaterial({ color: 0xff91e7, emissive: 0x8b39ff, emissiveIntensity: 0.42, roughness: 0.28, metalness: 0.12 });
       case 'golden':
         return new MeshStandardMaterial({ color: 0xf1c84b, emissive: 0x8f6818, emissiveIntensity: 0.28, roughness: 0.38, metalness: 0.28 });
       case 'large':
@@ -9381,15 +9428,15 @@ export class Game {
               ? 0x9bed5c
               : mutation === 'golden'
                 ? 0xffdc62
-              : mutation === 'rainbow' || mutation === 'prismatic'
+              : mutation === 'rainbow' || mutation === 'prismatic' || mutation === 'magical'
                 ? 0xff77dd
                 : 0x83dfff,
       transparent: true,
-      opacity: mutation === 'cosmic' ? 0.62 : 0.48,
+      opacity: mutation === 'cosmic' || mutation === 'magical' ? 0.62 : 0.48,
       depthWrite: false,
     });
 
-    const dustCount = mutation === 'cosmic' || mutation === 'prismatic' ? 8 : 5;
+    const dustCount = mutation === 'cosmic' || mutation === 'prismatic' || mutation === 'magical' ? 8 : 5;
     for (let index = 0; index < dustCount; index += 1) {
       const angle = (index / dustCount) * Math.PI * 2;
       const dust = new Mesh(new SphereGeometry(0.018, 6, 4), effectMaterial);
@@ -9405,7 +9452,7 @@ export class Game {
       dust.userData.centerZ = position.z;
       dust.userData.radius = radius;
       dust.userData.phase = angle;
-      dust.userData.speed = mutation === 'cosmic' || mutation === 'prismatic' ? 1.2 : 0.7;
+      dust.userData.speed = mutation === 'cosmic' || mutation === 'prismatic' || mutation === 'magical' ? 1.2 : 0.7;
       dust.userData.flicker = index * 0.47;
       root.add(dust);
     }
@@ -9790,12 +9837,31 @@ export class Game {
     const hand = new Mesh(new BoxGeometry(0.18, 0.12, 0.2), new MeshStandardMaterial({ color: 0xd5a17b, roughness: 0.84 }));
     hand.position.set(0.1, -0.22, 0.04);
     const egg = new Mesh(new SphereGeometry(0.18, 20, 14), new MeshStandardMaterial({
-      color: petType === 'rabbit' ? 0xf5f0df : petType === 'dog' ? 0xc68a57 : petType === 'cow' ? 0xf0eadf : 0x8fc56d,
+      color: petType === 'rabbit'
+        ? 0xf5f0df
+        : petType === 'dog'
+          ? 0xc68a57
+          : petType === 'cow'
+            ? 0xf0eadf
+            : petType === 'turtle'
+              ? 0x6c8f4b
+              : petType === 'unicorn'
+                ? 0xff87d7
+                : 0x8fc56d,
       roughness: 0.62,
     }));
     egg.position.set(-0.03, 0.1, -0.02);
     egg.scale.set(0.85, 1.22, 0.85);
     root.add(hand, egg);
+    if (petType === 'unicorn') {
+      [0xff5555, 0xffbd36, 0xffef5c, 0x4bd36a, 0x49a0ff, 0x9362ff].forEach((color, index) => {
+        const band = new Mesh(new TorusGeometry(0.1 + index * 0.004, 0.006, 6, 18), new MeshStandardMaterial({ color, roughness: 0.5 }));
+        band.name = 'Held rainbow unicorn egg stripe';
+        band.position.copy(egg.position).add(new Vector3(0, -0.06 + index * 0.022, 0));
+        band.rotation.x = Math.PI / 2;
+        root.add(band);
+      });
+    }
     return root;
   }
 
@@ -13748,11 +13814,11 @@ export class Game {
           : pet.petType === 'phoenix'
             ? 'molten'
             : pet.petType === 'unicorn'
-              ? 'rainbow'
+              ? 'magical'
               : pet.petType === 'alien' || pet.petType === 'astro-cat' || pet.petType === 'cosmic-bunny'
                 ? 'cosmic'
                 : 'golden';
-        const chance = pet.petType === 'unicorn' || pet.petType === 'dragon' ? 0.34 : 0.24;
+        const chance = pet.petType === 'unicorn' ? 1 : pet.petType === 'dragon' ? 0.34 : 0.24;
         if (this.applyChapterElevenPetMutation(plant, mutation, chance)) {
           this.pushStatus(`${this.getChapterElevenPetLabel(pet.petType)} gave a crop the ${this.getChapterElevenMutationLabel(mutation)} mutation.`, 2.6);
         }
@@ -14607,14 +14673,20 @@ export class Game {
 
   private buyChapterElevenPetEgg(eggId: ChapterElevenPetEggShopId = 'farm-egg'): void {
     if (!this.chapterElevenTwoActive) {
-      if (this.chapterElevenMoney < CHAPTER_ELEVEN_PET_EGG_COST) {
-        this.pushStatus(`A pet egg costs $${CHAPTER_ELEVEN_PET_EGG_COST}. You need more money.`, 2.6);
+      const eggItem = CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS.find((item) => item.id === eggId)
+        ?? CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS[0];
+      if (!eggItem) {
+        return;
+      }
+
+      if (this.chapterElevenMoney < eggItem.cost) {
+        this.pushStatus(`${eggItem.label} costs $${eggItem.cost}. You need more money.`, 2.6);
         return;
       }
 
       this.chapterElevenPetEggsBought += 1;
-      const petType = this.chooseChapterElevenPetEggType(this.chapterElevenPetEggsBought);
-      this.chapterElevenMoney -= CHAPTER_ELEVEN_PET_EGG_COST;
+      const petType = eggItem.petType;
+      this.chapterElevenMoney -= eggItem.cost;
       this.chapterElevenPetEggInventory.set(petType, (this.chapterElevenPetEggInventory.get(petType) ?? 0) + 1);
       this.chapterElevenSelectedSeedId = null;
       this.chapterElevenSelectedCropId = null;
@@ -14623,7 +14695,7 @@ export class Game {
       this.placementToolActive = false;
       this.placementPreview.visible = false;
       const hotbarSlot = this.getCurrentChapterElevenHotbarSlot();
-      this.pushStatus(`Bought a ${this.getChapterElevenPetLabel(petType)} egg in hotbar slot ${hotbarSlot}. Money left: $${this.chapterElevenMoney}.`, 3.2);
+      this.pushStatus(`Bought a ${eggItem.label} in hotbar slot ${hotbarSlot}. It hatches in 2 minutes. Money left: $${this.chapterElevenMoney}.`, 3.2);
       this.syncHud();
       return;
     }
@@ -14657,7 +14729,17 @@ export class Game {
     const root = new Group();
     root.name = `Chapter 11 placed ${this.getChapterElevenPetLabel(petType)} pet egg`;
     const egg = new Mesh(new SphereGeometry(0.34, 24, 16), new MeshStandardMaterial({
-      color: petType === 'rabbit' ? 0xf5f0df : petType === 'dog' ? 0xc68a57 : petType === 'cow' ? 0xf0eadf : 0x8fc56d,
+      color: petType === 'rabbit'
+        ? 0xf5f0df
+        : petType === 'dog'
+          ? 0xc68a57
+          : petType === 'cow'
+            ? 0xf0eadf
+            : petType === 'turtle'
+              ? 0x6f8d42
+              : petType === 'unicorn'
+                ? 0xff8bdc
+                : 0x8fc56d,
       roughness: 0.62,
     }));
     egg.position.y = 0.42;
@@ -14665,44 +14747,102 @@ export class Game {
     egg.castShadow = true;
     egg.receiveShadow = true;
     root.add(egg);
-    const spotMaterial = new MeshStandardMaterial({ color: petType === 'cow' ? 0x1c1814 : 0x7a3ca8, roughness: 0.66 });
+    const spotMaterial = new MeshStandardMaterial({
+      color: petType === 'cow'
+        ? 0x1c1814
+        : petType === 'dinosaur'
+          ? 0x315f2e
+          : petType === 'turtle'
+            ? 0x375a28
+            : 0x7a3ca8,
+      roughness: 0.66,
+    });
     [[0.12, 0.58, 0.18], [-0.16, 0.34, 0.15], [0.02, 0.7, -0.2]].forEach(([x, y, z]) => {
       const spot = new Mesh(new SphereGeometry(0.07, 10, 8), spotMaterial);
       spot.position.set(x, y, z);
       spot.scale.y = 0.25;
       root.add(spot);
     });
+    if (petType === 'turtle') {
+      const shell = new Mesh(new SphereGeometry(0.26, 18, 12), new MeshStandardMaterial({ color: 0x315524, roughness: 0.76 }));
+      shell.name = 'Chapter 11 turtle egg shell cap';
+      shell.position.set(0, 0.42, 0);
+      shell.scale.set(1.05, 0.42, 1.05);
+      root.add(shell);
+      const smile = new Mesh(new BoxGeometry(0.16, 0.018, 0.018), new MeshStandardMaterial({ color: 0x1b2415, roughness: 0.8 }));
+      smile.name = 'Chapter 11 turtle egg happy smile';
+      smile.position.set(0.22, 0.36, 0);
+      smile.rotation.z = 0.1;
+      root.add(smile);
+    } else if (petType === 'unicorn') {
+      [0xff5555, 0xffbd36, 0xffef5c, 0x4bd36a, 0x49a0ff, 0x9362ff].forEach((color, index) => {
+        const band = new Mesh(new TorusGeometry(0.2 + index * 0.004, 0.01, 6, 24), new MeshStandardMaterial({ color, roughness: 0.5 }));
+        band.name = 'Chapter 11 unicorn egg rainbow stripe';
+        band.position.set(0, 0.28 + index * 0.055, 0);
+        band.rotation.x = Math.PI / 2;
+        root.add(band);
+      });
+    } else if (petType === 'dinosaur') {
+      for (let index = 0; index < 4; index += 1) {
+        const plate = new Mesh(new ConeGeometry(0.045, 0.16, 5), spotMaterial);
+        plate.name = 'Chapter 11 dinosaur egg little back plate';
+        plate.position.set(-0.18 + index * 0.12, 0.82, 0);
+        plate.rotation.x = Math.PI / 2;
+        root.add(plate);
+      }
+    }
     return root;
   }
 
   private createChapterElevenPetModel(petType: ChapterElevenPetType): Group {
     const root = new Group();
     root.name = `Chapter 11 ${this.getChapterElevenPetLabel(petType)} pet`;
-    const bodyColor = petType === 'rabbit' ? 0xe9e4d8 : petType === 'dog' ? 0xa56b3c : petType === 'cow' ? 0xf0eadf : 0x6e9d55;
+    const bodyColor = petType === 'rabbit'
+      ? 0xe9e4d8
+      : petType === 'dog'
+        ? 0xa56b3c
+        : petType === 'cow'
+          ? 0xf0eadf
+          : petType === 'turtle'
+            ? 0x6f9550
+            : petType === 'unicorn'
+              ? 0xf8f3ff
+              : 0x6e9d55;
     const bodyMaterial = new MeshStandardMaterial({ color: bodyColor, roughness: 0.72 });
-    const darkMaterial = new MeshStandardMaterial({ color: petType === 'cow' ? 0x1c1814 : 0x2a1c12, roughness: 0.8 });
-    const noseMaterial = new MeshStandardMaterial({ color: petType === 'rabbit' ? 0xe7a8b0 : 0x17110d, roughness: 0.7 });
-    const pawMaterial = new MeshStandardMaterial({ color: petType === 'rabbit' ? 0xd8d1c5 : petType === 'dog' ? 0x7b4a2c : petType === 'cow' ? 0x201a15 : 0x4f773f, roughness: 0.84 });
-    const body = new Mesh(new SphereGeometry(petType === 'dinosaur' ? 0.36 : petType === 'cow' ? 0.38 : 0.28, 18, 12), bodyMaterial);
-    body.position.y = petType === 'dinosaur' ? 0.48 : petType === 'cow' ? 0.52 : 0.36;
-    body.scale.set(petType === 'dinosaur' ? 1.45 : petType === 'cow' ? 1.72 : 1.2, petType === 'cow' ? 0.82 : 0.72, petType === 'cow' ? 1.02 : 0.8);
+    const darkMaterial = new MeshStandardMaterial({ color: petType === 'cow' ? 0x1c1814 : petType === 'unicorn' ? 0x2a2140 : 0x2a1c12, roughness: 0.8 });
+    const noseMaterial = new MeshStandardMaterial({ color: petType === 'rabbit' || petType === 'unicorn' ? 0xe7a8b0 : 0x17110d, roughness: 0.7 });
+    const pawMaterial = new MeshStandardMaterial({
+      color: petType === 'rabbit'
+        ? 0xd8d1c5
+        : petType === 'dog'
+          ? 0x7b4a2c
+          : petType === 'cow'
+            ? 0x201a15
+            : petType === 'unicorn'
+              ? 0xd6c4ed
+              : 0x4f773f,
+      roughness: 0.84,
+    });
+    const body = new Mesh(new SphereGeometry(petType === 'dinosaur' ? 0.36 : petType === 'cow' ? 0.38 : petType === 'turtle' ? 0.3 : 0.28, 18, 12), bodyMaterial);
+    body.position.y = petType === 'dinosaur' ? 0.48 : petType === 'cow' ? 0.52 : petType === 'turtle' ? 0.34 : 0.36;
+    body.scale.set(petType === 'dinosaur' ? 1.45 : petType === 'cow' ? 1.72 : petType === 'turtle' ? 1.34 : 1.2, petType === 'cow' ? 0.82 : petType === 'turtle' ? 0.48 : 0.72, petType === 'cow' ? 1.02 : petType === 'turtle' ? 1.0 : 0.8);
     body.castShadow = true;
     root.add(body);
-    const head = new Mesh(new SphereGeometry(petType === 'cow' ? 0.25 : 0.16, 16, 10), bodyMaterial);
-    head.position.set(petType === 'cow' ? 0.58 : 0.36, petType === 'dinosaur' ? 0.62 : petType === 'cow' ? 0.62 : 0.46, 0);
+    const head = new Mesh(new SphereGeometry(petType === 'cow' ? 0.25 : petType === 'unicorn' ? 0.18 : 0.16, 16, 10), bodyMaterial);
+    head.position.set(petType === 'cow' ? 0.58 : petType === 'turtle' ? 0.4 : 0.36, petType === 'dinosaur' ? 0.62 : petType === 'cow' ? 0.62 : petType === 'turtle' ? 0.42 : 0.46, 0);
     if (petType === 'cow') {
       head.scale.set(1.12, 0.9, 1);
     }
     head.castShadow = true;
     root.add(head);
     [-0.17, 0.17].forEach((z) => {
-      const eye = new Mesh(new SphereGeometry(petType === 'cow' ? 0.032 : 0.025, 8, 6), darkMaterial);
-      eye.position.set(petType === 'cow' ? 0.76 : 0.49, petType === 'dinosaur' ? 0.67 : petType === 'cow' ? 0.67 : 0.5, z);
+      const eye = new Mesh(new SphereGeometry(petType === 'cow' ? 0.032 : petType === 'unicorn' ? 0.028 : 0.025, 8, 6), darkMaterial);
+      eye.position.set(petType === 'cow' ? 0.76 : petType === 'turtle' ? 0.53 : 0.49, petType === 'dinosaur' ? 0.67 : petType === 'cow' ? 0.67 : petType === 'turtle' ? 0.46 : 0.5, z);
       root.add(eye);
     });
     const nose = new Mesh(new SphereGeometry(petType === 'cow' ? 0.13 : 0.05, 10, 8), petType === 'cow' ? new MeshStandardMaterial({ color: 0xe5b4a9, roughness: 0.78 }) : noseMaterial);
     nose.name = `Chapter 11 ${this.getChapterElevenPetLabel(petType)} nose`;
-    nose.position.set(petType === 'cow' ? 0.84 : 0.53, petType === 'dinosaur' ? 0.6 : petType === 'cow' ? 0.55 : 0.43, 0);
+    nose.position.set(petType === 'cow' ? 0.84 : petType === 'turtle' ? 0.56 : 0.53, petType === 'dinosaur' ? 0.6 : petType === 'cow' ? 0.55 : petType === 'turtle' ? 0.39 : 0.43, 0);
     nose.scale.set(petType === 'cow' ? 1.25 : 1.05, petType === 'cow' ? 0.58 : 0.68, petType === 'cow' ? 1.45 : 1);
     root.add(nose);
     if (petType === 'rabbit') {
@@ -14787,6 +14927,61 @@ export class Game {
       tuft.position.set(-0.82, 0.33, 0);
       tuft.scale.set(0.75, 1.15, 0.75);
       root.add(tuft);
+    } else if (petType === 'turtle') {
+      const shellMaterial = new MeshStandardMaterial({ color: 0x315524, roughness: 0.78 });
+      const shell = new Mesh(new SphereGeometry(0.31, 18, 12), shellMaterial);
+      shell.name = 'Chapter 11 turtle rounded tortoise shell';
+      shell.position.set(-0.08, 0.44, 0);
+      shell.scale.set(1.3, 0.52, 1.05);
+      root.add(shell);
+      const shellStripeMaterial = new MeshStandardMaterial({ color: 0x8aaa4c, roughness: 0.74 });
+      [-0.12, 0, 0.12].forEach((z) => {
+        const stripe = new Mesh(new BoxGeometry(0.5, 0.018, 0.018), shellStripeMaterial);
+        stripe.name = 'Chapter 11 turtle shell soft stripe';
+        stripe.position.set(-0.08, 0.62, z);
+        stripe.rotation.y = z * 1.4;
+        root.add(stripe);
+      });
+      const smile = new Mesh(new BoxGeometry(0.12, 0.012, 0.012), darkMaterial);
+      smile.name = 'Chapter 11 turtle happy smile';
+      smile.position.set(0.58, 0.36, 0);
+      smile.rotation.z = 0.12;
+      root.add(smile);
+      const tail = new Mesh(new ConeGeometry(0.045, 0.18, 8), bodyMaterial);
+      tail.name = 'Chapter 11 turtle tiny tail';
+      tail.position.set(-0.48, 0.29, 0);
+      tail.rotation.z = Math.PI / 2;
+      root.add(tail);
+    } else if (petType === 'unicorn') {
+      const horn = new Mesh(new ConeGeometry(0.045, 0.28, 12), new MeshStandardMaterial({ color: 0xffe083, roughness: 0.38, metalness: 0.18 }));
+      horn.name = 'Chapter 11 unicorn golden horn';
+      horn.position.set(0.45, 0.7, 0);
+      horn.rotation.z = -0.35;
+      root.add(horn);
+      [-0.1, 0.1].forEach((z) => {
+        const ear = new Mesh(new ConeGeometry(0.045, 0.18, 8), bodyMaterial);
+        ear.name = 'Chapter 11 unicorn pointed ear';
+        ear.position.set(0.28, 0.66, z);
+        ear.rotation.z = -0.38;
+        root.add(ear);
+      });
+      [0xff5555, 0xffbd36, 0xffef5c, 0x4bd36a, 0x49a0ff, 0x9362ff].forEach((color, index) => {
+        const mane = new Mesh(new SphereGeometry(0.035, 8, 6), new MeshStandardMaterial({ color, roughness: 0.58 }));
+        mane.name = 'Chapter 11 unicorn rainbow mane';
+        mane.position.set(0.23 - index * 0.025, 0.62 - index * 0.035, -0.02);
+        mane.scale.set(0.75, 1.2, 0.75);
+        root.add(mane);
+        const tailPiece = new Mesh(new CylinderGeometry(0.014, 0.02, 0.42, 8), new MeshStandardMaterial({ color, roughness: 0.58 }));
+        tailPiece.name = 'Chapter 11 unicorn rainbow tail';
+        tailPiece.position.set(-0.46 - index * 0.014, 0.45 - index * 0.01, -0.09 + index * 0.035);
+        tailPiece.rotation.z = -0.92;
+        root.add(tailPiece);
+      });
+      const smile = new Mesh(new BoxGeometry(0.12, 0.012, 0.012), darkMaterial);
+      smile.name = 'Chapter 11 unicorn happy smile';
+      smile.position.set(0.57, 0.39, 0);
+      smile.rotation.z = 0.1;
+      root.add(smile);
     } else {
       for (let index = 0; index < 5; index += 1) {
         const plate = new Mesh(new ConeGeometry(0.055, 0.18, 5), new MeshStandardMaterial({ color: 0x3f6d35, roughness: 0.78 }));
@@ -14857,7 +15052,11 @@ export class Game {
         ? 'Chapter 11 cow tail'
         : pet.petType === 'dog'
           ? 'Chapter 11 dog raised tail'
-          : 'Chapter 11 dinosaur tapered tail',
+          : pet.petType === 'turtle'
+            ? 'Chapter 11 turtle tiny tail'
+            : pet.petType === 'unicorn'
+              ? 'Chapter 11 unicorn rainbow tail'
+              : 'Chapter 11 dinosaur tapered tail',
     );
     if (tail) {
       tail.rotation.y = Math.sin(phase * 0.8) * 0.16;
@@ -16408,14 +16607,10 @@ export class Game {
     }
 
     if (this.isNearChapterElevenPetEggStand()) {
-      if (this.chapterElevenTwoActive) {
-        this.chapterElevenTraderShopOpen = false;
-        this.chapterElevenPetEggShopOpen = true;
-        this.setChapterElevenSeedShopOpen(true);
-        this.pushStatus('The Pet Eggs menu opens.', 2.2);
-        return;
-      }
-      this.buyChapterElevenPetEgg();
+      this.chapterElevenTraderShopOpen = false;
+      this.chapterElevenPetEggShopOpen = true;
+      this.setChapterElevenSeedShopOpen(true);
+      this.pushStatus('The Pet Eggs menu opens.', 2.2);
       return;
     }
 
@@ -29186,9 +29381,7 @@ export class Game {
       }
 
       if (this.isNearChapterElevenPetEggStand()) {
-        return this.chapterElevenTwoActive
-          ? 'Press E by the Pet Eggs seller to open the egg menu.'
-          : `Press E by the Pet Eggs seller to get a random pet egg for $${CHAPTER_ELEVEN_PET_EGG_COST}.`;
+        return 'Press E by the Pet Eggs seller to open the egg menu.';
       }
 
       if (this.isNearChapterElevenEquipmentStand()) {

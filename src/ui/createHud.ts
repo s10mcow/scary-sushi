@@ -257,6 +257,9 @@ export type ChapterElevenEquipmentId =
   | 'decoration-light-post';
 
 export type ChapterElevenPetEggShopId =
+  | 'dinosaur-egg'
+  | 'turtle-egg'
+  | 'unicorn-egg'
   | 'farm-egg'
   | 'forest-egg'
   | 'ocean-egg'
@@ -292,6 +295,7 @@ export interface ChapterElevenSeedShopEggItemView {
   cost: number;
   section: ChapterElevenSeedShopSection;
   enabled: boolean;
+  description?: string;
   stock?: number;
   restockSeconds?: number;
 }
@@ -3231,11 +3235,14 @@ export function createHud(host: HTMLElement): HudController {
         const restockText = typeof item.restockSeconds === 'number' && item.restockSeconds > 0
           ? ` / restocks in ${Math.ceil(item.restockSeconds)}s`
           : '';
-        description.textContent = item.enabled
+        const availabilityText = item.enabled
           ? `${stockText}${restockText}`
           : typeof item.stock === 'number' && item.stock <= 0
             ? `Out of stock${restockText}`
             : `Need $${Math.max(0, item.cost - safeMoney)} more${restockText}`;
+        description.textContent = item.kind === 'egg' && item.description
+          ? `${item.description} / ${availabilityText}`
+          : availabilityText;
         button.append(title, description);
         let purchaseHandled = false;
         const handlePurchasePointer = (event: Event): void => {
