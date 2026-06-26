@@ -25,8 +25,8 @@ export interface ChapterThirteenData {
 
 const CHUNK_SIZE = 96;
 const CHUNK_VIEW_RADIUS = 2;
-const TREE_SPACING = 16;
-const TREE_SKIP_CHANCE = 0.18;
+const TREE_SPACING = 32;
+const TREE_SKIP_CHANCE = 0.38;
 
 const grassMaterial = new MeshStandardMaterial({ color: 0xf3a1ca, roughness: 0.92 });
 const grassPatchMaterial = new MeshStandardMaterial({ color: 0xf8bad7, roughness: 0.96 });
@@ -95,13 +95,13 @@ function createChunk(chunkX: number, chunkZ: number): Group {
       if (hash2d(chunkX * 31 + gridX, chunkZ * 31 + gridZ, 1) < TREE_SKIP_CHANCE) {
         continue;
       }
-      const jitterX = (hash2d(chunkX * 17 + gridX, chunkZ * 17 + gridZ, 2) - 0.5) * 7.5;
-      const jitterZ = (hash2d(chunkX * 19 + gridX, chunkZ * 19 + gridZ, 3) - 0.5) * 7.5;
+      const jitterX = (hash2d(chunkX * 17 + gridX, chunkZ * 17 + gridZ, 2) - 0.5) * 12;
+      const jitterZ = (hash2d(chunkX * 19 + gridX, chunkZ * 19 + gridZ, 3) - 0.5) * 12;
       const x = gridX * TREE_SPACING + TREE_SPACING / 2 + jitterX;
       const z = gridZ * TREE_SPACING + TREE_SPACING / 2 + jitterZ;
       const worldX = originX + x;
       const worldZ = originZ + z;
-      if (Math.hypot(worldX, worldZ) < 12) {
+      if (Math.hypot(worldX, worldZ) < 18) {
         continue;
       }
       treePositions.push({
