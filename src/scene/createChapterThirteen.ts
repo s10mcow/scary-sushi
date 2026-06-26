@@ -36,6 +36,7 @@ const TREE_SKIP_CHANCE = 0.38;
 const RAINBOW_CHANCE = 0.12;
 const JACKALOPE_CHANCE = 0.36;
 const MAGICAL_FOX_CHANCE = 0.12;
+const CHINESE_DRAGON_CHANCE = 0.028;
 
 const grassMaterial = new MeshStandardMaterial({ color: 0xf3a1ca, roughness: 0.92 });
 const grassPatchMaterial = new MeshStandardMaterial({ color: 0xf8bad7, roughness: 0.96 });
@@ -59,6 +60,10 @@ const magicalFoxFurMaterial = new MeshStandardMaterial({ color: 0xff8b38, roughn
 const magicalFoxWhiteFurMaterial = new MeshStandardMaterial({ color: 0xffefe0, roughness: 0.82 });
 const magicalFoxTailTipMaterial = new MeshStandardMaterial({ color: 0xfff8d8, roughness: 0.5, emissive: 0xffd36f, emissiveIntensity: 0.18 });
 const magicalFoxEyeMaterial = new MeshBasicMaterial({ color: 0x1c1111 });
+const dragonScaleMaterial = new MeshStandardMaterial({ color: 0xd62f2f, roughness: 0.56, metalness: 0.08 });
+const dragonBellyMaterial = new MeshStandardMaterial({ color: 0xffcf62, roughness: 0.5, metalness: 0.12 });
+const dragonHornMaterial = new MeshStandardMaterial({ color: 0xfff3bb, roughness: 0.42, emissive: 0xffce5a, emissiveIntensity: 0.1 });
+const dragonEyeMaterial = new MeshBasicMaterial({ color: 0x101010 });
 const rainbowMaterials = [
   0xff4d5e,
   0xff9f1c,
@@ -75,7 +80,11 @@ function hash2d(x: number, z: number, salt = 0): number {
 }
 
 function rotationYForPositiveX(deltaX: number, deltaZ: number): number {
-  return Math.atan2(-deltaZ, deltaX) + Math.PI / 2;
+  return Math.atan2(-deltaZ, deltaX);
+}
+
+function forwardFromHeading(heading: number): { x: number; z: number } {
+  return { x: Math.cos(heading), z: -Math.sin(heading) };
 }
 
 function chunkKey(chunkX: number, chunkZ: number): string {
@@ -248,6 +257,66 @@ function addPointedCone(root: Group, name: string, position: [number, number, nu
   return cone;
 }
 
+function updateForwardWanderer(
+  object: Group,
+  timeSeconds: number,
+  radius: number,
+  minSpeed: number,
+  maxSpeed: number,
+): boolean {
+  const seed = Number(object.userData.seed ?? 0);
+  const baseX = Number(object.userData.baseX ?? object.position.x);
+  const baseZ = Number(object.userData.baseZ ?? object.position.z);
+  const previousTime = Number(object.userData.lastTime ?? timeSeconds);
+  const deltaSeconds = Math.min(0.08, Math.max(0, timeSeconds - previousTime));
+  object.userData.lastTime = timeSeconds;
+  object.userData.localX = Number(object.userData.localX ?? object.position.x);
+  object.userData.localZ = Number(object.userData.localZ ?? object.position.z);
+  object.userData.heading = Number(object.userData.heading ?? hash2d(seed, seed, 31) * Math.PI * 2);
+  object.userData.turnTimer = Number(object.userData.turnTimer ?? (1.2 + hash2d(seed, seed, 32) * 2.4));
+  object.userData.pauseTimer = Number(object.userData.pauseTimer ?? 0);
+  object.userData.turnCount = Number(object.userData.turnCount ?? 0);
+
+  let localX = Number(object.userData.localX);
+  let localZ = Number(object.userData.localZ);
+  let heading = Number(object.userData.heading);
+  let turnTimer = Math.max(0, Number(object.userData.turnTimer) - deltaSeconds);
+  let pauseTimer = Math.max(0, Number(object.userData.pauseTimer) - deltaSeconds);
+  let moving = false;
+
+  if (Math.hypot(localX - baseX, localZ - baseZ) > radius) {
+    heading = rotationYForPositiveX(baseX - localX, baseZ - localZ);
+    turnTimer = 1.1;
+  } else if (turnTimer <= 0) {
+    const turnCount = Number(object.userData.turnCount) + 1;
+    object.userData.turnCount = turnCount;
+    const turnAmount = (hash2d(seed, turnCount, 33) - 0.5) * 1.65;
+    heading += turnAmount;
+    turnTimer = 1.2 + hash2d(seed, turnCount, 34) * 2.6;
+    if (hash2d(seed, turnCount, 35) < 0.28) {
+      pauseTimer = 0.45 + hash2d(seed, turnCount, 36) * 1.1;
+    }
+  }
+
+  if (pauseTimer <= 0) {
+    const speed = minSpeed + hash2d(seed, seed, 37) * (maxSpeed - minSpeed);
+    const forward = forwardFromHeading(heading);
+    localX += forward.x * speed * deltaSeconds;
+    localZ += forward.z * speed * deltaSeconds;
+    moving = deltaSeconds > 0.001;
+  }
+
+  object.userData.localX = localX;
+  object.userData.localZ = localZ;
+  object.userData.heading = heading;
+  object.userData.turnTimer = turnTimer;
+  object.userData.pauseTimer = pauseTimer;
+  object.position.x = localX;
+  object.position.z = localZ;
+  object.rotation.y = heading;
+  return moving;
+}
+
 function addJackalopeAntler(root: Group, side: -1 | 1): void {
   const base = new Vector3(0.51, 1.12, side * 0.095);
   const tip = new Vector3(0.58, 1.46, side * 0.13);
@@ -311,23 +380,16 @@ function animateJackalopes(root: Group, timeSeconds: number): void {
       return;
     }
     const seed = Number(object.userData.seed ?? 0);
-    const baseX = Number(object.userData.baseX ?? object.position.x);
-    const baseZ = Number(object.userData.baseZ ?? object.position.z);
     const speed = 0.22 + hash2d(seed, seed, 5) * 0.18;
-    const phase = timeSeconds * speed + seed * 0.11;
-    const walkX = Math.sin(phase) * 4.2;
-    const walkZ = Math.cos(phase * 0.82) * 3.6;
-    const nextX = baseX + Math.sin(phase + 0.08) * 4.2;
-    const nextZ = baseZ + Math.cos((phase + 0.08) * 0.82) * 3.6;
-    object.position.set(baseX + walkX, Math.max(0, Math.sin(timeSeconds * speed * 8 + seed) * 0.035), baseZ + walkZ);
-    object.rotation.y = rotationYForPositiveX(nextX - object.position.x, nextZ - object.position.z);
+    const moving = updateForwardWanderer(object, timeSeconds, 12, speed * 3.2, speed * 5.2);
+    object.position.y = moving ? Math.max(0, Math.sin(timeSeconds * speed * 8 + seed) * 0.035) : 0;
 
     object.children.forEach((child) => {
       if (!child.name.includes('leg')) {
         return;
       }
       const legPhase = Number(child.userData.legPhase ?? 0);
-      child.rotation.z = Math.sin(timeSeconds * speed * 12 + legPhase) * 0.18;
+      child.rotation.z = moving ? Math.sin(timeSeconds * speed * 12 + legPhase) * 0.18 : 0;
     });
   });
 }
@@ -398,25 +460,101 @@ function animateMagicalFoxes(root: Group, timeSeconds: number): void {
       return;
     }
     const seed = Number(object.userData.seed ?? 0);
-    const baseX = Number(object.userData.baseX ?? object.position.x);
-    const baseZ = Number(object.userData.baseZ ?? object.position.z);
     const speed = 0.18 + hash2d(seed, seed, 24) * 0.16;
-    const phase = timeSeconds * speed + seed * 0.07;
-    const walkX = Math.sin(phase * 0.9) * 5.8;
-    const walkZ = Math.cos(phase * 0.7) * 5;
-    const nextX = baseX + Math.sin((phase + 0.08) * 0.9) * 5.8;
-    const nextZ = baseZ + Math.cos((phase + 0.08) * 0.7) * 5;
-    object.position.set(baseX + walkX, Math.max(0, Math.sin(timeSeconds * speed * 8 + seed) * 0.026), baseZ + walkZ);
-    object.rotation.y = rotationYForPositiveX(nextX - object.position.x, nextZ - object.position.z);
+    const moving = updateForwardWanderer(object, timeSeconds, 16, speed * 3.4, speed * 5.4);
+    object.position.y = moving ? Math.max(0, Math.sin(timeSeconds * speed * 8 + seed) * 0.026) : 0;
 
     object.children.forEach((child, index) => {
       if (child.name.includes('leg')) {
         const legPhase = Number(child.userData.legPhase ?? 0);
-        child.rotation.z = Math.sin(timeSeconds * speed * 14 + legPhase) * 0.18;
+        child.rotation.z = moving ? Math.sin(timeSeconds * speed * 14 + legPhase) * 0.18 : 0;
       }
       if (child.name.includes('tail')) {
         child.rotation.x = Math.sin(timeSeconds * 1.3 + seed + index) * 0.08;
       }
+    });
+  });
+}
+
+function createChineseDragon(localX: number, localZ: number, seed: number): Group {
+  const dragon = new Group();
+  dragon.name = "Maggie's World rare flying Chinese dragon";
+  dragon.userData.baseX = localX;
+  dragon.userData.baseZ = localZ;
+  dragon.userData.seed = seed;
+  dragon.userData.localX = localX;
+  dragon.userData.localZ = localZ;
+  dragon.userData.heading = hash2d(seed, seed, 51) * Math.PI * 2;
+  dragon.position.set(localX, 10.5 + hash2d(seed, seed, 52) * 3.5, localZ);
+  dragon.rotation.y = Number(dragon.userData.heading);
+
+  addSphere(dragon, 'Chinese dragon whiskered head', [0.55, 0.04, 0], [0.42, 0.3, 0.27], dragonScaleMaterial);
+  addSphere(dragon, 'Chinese dragon golden muzzle', [0.9, 0, 0], [0.24, 0.16, 0.16], dragonBellyMaterial);
+  addSphere(dragon, 'Chinese dragon left black eye', [0.82, 0.14, -0.15], [0.05, 0.05, 0.05], dragonEyeMaterial);
+  addSphere(dragon, 'Chinese dragon right black eye', [0.82, 0.14, 0.15], [0.05, 0.05, 0.05], dragonEyeMaterial);
+  addPointedCone(dragon, 'Chinese dragon left horn', [0.35, 0.42, -0.12], 0.055, 0.36, dragonHornMaterial, [-0.34, 0, 0.22]);
+  addPointedCone(dragon, 'Chinese dragon right horn', [0.35, 0.42, 0.12], 0.055, 0.36, dragonHornMaterial, [0.34, 0, 0.22]);
+  addCylinderBetween(dragon, 'Chinese dragon left whisker', new Vector3(0.88, 0.02, -0.14), new Vector3(1.3, -0.08, -0.46), 0.01, dragonHornMaterial);
+  addCylinderBetween(dragon, 'Chinese dragon right whisker', new Vector3(0.88, 0.02, 0.14), new Vector3(1.3, -0.08, 0.46), 0.01, dragonHornMaterial);
+
+  for (let index = 0; index < 14; index += 1) {
+    const x = -index * 0.46;
+    const segment = new Mesh(new SphereGeometry(1, 14, 9), index % 2 === 0 ? dragonScaleMaterial : dragonBellyMaterial);
+    segment.name = 'Chinese dragon long scaled body segment';
+    segment.userData.segmentIndex = index;
+    segment.position.set(x, Math.sin(index * 0.75) * 0.08, Math.sin(index * 0.55) * 0.12);
+    segment.userData.baseY = segment.position.y;
+    segment.userData.baseZ = segment.position.z;
+    segment.scale.set(0.32 - index * 0.006, 0.22 - index * 0.003, 0.22 - index * 0.003);
+    segment.castShadow = true;
+    dragon.add(segment);
+
+    if (index % 2 === 0) {
+      addPointedCone(dragon, 'Chinese dragon raised back scale', [x, 0.27, 0], 0.055, 0.16, dragonHornMaterial, [0, 0, 0]);
+    }
+
+    if (index > 1 && index < 11 && index % 3 === 0) {
+      for (const z of [-0.18, 0.18]) {
+        const leg = addCylinderBetween(
+          dragon,
+          'Chinese dragon little flying leg',
+          new Vector3(x, -0.12, z),
+          new Vector3(x + 0.12, -0.46, z * 1.28),
+          0.025,
+          dragonScaleMaterial,
+        );
+        leg.userData.segmentIndex = index;
+        leg.userData.baseY = leg.position.y;
+        leg.userData.baseZ = leg.position.z;
+      }
+    }
+  }
+
+  addPointedCone(dragon, 'Chinese dragon tapering tail', [-6.7, -0.02, 0], 0.16, 0.5, dragonScaleMaterial, [0, 0, Math.PI / 2]);
+  return dragon;
+}
+
+function animateChineseDragons(root: Group, timeSeconds: number): void {
+  root.traverse((object) => {
+    if (!(object instanceof Group) || object.name !== "Maggie's World rare flying Chinese dragon") {
+      return;
+    }
+    const seed = Number(object.userData.seed ?? 0);
+    const moving = updateForwardWanderer(object, timeSeconds, 36, 1.15, 2.2);
+    object.position.y = 10.8 + Math.sin(timeSeconds * 0.55 + seed) * 1.6;
+    if (!moving) {
+      object.userData.pauseTimer = 0;
+    }
+
+    object.children.forEach((child) => {
+      const segmentIndex = Number(child.userData.segmentIndex);
+      if (!Number.isFinite(segmentIndex)) {
+        return;
+      }
+      const baseY = Number(child.userData.baseY ?? child.position.y);
+      const baseZ = Number(child.userData.baseZ ?? child.position.z);
+      child.position.y = baseY + Math.sin(timeSeconds * 2.2 + segmentIndex * 0.55 + seed) * 0.13;
+      child.position.z = baseZ + Math.cos(timeSeconds * 1.9 + segmentIndex * 0.48 + seed) * 0.09;
     });
   });
 }
@@ -469,6 +607,13 @@ function createChunk(chunkX: number, chunkZ: number): Group {
     const foxX = 14 + hash2d(chunkX, chunkZ, 151) * (CHUNK_SIZE - 28);
     const foxZ = 14 + hash2d(chunkX, chunkZ, 161) * (CHUNK_SIZE - 28);
     chunk.add(createMagicalFox(foxX, foxZ, seed));
+  }
+
+  if (hash2d(chunkX, chunkZ, 190) < CHINESE_DRAGON_CHANCE) {
+    const seed = chunkX * 1223 + chunkZ * 1427;
+    const dragonX = 18 + hash2d(chunkX, chunkZ, 191) * (CHUNK_SIZE - 36);
+    const dragonZ = 18 + hash2d(chunkX, chunkZ, 201) * (CHUNK_SIZE - 36);
+    chunk.add(createChineseDragon(dragonX, dragonZ, seed));
   }
 
   const treePositions: Array<{ x: number; z: number; scale: number }> = [];
@@ -572,6 +717,7 @@ export function createChapterThirteen(): ChapterThirteenData {
       animateButterflies(chunkRoot, timeSeconds);
       animateJackalopes(chunkRoot, timeSeconds);
       animateMagicalFoxes(chunkRoot, timeSeconds);
+      animateChineseDragons(chunkRoot, timeSeconds);
     },
     reset(): void {
       ensureChunks(spawn);
