@@ -11756,6 +11756,12 @@ export class Game {
       return;
     }
 
+    if (this.chapterElevenTwoActive && !this.canPlayerOccupySeedLifeMap(position.x, position.z)) {
+      this.player.teleport(this.chapterEleven.spawn);
+      this.pushStatus('Pulled back inside the Seed Life fence.', 1.8);
+      return;
+    }
+
     const bounds = this.chapterEleven.fieldBounds;
     const margin = GAME_CONFIG.player.radius + 0.18;
     const clampedX = MathUtils.clamp(position.x, bounds.minX + margin, bounds.maxX - margin);
@@ -11771,12 +11777,80 @@ export class Game {
       return false;
     }
 
+    if (this.chapterElevenTwoActive) {
+      return this.canPlayerOccupySeedLifeMap(nextX, nextZ);
+    }
+
     const bounds = this.chapterEleven.fieldBounds;
     const margin = GAME_CONFIG.player.radius + 0.18;
     return nextX >= bounds.minX + margin
       && nextX <= bounds.maxX - margin
       && nextZ >= bounds.minZ + margin
       && nextZ <= bounds.maxZ - margin;
+  }
+
+  private canPlayerOccupySeedLifeMap(nextX: number, nextZ: number): boolean {
+    const margin = GAME_CONFIG.player.radius + 0.18;
+    const inRect = (
+      minX: number,
+      maxX: number,
+      minZ: number,
+      maxZ: number,
+      extraMargin = margin,
+    ): boolean => (
+      nextX >= minX + extraMargin
+      && nextX <= maxX - extraMargin
+      && nextZ >= minZ + extraMargin
+      && nextZ <= maxZ - extraMargin
+    );
+
+    const mainHalfSize = 60;
+    if (inRect(-mainHalfSize, mainHalfSize, -mainHalfSize, mainHalfSize)) {
+      return true;
+    }
+
+    const pathHalfWidth = 3.45;
+    const portalPad = 5.6;
+    for (const portal of this.chapterEleven.biomePortals) {
+      const portalX = portal.position.x;
+      const portalZ = portal.position.z;
+      const sideIsHorizontal = Math.abs(portalX) > Math.abs(portalZ);
+      if (sideIsHorizontal) {
+        const edgeX = portalX < 0 ? -mainHalfSize : mainHalfSize;
+        if (inRect(
+          Math.min(edgeX, portalX) - portalPad,
+          Math.max(edgeX, portalX) + portalPad,
+          portalZ - pathHalfWidth,
+          portalZ + pathHalfWidth,
+          margin * 0.45,
+        )) {
+          return true;
+        }
+      } else {
+        const edgeZ = portalZ < 0 ? -mainHalfSize : mainHalfSize;
+        if (inRect(
+          portalX - pathHalfWidth,
+          portalX + pathHalfWidth,
+          Math.min(edgeZ, portalZ) - portalPad,
+          Math.max(edgeZ, portalZ) + portalPad,
+          margin * 0.45,
+        )) {
+          return true;
+        }
+      }
+
+      const realmHalfSize = 41;
+      if (inRect(
+        portal.targetPosition.x - realmHalfSize,
+        portal.targetPosition.x + realmHalfSize,
+        portal.targetPosition.z - realmHalfSize,
+        portal.targetPosition.z + realmHalfSize,
+      )) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private updateChapterElevenWateringCan(deltaSeconds: number): void {

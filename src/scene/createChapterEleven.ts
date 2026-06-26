@@ -1209,11 +1209,36 @@ export function createChapterEleven(): ChapterElevenData {
     if (width <= 0.4 || depth <= 0.4) {
       return;
     }
-    const segment = new Mesh(new BoxGeometry(width, fenceHeight, depth), fenceMaterial);
+    const segment = new Group();
     segment.name = name;
-    segment.position.set(centerX, fenceHeight / 2, centerZ);
-    segment.castShadow = true;
-    segment.receiveShadow = true;
+    segment.position.set(centerX, 0, centerZ);
+    const horizontal = width >= depth;
+    const railLength = horizontal ? width : depth;
+    const railSize: [number, number, number] = horizontal
+      ? [width, 0.18, depth]
+      : [width, 0.18, depth];
+    [0.48, 0.98].forEach((railY, index) => {
+      const rail = new Mesh(new BoxGeometry(railSize[0], railSize[1], railSize[2]), fenceMaterial);
+      rail.name = `${name} ${index === 0 ? 'lower' : 'upper'} rail`;
+      rail.position.y = railY;
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      segment.add(rail);
+    });
+    const postCount = Math.max(2, Math.ceil(railLength / 2.8) + 1);
+    for (let index = 0; index < postCount; index += 1) {
+      const t = postCount === 1 ? 0 : index / (postCount - 1);
+      const post = new Mesh(new BoxGeometry(0.3, 1.45, 0.3), fenceMaterial);
+      post.name = `${name} fence post`;
+      post.position.set(
+        horizontal ? -width / 2 + width * t : 0,
+        0.725,
+        horizontal ? 0 : -depth / 2 + depth * t,
+      );
+      post.castShadow = true;
+      post.receiveShadow = true;
+      segment.add(post);
+    }
     root.add(segment);
     seedLifeOnlyGroups.push(segment);
     copyOnlyColliders.push({ centerX, centerZ, halfWidth: width / 2, halfDepth: depth / 2 });
