@@ -351,24 +351,25 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'mimic-plant-seeds', label: 'Mimic plant seeds', singularLabel: 'Mimic plant seed', cost: 18000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.14, copyOnly: true, secretScientistOnly: true },
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 5, section: 'cheap', maxStock: 9 },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 25, section: 'cheap', maxStock: 6 },
-  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 50, section: 'expensive', maxStock: 5 },
-  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 70, section: 'expensive', maxStock: 4 },
-  { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 10, section: 'expensive', maxStock: 7 },
-  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 100, section: 'expensive', maxStock: 3 },
-  { id: 'watermelon-seeds', label: 'Watermelon seeds', singularLabel: 'Watermelon seed', cost: 100, section: 'expensive', maxStock: 3, normalOnly: true },
-  { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 500, section: 'expensive', maxStock: 1 },
-  { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 200, section: 'expensive', maxStock: 3 },
-  { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 300, section: 'expensive', maxStock: 2 },
-  { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 300, section: 'expensive', maxStock: 2 },
-  { id: 'pineapple-seeds', label: 'Pineapple seeds', singularLabel: 'Pineapple seed', cost: 250, section: 'expensive', maxStock: 2, normalOnly: true },
-  { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 350, section: 'expensive', maxStock: 2 },
-  { id: 'coconut-tree-seeds', label: 'Coconut tree seeds', singularLabel: 'Coconut tree seed', cost: 850, section: 'expensive', maxStock: 1, normalOnly: true },
-  { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 350, section: 'expensive', maxStock: 3 },
-  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 800, section: 'expensive', maxStock: 1 },
-  { id: 'olive-tree-seeds', label: 'Olive tree seeds', singularLabel: 'Olive tree seed', cost: 900, section: 'rare-expensive', maxStock: 1, normalOnly: true },
-  { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 900, section: 'rare-expensive', maxStock: 1, normalOnly: true },
-  { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 900, section: 'rare-expensive', maxStock: 1, normalOnly: true },
-  { id: 'golden-tree-seeds', label: 'Golden tree seeds', singularLabel: 'Golden tree seed', cost: 1000, section: 'rare-magical', maxStock: 1, normalOnly: true },
+  { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 75, section: 'expensive', maxStock: 5 },
+  { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 100, section: 'expensive', maxStock: 4 },
+  { id: 'tomato-seeds', label: 'Tomato seeds', singularLabel: 'Tomato seed', cost: 40, section: 'expensive', maxStock: 7 },
+  { id: 'pumpkin-seeds', label: 'Pumpkin seeds', singularLabel: 'Pumpkin seed', cost: 150, section: 'expensive', maxStock: 3 },
+  { id: 'watermelon-seeds', label: 'Watermelon seeds', singularLabel: 'Watermelon seed', cost: 150, section: 'expensive', maxStock: 3, normalOnly: true },
+  { id: 'nut-seeds', label: 'Nut seeds', singularLabel: 'Nut seed', cost: 650, section: 'expensive', maxStock: 1 },
+  { id: 'blueberry-seeds', label: 'Blueberry seeds', singularLabel: 'Blueberry seed', cost: 260, section: 'expensive', maxStock: 3 },
+  { id: 'raspberry-seeds', label: 'Raspberry seeds', singularLabel: 'Raspberry seed', cost: 380, section: 'expensive', maxStock: 2 },
+  { id: 'peach-seeds', label: 'Peach seeds', singularLabel: 'Peach seed', cost: 380, section: 'expensive', maxStock: 2 },
+  { id: 'pineapple-seeds', label: 'Pineapple seeds', singularLabel: 'Pineapple seed', cost: 325, section: 'expensive', maxStock: 2, normalOnly: true },
+  { id: 'apple-tree-seeds', label: 'Apple tree seeds', singularLabel: 'Apple tree seed', cost: 500, section: 'expensive', maxStock: 2 },
+  { id: 'coconut-tree-seeds', label: 'Coconut tree seeds', singularLabel: 'Coconut tree seed', cost: 1000, section: 'expensive', maxStock: 1, normalOnly: true },
+  { id: 'pepper-seeds', label: 'Pepper plant seeds', singularLabel: 'Pepper plant seed', cost: 450, section: 'expensive', maxStock: 3 },
+  { id: 'dragon-fruit-seeds', label: 'Dragon fruit seeds', singularLabel: 'Dragon fruit seed', cost: 1000, section: 'expensive', maxStock: 1 },
+  { id: 'olive-tree-seeds', label: 'Olive tree seeds', singularLabel: 'Olive tree seed', cost: 1200, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'lemon-tree-seeds', label: 'Lemon tree seeds', singularLabel: 'Lemon tree seed', cost: 1200, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'banana-tree-seeds', label: 'Banana tree seeds', singularLabel: 'Banana tree seed', cost: 1200, section: 'rare-expensive', maxStock: 1, normalOnly: true },
+  { id: 'golden-tree-seeds', label: 'Golden tree seeds', singularLabel: 'Golden tree seed', cost: 5000, section: 'rare-magical', maxStock: 1, normalOnly: true },
+  { id: 'diamond-bush-seeds', label: 'Diamond bush seeds', singularLabel: 'Diamond bush seed', cost: 10000, section: 'rare-magical', maxStock: 1, normalOnly: true },
   { id: 'vine-seeds', label: 'Vine seeds', singularLabel: 'Vine seed', cost: 450, section: 'expensive', maxStock: 2, copyOnly: true },
   { id: 'cactus-seeds', label: 'Cactus seeds', singularLabel: 'Cactus seed', cost: 550, section: 'expensive', maxStock: 1, copyOnly: true },
   { id: 'corn-seeds', label: 'Western corn seeds', singularLabel: 'Western corn seed', cost: 750, section: 'expensive', maxStock: 2, copyOnly: true, traderOnly: true },
@@ -398,6 +399,7 @@ type ChapterElevenCropId =
   | 'lemon'
   | 'banana'
   | 'gold-fruit'
+  | 'diamond'
   | 'tomato'
   | 'pepper'
   | 'bamboo'
@@ -773,6 +775,16 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     sellValue: 900,
     babySeconds: 28,
     matureSeconds: 96,
+    regrows: true,
+  },
+  'diamond-bush-seeds': {
+    seedId: 'diamond-bush-seeds',
+    cropId: 'diamond',
+    label: 'Diamond',
+    pluralLabel: 'Diamonds',
+    sellValue: 11000,
+    babySeconds: 32,
+    matureSeconds: 112,
     regrows: true,
   },
   'tomato-seeds': {
@@ -9422,6 +9434,26 @@ export class Game {
       return root;
     }
 
+    if (baseCrop === 'diamond') {
+      const diamond = new Mesh(new OctahedronGeometry(0.18, 0), materialFor(0x57c8ff, 0.16));
+      diamond.name = `Held ${this.getChapterElevenCropLabel(cropId)} blue diamond`;
+      diamond.position.set(-0.03, 0.13, -0.02);
+      diamond.scale.set(0.9, 1.48, 0.9);
+      diamond.rotation.set(0.32, 0.62, 0.18);
+      root.add(diamond);
+      const glint = new Mesh(new OctahedronGeometry(0.07, 0), new MeshBasicMaterial({
+        color: 0xd7f8ff,
+        transparent: true,
+        opacity: 0.82,
+      }));
+      glint.name = 'Held Diamond bright blue glint';
+      glint.position.set(0.02, 0.2, 0.02);
+      glint.scale.set(0.5, 0.86, 0.5);
+      root.add(glint);
+      root.scale.setScalar(1.12);
+      return root;
+    }
+
     if (baseCrop === 'tomato') {
       const tomato = new Mesh(new SphereGeometry(0.15, 20, 14), materialFor(0xd7392e, 0.62));
       tomato.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
@@ -9851,6 +9883,7 @@ export class Game {
       || cropId === 'raspberry'
       || cropId === 'blueberry'
       || cropId === 'crystal-berry'
+      || cropId === 'diamond'
       || cropId === 'pumpkin'
       || cropId === 'watermelon'
       || cropId === 'peach'
@@ -9946,6 +9979,16 @@ export class Game {
         makeFruit(new Vector3(-0.12, 0.38, 0.24), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
         makeFruit(new Vector3(0.24, 0.6, 0.22), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
         makeFruit(new Vector3(-0.02, 0.72, 0.04), 'Crystal Berry', regrow(CHAPTER_ELEVEN_BLACKBERRY_REGROW_SECONDS), CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-crystal-berry', 'Golden Crystal Berry'),
+      ];
+    }
+
+    if (cropId === 'diamond') {
+      return [
+        makeFruit(new Vector3(0.3, 0.46, 0.08), 'Diamond', regrow(12)),
+        makeFruit(new Vector3(-0.26, 0.58, -0.12), 'Diamond', regrow(12)),
+        makeFruit(new Vector3(0.06, 0.72, -0.26), 'Diamond', regrow(12)),
+        makeFruit(new Vector3(-0.12, 0.4, 0.26), 'Diamond', regrow(12)),
+        makeFruit(new Vector3(0.25, 0.66, 0.24), 'Diamond', regrow(12)),
       ];
     }
 
@@ -10115,6 +10158,7 @@ export class Game {
       blueberry: new MeshStandardMaterial({ color: 0x2b5ab4, roughness: 0.62 }),
       crystalBerry: new MeshStandardMaterial({ color: 0x86eaff, emissive: 0x1e7fa0, emissiveIntensity: 0.28, roughness: 0.22, metalness: 0.12 }),
       goldenCrystalBerry: new MeshStandardMaterial({ color: 0xf3d76a, emissive: 0x8b681d, emissiveIntensity: 0.22, roughness: 0.28, metalness: 0.3 }),
+      diamond: new MeshStandardMaterial({ color: 0x57c8ff, emissive: 0x1479ad, emissiveIntensity: 0.34, roughness: 0.16, metalness: 0.22 }),
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
       pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
       dragonFruit: new MeshStandardMaterial({ color: 0xd9367c, roughness: 0.58 }),
@@ -10362,6 +10406,20 @@ export class Game {
         glint.scale.set(0.46, 0.8, 0.46);
         glint.castShadow = true;
         plant.root.add(glint);
+      } else if (fruitState.cropId === 'diamond') {
+        fruit = new Mesh(new OctahedronGeometry(0.098, 0), materials.diamond);
+        fruit.scale.set(0.92, 1.45, 0.92);
+        fruit.rotation.set(0.3, index * 0.72, 0.2);
+        const glint = new Mesh(new OctahedronGeometry(0.044, 0), new MeshBasicMaterial({
+          color: 0xd7f8ff,
+          transparent: true,
+          opacity: 0.82,
+        }));
+        glint.name = 'Chapter 11 diamond bush bright blue glint';
+        glint.position.copy(fruitState.offset).add(new Vector3(0.02, 0.035, 0.018));
+        glint.scale.set(0.48, 0.82, 0.48);
+        glint.castShadow = true;
+        plant.root.add(glint);
       } else {
         fruit = new Mesh(
           new SphereGeometry(fruitState.golden ? 0.062 : 0.052, 12, 8),
@@ -10433,6 +10491,7 @@ export class Game {
       case 'blackberry':
       case 'raspberry':
       case 'blueberry':
+      case 'diamond':
       case 'strawberry':
       case 'tomato':
         return 0.64;
@@ -10477,6 +10536,7 @@ export class Game {
       case 'blackberry':
       case 'raspberry':
       case 'blueberry':
+      case 'diamond':
       case 'strawberry':
       case 'tomato':
         return 0.36;
@@ -10795,6 +10855,7 @@ export class Game {
       || config.cropId === 'raspberry'
       || config.cropId === 'blueberry'
       || config.cropId === 'crystal-berry'
+      || config.cropId === 'diamond'
       || config.cropId === 'tomato'
     ) {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
@@ -10804,13 +10865,17 @@ export class Game {
       const leafMaterial = new MeshStandardMaterial({
         color: config.cropId === 'crystal-berry'
           ? 0x1f6d58
-          : config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x2d7f33 : 0x1f5f2d,
+          : config.cropId === 'diamond'
+            ? 0x245f72
+            : config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x2d7f33 : 0x1f5f2d,
         roughness: 0.88,
       });
       const darkLeafMaterial = new MeshStandardMaterial({
         color: config.cropId === 'crystal-berry'
           ? 0x164b45
-          : config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x1f5f29 : 0x174521,
+          : config.cropId === 'diamond'
+            ? 0x163e4f
+            : config.cropId === 'strawberry' || config.cropId === 'tomato' ? 0x1f5f29 : 0x174521,
         roughness: 0.9,
       });
       const stemMaterial = new MeshStandardMaterial({ color: 0x5c3a24, roughness: 0.86 });
@@ -10853,6 +10918,9 @@ export class Game {
         }
       }
       this.addChapterElevenPickableFruitMeshes(plant);
+      if (config.cropId === 'diamond') {
+        plant.root.scale.setScalar(1.36);
+      }
       if (this.chapterElevenTwoActive) {
         plant.root.scale.setScalar(1.58);
       }
@@ -11289,10 +11357,10 @@ export class Game {
         color: config.cropId === 'lemon' ? 0x2d6928 : config.cropId === 'olive' ? 0x515f35 : 0x235f2a,
         roughness: 0.9,
       });
-      const trunkHeight = config.cropId === 'lemon' ? 0.62 : config.cropId === 'olive' ? 1.0 : 1.1;
+      const trunkHeight = config.cropId === 'lemon' ? 0.36 : config.cropId === 'olive' ? 0.46 : 1.1;
       const trunk = new Mesh(new CylinderGeometry(
-        config.cropId === 'olive' ? 0.095 : config.cropId === 'lemon' ? 0.07 : 0.12,
-        config.cropId === 'olive' ? 0.15 : config.cropId === 'lemon' ? 0.12 : 0.18,
+        config.cropId === 'olive' ? 0.085 : config.cropId === 'lemon' ? 0.075 : 0.12,
+        config.cropId === 'olive' ? 0.14 : config.cropId === 'lemon' ? 0.13 : 0.18,
         trunkHeight,
         12,
       ), trunkMaterial);
@@ -11303,18 +11371,22 @@ export class Game {
       plant.root.add(trunk);
       const canopyParts: Array<[number, number, number, number, number, number]> = config.cropId === 'lemon'
         ? [
-          [0, 1.12, 0, 0.76, 0.48, 0.66],
-          [-0.34, 0.96, 0.1, 0.54, 0.34, 0.44],
-          [0.36, 0.98, -0.12, 0.54, 0.36, 0.46],
-          [0.02, 1.32, -0.18, 0.46, 0.34, 0.42],
+          [0, 0.88, 0, 0.9, 0.58, 0.82],
+          [-0.42, 0.72, 0.16, 0.62, 0.42, 0.54],
+          [0.44, 0.74, -0.16, 0.64, 0.44, 0.56],
+          [0.0, 1.06, -0.22, 0.58, 0.42, 0.5],
+          [-0.16, 0.62, -0.34, 0.48, 0.34, 0.44],
+          [0.2, 0.64, 0.34, 0.5, 0.34, 0.44],
         ]
         : config.cropId === 'olive'
           ? [
-            [0, 1.44, 0, 0.78, 0.58, 0.68],
-            [-0.38, 1.24, 0.14, 0.52, 0.4, 0.44],
-            [0.38, 1.26, -0.14, 0.54, 0.42, 0.46],
-            [0.08, 1.66, -0.16, 0.48, 0.36, 0.42],
-            [-0.08, 1.1, -0.28, 0.4, 0.34, 0.36],
+            [0, 0.98, 0, 0.86, 0.54, 0.78],
+            [-0.46, 0.84, 0.18, 0.58, 0.38, 0.48],
+            [0.48, 0.86, -0.18, 0.6, 0.4, 0.5],
+            [0.1, 1.18, -0.2, 0.54, 0.38, 0.46],
+            [-0.12, 0.72, -0.34, 0.48, 0.34, 0.4],
+            [0.24, 0.76, 0.34, 0.5, 0.34, 0.42],
+            [-0.32, 1.08, 0.0, 0.46, 0.32, 0.42],
           ]
           : [
             [0, 1.35, 0, 0.72, 0.62, 0.68],
@@ -11338,18 +11410,20 @@ export class Game {
       };
       if (config.cropId === 'lemon') {
         [
-          [new Vector3(0, 0.46, 0), new Vector3(-0.32, 0.92, 0.1), 0.038],
-          [new Vector3(0.02, 0.44, 0), new Vector3(0.34, 0.94, -0.1), 0.038],
-          [new Vector3(-0.02, 0.42, 0.02), new Vector3(0.02, 1.16, -0.16), 0.032],
-          [new Vector3(0, 0.36, -0.02), new Vector3(-0.14, 0.84, 0.28), 0.03],
+          [new Vector3(0, 0.3, 0), new Vector3(-0.38, 0.72, 0.14), 0.04],
+          [new Vector3(0.02, 0.28, 0), new Vector3(0.4, 0.74, -0.12), 0.04],
+          [new Vector3(-0.02, 0.3, 0.02), new Vector3(0.02, 0.98, -0.22), 0.034],
+          [new Vector3(0, 0.24, -0.02), new Vector3(-0.18, 0.62, 0.3), 0.032],
+          [new Vector3(0.02, 0.24, 0.02), new Vector3(0.22, 0.64, 0.32), 0.03],
         ].forEach(([from, to, radius]) => addBranch(from as Vector3, to as Vector3, radius as number, 'Chapter 11 lemon bush woody branch'));
       } else if (config.cropId === 'olive') {
         [
-          [new Vector3(0, 0.76, 0), new Vector3(-0.36, 1.2, 0.16), 0.045],
-          [new Vector3(0.02, 0.78, 0), new Vector3(0.38, 1.22, -0.16), 0.045],
-          [new Vector3(0, 0.96, -0.02), new Vector3(0.08, 1.54, -0.16), 0.036],
-          [new Vector3(0, 0.68, 0.02), new Vector3(-0.08, 1.08, -0.28), 0.034],
-          [new Vector3(0.02, 0.9, 0), new Vector3(0.24, 1.36, 0.28), 0.03],
+          [new Vector3(0, 0.36, 0), new Vector3(-0.42, 0.84, 0.18), 0.04],
+          [new Vector3(0.02, 0.34, 0), new Vector3(0.44, 0.86, -0.18), 0.04],
+          [new Vector3(0, 0.42, -0.02), new Vector3(0.1, 1.12, -0.2), 0.034],
+          [new Vector3(0, 0.3, 0.02), new Vector3(-0.12, 0.72, -0.34), 0.032],
+          [new Vector3(0.02, 0.38, 0), new Vector3(0.28, 0.78, 0.32), 0.03],
+          [new Vector3(-0.02, 0.4, 0), new Vector3(-0.34, 1.02, 0.0), 0.03],
         ].forEach(([from, to, radius]) => addBranch(from as Vector3, to as Vector3, radius as number, 'Chapter 11 olive tree twisting branch'));
       }
       canopyParts.forEach(([x, y, z, scaleX, scaleY, scaleZ], index) => {
@@ -11368,9 +11442,9 @@ export class Game {
           : config.cropId === 'gold-fruit'
             ? 1.94
           : config.cropId === 'olive'
-            ? 2.02
+            ? 1.96
             : config.cropId === 'lemon'
-              ? 1.58
+              ? 1.82
               : 1.82,
       );
       return;
@@ -12024,7 +12098,9 @@ export class Game {
       this.chapterElevenNextEventTimer -= deltaSeconds;
       if (canStartDailyEvent && this.chapterElevenNextEventTimer <= 0) {
         const roll = Math.random();
-        this.startChapterElevenEvent(roll < 0.42 ? 'rain' : roll < 0.78 ? 'lightning' : 'snow');
+        this.startChapterElevenEvent(this.chapterElevenTwoActive
+          ? (roll < 0.5 ? 'rain' : 'lightning')
+          : roll < 0.42 ? 'rain' : roll < 0.78 ? 'lightning' : 'snow');
       }
     } else {
       this.chapterElevenEventTimer -= deltaSeconds;
@@ -13002,7 +13078,6 @@ export class Game {
     const eventOptions = [
       option('event:sunny-day', 'Sunny Day', 250, '+25 growth speed feeling for this day.', 'OK events'),
       option('event:rainstorm', 'Rainstorm', 500, 'Starts real rain. Crops grow faster while it rains.', 'OK events'),
-      option('event:snowing', 'Snowing', 850, 'Light snow freezes visible fruit for three minutes.', 'OK events'),
       option('event:pollinator-day', 'Pollinator Day', 900, 'Better mutation luck for the day.', 'Good events'),
       option('event:windy-day', 'Windy Day', 1200, 'Seeds feel like they could spread to nearby open slots.', 'Good events'),
       option('event:harvest-festival', 'Harvest Festival', 2000, '+50 crop value feeling for the day.', 'Very good events'),
@@ -13023,7 +13098,6 @@ export class Game {
         options: [
           option('event:sunny-day', 'Sunny Day', 250, 'Clears stormy weather and makes the garden bright.', 'Weather'),
           option('event:rainstorm', 'Rainstorm', 500, 'Starts rain immediately and speeds crop growth.', 'Weather'),
-          option('event:snowing', 'Snowing', 850, 'Starts light snow. Visible fruits freeze in ice for three minutes.', 'Weather'),
           option('event:thunderstorm', 'Thunderstorm', 1200, 'Starts thunder and lightning that can charge crops.', 'Weather'),
         ],
       };
