@@ -267,6 +267,7 @@ const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{
   copyOnly?: boolean;
   normalOnly?: boolean;
 }> = [
+  { seedId: 'rainbow-fruit-seeds', count: 1, normalOnly: true },
 ];
 const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = -3.82;
@@ -4469,7 +4470,7 @@ export class Game {
     });
 
     if (!this.chapterElevenTwoActive) {
-      (['dinosaur', 'turtle', 'unicorn', 'phoenix'] as ChapterElevenPetType[]).forEach((petType) => {
+      CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS.forEach(({ petType }) => {
         this.chapterElevenPetEggInventory.set(petType, Math.max(1, this.chapterElevenPetEggInventory.get(petType) ?? 0));
       });
     }
