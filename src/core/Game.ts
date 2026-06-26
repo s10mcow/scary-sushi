@@ -10300,10 +10300,43 @@ export class Game {
       ));
   }
 
+  private normalizeChapterElevenLargeMutationFruits(plant: ChapterElevenPlanting): void {
+    if (!plant.pickableFruits || !this.isChapterElevenPickableFruitCrop(plant.cropId)) {
+      return;
+    }
+
+    const hasLargeMutation = plant.mutation === 'large'
+      || plant.pickableFruits.some((fruit) => fruit.mutation === 'large');
+    if (!hasLargeMutation) {
+      return;
+    }
+
+    const keeperIndex = plant.pickableFruits.findIndex((fruit) => fruit.visible && (fruit.mutation === 'large' || plant.mutation === 'large'));
+    const fallbackIndex = keeperIndex >= 0
+      ? keeperIndex
+      : plant.pickableFruits.findIndex((fruit) => fruit.visible);
+    if (fallbackIndex < 0) {
+      return;
+    }
+
+    plant.pickableFruits.forEach((fruit, index) => {
+      if (index === fallbackIndex) {
+        fruit.mutation = 'large';
+        return;
+      }
+      if (fruit.visible) {
+        fruit.visible = false;
+        fruit.regrowTimer = Math.max(fruit.regrowTimer, fruit.regrowSeconds);
+      }
+    });
+  }
+
   private addChapterElevenPickableFruitMeshes(plant: ChapterElevenPlanting): void {
     if (!plant.pickableFruits) {
       return;
     }
+
+    this.normalizeChapterElevenLargeMutationFruits(plant);
 
     const materials = {
       blackberry: new MeshStandardMaterial({ color: 0x1b0c26, roughness: 0.56, metalness: 0.02 }),
@@ -10617,6 +10650,9 @@ export class Game {
       const mutation = fruitState.mutation ?? plant.mutation;
       if (mutation) {
         fruit.material = this.createChapterElevenMutationMaterial(mutation);
+      }
+      if (mutation === 'large') {
+        fruit.scale.multiplyScalar(5);
       }
       fruit.name = `Chapter 11 pickable ${mutation ? `${this.getChapterElevenMutationLabel(mutation)} ` : ''}${fruitState.golden ? fruitState.goldenLabel ?? fruitState.label : fruitState.label}`;
       fruit.userData.chapterElevenPlantId = plant.id;
