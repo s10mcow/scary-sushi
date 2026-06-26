@@ -10752,6 +10752,16 @@ export class Game {
     if (plant.stage === 'baby') {
       if (config.cropId === 'garden-cucumber') {
         const vineMaterial = new MeshStandardMaterial({ color: 0x2f7a2f, roughness: 0.86 });
+        if (!plant.hasVineStick) {
+          const stem = new Mesh(new CylinderGeometry(0.025, 0.04, 0.28, 8), vineMaterial);
+          stem.name = 'Chapter 11 cucumber waiting sapling stem';
+          stem.position.y = 0.22;
+          stem.castShadow = true;
+          plant.root.add(stem);
+          this.addChapterElevenLeafCluster(plant.root, 4, 0.11, 0.26);
+          return;
+        }
+
         const supportMaterial = new MeshStandardMaterial({ color: 0x8a5a2f, roughness: 0.9 });
         const support = new Mesh(new CylinderGeometry(0.035, 0.045, 1.05, 8), supportMaterial);
         support.name = 'Chapter 11 baby cucumber vine stick support';
@@ -11925,11 +11935,15 @@ export class Game {
           plant.age += growthDelta * (CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER + Math.min(2, sprinklerCount - 1) * 0.35);
         }
       }
-      const nextStage: ChapterElevenPlantStage = plant.age >= config.matureSeconds
+      let nextStage: ChapterElevenPlantStage = plant.age >= config.matureSeconds
         ? 'mature'
         : plant.age >= config.babySeconds
           ? 'baby'
           : 'planted';
+      if (config.cropId === 'garden-cucumber' && !plant.hasVineStick && nextStage === 'mature') {
+        plant.age = Math.min(plant.age, config.matureSeconds - 0.05);
+        nextStage = 'baby';
+      }
       if (plant.stage !== nextStage) {
         plant.stage = nextStage;
         plant.mature = nextStage === 'mature';
@@ -12872,11 +12886,15 @@ export class Game {
 
     const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
     plant.age = Math.min(config.matureSeconds + 0.1, plant.age + seconds);
-    const nextStage: ChapterElevenPlantStage = plant.age >= config.matureSeconds
+    let nextStage: ChapterElevenPlantStage = plant.age >= config.matureSeconds
       ? 'mature'
       : plant.age >= config.babySeconds
         ? 'baby'
         : 'planted';
+    if (config.cropId === 'garden-cucumber' && !plant.hasVineStick && nextStage === 'mature') {
+      plant.age = Math.min(plant.age, config.matureSeconds - 0.05);
+      nextStage = 'baby';
+    }
     if (plant.stage !== nextStage) {
       plant.stage = nextStage;
       plant.mature = nextStage === 'mature';
@@ -14372,8 +14390,22 @@ export class Game {
       patch: { ...patch },
     });
 
+    let attachedCucumbers = 0;
+    this.chapterElevenPlants.forEach((plant) => {
+      if (
+        plant.cropId === 'garden-cucumber'
+        && !plant.hasVineStick
+        && Math.hypot(plant.x - root.position.x, plant.z - root.position.z) <= 2.25
+      ) {
+        plant.hasVineStick = true;
+        this.rebuildChapterElevenPlantVisual(plant);
+        attachedCucumbers += 1;
+      }
+    });
     this.consumeChapterElevenEquipment('vine-stick');
-    this.pushStatus('Vine Stick placed. Plant cucumber or vine seeds close to it.', 2.4);
+    this.pushStatus(attachedCucumbers > 0
+      ? `Vine Stick placed. ${attachedCucumbers} cucumber sapling${attachedCucumbers === 1 ? '' : 's'} can keep growing.`
+      : 'Vine Stick placed. Plant cucumber or vine seeds close to it.', 2.4);
     this.syncHud();
     return true;
   }
@@ -14792,12 +14824,12 @@ export class Game {
       return;
     }
 
-    const needsVineStick = seedId === 'vine-seeds' || seedId === 'garden-cucumber-seeds';
-    const vineStick = needsVineStick ? this.findNearbyChapterElevenVineStick(point.x, point.z) : null;
+    const needsVineStick = seedId === 'vine-seeds';
+    const vineStick = (needsVineStick || seedId === 'garden-cucumber-seeds')
+      ? this.findNearbyChapterElevenVineStick(point.x, point.z)
+      : null;
     if (needsVineStick && !vineStick) {
-      this.pushStatus(seedId === 'garden-cucumber-seeds'
-        ? 'Cucumber seeds need a Vine Stick placed close by first.'
-        : 'Vine seeds need a Vine Stick placed close by first.', 2.6);
+      this.pushStatus('Vine seeds need a Vine Stick placed close by first.', 2.6);
       return;
     }
 
@@ -15216,11 +15248,15 @@ export class Game {
         plant.age = plant.stage === 'planted'
           ? Math.max(plant.age, config.babySeconds + 0.1)
           : Math.max(plant.age, config.matureSeconds + 0.1);
-        const nextStage: ChapterElevenPlantStage = plant.age < config.babySeconds
+        let nextStage: ChapterElevenPlantStage = plant.age < config.babySeconds
           ? 'planted'
           : plant.age < config.matureSeconds
             ? 'baby'
             : 'mature';
+        if (config.cropId === 'garden-cucumber' && !plant.hasVineStick && nextStage === 'mature') {
+          plant.age = Math.min(plant.age, config.matureSeconds - 0.05);
+          nextStage = 'baby';
+        }
         if (plant.stage !== nextStage) {
           plant.stage = nextStage;
           this.rebuildChapterElevenPlantVisual(plant);
