@@ -181,6 +181,7 @@ export type ChapterElevenSeedId =
   | 'potato-seeds'
   | 'garden-potato-seeds'
   | 'garden-corn-seeds'
+  | 'garden-cucumber-seeds'
   | 'mushroom'
   | 'strawberry'
   | 'blackberry-bush'

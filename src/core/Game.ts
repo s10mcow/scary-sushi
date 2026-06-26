@@ -352,6 +352,7 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 5, section: 'cheap', maxStock: 9 },
   { id: 'garden-potato-seeds', label: 'Potato seeds', singularLabel: 'Potato seed', cost: 15, section: 'cheap', maxStock: 7, normalOnly: true },
   { id: 'garden-corn-seeds', label: 'Corn seeds', singularLabel: 'Corn seed', cost: 25, section: 'cheap', maxStock: 5, normalOnly: true },
+  { id: 'garden-cucumber-seeds', label: 'Cucumber seeds', singularLabel: 'Cucumber seed', cost: 20, section: 'cheap', maxStock: 5, normalOnly: true },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 25, section: 'cheap', maxStock: 6 },
   { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 75, section: 'expensive', maxStock: 5 },
   { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 100, section: 'expensive', maxStock: 4 },
@@ -383,6 +384,7 @@ type ChapterElevenCropId =
   | 'lettuce'
   | 'potato'
   | 'garden-potato'
+  | 'garden-cucumber'
   | 'mushroom'
   | 'strawberry'
   | 'blackberry'
@@ -627,6 +629,16 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     label: 'Potato',
     pluralLabel: 'Potatoes',
     sellValue: 20,
+    babySeconds: 5,
+    matureSeconds: 18,
+    regrows: true,
+  },
+  'garden-cucumber-seeds': {
+    seedId: 'garden-cucumber-seeds',
+    cropId: 'garden-cucumber',
+    label: 'Cucumber',
+    pluralLabel: 'Cucumbers',
+    sellValue: 30,
     babySeconds: 5,
     matureSeconds: 18,
     regrows: true,
@@ -9546,6 +9558,26 @@ export class Game {
       return root;
     }
 
+    if (baseCrop === 'garden-cucumber') {
+      const cucumberMaterial = materialFor(0x2f8f3b, 0.72);
+      const darkMaterial = new MeshStandardMaterial({ color: 0x1f6f34, roughness: 0.78 });
+      const cucumber = new Mesh(new CylinderGeometry(0.07, 0.085, 0.5, 18), cucumberMaterial);
+      cucumber.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
+      cucumber.position.set(-0.03, 0.12, -0.02);
+      cucumber.rotation.set(0.12, 0.35, Math.PI / 2 - 0.16);
+      cucumber.scale.set(1, 1.18, 0.82);
+      root.add(cucumber);
+      [-0.15, -0.06, 0.03, 0.12, 0.2].forEach((yOffset, index) => {
+        const bump = new Mesh(new SphereGeometry(0.014, 6, 4), darkMaterial);
+        bump.name = 'Held cucumber dark raised bump';
+        bump.position.set(-0.03 + yOffset * 0.92, 0.13 + Math.sin(index) * 0.018, -0.02 + (index % 2 === 0 ? 0.06 : -0.055));
+        bump.scale.set(1, 0.65, 1);
+        root.add(bump);
+      });
+      root.scale.setScalar(1.12);
+      return root;
+    }
+
     if (baseCrop === 'apple' || baseCrop === 'peach' || baseCrop === 'lemon' || baseCrop === 'olive' || baseCrop === 'gold-fruit') {
       const fruitColor = baseCrop === 'apple'
         ? 0xd7392e
@@ -9967,6 +9999,7 @@ export class Game {
       || cropId === 'corn'
       || cropId === 'garden-potato'
       || cropId === 'garden-corn'
+      || cropId === 'garden-cucumber'
       || cropId === 'seed-life-golden-corn'
       || cropId === 'dragon-fruit'
       || cropId === 'vine-fruit'
@@ -10092,6 +10125,12 @@ export class Game {
       return [
         makeFruit(new Vector3(0.12, 0.96, 0.04), 'Corn Cob', regrow(12)),
         makeFruit(new Vector3(-0.14, 1.22, -0.04), 'Corn Cob', regrow(12)),
+      ];
+    }
+
+    if (cropId === 'garden-cucumber') {
+      return [
+        makeFruit(new Vector3(0.16, 0.24, -0.02), 'Cucumber', 10),
       ];
     }
 
@@ -10246,6 +10285,8 @@ export class Game {
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
       pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
       potato: new MeshStandardMaterial({ color: 0xa97743, roughness: 0.9 }),
+      cucumber: new MeshStandardMaterial({ color: 0x2f8f3b, roughness: 0.72 }),
+      cucumberDark: new MeshStandardMaterial({ color: 0x1f6f34, roughness: 0.78 }),
       dragonFruit: new MeshStandardMaterial({ color: 0xd9367c, roughness: 0.58 }),
       vineFruit: new MeshStandardMaterial({ color: 0x6d42bd, roughness: 0.58 }),
       cactusFruit: new MeshStandardMaterial({ color: 0xe45b76, roughness: 0.64 }),
@@ -10449,6 +10490,24 @@ export class Game {
           eye.scale.set(1, 0.35, 1);
           plant.root.add(eye);
         }
+      } else if (fruitState.cropId === 'garden-cucumber') {
+        fruit = new Mesh(new CylinderGeometry(0.075, 0.09, 0.54, 18), fruitState.golden ? materials.genericGold : materials.cucumber);
+        fruit.scale.set(1, 1.16, 0.82);
+        fruit.rotation.set(Math.PI / 2, index * 0.3, Math.PI / 2 + 0.12);
+        for (let bumpIndex = 0; bumpIndex < 7; bumpIndex += 1) {
+          const bump = new Mesh(new SphereGeometry(0.013, 6, 4), fruitState.golden ? materials.stem : materials.cucumberDark);
+          bump.name = 'Chapter 11 cucumber raised dark bump';
+          bump.position.copy(fruitState.offset).add(new Vector3(-0.22 + bumpIndex * 0.075, 0.032 + (bumpIndex % 2) * 0.018, bumpIndex % 2 === 0 ? 0.065 : -0.058));
+          bump.scale.set(1, 0.58, 1);
+          bump.castShadow = true;
+          plant.root.add(bump);
+        }
+        const stem = new Mesh(new CylinderGeometry(0.012, 0.018, 0.09, 6), materials.stem);
+        stem.name = 'Chapter 11 cucumber small vine stem';
+        stem.position.copy(fruitState.offset).add(new Vector3(-0.27, 0.03, 0));
+        stem.rotation.z = Math.PI / 2;
+        stem.castShadow = true;
+        plant.root.add(stem);
       } else if (fruitState.cropId === 'corn' || fruitState.cropId === 'seed-life-golden-corn' || fruitState.cropId === 'garden-corn') {
         fruit = new Mesh(new CylinderGeometry(0.105, 0.13, 0.52, 16), fruitState.golden || fruitState.cropId === 'seed-life-golden-corn' ? materials.genericGold : materials.lemon);
         fruit.name = 'Chapter 11 pickable corn cob';
@@ -10566,6 +10625,7 @@ export class Game {
         return 0.78;
       case 'pumpkin':
       case 'watermelon':
+      case 'garden-cucumber':
         return 0.9;
       case 'pineapple':
         return 0.68;
@@ -10614,6 +10674,7 @@ export class Game {
         return 0.32;
       case 'pumpkin':
       case 'watermelon':
+      case 'garden-cucumber':
         return 0.54;
       case 'pineapple':
         return 0.38;
@@ -10673,11 +10734,11 @@ export class Game {
 
     const config = CHAPTER_ELEVEN_CROP_CONFIGS[plant.seedId];
     if (plant.stage === 'baby') {
-      if (config.cropId === 'pumpkin' || config.cropId === 'watermelon') {
+      if (config.cropId === 'pumpkin' || config.cropId === 'watermelon' || config.cropId === 'garden-cucumber') {
         const vineMaterial = new MeshStandardMaterial({ color: 0x2f7a2f, roughness: 0.86 });
         for (let index = 0; index < 4; index += 1) {
           const vine = new Mesh(new BoxGeometry(0.1, 0.055, 0.72), vineMaterial);
-          vine.name = 'Chapter 11 baby pumpkin vine runner';
+          vine.name = 'Chapter 11 baby vine runner';
           vine.position.set(Math.cos(index * Math.PI / 2) * 0.2, 0.12, Math.sin(index * Math.PI / 2) * 0.2);
           vine.rotation.y = index * Math.PI / 2 + (index % 2 === 0 ? 0.18 : -0.18);
           vine.castShadow = true;
@@ -11294,7 +11355,7 @@ export class Game {
       return;
     }
 
-    if (config.cropId === 'pumpkin' || config.cropId === 'watermelon') {
+    if (config.cropId === 'pumpkin' || config.cropId === 'watermelon' || config.cropId === 'garden-cucumber') {
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
       }
@@ -11310,15 +11371,15 @@ export class Game {
         [-0.34, 0.15, -0.34, Math.PI / 4],
       ];
       vineSegments.forEach(([vineX, vineY, vineZ, rotationY]) => {
-        const vine = new Mesh(new BoxGeometry(0.12, 0.06, 0.88), vineMaterial);
-        vine.name = 'Chapter 11 permanent pumpkin vine';
+        const vine = new Mesh(new BoxGeometry(0.12, 0.06, config.cropId === 'garden-cucumber' ? 0.78 : 0.88), vineMaterial);
+        vine.name = 'Chapter 11 permanent vine runner';
         vine.position.set(vineX, vineY, vineZ);
         vine.rotation.y = rotationY;
         vine.castShadow = true;
         vine.receiveShadow = true;
         plant.root.add(vine);
       });
-      this.addChapterElevenLeafCluster(plant.root, 9, 0.24, 0.34);
+      this.addChapterElevenLeafCluster(plant.root, config.cropId === 'garden-cucumber' ? 7 : 9, 0.24, config.cropId === 'garden-cucumber' ? 0.26 : 0.34);
       this.addChapterElevenPickableFruitMeshes(plant);
       return;
     }
