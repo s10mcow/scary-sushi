@@ -257,11 +257,6 @@ const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{
   copyOnly?: boolean;
   normalOnly?: boolean;
 }> = [
-  { seedId: 'coconut-tree-seeds', count: 5, normalOnly: true },
-  { seedId: 'dragon-fruit-seeds', count: 5, normalOnly: true },
-  { seedId: 'lemon-tree-seeds', count: 1, normalOnly: true },
-  { seedId: 'olive-tree-seeds', count: 1, normalOnly: true },
-  { seedId: 'banana-tree-seeds', count: 1, normalOnly: true },
 ];
 const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = -3.82;
@@ -4263,13 +4258,6 @@ export class Game {
   }
 
   private grantChapterElevenStartingSeeds(): void {
-    if (!this.chapterElevenTwoActive) {
-      const normalStarterSeeds = CHAPTER_ELEVEN_STARTING_SEEDS
-        .filter((starter) => starter.normalOnly)
-        .map((starter) => starter.seedId);
-      this.chapterElevenSeedHotbar = Array.from({ length: Math.max(9, normalStarterSeeds.length) }, (_, index) => normalStarterSeeds[index] ?? null);
-    }
-
     CHAPTER_ELEVEN_STARTING_SEEDS.forEach(({ seedId, count, copyOnly, normalOnly }) => {
       const item = this.getChapterElevenSeedItem(seedId);
       if (!item
