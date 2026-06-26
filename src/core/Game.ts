@@ -350,6 +350,8 @@ const CHAPTER_ELEVEN_SEED_SHOP_ITEMS: Array<{
   { id: 'lucky-clover-seeds', label: 'Lucky clover seeds', singularLabel: 'Lucky clover seed', cost: 9000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.3, copyOnly: true, secretScientistOnly: true },
   { id: 'mimic-plant-seeds', label: 'Mimic plant seeds', singularLabel: 'Mimic plant seed', cost: 18000, section: 'secret', maxStock: 1, minStock: 1, stockChance: 0.14, copyOnly: true, secretScientistOnly: true },
   { id: 'carrot-seeds', label: 'Carrot seeds', singularLabel: 'Carrot seed', cost: 5, section: 'cheap', maxStock: 9 },
+  { id: 'garden-potato-seeds', label: 'Potato seeds', singularLabel: 'Potato seed', cost: 15, section: 'cheap', maxStock: 7, normalOnly: true },
+  { id: 'garden-corn-seeds', label: 'Corn seeds', singularLabel: 'Corn seed', cost: 25, section: 'cheap', maxStock: 5, normalOnly: true },
   { id: 'mushroom', label: 'Mushroom seeds', singularLabel: 'Mushroom seed', cost: 25, section: 'cheap', maxStock: 6 },
   { id: 'strawberry', label: 'Strawberry seeds', singularLabel: 'Strawberry seed', cost: 75, section: 'expensive', maxStock: 5 },
   { id: 'blackberry-bush', label: 'Blackberry bush seeds', singularLabel: 'Blackberry bush seed', cost: 100, section: 'expensive', maxStock: 4 },
@@ -380,6 +382,7 @@ type ChapterElevenCropId =
   | 'carrot'
   | 'lettuce'
   | 'potato'
+  | 'garden-potato'
   | 'mushroom'
   | 'strawberry'
   | 'blackberry'
@@ -440,6 +443,7 @@ type ChapterElevenCropId =
   | 'golden-vine-fruit'
   | 'golden-cactus'
   | 'corn'
+  | 'garden-corn'
   | 'desert-sage'
   | 'sunset-melon'
   | 'golden-corn'
@@ -616,6 +620,16 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     babySeconds: 4,
     matureSeconds: 14,
     regrows: false,
+  },
+  'garden-potato-seeds': {
+    seedId: 'garden-potato-seeds',
+    cropId: 'garden-potato',
+    label: 'Potato',
+    pluralLabel: 'Potatoes',
+    sellValue: 20,
+    babySeconds: 5,
+    matureSeconds: 18,
+    regrows: true,
   },
   mushroom: {
     seedId: 'mushroom',
@@ -996,6 +1010,16 @@ const CHAPTER_ELEVEN_CROP_CONFIGS: Record<ChapterElevenSeedId, ChapterElevenCrop
     babySeconds: 38,
     matureSeconds: 150,
     regrows: false,
+  },
+  'garden-corn-seeds': {
+    seedId: 'garden-corn-seeds',
+    cropId: 'garden-corn',
+    label: 'Corn',
+    pluralLabel: 'Corn Cobs',
+    sellValue: 35,
+    babySeconds: 7,
+    matureSeconds: 24,
+    regrows: true,
   },
   'desert-sage-seeds': {
     seedId: 'desert-sage-seeds',
@@ -9478,6 +9502,50 @@ export class Game {
       return root;
     }
 
+    if (baseCrop === 'garden-potato') {
+      const potato = new Mesh(new SphereGeometry(0.17, 16, 10), materialFor(0xa97743, 0.9));
+      potato.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
+      potato.position.set(-0.03, 0.1, -0.02);
+      potato.scale.set(1.34, 0.76, 0.94);
+      root.add(potato);
+      const eyeMaterial = new MeshStandardMaterial({ color: 0x5b3a22, roughness: 0.9 });
+      [[-0.06, 0.145, 0.105], [0.02, 0.165, 0.105], [0.07, 0.105, 0.1]].forEach(([x, y, z]) => {
+        const eye = new Mesh(new SphereGeometry(0.014, 6, 4), eyeMaterial);
+        eye.name = 'Held potato tiny eye spot';
+        eye.position.set(x, y, z);
+        eye.scale.set(1, 0.34, 1);
+        root.add(eye);
+      });
+      root.scale.setScalar(1.1);
+      return root;
+    }
+
+    if (baseCrop === 'garden-corn') {
+      const cornMaterial = materialFor(0xe8d34a, 0.62);
+      const huskMaterial = new MeshStandardMaterial({ color: 0x3f8b38, roughness: 0.84 });
+      const cob = new Mesh(new CylinderGeometry(0.09, 0.12, 0.42, 16), cornMaterial);
+      cob.name = `Held ${this.getChapterElevenCropLabel(cropId)}`;
+      cob.position.set(-0.03, 0.13, -0.02);
+      cob.rotation.z = -0.18;
+      root.add(cob);
+      for (let row = 0; row < 5; row += 1) {
+        const ring = new Mesh(new CylinderGeometry(0.096, 0.108, 0.014, 16), cornMaterial);
+        ring.name = 'Held corn cob kernel ring';
+        ring.position.copy(cob.position).add(new Vector3(0, -0.16 + row * 0.07, 0));
+        ring.rotation.z = cob.rotation.z;
+        root.add(ring);
+      }
+      [-1, 1].forEach((side) => {
+        const husk = new Mesh(new BoxGeometry(0.045, 0.3, 0.018), huskMaterial);
+        husk.name = 'Held corn green husk leaf';
+        husk.position.set(-0.03 + side * 0.085, 0.08, -0.02);
+        husk.rotation.z = side * 0.44;
+        root.add(husk);
+      });
+      root.scale.setScalar(1.12);
+      return root;
+    }
+
     if (baseCrop === 'apple' || baseCrop === 'peach' || baseCrop === 'lemon' || baseCrop === 'olive' || baseCrop === 'gold-fruit') {
       const fruitColor = baseCrop === 'apple'
         ? 0xd7392e
@@ -9618,13 +9686,13 @@ export class Game {
         blade = new Mesh(new BoxGeometry(0.34, 0.055, 0.12), metalMaterial);
       }
       blade.name = equipmentId === 'shovel' ? 'Held garden shovel metal scoop' : 'Held garden hoe metal blade';
-      blade.position.set(-0.18, 0.43, -0.02);
+      blade.position.set(equipmentId === 'shovel' ? 0.1 : -0.18, equipmentId === 'shovel' ? 0.52 : 0.43, -0.02);
       blade.rotation.z = -0.4;
       if (equipmentId === 'shovel') {
         blade.scale.set(1.08, 1.18, 1);
         const socket = new Mesh(new CylinderGeometry(0.028, 0.04, 0.12, 8), metalMaterial);
         socket.name = 'Held garden shovel metal neck socket';
-        socket.position.set(-0.12, 0.34, -0.02);
+        socket.position.set(0.05, 0.45, -0.02);
         socket.rotation.set(0.5, 0.08, -0.4);
         root.add(socket);
       }
@@ -9897,6 +9965,8 @@ export class Game {
       || cropId === 'tomato'
       || cropId === 'pepper'
       || cropId === 'corn'
+      || cropId === 'garden-potato'
+      || cropId === 'garden-corn'
       || cropId === 'seed-life-golden-corn'
       || cropId === 'dragon-fruit'
       || cropId === 'vine-fruit'
@@ -10008,6 +10078,20 @@ export class Game {
         makeFruit(new Vector3(-0.18, 0.48, 0.12), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
         makeFruit(new Vector3(0.26, 0.62, -0.14), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
         makeFruit(new Vector3(-0.06, 0.68, -0.18), 'Pepper', 10, CHAPTER_ELEVEN_GOLDEN_CHANCE, 'golden-pepper', 'Golden Pepper'),
+      ];
+    }
+
+    if (cropId === 'garden-potato') {
+      return [
+        makeFruit(new Vector3(0.16, 0.2, -0.08), 'Potato', regrow(8)),
+        makeFruit(new Vector3(-0.12, 0.18, 0.12), 'Potato', regrow(8)),
+      ];
+    }
+
+    if (cropId === 'garden-corn') {
+      return [
+        makeFruit(new Vector3(0.12, 0.96, 0.04), 'Corn Cob', regrow(12)),
+        makeFruit(new Vector3(-0.14, 1.22, -0.04), 'Corn Cob', regrow(12)),
       ];
     }
 
@@ -10161,6 +10245,7 @@ export class Game {
       diamond: new MeshStandardMaterial({ color: 0x57c8ff, emissive: 0x1479ad, emissiveIntensity: 0.34, roughness: 0.16, metalness: 0.22 }),
       tomato: new MeshStandardMaterial({ color: 0xd33a2c, roughness: 0.66 }),
       pepper: new MeshStandardMaterial({ color: 0xc62824, roughness: 0.6 }),
+      potato: new MeshStandardMaterial({ color: 0xa97743, roughness: 0.9 }),
       dragonFruit: new MeshStandardMaterial({ color: 0xd9367c, roughness: 0.58 }),
       vineFruit: new MeshStandardMaterial({ color: 0x6d42bd, roughness: 0.58 }),
       cactusFruit: new MeshStandardMaterial({ color: 0xe45b76, roughness: 0.64 }),
@@ -10353,7 +10438,18 @@ export class Game {
         stem.rotation.z = index % 2 === 0 ? -0.18 : 0.14;
         stem.castShadow = true;
         plant.root.add(stem);
-      } else if (fruitState.cropId === 'corn' || fruitState.cropId === 'seed-life-golden-corn') {
+      } else if (fruitState.cropId === 'garden-potato') {
+        fruit = new Mesh(new SphereGeometry(0.13, 14, 10), materials.potato);
+        fruit.scale.set(1.32, 0.72, 0.92);
+        fruit.rotation.set(0.08, index * 0.7, -0.12);
+        for (let eyeIndex = 0; eyeIndex < 3; eyeIndex += 1) {
+          const eye = new Mesh(new SphereGeometry(0.012, 6, 4), new MeshStandardMaterial({ color: 0x5b3a22, roughness: 0.9 }));
+          eye.name = 'Chapter 11 potato tiny eye spot';
+          eye.position.copy(fruitState.offset).add(new Vector3(-0.04 + eyeIndex * 0.04, 0.035 + (eyeIndex % 2) * 0.018, 0.08));
+          eye.scale.set(1, 0.35, 1);
+          plant.root.add(eye);
+        }
+      } else if (fruitState.cropId === 'corn' || fruitState.cropId === 'seed-life-golden-corn' || fruitState.cropId === 'garden-corn') {
         fruit = new Mesh(new CylinderGeometry(0.105, 0.13, 0.52, 16), fruitState.golden || fruitState.cropId === 'seed-life-golden-corn' ? materials.genericGold : materials.lemon);
         fruit.name = 'Chapter 11 pickable corn cob';
         fruit.rotation.z = -0.12;
@@ -10464,6 +10560,8 @@ export class Game {
     switch (config.cropId) {
       case 'carrot':
         return 0.34;
+      case 'garden-potato':
+        return 0.48;
       case 'mushroom':
         return 0.78;
       case 'pumpkin':
@@ -10496,6 +10594,7 @@ export class Game {
       case 'tomato':
         return 0.64;
       case 'pepper':
+      case 'garden-corn':
         return 0.58;
       case 'nut':
         return 0.52;
@@ -10509,6 +10608,8 @@ export class Game {
     switch (config.cropId) {
       case 'carrot':
         return 0.2;
+      case 'garden-potato':
+        return 0.28;
       case 'mushroom':
         return 0.32;
       case 'pumpkin':
@@ -10541,6 +10642,7 @@ export class Game {
       case 'tomato':
         return 0.36;
       case 'pepper':
+      case 'garden-corn':
         return 0.34;
       case 'nut':
         return 0.3;
@@ -10689,7 +10791,7 @@ export class Game {
       return;
     }
 
-    if (config.cropId === 'potato') {
+    if (config.cropId === 'potato' || config.cropId === 'garden-potato') {
       const stalkMaterial = new MeshStandardMaterial({ color: 0x3f8b38, roughness: 0.88 });
       const potatoMaterial = new MeshStandardMaterial({ color: 0xa97743, roughness: 0.92 });
       const stalk = new Mesh(new CylinderGeometry(0.04, 0.06, 0.62, 8), stalkMaterial);
@@ -10707,23 +10809,30 @@ export class Game {
         leaf.castShadow = true;
         plant.root.add(leaf);
       }
-      const potato = new Mesh(new SphereGeometry(0.19, 14, 10), potatoMaterial);
-      potato.name = 'Chapter 11 potato nub sticking from soil';
-      potato.position.set(0.16, 0.18, -0.08);
-      potato.scale.set(1.25, 0.72, 0.92);
-      potato.castShadow = true;
-      plant.root.add(potato);
+      if (config.cropId === 'garden-potato') {
+        if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
+          plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
+        }
+        this.addChapterElevenPickableFruitMeshes(plant);
+      } else {
+        const potato = new Mesh(new SphereGeometry(0.19, 14, 10), potatoMaterial);
+        potato.name = 'Chapter 11 potato nub sticking from soil';
+        potato.position.set(0.16, 0.18, -0.08);
+        potato.scale.set(1.25, 0.72, 0.92);
+        potato.castShadow = true;
+        plant.root.add(potato);
+      }
       if (plant.charged) {
         this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, 0.35, 0), 0.4, plant.golden);
       }
       return;
     }
 
-    if (config.cropId === 'corn' || config.cropId === 'seed-life-golden-corn') {
+    if (config.cropId === 'corn' || config.cropId === 'garden-corn' || config.cropId === 'seed-life-golden-corn') {
       const stalkMaterial = new MeshStandardMaterial({ color: 0x347d2e, roughness: 0.88 });
       const leafMaterial = new MeshStandardMaterial({ color: 0x4f9a3a, roughness: 0.86 });
-      const stalk = new Mesh(new CylinderGeometry(0.07, 0.09, 1.32, 10), stalkMaterial);
-      stalk.name = 'Chapter 11 semi realistic corn stalk';
+      const stalk = new Mesh(new CylinderGeometry(config.cropId === 'garden-corn' ? 0.055 : 0.07, config.cropId === 'garden-corn' ? 0.08 : 0.09, 1.32, 10), stalkMaterial);
+      stalk.name = config.cropId === 'garden-corn' ? 'Chapter 11 normal corn wheat-like stalk' : 'Chapter 11 semi realistic corn stalk';
       stalk.position.y = 0.72;
       stalk.castShadow = true;
       plant.root.add(stalk);
@@ -10736,6 +10845,17 @@ export class Game {
         leaf.rotation.y = index * 0.32;
         leaf.castShadow = true;
         plant.root.add(leaf);
+      }
+      if (config.cropId === 'garden-corn') {
+        const tasselMaterial = new MeshStandardMaterial({ color: 0xd1b46a, roughness: 0.86 });
+        for (let index = 0; index < 5; index += 1) {
+          const tassel = new Mesh(new BoxGeometry(0.018, 0.32, 0.014), tasselMaterial);
+          tassel.name = 'Chapter 11 corn wheat-like top tassel';
+          tassel.position.set((index - 2) * 0.035, 1.43, 0);
+          tassel.rotation.z = (index - 2) * 0.18;
+          tassel.castShadow = true;
+          plant.root.add(tassel);
+        }
       }
       if (!plant.pickableFruits || plant.pickableFruits.length === 0) {
         plant.pickableFruits = this.createChapterElevenPickableFruits(config.cropId);
