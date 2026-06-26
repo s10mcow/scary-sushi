@@ -505,17 +505,18 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
   dragon.userData.localX = localX;
   dragon.userData.localZ = localZ;
   dragon.userData.heading = hash2d(seed, seed, 51) * Math.PI * 2;
-  dragon.position.set(localX, 10.5 + hash2d(seed, seed, 52) * 3.5, localZ);
+  dragon.position.set(localX, 6.2 + hash2d(seed, seed, 52) * 2.2, localZ);
   dragon.rotation.y = Number(dragon.userData.heading);
 
-  addSphere(dragon, 'Chinese dragon whiskered head', [0.55, 0.04, 0], [0.42, 0.3, 0.27], dragonScaleMaterial);
-  addSphere(dragon, 'Chinese dragon golden muzzle', [0.9, 0, 0], [0.24, 0.16, 0.16], dragonBellyMaterial);
-  addSphere(dragon, 'Chinese dragon large left black eye', [0.86, 0.15, -0.15], [0.075, 0.075, 0.075], dragonEyeMaterial);
-  addSphere(dragon, 'Chinese dragon large right black eye', [0.86, 0.15, 0.15], [0.075, 0.075, 0.075], dragonEyeMaterial);
-  addPointedCone(dragon, 'Chinese dragon left horn', [0.35, 0.42, -0.12], 0.055, 0.36, dragonHornMaterial, [-0.34, 0, 0.22]);
-  addPointedCone(dragon, 'Chinese dragon right horn', [0.35, 0.42, 0.12], 0.055, 0.36, dragonHornMaterial, [0.34, 0, 0.22]);
-  addCylinderBetween(dragon, 'Chinese dragon left whisker', new Vector3(0.88, 0.02, -0.14), new Vector3(1.3, -0.08, -0.46), 0.01, dragonHornMaterial);
-  addCylinderBetween(dragon, 'Chinese dragon right whisker', new Vector3(0.88, 0.02, 0.14), new Vector3(1.3, -0.08, 0.46), 0.01, dragonHornMaterial);
+  addSphere(dragon, 'Chinese dragon broad whiskered head', [0.55, 0.04, 0], [0.54, 0.38, 0.34], dragonScaleMaterial);
+  addSphere(dragon, 'Chinese dragon golden lower jaw', [0.72, -0.12, 0], [0.28, 0.14, 0.2], dragonBellyMaterial);
+  addSphere(dragon, 'Chinese dragon rounded golden muzzle', [0.98, 0, 0], [0.32, 0.2, 0.2], dragonBellyMaterial);
+  addSphere(dragon, 'Chinese dragon large left black eye', [0.92, 0.18, -0.19], [0.09, 0.09, 0.09], dragonEyeMaterial);
+  addSphere(dragon, 'Chinese dragon large right black eye', [0.92, 0.18, 0.19], [0.09, 0.09, 0.09], dragonEyeMaterial);
+  addPointedCone(dragon, 'Chinese dragon left horn', [0.32, 0.52, -0.15], 0.07, 0.44, dragonHornMaterial, [-0.34, 0, 0.22]);
+  addPointedCone(dragon, 'Chinese dragon right horn', [0.32, 0.52, 0.15], 0.07, 0.44, dragonHornMaterial, [0.34, 0, 0.22]);
+  addCylinderBetween(dragon, 'Chinese dragon left whisker', new Vector3(0.95, 0.03, -0.17), new Vector3(1.48, -0.12, -0.58), 0.015, dragonHornMaterial);
+  addCylinderBetween(dragon, 'Chinese dragon right whisker', new Vector3(0.95, 0.03, 0.17), new Vector3(1.48, -0.12, 0.58), 0.015, dragonHornMaterial);
 
   for (let index = 0; index < 14; index += 1) {
     const x = -index * 0.46;
@@ -526,32 +527,50 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
     segment.position.set(x, Math.sin(index * 0.75) * 0.08, Math.sin(index * 0.55) * 0.12);
     segment.userData.baseY = segment.position.y;
     segment.userData.baseZ = segment.position.z;
-    segment.scale.set(0.32 - index * 0.006, 0.22 - index * 0.003, 0.22 - index * 0.003);
+    segment.scale.set(0.48 - index * 0.008, 0.34 - index * 0.005, 0.34 - index * 0.005);
     segment.castShadow = true;
     dragon.add(segment);
 
     if (index % 2 === 0) {
-      addPointedCone(dragon, 'Chinese dragon raised back scale', [x, 0.27, 0], 0.055, 0.16, dragonHornMaterial, [0, 0, 0]);
+      addPointedCone(dragon, 'Chinese dragon raised back scale', [x, 0.43, 0], 0.07, 0.22, dragonHornMaterial, [0, 0, 0]);
     }
 
     if (index > 1 && index < 11 && index % 3 === 0) {
       for (const z of [-0.18, 0.18]) {
+        const shoulder = new Vector3(x, -0.16, z * 1.18);
+        const elbow = new Vector3(x + 0.14, -0.48, z * 1.55);
+        const footPosition = new Vector3(x + 0.32, -0.72, z * 1.7);
         const leg = addCylinderBetween(
           dragon,
-          'Chinese dragon little flying leg',
-          new Vector3(x, -0.12, z),
-          new Vector3(x + 0.12, -0.46, z * 1.28),
-          0.025,
+          'Chinese dragon visible bent flying leg',
+          shoulder,
+          elbow,
+          0.045,
           scaleMaterial,
         );
         leg.userData.segmentIndex = index;
         leg.userData.baseY = leg.position.y;
         leg.userData.baseZ = leg.position.z;
+        const lowerLeg = addCylinderBetween(
+          dragon,
+          'Chinese dragon visible lower leg',
+          elbow,
+          footPosition,
+          0.035,
+          scaleMaterial,
+        );
+        lowerLeg.userData.segmentIndex = index;
+        lowerLeg.userData.baseY = lowerLeg.position.y;
+        lowerLeg.userData.baseZ = lowerLeg.position.z;
+        const foot = addSphere(dragon, 'Chinese dragon clawed foot', [footPosition.x, footPosition.y, footPosition.z], [0.11, 0.055, 0.085], dragonHornMaterial);
+        foot.userData.segmentIndex = index;
+        foot.userData.baseY = foot.position.y;
+        foot.userData.baseZ = foot.position.z;
       }
     }
   }
 
-  addPointedCone(dragon, 'Chinese dragon tapering blue tail', [-6.7, -0.02, 0], 0.16, 0.5, dragonScaleMaterials[3], [0, 0, Math.PI / 2]);
+  addPointedCone(dragon, 'Chinese dragon tapering blue tail', [-6.7, -0.02, 0], 0.24, 0.68, dragonScaleMaterials[3], [0, 0, Math.PI / 2]);
   return dragon;
 }
 
@@ -562,7 +581,7 @@ function animateChineseDragons(root: Group, timeSeconds: number): void {
     }
     const seed = Number(object.userData.seed ?? 0);
     const moving = updateForwardWanderer(object, timeSeconds, 36, 1.15, 2.2);
-    object.position.y = 10.8 + Math.sin(timeSeconds * 0.55 + seed) * 1.6;
+    object.position.y = 6.4 + Math.sin(timeSeconds * 0.55 + seed) * 1.05;
     if (!moving) {
       object.userData.pauseTimer = 0;
     }
