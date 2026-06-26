@@ -9863,6 +9863,25 @@ export class Game {
     egg.position.set(-0.03, 0.1, -0.02);
     egg.scale.set(0.85, 1.22, 0.85);
     root.add(hand, egg);
+    const eggSpotMaterial = new MeshStandardMaterial({
+      color: petType === 'phoenix'
+        ? 0xffd25c
+        : petType === 'dinosaur'
+          ? 0x315f2e
+          : petType === 'turtle'
+            ? 0x375a28
+            : petType === 'cow'
+              ? 0x1c1814
+              : 0x7a3ca8,
+      roughness: 0.62,
+    });
+    [[0.07, 0.17, 0.1, 0.035], [-0.09, 0.08, -0.09, 0.03], [0.0, 0.24, -0.02, 0.026]].forEach(([x, y, z, radius]) => {
+      const spot = new Mesh(new SphereGeometry(radius, 8, 6), eggSpotMaterial);
+      spot.name = 'Held pet egg decorative spot';
+      spot.position.set(egg.position.x + x, egg.position.y + y, egg.position.z + z);
+      spot.scale.y = 0.25;
+      root.add(spot);
+    });
     if (petType === 'unicorn') {
       [0xff5555, 0xffbd36, 0xffef5c, 0x4bd36a, 0x49a0ff, 0x9362ff].forEach((color, index) => {
         const band = new Mesh(new TorusGeometry(0.1 + index * 0.004, 0.006, 6, 18), new MeshStandardMaterial({ color, roughness: 0.5 }));
@@ -11971,25 +11990,28 @@ export class Game {
         metalness: plant.golden ? 0.28 : 0,
       });
       const spotMaterial = new MeshStandardMaterial({ color: 0xf8f1df, roughness: 0.62 });
-      const stem = new Mesh(new CylinderGeometry(0.2, 0.32, 1.35, 16), stemMaterial);
+      const stem = new Mesh(new CylinderGeometry(0.4, 0.64, 2.7, 16), stemMaterial);
       stem.name = 'Chapter 11 huge mature mushroom stem';
-      stem.position.y = 0.72;
+      stem.position.y = 1.44;
       stem.castShadow = true;
       stem.receiveShadow = true;
-      const cap = new Mesh(new SphereGeometry(0.98, 28, 16), capMaterial);
+      const cap = new Mesh(new SphereGeometry(1.96, 28, 16), capMaterial);
       cap.name = 'Chapter 11 huge mature mushroom red cap';
-      cap.position.y = 1.42;
+      cap.position.y = 2.84;
       cap.scale.set(1.18, 0.44, 1.12);
       cap.castShadow = true;
       cap.receiveShadow = true;
       plant.root.add(stem, cap);
       const spotOffsets: Array<[number, number, number, number]> = [
-        [0, 1.82, -0.08, 0.14],
-        [-0.36, 1.66, 0.28, 0.11],
-        [0.38, 1.64, 0.22, 0.12],
-        [-0.54, 1.5, -0.2, 0.09],
-        [0.54, 1.52, -0.26, 0.095],
-        [0.08, 1.56, 0.46, 0.1],
+        [0, 3.64, -0.16, 0.3],
+        [-0.72, 3.32, 0.56, 0.24],
+        [0.76, 3.28, 0.44, 0.26],
+        [-1.08, 3.0, -0.4, 0.2],
+        [1.08, 3.04, -0.52, 0.22],
+        [0.16, 3.12, 0.92, 0.22],
+        [-0.26, 3.42, -0.92, 0.18],
+        [0.9, 3.5, 0.04, 0.16],
+        [-0.92, 3.52, 0.04, 0.17],
       ];
       spotOffsets.forEach(([x, y, z, radius]) => {
         const spot = new Mesh(new SphereGeometry(radius, 12, 8), spotMaterial);

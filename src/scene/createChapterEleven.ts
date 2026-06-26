@@ -736,7 +736,7 @@ export function createChapterEleven(): ChapterElevenData {
       [0.02, 0.1, 0.0, 0.02],
     ];
     carrotOffsets.forEach(([offsetX, offsetY, offsetZ, angle], index) => {
-      const carrot = new Mesh(new ConeGeometry(0.055, 0.46, 12), carrotMaterial);
+      const carrot = new Mesh(new ConeGeometry(0.085, 0.54, 14), carrotMaterial);
       carrot.name = 'Chapter 11 loose carrot';
       carrot.position.set(offsetX, offsetY, offsetZ);
       carrot.rotation.z = Math.PI / 2 + angle;
@@ -747,11 +747,11 @@ export function createChapterEleven(): ChapterElevenData {
 
       const leaves = new Group();
       leaves.name = 'Chapter 11 carrot leafy top';
-      leaves.position.set(offsetX - Math.cos(angle) * 0.23, offsetY + 0.01, offsetZ - Math.sin(angle) * 0.05);
+      leaves.position.set(offsetX + Math.cos(angle) * 0.27, offsetY + 0.02, offsetZ + Math.sin(angle) * 0.08);
       for (let leaf = 0; leaf < 3; leaf += 1) {
-        const leafBlade = new Mesh(new BoxGeometry(0.025, 0.12, 0.035), carrotLeafMaterial);
+        const leafBlade = new Mesh(new BoxGeometry(0.032, 0.16, 0.045), carrotLeafMaterial);
         leafBlade.position.set(0, leaf * 0.01, (leaf - 1) * 0.035);
-        leafBlade.rotation.z = -0.7 + leaf * 0.22;
+        leafBlade.rotation.z = 0.7 - leaf * 0.22;
         leafBlade.castShadow = true;
         leaves.add(leafBlade);
       }
