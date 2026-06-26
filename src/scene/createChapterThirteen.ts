@@ -2,12 +2,14 @@ import {
   BoxGeometry,
   CatmullRomCurve3,
   CylinderGeometry,
+  DoubleSide,
   Group,
   InstancedMesh,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
+  PlaneGeometry,
   SphereGeometry,
   TubeGeometry,
   Vector3,
@@ -37,6 +39,18 @@ const barkMaterial = new MeshStandardMaterial({ color: 0x7a4b37, roughness: 0.82
 const blossomMaterial = new MeshStandardMaterial({ color: 0xffb6d8, roughness: 0.84 });
 const paleBlossomMaterial = new MeshStandardMaterial({ color: 0xffd9e9, roughness: 0.86 });
 const darkBlossomMaterial = new MeshStandardMaterial({ color: 0xec82bd, roughness: 0.88 });
+const butterflyWingGeometry = new PlaneGeometry(0.18, 0.12);
+const butterflyMaterials = [
+  new MeshBasicMaterial({ color: 0xfff06a, side: DoubleSide }),
+  new MeshBasicMaterial({ color: 0x8ff7ff, side: DoubleSide }),
+  new MeshBasicMaterial({ color: 0xd778ff, side: DoubleSide }),
+  new MeshBasicMaterial({ color: 0xff8fca, side: DoubleSide }),
+];
+const magicalDeerBodyMaterial = new MeshStandardMaterial({ color: 0xd8a16f, roughness: 0.74 });
+const magicalDeerBellyMaterial = new MeshStandardMaterial({ color: 0xffe2d2, roughness: 0.78 });
+const magicalDeerEarMaterial = new MeshStandardMaterial({ color: 0xffb7d3, roughness: 0.8 });
+const magicalDeerAntlerMaterial = new MeshStandardMaterial({ color: 0xfff4c8, roughness: 0.5, emissive: 0xffd38a, emissiveIntensity: 0.18 });
+const magicalDeerEyeMaterial = new MeshBasicMaterial({ color: 0x25131b });
 const rainbowMaterials = [
   0xff4d5e,
   0xff9f1c,
@@ -101,6 +115,119 @@ function createRainbowArc(localX: number, localZ: number, rotationY: number, sca
   return rainbow;
 }
 
+function createButterfly(localX: number, localZ: number, seed: number): Group {
+  const butterfly = new Group();
+  butterfly.name = "Maggie's World flat butterfly";
+  butterfly.userData.baseX = localX;
+  butterfly.userData.baseZ = localZ;
+  butterfly.userData.baseY = 1.6 + hash2d(seed, seed, 1) * 1.4;
+  butterfly.userData.seed = seed;
+  butterfly.position.set(localX, butterfly.userData.baseY, localZ);
+
+  const material = butterflyMaterials[Math.floor(hash2d(seed, seed, 2) * butterflyMaterials.length) % butterflyMaterials.length];
+  const leftWing = new Mesh(butterflyWingGeometry, material);
+  leftWing.name = 'Flat butterfly left wing';
+  leftWing.position.x = -0.075;
+  leftWing.rotation.y = -0.5;
+  butterfly.add(leftWing);
+
+  const rightWing = new Mesh(butterflyWingGeometry, material);
+  rightWing.name = 'Flat butterfly right wing';
+  rightWing.position.x = 0.075;
+  rightWing.rotation.y = 0.5;
+  butterfly.add(rightWing);
+
+  const body = new Mesh(new BoxGeometry(0.035, 0.13, 0.035), new MeshBasicMaterial({ color: 0x3b2536, side: DoubleSide }));
+  body.name = 'Flat butterfly body';
+  butterfly.add(body);
+
+  return butterfly;
+}
+
+function animateButterflies(root: Group, timeSeconds: number): void {
+  root.traverse((object) => {
+    if (!(object instanceof Group) || object.name !== "Maggie's World flat butterfly") {
+      return;
+    }
+    const seed = Number(object.userData.seed ?? 0);
+    const baseX = Number(object.userData.baseX ?? object.position.x);
+    const baseY = Number(object.userData.baseY ?? object.position.y);
+    const baseZ = Number(object.userData.baseZ ?? object.position.z);
+    const speed = 0.8 + hash2d(seed, seed, 4) * 0.65;
+    const phase = timeSeconds * speed + seed * 0.37;
+    object.position.set(
+      baseX + Math.sin(phase * 0.9) * 1.2,
+      baseY + Math.sin(phase * 2.4) * 0.28,
+      baseZ + Math.cos(phase * 0.75) * 1.1,
+    );
+    object.rotation.y = Math.sin(phase * 0.6) * 0.8;
+
+    const flap = 0.35 + Math.sin(phase * 8.5) * 0.45;
+    const leftWing = object.children[0];
+    const rightWing = object.children[1];
+    leftWing.rotation.y = -flap;
+    rightWing.rotation.y = flap;
+  });
+}
+
+function addBox(root: Group, name: string, size: [number, number, number], position: [number, number, number], material: MeshStandardMaterial | MeshBasicMaterial): Mesh {
+  const mesh = new Mesh(new BoxGeometry(size[0], size[1], size[2]), material);
+  mesh.name = name;
+  mesh.position.set(position[0], position[1], position[2]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  root.add(mesh);
+  return mesh;
+}
+
+function addSphere(root: Group, name: string, position: [number, number, number], scale: [number, number, number], material: MeshStandardMaterial | MeshBasicMaterial): Mesh {
+  const mesh = new Mesh(new SphereGeometry(1, 16, 10), material);
+  mesh.name = name;
+  mesh.position.set(position[0], position[1], position[2]);
+  mesh.scale.set(scale[0], scale[1], scale[2]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  root.add(mesh);
+  return mesh;
+}
+
+function createMagicalDeer(): Group {
+  const deer = new Group();
+  deer.name = "Maggie's World magical deer bunny";
+  deer.position.set(8, 0, -16);
+  deer.rotation.y = -0.38;
+
+  addSphere(deer, 'Magical deer soft body', [0, 1.1, 0], [1.05, 0.55, 0.42], magicalDeerBodyMaterial);
+  addSphere(deer, 'Magical deer pale belly', [0.08, 1.03, -0.05], [0.82, 0.38, 0.34], magicalDeerBellyMaterial);
+  addSphere(deer, 'Magical deer bunny-deer head', [0.92, 1.48, 0], [0.43, 0.36, 0.34], magicalDeerBodyMaterial);
+  addSphere(deer, 'Magical deer little nose', [1.28, 1.44, 0], [0.13, 0.09, 0.1], magicalDeerBellyMaterial);
+  addSphere(deer, 'Magical deer left eye', [1.14, 1.56, -0.18], [0.045, 0.045, 0.045], magicalDeerEyeMaterial);
+  addSphere(deer, 'Magical deer right eye', [1.14, 1.56, 0.18], [0.045, 0.045, 0.045], magicalDeerEyeMaterial);
+  addSphere(deer, 'Magical deer cotton tail', [-0.95, 1.24, 0], [0.22, 0.22, 0.22], magicalDeerBellyMaterial);
+
+  for (const z of [-0.27, 0.27]) {
+    addBox(deer, 'Magical deer slim deer leg', [0.12, 0.9, 0.12], [-0.44, 0.45, z], magicalDeerBodyMaterial);
+    addBox(deer, 'Magical deer slim deer leg', [0.12, 0.86, 0.12], [0.5, 0.43, z], magicalDeerBodyMaterial);
+  }
+
+  const leftEar = addBox(deer, 'Magical deer tall bunny ear', [0.15, 0.86, 0.12], [0.74, 2.08, -0.16], magicalDeerEarMaterial);
+  leftEar.rotation.z = 0.22;
+  const rightEar = addBox(deer, 'Magical deer tall bunny ear', [0.15, 0.86, 0.12], [0.74, 2.08, 0.16], magicalDeerEarMaterial);
+  rightEar.rotation.z = 0.22;
+
+  const leftAntler = new Mesh(new CylinderGeometry(0.025, 0.035, 0.62, 7), magicalDeerAntlerMaterial);
+  leftAntler.name = 'Tiny glowing magical deer antler';
+  leftAntler.position.set(0.96, 1.9, -0.12);
+  leftAntler.rotation.z = -0.4;
+  leftAntler.castShadow = true;
+  deer.add(leftAntler);
+  const rightAntler = leftAntler.clone();
+  rightAntler.position.z = 0.12;
+  deer.add(rightAntler);
+
+  return deer;
+}
+
 function createChunk(chunkX: number, chunkZ: number): Group {
   const chunk = new Group();
   chunk.name = `Maggie's World chunk ${chunkX},${chunkZ}`;
@@ -127,6 +254,13 @@ function createChunk(chunkX: number, chunkZ: number): Group {
   const rainbowRotation = hash2d(chunkX, chunkZ, 72) * Math.PI * 2;
   const rainbowScale = 0.86 + hash2d(chunkX, chunkZ, 73) * 0.32;
   chunk.add(createRainbowArc(rainbowX, rainbowZ, rainbowRotation, rainbowScale));
+
+  for (let index = 0; index < 7; index += 1) {
+    const seed = chunkX * 1009 + chunkZ * 917 + index * 37;
+    const butterflyX = 7 + hash2d(chunkX, chunkZ, 80 + index) * (CHUNK_SIZE - 14);
+    const butterflyZ = 7 + hash2d(chunkX, chunkZ, 90 + index) * (CHUNK_SIZE - 14);
+    chunk.add(createButterfly(butterflyX, butterflyZ, seed));
+  }
 
   const treePositions: Array<{ x: number; z: number; scale: number }> = [];
   const cells = Math.floor(CHUNK_SIZE / TREE_SPACING);
@@ -186,6 +320,8 @@ export function createChapterThirteen(): ChapterThirteenData {
   const chunkRoot = new Group();
   chunkRoot.name = "Maggie's World endless generated chunks";
   root.add(chunkRoot);
+  const magicalDeer = createMagicalDeer();
+  root.add(magicalDeer);
 
   const chunks = new Map<string, Group>();
   const colliders: CollisionBox[] = [];
@@ -225,6 +361,10 @@ export function createChapterThirteen(): ChapterThirteenData {
     lookTarget,
     update(playerPosition: Vector3): void {
       ensureChunks(playerPosition);
+      const timeSeconds = performance.now() / 1000;
+      animateButterflies(chunkRoot, timeSeconds);
+      magicalDeer.position.y = Math.sin(timeSeconds * 1.4) * 0.025;
+      magicalDeer.rotation.z = Math.sin(timeSeconds * 1.8) * 0.018;
     },
     reset(): void {
       ensureChunks(spawn);
