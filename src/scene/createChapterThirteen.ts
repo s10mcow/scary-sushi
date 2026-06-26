@@ -197,6 +197,24 @@ function addSphere(root: Group, name: string, position: [number, number, number]
   return mesh;
 }
 
+function addTaperedEar(root: Group, name: string, position: [number, number, number], side: -1 | 1): void {
+  const ear = new Mesh(new SphereGeometry(1, 12, 8), magicalDeerEarMaterial);
+  ear.name = name;
+  ear.position.set(position[0], position[1], position[2]);
+  ear.scale.set(0.08, 0.34, 0.055);
+  ear.rotation.z = 0.18;
+  ear.rotation.x = side * 0.16;
+  ear.castShadow = true;
+  root.add(ear);
+
+  const inner = new Mesh(new SphereGeometry(1, 10, 6), magicalDeerBellyMaterial);
+  inner.name = `${name} soft inner ear`;
+  inner.position.set(position[0] + 0.018, position[1] - 0.01, position[2] + side * 0.008);
+  inner.scale.set(0.04, 0.22, 0.026);
+  inner.rotation.copy(ear.rotation);
+  root.add(inner);
+}
+
 function addCylinderBetween(root: Group, name: string, start: Vector3, end: Vector3, radius: number, material: MeshStandardMaterial): Mesh {
   const direction = end.clone().sub(start);
   const length = direction.length();
@@ -242,10 +260,12 @@ function createJackalope(localX: number, localZ: number, seed: number): Group {
 
   addSphere(jackalope, 'Small jackalope rabbit-deer body', [0, 0.56, 0], [0.56, 0.3, 0.25], magicalDeerBodyMaterial);
   addSphere(jackalope, 'Small jackalope pale belly', [0.03, 0.52, -0.01], [0.43, 0.2, 0.2], magicalDeerBellyMaterial);
-  addSphere(jackalope, 'Small jackalope head with deer muzzle', [0.55, 0.82, 0], [0.24, 0.22, 0.2], magicalDeerBodyMaterial);
-  addSphere(jackalope, 'Small jackalope pale muzzle', [0.76, 0.78, 0], [0.11, 0.075, 0.085], magicalDeerBellyMaterial);
-  addSphere(jackalope, 'Small jackalope left visible eye', [0.66, 0.88, -0.105], [0.038, 0.038, 0.038], magicalDeerEyeMaterial);
-  addSphere(jackalope, 'Small jackalope right visible eye', [0.66, 0.88, 0.105], [0.038, 0.038, 0.038], magicalDeerEyeMaterial);
+  addSphere(jackalope, 'Small jackalope head with deer muzzle', [0.55, 0.82, 0], [0.25, 0.22, 0.2], magicalDeerBodyMaterial);
+  addSphere(jackalope, 'Small jackalope pale muzzle', [0.77, 0.78, 0], [0.12, 0.08, 0.09], magicalDeerBellyMaterial);
+  addSphere(jackalope, 'Small jackalope left visible eye', [0.74, 0.9, -0.08], [0.058, 0.058, 0.058], magicalDeerEyeMaterial);
+  addSphere(jackalope, 'Small jackalope right visible eye', [0.74, 0.9, 0.08], [0.058, 0.058, 0.058], magicalDeerEyeMaterial);
+  addSphere(jackalope, 'Small jackalope left eye shine', [0.775, 0.918, -0.103], [0.018, 0.018, 0.018], magicalDeerBellyMaterial);
+  addSphere(jackalope, 'Small jackalope right eye shine', [0.775, 0.918, 0.103], [0.018, 0.018, 0.018], magicalDeerBellyMaterial);
   addSphere(jackalope, 'Small jackalope bunny tail', [-0.55, 0.64, 0], [0.13, 0.13, 0.13], magicalDeerBellyMaterial);
 
   for (const [index, z] of [-0.15, 0.15].entries()) {
@@ -255,10 +275,8 @@ function createJackalope(localX: number, localZ: number, seed: number): Group {
     frontLeg.userData.legPhase = index === 0 ? Math.PI : 0;
   }
 
-  const leftEar = addBox(jackalope, 'Small jackalope long bunny ear', [0.08, 0.48, 0.055], [0.45, 1.18, -0.1], magicalDeerEarMaterial);
-  leftEar.rotation.z = 0.2;
-  const rightEar = addBox(jackalope, 'Small jackalope long bunny ear', [0.08, 0.48, 0.055], [0.45, 1.18, 0.1], magicalDeerEarMaterial);
-  rightEar.rotation.z = 0.2;
+  addTaperedEar(jackalope, 'Small jackalope realistic long bunny ear', [0.45, 1.18, -0.1], -1);
+  addTaperedEar(jackalope, 'Small jackalope realistic long bunny ear', [0.45, 1.18, 0.1], 1);
 
   addJackalopeAntler(jackalope, -1);
   addJackalopeAntler(jackalope, 1);
@@ -281,7 +299,7 @@ function animateJackalopes(root: Group, timeSeconds: number): void {
     const nextX = baseX + Math.sin(phase + 0.08) * 4.2;
     const nextZ = baseZ + Math.cos((phase + 0.08) * 0.82) * 3.6;
     object.position.set(baseX + walkX, Math.max(0, Math.sin(timeSeconds * speed * 8 + seed) * 0.035), baseZ + walkZ);
-    object.rotation.y = Math.atan2(nextX - object.position.x, nextZ - object.position.z) + Math.PI / 2;
+    object.rotation.y = Math.atan2(nextX - object.position.x, nextZ - object.position.z);
 
     object.children.forEach((child) => {
       if (!child.name.includes('leg')) {
