@@ -2230,6 +2230,7 @@ export class Game {
   private readonly chapterElevenTraderRoot = new Group();
   private chapterElevenRainPuddleTimer = 0;
   private chapterElevenCasinoBank = 0;
+  private chapterElevenCasinoMusicActive = false;
   private chapterElevenPhase: 'day' | 'night' = 'day';
   private chapterElevenPhaseTimer = CHAPTER_ELEVEN_COPY_DAY_SECONDS;
   private chapterElevenDayCount = 1;
@@ -5421,6 +5422,7 @@ export class Game {
       this.updateChapterElevenPets(deltaSeconds);
       this.updateChapterElevenSeedShopStock(deltaSeconds);
       this.updateChapterElevenEventsAndTrader(deltaSeconds);
+      this.updateChapterElevenCasinoMusic();
       this.gameplaySfxAudio.updateGardenEventAmbient(deltaSeconds);
     } else if (this.chapterTwelveActive && !this.chapterTwelve.isDriving()) {
       this.chapterTwelve.update(deltaSeconds);
@@ -14039,6 +14041,33 @@ export class Game {
     return null;
   }
 
+  private updateChapterElevenCasinoMusic(): void {
+    const playerPosition = this.player.getPosition();
+    const onCasinoIsland = this.chapterElevenActive
+      && this.chapterElevenTwoActive
+      && Math.hypot(
+        playerPosition.x - CHAPTER_ELEVEN_CASINO_TARGET_X,
+        playerPosition.z - CHAPTER_ELEVEN_CASINO_TARGET_Z,
+      ) <= 44;
+    const eventAudioBusy = this.chapterElevenEvent !== 'none' || this.chapterElevenEventAudioTimer > 0;
+
+    if (onCasinoIsland && !eventAudioBusy) {
+      if (!this.chapterElevenCasinoMusicActive) {
+        this.chapterElevenCasinoMusicActive = true;
+        this.gameplaySfxAudio.setGardenEventAmbient('casino');
+        this.pushStatus('Casino music starts playing.', 2.2);
+      }
+      return;
+    }
+
+    if (this.chapterElevenCasinoMusicActive) {
+      this.chapterElevenCasinoMusicActive = false;
+      if (!eventAudioBusy) {
+        this.gameplaySfxAudio.setGardenEventAmbient(null);
+      }
+    }
+  }
+
   private spinChapterElevenCasinoSlot(machine: Extract<ChapterElevenCasinoInteractable, { kind: 'slot' }>): void {
     if (this.chapterElevenMoney < machine.cost) {
       this.pushStatus(`${machine.label} costs $${machine.cost}. You need $${machine.cost - this.chapterElevenMoney} more.`, 2.6);
@@ -14054,7 +14083,7 @@ export class Game {
       const symbol = symbols[MathUtils.randInt(0, symbols.length - 1)] ?? 'Seven';
       result = [symbol, symbol, symbol];
       this.chapterElevenMoney += machine.payout;
-      this.pushStatus(`${machine.label} spun ${result.join(' | ')}. Jackpot paid $${machine.payout}.`, 3.2);
+      this.pushStatus(`${machine.label} Slot Machine spun ${result.join(' | ')}. Jackpot paid $${machine.payout}.`, 3.2);
     } else {
       result = [
         symbols[MathUtils.randInt(0, symbols.length - 1)] ?? 'Cherry',
@@ -14065,7 +14094,7 @@ export class Game {
         result[2] = symbols[(symbols.indexOf(result[2]) + 1) % symbols.length] ?? 'Crown';
       }
       this.chapterElevenCasinoBank += machine.cost;
-      this.pushStatus(`${machine.label} spun ${result.join(' | ')}. The lost $${machine.cost} moved to Authorized Personnel.`, 3.2);
+      this.pushStatus(`${machine.label} Slot Machine spun ${result.join(' | ')}. The lost $${machine.cost} moved to Authorized Personnel.`, 3.2);
     }
     this.syncHud();
   }
@@ -29133,7 +29162,7 @@ export class Game {
       const casinoInteractable = this.getNearbyChapterElevenCasinoInteractable();
       if (casinoInteractable) {
         if (casinoInteractable.kind === 'slot') {
-          return `Press E to spin the ${casinoInteractable.label} for $${casinoInteractable.cost}.`;
+          return `Press E to spin the ${casinoInteractable.label} Slot Machine for $${casinoInteractable.cost}.`;
         }
         if (casinoInteractable.kind === 'table') {
           return `Press E to place a $${CHAPTER_ELEVEN_CASINO_TABLE_COST} stack on the casino table.`;

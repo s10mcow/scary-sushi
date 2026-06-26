@@ -16,7 +16,7 @@ export type OfficeJumpscareCue =
   | 'curtain-snap'
   | 'pirate-spin';
 
-export type GardenEventCue = 'cheerful' | 'rain' | 'lightning' | 'snow' | 'wind' | 'magic' | 'dragon' | 'volcanic';
+export type GardenEventCue = 'cheerful' | 'rain' | 'lightning' | 'snow' | 'wind' | 'magic' | 'dragon' | 'volcanic' | 'casino';
 
 export class GameplaySfxAudio {
   private readonly context?: AudioContext;
@@ -355,7 +355,7 @@ export class GameplaySfxAudio {
 
     this.stopGardenEventAmbientSources();
     this.gardenEventAmbientCue = cue;
-    this.gardenEventAmbientTimer = cue === 'cheerful' ? 0 : cue === 'lightning' ? 1.4 : 999999;
+    this.gardenEventAmbientTimer = cue === 'cheerful' || cue === 'casino' ? 0 : cue === 'lightning' ? 1.4 : 999999;
     if (cue) {
       this.startGardenEventAmbient(cue);
     }
@@ -380,6 +380,12 @@ export class GameplaySfxAudio {
     if (this.gardenEventAmbientCue === 'cheerful') {
       this.playGardenEventMusic();
       this.gardenEventAmbientTimer = 3.0;
+      return;
+    }
+
+    if (this.gardenEventAmbientCue === 'casino') {
+      this.playCasinoMusicPhrase();
+      this.gardenEventAmbientTimer = 4.8;
       return;
     }
 
@@ -1379,6 +1385,89 @@ export class GameplaySfxAudio {
     });
   }
 
+  private playCasinoMusicPhrase(): void {
+    if (!this.context || !this.masterGain) {
+      return;
+    }
+
+    const now = this.context.currentTime + 0.012;
+    const musicBus = this.context.createGain();
+    musicBus.gain.setValueAtTime(0.0001, now);
+    musicBus.gain.exponentialRampToValueAtTime(0.056, now + 0.08);
+    musicBus.gain.linearRampToValueAtTime(0.048, now + 4.15);
+    musicBus.gain.exponentialRampToValueAtTime(0.0001, now + 4.78);
+    musicBus.connect(this.masterGain);
+
+    const bassNotes = [
+      { frequency: 110.0, offset: 0 },
+      { frequency: 146.83, offset: 0.6 },
+      { frequency: 164.81, offset: 1.2 },
+      { frequency: 146.83, offset: 1.8 },
+      { frequency: 123.47, offset: 2.4 },
+      { frequency: 146.83, offset: 3.0 },
+      { frequency: 164.81, offset: 3.6 },
+      { frequency: 220.0, offset: 4.2 },
+    ];
+    bassNotes.forEach((note) => {
+      const start = now + note.offset;
+      const gain = this.context!.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.095, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.34);
+      gain.connect(musicBus);
+
+      const bass = this.context!.createOscillator();
+      bass.type = 'triangle';
+      bass.frequency.setValueAtTime(note.frequency, start);
+      bass.frequency.exponentialRampToValueAtTime(note.frequency * 0.992, start + 0.32);
+      bass.connect(gain);
+      this.startSource(bass, start, start + 0.36);
+    });
+
+    const leadNotes = [
+      { frequency: 440.0, offset: 0.12, length: 0.22 },
+      { frequency: 493.88, offset: 0.44, length: 0.2 },
+      { frequency: 554.37, offset: 0.78, length: 0.28 },
+      { frequency: 659.25, offset: 1.18, length: 0.34 },
+      { frequency: 587.33, offset: 1.7, length: 0.22 },
+      { frequency: 493.88, offset: 2.02, length: 0.28 },
+      { frequency: 554.37, offset: 2.62, length: 0.22 },
+      { frequency: 739.99, offset: 2.96, length: 0.3 },
+      { frequency: 659.25, offset: 3.44, length: 0.24 },
+      { frequency: 554.37, offset: 3.78, length: 0.48 },
+    ];
+    leadNotes.forEach((note, index) => {
+      const start = now + note.offset;
+      const gain = this.context!.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.074, start + 0.014);
+      gain.gain.linearRampToValueAtTime(0.038, start + note.length * 0.68);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + note.length);
+      gain.connect(musicBus);
+
+      const tone = this.context!.createOscillator();
+      tone.type = index % 2 === 0 ? 'sawtooth' : 'triangle';
+      tone.frequency.setValueAtTime(note.frequency, start);
+      tone.connect(gain);
+      this.startSource(tone, start, start + note.length);
+    });
+
+    for (let beatIndex = 0; beatIndex < 8; beatIndex += 1) {
+      const start = now + beatIndex * 0.6 + 0.02;
+      const clickGain = this.context.createGain();
+      clickGain.gain.setValueAtTime(0.0001, start);
+      clickGain.gain.exponentialRampToValueAtTime(0.026, start + 0.006);
+      clickGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.07);
+      clickGain.connect(musicBus);
+
+      const click = this.context.createOscillator();
+      click.type = 'square';
+      click.frequency.setValueAtTime(1760, start);
+      click.connect(clickGain);
+      this.startSource(click, start, start + 0.08);
+    }
+  }
+
   private playGardenRainCue(duration: number, peakGain: number): void {
     if (!this.context || !this.masterGain || !this.noiseBuffer) {
       return;
@@ -1421,7 +1510,7 @@ export class GameplaySfxAudio {
     const ambientGain = this.context.createGain();
     ambientGain.gain.setValueAtTime(0.0001, now);
     ambientGain.gain.exponentialRampToValueAtTime(
-      cue === 'rain' ? 0.074 : cue === 'lightning' ? 0.066 : cue === 'snow' ? 0.038 : cue === 'wind' ? 0.062 : cue === 'volcanic' ? 0.052 : 0.042,
+      cue === 'rain' ? 0.074 : cue === 'lightning' ? 0.066 : cue === 'snow' ? 0.038 : cue === 'wind' ? 0.062 : cue === 'volcanic' ? 0.052 : cue === 'casino' ? 0.046 : 0.042,
       now + 0.45,
     );
     ambientGain.connect(this.masterGain);
@@ -1459,6 +1548,11 @@ export class GameplaySfxAudio {
 
     if (cue === 'magic') {
       this.playGardenMagicCue();
+      return;
+    }
+
+    if (cue === 'casino') {
+      this.playCasinoMusicPhrase();
     }
   }
 
