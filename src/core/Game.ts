@@ -295,12 +295,12 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
   { id: 'vine-stick', label: 'Vine Stick', cost: 100, description: 'Place by cucumber or vine seeds so climbing crops can wrap upward around it.', maxStock: 4 },
   { id: 'hoe', label: 'Hoe', cost: 85, description: 'Aim at a planted crop to dig it up.', maxStock: 5, copyOnly: true },
   { id: 'water-bucket', label: 'Water Bucket', cost: 125, description: 'Water one crop so it grows faster.', maxStock: 5, copyOnly: true },
-  { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly water nearby crops.', maxStock: 2, copyOnly: true },
+  { id: 'sprinkler', label: 'Sprinkler', cost: 600, description: 'Place it on dirt to constantly spray water far across nearby crops.', maxStock: 2, copyOnly: true },
   { id: 'fertilizer', label: 'Fertilizer', cost: 180, description: 'Boost one crop faster than water.', maxStock: 4, copyOnly: true },
   { id: 'cheap-auto-harvester', label: 'Cheap Auto Harvester', cost: 500, description: 'Place a small drone. Carries 5 fruits per run and retires after 200 harvests.', maxStock: 2, copyOnly: true },
   { id: 'auto-harvester', label: 'Auto Harvester', cost: 5000, description: 'Place a strong drone. Carries 50 fruits per run and lasts 10 garden days.', maxStock: 1, copyOnly: true },
 ];
-const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 12.75;
+const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 30;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_SPEED = 12.6;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X = -31.8;
@@ -15642,13 +15642,13 @@ export class Game {
     const head = new Mesh(new BoxGeometry(0.48, 0.06, 0.1), metalMaterial);
     head.name = 'Chapter 11 sprinkler spinning head';
     head.position.y = 0.6;
-    const waterA = new Mesh(new CylinderGeometry(0.01, 0.018, 1.55, 8), waterMaterial);
+    const waterA = new Mesh(new CylinderGeometry(0.012, 0.026, 6.4, 8), waterMaterial);
     waterA.name = 'Chapter 11 sprinkler water stream';
-    waterA.position.set(0.52, 0.53, 0);
-    waterA.rotation.z = Math.PI / 2.8;
+    waterA.position.set(2.65, 0.5, 0);
+    waterA.rotation.z = Math.PI / 2.65;
     const waterB = waterA.clone();
-    waterB.position.x = -0.52;
-    waterB.rotation.z = -Math.PI / 2.8;
+    waterB.position.x = -2.65;
+    waterB.rotation.z = -Math.PI / 2.65;
     root.add(base, stem, head, waterA, waterB);
     return root;
   }
