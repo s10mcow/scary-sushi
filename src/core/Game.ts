@@ -579,15 +579,6 @@ interface ChapterElevenAutoHarvester {
   lastHarvestedPlantId: number | null;
 }
 
-interface ChapterElevenOrganizerMachine {
-  root: Group;
-  x: number;
-  z: number;
-  patch: ChapterElevenDirtPatch;
-  placedDay: number;
-  sortTimer: number;
-}
-
 interface ChapterElevenPickableFruit {
   offset: Vector3;
   visible: boolean;
@@ -2289,7 +2280,6 @@ export class Game {
   private readonly chapterElevenVineSticks: ChapterElevenVineStick[] = [];
   private readonly chapterElevenSprinklers: ChapterElevenSprinkler[] = [];
   private readonly chapterElevenAutoHarvesters: ChapterElevenAutoHarvester[] = [];
-  private readonly chapterElevenOrganizerMachines: ChapterElevenOrganizerMachine[] = [];
   private readonly chapterElevenAutoHarvestPileRoot = new Group();
   private readonly chapterElevenAutoHarvestPileInventory = new Map<ChapterElevenCropId, number>();
   private readonly chapterElevenRainRoot = new Group();
@@ -5525,7 +5515,6 @@ export class Game {
       this.updateChapterElevenPlants(deltaSeconds);
       this.updateChapterElevenElectricityAnimations(deltaSeconds);
       this.updateChapterElevenAutoHarvesters(deltaSeconds);
-      this.updateChapterElevenOrganizerMachines(deltaSeconds);
       this.updateChapterElevenPets(deltaSeconds);
       this.updateChapterElevenSeedShopStock(deltaSeconds);
       this.updateChapterElevenEventsAndTrader(deltaSeconds);
@@ -10192,30 +10181,6 @@ export class Game {
         root.add(bulb);
       });
       root.add(pole, cross, crossTwo);
-    } else if (equipmentId === 'organizer-machine') {
-      const bodyMaterial = new MeshStandardMaterial({ color: 0x4c6870, roughness: 0.58, metalness: 0.22 });
-      const treadMaterial = new MeshStandardMaterial({ color: 0x1b2022, roughness: 0.78, metalness: 0.12 });
-      const lightMaterial = new MeshStandardMaterial({ color: 0x9ff2a0, emissive: 0x2fa34a, emissiveIntensity: 0.52, roughness: 0.32 });
-      const body = new Mesh(new BoxGeometry(0.38, 0.22, 0.28), bodyMaterial);
-      body.name = 'Held organizer machine square robot body';
-      body.position.set(-0.02, 0.18, -0.02);
-      const leftTread = new Mesh(new BoxGeometry(0.42, 0.07, 0.08), treadMaterial);
-      leftTread.name = 'Held organizer machine left tread';
-      leftTread.position.set(-0.02, 0.04, -0.15);
-      const rightTread = leftTread.clone();
-      rightTread.name = 'Held organizer machine right tread';
-      rightTread.position.z = 0.11;
-      const antenna = new Mesh(new CylinderGeometry(0.012, 0.016, 0.34, 8), bodyMaterial);
-      antenna.name = 'Held organizer machine antenna';
-      antenna.position.set(0.08, 0.42, -0.02);
-      antenna.rotation.z = -0.22;
-      const bulb = new Mesh(new SphereGeometry(0.04, 10, 8), lightMaterial);
-      bulb.name = 'Held organizer machine green antenna bulb';
-      bulb.position.set(0.16, 0.58, -0.02);
-      const sensor = new Mesh(new SphereGeometry(0.05, 12, 8), lightMaterial);
-      sensor.name = 'Held organizer machine front sensor';
-      sensor.position.set(0.19, 0.18, -0.02);
-      root.add(body, leftTread, rightTread, antenna, bulb, sensor);
     } else if (equipmentId === 'auto-harvester' || equipmentId === 'cheap-auto-harvester') {
       const isCheap = equipmentId === 'cheap-auto-harvester';
       const droneMaterial = new MeshStandardMaterial({ color: isCheap ? 0x56616a : 0x2f3d46, roughness: isCheap ? 0.72 : 0.48, metalness: isCheap ? 0.16 : 0.34 });
@@ -13811,64 +13776,6 @@ export class Game {
     }
   }
 
-  private organizeChapterElevenPatch(machine: ChapterElevenOrganizerMachine): void {
-    const plants = this.chapterElevenPlants
-      .filter((plant) => this.isPointInChapterElevenPatch(plant.x, plant.z, machine.patch, 0.25))
-      .sort((a, b) => a.cropId.localeCompare(b.cropId) || a.id - b.id);
-    if (plants.length < 2) {
-      return;
-    }
-
-    const spacing = 2.35;
-    const usableWidth = Math.max(spacing, machine.patch.halfWidth * 2 - 1.6);
-    const usableDepth = Math.max(spacing, machine.patch.halfDepth * 2 - 1.6);
-    const columns = Math.max(1, Math.min(plants.length, Math.floor(usableWidth / spacing)));
-    const rows = Math.max(1, Math.ceil(plants.length / columns));
-    const rowSpacing = rows > 1 ? Math.min(spacing, usableDepth / Math.max(1, rows - 1)) : 0;
-    const widthUsed = (columns - 1) * spacing;
-    const depthUsed = (rows - 1) * rowSpacing;
-
-    plants.forEach((plant, index) => {
-      const col = index % columns;
-      const row = Math.floor(index / columns);
-      const target = this.clampChapterElevenPointToPatch(
-        machine.patch.centerX - widthUsed / 2 + col * spacing,
-        machine.patch.centerZ - depthUsed / 2 + row * rowSpacing,
-        machine.patch,
-        this.getChapterElevenPlantFootprintRadius(plant.seedId) + 0.45,
-      );
-      plant.x = target.x;
-      plant.z = target.z;
-      plant.root.position.x = target.x;
-      plant.root.position.z = target.z;
-    });
-    this.pushStatus('Organizer Machine spread the plants into neat rows and kept their buffs.', 2.5);
-  }
-
-  private updateChapterElevenOrganizerMachines(deltaSeconds: number): void {
-    if (!this.chapterElevenActive || this.chapterElevenOrganizerMachines.length === 0) {
-      return;
-    }
-
-    for (let index = this.chapterElevenOrganizerMachines.length - 1; index >= 0; index -= 1) {
-      const machine = this.chapterElevenOrganizerMachines[index];
-      machine.root.rotation.y += deltaSeconds * 0.45;
-      machine.sortTimer -= deltaSeconds;
-      if (this.chapterElevenTwoActive && this.chapterElevenDayCount - machine.placedDay >= 5) {
-        if (machine.root.parent) {
-          machine.root.parent.remove(machine.root);
-        }
-        this.chapterElevenOrganizerMachines.splice(index, 1);
-        this.pushStatus('An Organizer Machine broke after five days.', 2.3);
-        continue;
-      }
-      if (machine.sortTimer <= 0) {
-        this.organizeChapterElevenPatch(machine);
-        machine.sortTimer = 12;
-      }
-    }
-  }
-
   private addChapterElevenCropToInventory(cropId: ChapterElevenCropId, count = 1): void {
     this.chapterElevenCropInventory.set(cropId, (this.chapterElevenCropInventory.get(cropId) ?? 0) + count);
   }
@@ -14379,16 +14286,10 @@ export class Game {
         harvester.root.parent.remove(harvester.root);
       }
     });
-    this.chapterElevenOrganizerMachines.forEach((machine) => {
-      if (machine.root.parent) {
-        machine.root.parent.remove(machine.root);
-      }
-    });
     this.chapterElevenPlants.length = 0;
     this.chapterElevenVineSticks.length = 0;
     this.chapterElevenSprinklers.length = 0;
     this.chapterElevenAutoHarvesters.length = 0;
-    this.chapterElevenOrganizerMachines.length = 0;
     this.rebuildChapterElevenAutoHarvestChestModel();
     this.chapterElevenAutoHarvestPileRoot.visible = this.chapterElevenTwoActive;
     this.chapterElevenAutoHarvestPileInventory.clear();
@@ -14883,7 +14784,6 @@ export class Game {
         options: [
           option('decoration:fence-foot', 'Fence', 1, 'Normal fence pieces, priced at $1 per foot.', 'Garden pieces'),
           option('decoration:light-post', 'Light Post', 50, 'Black pole with four arms and bulbs.', 'Garden pieces'),
-          option('decoration:organizer-machine', 'Organizer Machine', 500, 'Small tread robot that reorganizes plants into neat rows for five days.', 'Machines'),
         ],
       };
     }
@@ -14989,9 +14889,6 @@ export class Game {
     }
     if (equipmentId === 'decoration-light-post') {
       return 'Light Post Decoration';
-    }
-    if (equipmentId === 'organizer-machine') {
-      return 'Organizer Machine';
     }
     return this.getChapterElevenEquipmentItem(equipmentId)?.label ?? 'Equipment';
   }
@@ -15707,47 +15604,6 @@ export class Game {
     return root;
   }
 
-  private createChapterElevenOrganizerMachineWorldModel(): Group {
-    const root = new Group();
-    root.name = 'Chapter 11 organizer machine tread robot';
-    const bodyMaterial = new MeshStandardMaterial({ color: 0x4c6870, roughness: 0.58, metalness: 0.22 });
-    const darkMaterial = new MeshStandardMaterial({ color: 0x1b2022, roughness: 0.78, metalness: 0.12 });
-    const lightMaterial = new MeshStandardMaterial({ color: 0x9ff2a0, emissive: 0x2fa34a, emissiveIntensity: 0.55, roughness: 0.32 });
-    const body = new Mesh(new BoxGeometry(0.72, 0.34, 0.52), bodyMaterial);
-    body.name = 'Organizer machine metal body';
-    body.position.y = 0.35;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    const leftTread = new Mesh(new BoxGeometry(0.82, 0.18, 0.16), darkMaterial);
-    leftTread.name = 'Organizer machine left rubber tread';
-    leftTread.position.set(0, 0.13, -0.35);
-    leftTread.castShadow = true;
-    leftTread.receiveShadow = true;
-    const rightTread = leftTread.clone();
-    rightTread.name = 'Organizer machine right rubber tread';
-    rightTread.position.z = 0.35;
-    const antenna = new Mesh(new CylinderGeometry(0.018, 0.024, 0.72, 8), bodyMaterial);
-    antenna.name = 'Organizer machine little antenna';
-    antenna.position.set(0.18, 0.84, 0);
-    antenna.rotation.z = -0.24;
-    antenna.castShadow = true;
-    const antennaLight = new Mesh(new SphereGeometry(0.075, 12, 8), lightMaterial);
-    antennaLight.name = 'Organizer machine glowing green antenna light';
-    antennaLight.position.set(0.34, 1.16, 0);
-    antennaLight.castShadow = true;
-    const eye = new Mesh(new SphereGeometry(0.085, 14, 8), lightMaterial);
-    eye.name = 'Organizer machine front scanner eye';
-    eye.position.set(0.42, 0.39, 0);
-    eye.castShadow = true;
-    const rake = new Mesh(new BoxGeometry(0.12, 0.42, 0.82), new MeshStandardMaterial({ color: 0xbec8c8, roughness: 0.42, metalness: 0.46 }));
-    rake.name = 'Organizer machine front sorting rake';
-    rake.position.set(0.5, 0.2, 0);
-    rake.rotation.z = 0.18;
-    rake.castShadow = true;
-    root.add(body, leftTread, rightTread, antenna, antennaLight, eye, rake);
-    return root;
-  }
-
   private rebuildChapterElevenAutoHarvestChestModel(): void {
     this.chapterElevenAutoHarvestPileRoot.clear();
     const woodMaterial = new MeshStandardMaterial({ color: 0x8b542b, roughness: 0.86 });
@@ -16144,41 +16000,6 @@ export class Game {
     return true;
   }
 
-  private placeChapterElevenOrganizerMachine(point: Vector3): boolean {
-    const equipmentId = this.chapterElevenSelectedEquipmentId;
-    if (equipmentId !== 'organizer-machine' || (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) <= 0) {
-      return false;
-    }
-
-    const patch = this.getChapterElevenDirtPatchAt(point);
-    if (!patch) {
-      this.pushStatus('Place Organizer Machines inside a dirt patch.', 2.2);
-      return true;
-    }
-
-    const root = this.createChapterElevenOrganizerMachineWorldModel();
-    root.position.set(
-      MathUtils.clamp(point.x, patch.centerX - patch.halfWidth + 0.85, patch.centerX + patch.halfWidth - 0.85),
-      0,
-      MathUtils.clamp(point.z, patch.centerZ - patch.halfDepth + 0.85, patch.centerZ + patch.halfDepth - 0.85),
-    );
-    this.camera.getWorldDirection(this.placementRayDirection).normalize();
-    root.rotation.y = Math.atan2(this.placementRayDirection.x, this.placementRayDirection.z) + Math.PI / 2;
-    this.chapterEleven.root.add(root);
-    this.chapterElevenOrganizerMachines.push({
-      root,
-      x: root.position.x,
-      z: root.position.z,
-      patch: { ...patch },
-      placedDay: this.chapterElevenDayCount,
-      sortTimer: 1.2,
-    });
-    this.consumeChapterElevenEquipment(equipmentId);
-    this.pushStatus('Organizer Machine placed. It is ready to sort this farm plot.', 2.8);
-    this.syncHud();
-    return true;
-  }
-
   private placeChapterElevenDecoration(point: Vector3): boolean {
     const equipmentId = this.chapterElevenSelectedEquipmentId;
     if ((equipmentId !== 'decoration-fence' && equipmentId !== 'decoration-light-post') || (this.chapterElevenEquipmentInventory.get(equipmentId) ?? 0) <= 0) {
@@ -16215,10 +16036,6 @@ export class Game {
 
     if (equipmentId === 'auto-harvester' || equipmentId === 'cheap-auto-harvester') {
       return this.placeChapterElevenAutoHarvester(point);
-    }
-
-    if (equipmentId === 'organizer-machine') {
-      return this.placeChapterElevenOrganizerMachine(point);
     }
 
     if (equipmentId === 'decoration-fence' || equipmentId === 'decoration-light-post') {
@@ -17111,13 +16928,6 @@ export class Game {
       this.pushStatus(changed > 0
         ? `${selectedOption.label} mutation research activated on ${changed} crop${changed === 1 ? '' : 's'} for ${paidBuffDurationDays} garden day${paidBuffDurationDays === 1 ? '' : 's'}.`
         : `${selectedOption.label} mutation research bought for ${paidBuffDurationDays} garden day${paidBuffDurationDays === 1 ? '' : 's'}, but no mature crops were ready to mutate.`, 3.2);
-    } else if (action.optionId === 'decoration:organizer-machine') {
-      this.chapterElevenEquipmentInventory.set('organizer-machine', (this.chapterElevenEquipmentInventory.get('organizer-machine') ?? 0) + 1);
-      this.chapterElevenSelectedEquipmentId = 'organizer-machine';
-      this.chapterElevenSelectedSeedId = null;
-      this.chapterElevenSelectedCropId = null;
-      this.chapterElevenSelectedPetEggType = null;
-      this.pushStatus('Bought an Organizer Machine. It is now in your hotbar and can be placed like a drone.', 3.1);
     } else if (action.optionId === 'decoration:fence-foot') {
       this.chapterElevenEquipmentInventory.set('decoration-fence', (this.chapterElevenEquipmentInventory.get('decoration-fence') ?? 0) + 1);
       this.chapterElevenSelectedEquipmentId = 'decoration-fence';
@@ -30051,9 +29861,6 @@ export class Game {
         }
         if (this.chapterElevenSelectedEquipmentId === 'auto-harvester') {
           return 'Left click or press E to place the Auto Harvester drone in this dirt patch.';
-        }
-        if (this.chapterElevenSelectedEquipmentId === 'organizer-machine') {
-          return 'Left click or press E to place the Organizer Machine in this dirt patch.';
         }
         if (this.chapterElevenSelectedEquipmentId === 'hoe') {
           return 'Aim at a plant and left click or press E to dig it up.';
