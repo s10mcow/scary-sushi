@@ -544,6 +544,7 @@ interface ChapterElevenPlanting {
   golden: boolean;
   charged: boolean;
   mutation?: ChapterElevenMutationId;
+  mutationExpiresDay?: number;
   pickableFruits?: ChapterElevenPickableFruit[];
   hasVineStick?: boolean;
 }
@@ -594,6 +595,7 @@ interface ChapterElevenPickableFruit {
   charged: boolean;
   frozenTimer: number;
   mutation?: ChapterElevenMutationId;
+  mutationExpiresDay?: number;
   goldenChance: number;
   regrowTimer: number;
   regrowSeconds: number;
@@ -10777,6 +10779,9 @@ export class Game {
     plant.pickableFruits.forEach((fruit, index) => {
       if (index === fallbackIndex) {
         fruit.mutation = 'large';
+        if (plant.mutation === 'large' && plant.mutationExpiresDay !== undefined) {
+          fruit.mutationExpiresDay = plant.mutationExpiresDay;
+        }
         return;
       }
       if (fruit.visible) {
@@ -13164,6 +13169,84 @@ export class Game {
     return this.chapterElevenTwoActive ? CHAPTER_ELEVEN_COPY_NIGHT_SECONDS : CHAPTER_ELEVEN_NORMAL_NIGHT_SECONDS;
   }
 
+  private getChapterElevenPaidBuffDurationDays(cost: number): number {
+    if (cost >= 12000) {
+      return 4;
+    }
+    if (cost >= 5000) {
+      return 3;
+    }
+    if (cost >= 1500) {
+      return 2;
+    }
+    return 1;
+  }
+
+  private describeChapterElevenTimedBuff(description: string, cost: number): string {
+    const durationDays = this.getChapterElevenPaidBuffDurationDays(cost);
+    return `${description} Lasts ${durationDays} garden day${durationDays === 1 ? '' : 's'}.`;
+  }
+
+  private getChapterElevenTemporaryMutationExpirationDay(durationDays?: number): number | undefined {
+    if (!this.chapterElevenTwoActive || !durationDays) {
+      return undefined;
+    }
+
+    return this.chapterElevenDayCount + Math.max(1, Math.ceil(durationDays));
+  }
+
+  private setChapterElevenPlantMutation(plant: ChapterElevenPlanting, mutation: ChapterElevenMutationId, expiresDay?: number): void {
+    plant.mutation = mutation;
+    if (expiresDay) {
+      plant.mutationExpiresDay = expiresDay;
+    } else {
+      delete plant.mutationExpiresDay;
+    }
+  }
+
+  private setChapterElevenFruitMutation(fruit: ChapterElevenPickableFruit, mutation: ChapterElevenMutationId, expiresDay?: number): void {
+    fruit.mutation = mutation;
+    if (expiresDay) {
+      fruit.mutationExpiresDay = expiresDay;
+    } else {
+      delete fruit.mutationExpiresDay;
+    }
+  }
+
+  private expireChapterElevenTemporaryBuffs(): void {
+    if (!this.chapterElevenTwoActive) {
+      return;
+    }
+
+    let expired = 0;
+    this.chapterElevenPlants.forEach((plant) => {
+      let plantChanged = false;
+      if (plant.mutation && plant.mutationExpiresDay !== undefined && plant.mutationExpiresDay <= this.chapterElevenDayCount) {
+        plant.mutation = undefined;
+        delete plant.mutationExpiresDay;
+        expired += 1;
+        plantChanged = true;
+      }
+
+      plant.pickableFruits?.forEach((fruit) => {
+        if (fruit.mutation && fruit.mutationExpiresDay !== undefined && fruit.mutationExpiresDay <= this.chapterElevenDayCount) {
+          fruit.mutation = undefined;
+          delete fruit.mutationExpiresDay;
+          expired += 1;
+          plantChanged = true;
+        }
+      });
+
+      if (plantChanged) {
+        this.rebuildChapterElevenPlantVisual(plant);
+      }
+    });
+
+    if (expired > 0) {
+      this.pushStatus(`${expired} temporary Seed Life buff${expired === 1 ? '' : 's'} wore off as the new day started.`, 3);
+    }
+  }
+
   private scheduleChapterElevenDailyEvent(): void {
     const phaseSeconds = this.chapterElevenPhase === 'night' ? this.getChapterElevenNightSeconds() : this.getChapterElevenDaySeconds();
     if (this.chapterElevenTwoActive) {
@@ -13226,6 +13309,7 @@ export class Game {
       this.chapterElevenPhase = 'day';
       this.chapterElevenPhaseTimer = this.getChapterElevenDaySeconds();
       this.chapterElevenDayCount += 1;
+      this.expireChapterElevenTemporaryBuffs();
       this.chapterElevenDailyEventUsed = false;
       this.scheduleChapterElevenDailyEvent();
       this.pushStatus(`Day ${this.chapterElevenDayCount} started in ${this.chapterElevenTwoActive ? 'Seed Life' : 'Grow a Garden'}.`, 2.4);
@@ -13287,12 +13371,13 @@ export class Game {
               ? 'prismatic'
               : null;
     if (mutation) {
-      this.applyChapterElevenMutationToCrops(mutation, 0.42);
+      this.applyChapterElevenMutationToCrops(mutation, 0.42, 1);
     }
   }
 
-  private applyChapterElevenMutationToCrops(mutation: ChapterElevenMutationId, chance: number): number {
+  private applyChapterElevenMutationToCrops(mutation: ChapterElevenMutationId, chance: number, durationDays?: number): number {
     let changed = 0;
+    const expiresDay = this.getChapterElevenTemporaryMutationExpirationDay(durationDays);
     this.chapterElevenPlants.forEach((plant) => {
       if (plant.stage !== 'mature') {
         return;
@@ -13304,12 +13389,12 @@ export class Game {
           if (!fruit.visible || Math.random() > chance) {
             return;
           }
-          fruit.mutation = mutation;
+          this.setChapterElevenFruitMutation(fruit, mutation, expiresDay);
           changed += 1;
           plantChanged = true;
         });
       } else if (Math.random() <= chance) {
-        plant.mutation = mutation;
+        this.setChapterElevenPlantMutation(plant, mutation, expiresDay);
         changed += 1;
         plantChanged = true;
       }
@@ -13367,10 +13452,11 @@ export class Game {
       }
 
       plant.charged = true;
-      plant.mutation = 'storm-charged';
+      const stormExpiresDay = this.getChapterElevenTemporaryMutationExpirationDay(1);
+      this.setChapterElevenPlantMutation(plant, 'storm-charged', stormExpiresDay);
       plant.pickableFruits?.forEach((fruit) => {
         fruit.charged = true;
-        fruit.mutation = 'storm-charged';
+        this.setChapterElevenFruitMutation(fruit, 'storm-charged', stormExpiresDay);
         fruit.visible = true;
         fruit.regrowTimer = 0;
       });
@@ -13807,6 +13893,7 @@ export class Game {
     plant.golden = Math.random() < CHAPTER_ELEVEN_GOLDEN_CHANCE;
     plant.charged = false;
     plant.mutation = undefined;
+    delete plant.mutationExpiresDay;
     plant.pickableFruits = undefined;
     this.rebuildChapterElevenPlantVisual(plant);
   }
@@ -14743,11 +14830,11 @@ export class Game {
         money: this.chapterElevenMoney,
         visual: 'wizard',
         options: [
-          option('buff:sprout-spark', 'Sprout Spark', 400, 'Small farm growth buff.', 'OK buffs'),
-          option('buff:watering-charm', 'Watering Charm', 900, 'Watering effects feel stronger.', 'Good buffs'),
-          option('buff:harvest-luck', 'Harvest Luck', 2400, 'Better rare harvest chance.', 'Very good buffs'),
-          option('buff:golden-aura', 'Golden Aura', 6500, 'Raises golden crop chances.', 'Super good buffs'),
-          option('buff:dragon-blessing', 'Dragon Blessing', 16000, 'Very strong farm buff.', 'Godly buffs'),
+          option('buff:sprout-spark', 'Sprout Spark', 400, this.describeChapterElevenTimedBuff('Small farm growth buff.', 400), 'OK buffs'),
+          option('buff:watering-charm', 'Watering Charm', 900, this.describeChapterElevenTimedBuff('Watering effects feel stronger.', 900), 'Good buffs'),
+          option('buff:harvest-luck', 'Harvest Luck', 2400, this.describeChapterElevenTimedBuff('Better rare harvest chance.', 2400), 'Very good buffs'),
+          option('buff:golden-aura', 'Golden Aura', 6500, this.describeChapterElevenTimedBuff('Raises golden crop chances.', 6500), 'Super good buffs'),
+          option('buff:dragon-blessing', 'Dragon Blessing', 16000, this.describeChapterElevenTimedBuff('Very strong farm buff.', 16000), 'Godly buffs'),
         ],
       };
     }
@@ -14772,18 +14859,18 @@ export class Game {
         money: this.chapterElevenMoney,
         visual: 'mutation',
         options: [
-          option('mutation:basic', 'Basic Mutation', 300, '1.5x crop value.', 'Normal mutations'),
-          option('mutation:large', 'Large Mutation', 900, '2.2x crop value.', 'Normal mutations'),
-          option('mutation:giant', 'Giant Mutation', 1600, '3x crop value.', 'Normal mutations'),
-          option('mutation:golden', 'Golden Mutation', 3000, '5x crop value.', 'Normal mutations'),
-          option('mutation:rainbow', 'Rainbow Mutation', 6500, '10x crop value.', 'Normal mutations'),
-          option('mutation:rain-kissed', 'Rain Kissed', 900, 'Weather mutation from rain.', 'Weather mutations'),
-          option('mutation:storm-charged', 'Storm Charged', 1800, 'Weather mutation from thunderstorms.', 'Weather mutations'),
-          option('mutation:frozen', 'Frozen', 3200, 'Frozen Tundra mutation.', 'Biome mutations'),
-          option('mutation:molten', 'Molten', 5000, 'Volcanic Valley mutation.', 'Biome mutations'),
-          option('mutation:cosmic', 'Cosmic', 9000, 'Cholesterol Garden mutation.', 'Biome mutations'),
-          option('mutation:dragon-touched', 'Dragon Touched', 14000, 'Dragon Jungle mutation.', 'Biome mutations'),
-          option('mutation:prismatic', 'Prismatic', 25000, 'Rainbow Dimension mutation.', 'Secret mutations'),
+          option('mutation:basic', 'Basic Mutation', 300, this.describeChapterElevenTimedBuff('1.5x crop value.', 300), 'Normal mutations'),
+          option('mutation:large', 'Large Mutation', 900, this.describeChapterElevenTimedBuff('2.2x crop value.', 900), 'Normal mutations'),
+          option('mutation:giant', 'Giant Mutation', 1600, this.describeChapterElevenTimedBuff('3x crop value.', 1600), 'Normal mutations'),
+          option('mutation:golden', 'Golden Mutation', 3000, this.describeChapterElevenTimedBuff('5x crop value.', 3000), 'Normal mutations'),
+          option('mutation:rainbow', 'Rainbow Mutation', 6500, this.describeChapterElevenTimedBuff('10x crop value.', 6500), 'Normal mutations'),
+          option('mutation:rain-kissed', 'Rain Kissed', 900, this.describeChapterElevenTimedBuff('Weather mutation from rain.', 900), 'Weather mutations'),
+          option('mutation:storm-charged', 'Storm Charged', 1800, this.describeChapterElevenTimedBuff('Weather mutation from thunderstorms.', 1800), 'Weather mutations'),
+          option('mutation:frozen', 'Frozen', 3200, this.describeChapterElevenTimedBuff('Frozen Tundra mutation.', 3200), 'Biome mutations'),
+          option('mutation:molten', 'Molten', 5000, this.describeChapterElevenTimedBuff('Volcanic Valley mutation.', 5000), 'Biome mutations'),
+          option('mutation:cosmic', 'Cosmic', 9000, this.describeChapterElevenTimedBuff('Cholesterol Garden mutation.', 9000), 'Biome mutations'),
+          option('mutation:dragon-touched', 'Dragon Touched', 14000, this.describeChapterElevenTimedBuff('Dragon Jungle mutation.', 14000), 'Biome mutations'),
+          option('mutation:prismatic', 'Prismatic', 25000, this.describeChapterElevenTimedBuff('Rainbow Dimension mutation.', 25000), 'Secret mutations'),
         ],
       };
     }
@@ -16824,7 +16911,24 @@ export class Game {
     return 'cheerful';
   }
 
-  private triggerChapterElevenPurchasedEvent(optionId: string, label: string): void {
+  private getChapterElevenWizardBuffMutation(optionId: string): ChapterElevenMutationId | null {
+    switch (optionId) {
+      case 'buff:sprout-spark':
+        return 'basic';
+      case 'buff:watering-charm':
+        return 'rain-kissed';
+      case 'buff:harvest-luck':
+        return 'magical';
+      case 'buff:golden-aura':
+        return 'golden';
+      case 'buff:dragon-blessing':
+        return 'dragon-touched';
+      default:
+        return null;
+    }
+  }
+
+  private triggerChapterElevenPurchasedEvent(optionId: string, label: string, durationDays: number): void {
     if (optionId === 'event:sunny-day') {
       this.stopChapterElevenEvent();
       this.chapterElevenDailyEventUsed = true;
@@ -16839,7 +16943,7 @@ export class Game {
     if (optionId === 'event:rainstorm') {
       this.stopChapterElevenEvent();
       this.startChapterElevenEvent('rain');
-      this.applyChapterElevenMutationToCrops('rain-kissed', 0.18);
+      this.applyChapterElevenMutationToCrops('rain-kissed', 0.18, durationDays);
       return;
     }
 
@@ -16898,15 +17002,15 @@ export class Game {
     this.showChapterElevenEventNotice(`${label} event is happening.`, 'Garden Event', 5.8, cue);
     this.startChapterElevenEventAudio(cue, Math.min(this.chapterElevenPhaseTimer, 75));
     if (optionId === 'event:rainstorm') {
-      this.applyChapterElevenMutationToCrops('rain-kissed', 0.18);
+      this.applyChapterElevenMutationToCrops('rain-kissed', 0.18, durationDays);
     } else if (optionId === 'event:rainbow-storm') {
-      this.applyChapterElevenMutationToCrops('rainbow', 0.32);
+      this.applyChapterElevenMutationToCrops('rainbow', 0.32, durationDays);
     } else if (optionId === 'event:meteor-shower' || optionId === 'event:cholesterol-bloom') {
-      this.applyChapterElevenMutationToCrops('cosmic', 0.34);
+      this.applyChapterElevenMutationToCrops('cosmic', 0.34, durationDays);
     } else if (optionId === 'event:dragon-visit') {
-      this.applyChapterElevenMutationToCrops('dragon-touched', 0.38);
+      this.applyChapterElevenMutationToCrops('dragon-touched', 0.38, durationDays);
     }
-    this.pushStatus(`${label} started immediately. Its Seed Life buff is active for this day.`, 3);
+    this.pushStatus(`${label} started immediately. Its Seed Life buff lasts ${durationDays} garden day${durationDays === 1 ? '' : 's'}.`, 3);
   }
 
   private readonly handleChapterElevenSpecialStallAction = (action: ChapterElevenSpecialStallAction): void => {
@@ -16981,9 +17085,10 @@ export class Game {
     }
 
     this.chapterElevenMoney -= selectedOption.cost;
+    const paidBuffDurationDays = this.getChapterElevenPaidBuffDurationDays(selectedOption.cost);
 
     if (action.optionId.startsWith('event:')) {
-      this.triggerChapterElevenPurchasedEvent(action.optionId, selectedOption.label);
+      this.triggerChapterElevenPurchasedEvent(action.optionId, selectedOption.label, paidBuffDurationDays);
       this.syncHud();
       return;
     }
@@ -16995,13 +17100,17 @@ export class Game {
     } else if (action.optionId.startsWith('machine:')) {
       this.pushStatus(`${selectedOption.label} bought from the scientist.`, 2.8);
     } else if (action.optionId.startsWith('buff:')) {
-      this.pushStatus(`${selectedOption.label} spell applied to your farm.`, 2.8);
+      const buffMutation = this.getChapterElevenWizardBuffMutation(action.optionId);
+      const changed = buffMutation ? this.applyChapterElevenMutationToCrops(buffMutation, 0.48, paidBuffDurationDays) : 0;
+      this.pushStatus(changed > 0
+        ? `${selectedOption.label} spell empowered ${changed} crop${changed === 1 ? '' : 's'} for ${paidBuffDurationDays} garden day${paidBuffDurationDays === 1 ? '' : 's'}.`
+        : `${selectedOption.label} spell bought for ${paidBuffDurationDays} garden day${paidBuffDurationDays === 1 ? '' : 's'}, but no mature crops were ready for it.`, 3.1);
     } else if (action.optionId.startsWith('mutation:')) {
       const mutation = action.optionId.slice('mutation:'.length) as ChapterElevenMutationId;
-      const changed = this.applyChapterElevenMutationToCrops(mutation, 0.55);
+      const changed = this.applyChapterElevenMutationToCrops(mutation, 0.55, paidBuffDurationDays);
       this.pushStatus(changed > 0
-        ? `${selectedOption.label} mutation research activated on ${changed} crop${changed === 1 ? '' : 's'}.`
-        : `${selectedOption.label} mutation research bought, but no mature crops were ready to mutate.`, 3.2);
+        ? `${selectedOption.label} mutation research activated on ${changed} crop${changed === 1 ? '' : 's'} for ${paidBuffDurationDays} garden day${paidBuffDurationDays === 1 ? '' : 's'}.`
+        : `${selectedOption.label} mutation research bought for ${paidBuffDurationDays} garden day${paidBuffDurationDays === 1 ? '' : 's'}, but no mature crops were ready to mutate.`, 3.2);
     } else if (action.optionId === 'decoration:organizer-machine') {
       this.chapterElevenEquipmentInventory.set('organizer-machine', (this.chapterElevenEquipmentInventory.get('organizer-machine') ?? 0) + 1);
       this.chapterElevenSelectedEquipmentId = 'organizer-machine';
