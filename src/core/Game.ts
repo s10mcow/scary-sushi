@@ -253,7 +253,7 @@ const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
 const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
 const CHAPTER_ELEVEN_SEED_SHOP_Z = -2.42;
 const CHAPTER_ELEVEN_SEED_SHOP_RANGE = 5.5;
-const CHAPTER_ELEVEN_STARTING_MONEY = 50;
+const CHAPTER_ELEVEN_STARTING_MONEY = 999_900_000;
 const CHAPTER_ELEVEN_CASINO_TARGET_X = 650;
 const CHAPTER_ELEVEN_CASINO_TARGET_Z = 0;
 const CHAPTER_ELEVEN_CASINO_TABLE_COST = 100;
@@ -4445,25 +4445,6 @@ export class Game {
   }
 
   private grantChapterElevenStartingSeeds(): void {
-    const grantedSeedIds = new Set<ChapterElevenSeedId>();
-    this.getChapterElevenSeedShopCatalog().forEach((item) => {
-      const seedId = item.id;
-      if (grantedSeedIds.has(seedId)) {
-        return;
-      }
-      grantedSeedIds.add(seedId);
-
-      let hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === seedId);
-      if (hotbarIndex < 0) {
-        hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === null);
-      }
-
-      if (hotbarIndex >= 0) {
-        this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
-      }
-      this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
-    });
-
     if (!this.chapterElevenTwoActive) {
       CHAPTER_ELEVEN_NORMAL_PET_EGG_SHOP_ITEMS.forEach(({ petType }) => {
         this.chapterElevenPetEggInventory.set(petType, Math.max(1, this.chapterElevenPetEggInventory.get(petType) ?? 0));
