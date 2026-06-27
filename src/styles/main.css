@@ -13,6 +13,11 @@
   --stamina: #77b05d;
   --bone: #fffaf2;
   --shadow: rgba(88, 74, 52, 0.16);
+  --hud-slot-min-height: clamp(2.75rem, 7.5vw, 3.7rem);
+  --hud-slot-filled-min-height: clamp(3.05rem, 9vw, 4.45rem);
+  --hud-slot-gap: clamp(0.14rem, 0.65vw, 0.28rem);
+  --hud-slot-padding-x: clamp(0.16rem, 0.6vw, 0.38rem);
+  --hud-menu-padding: clamp(0.75rem, 2.4vw, 1.35rem);
 }
 
 * {
@@ -2166,9 +2171,9 @@ select {
   bottom: 1.6rem;
   z-index: 1;
   display: grid;
-  width: min(70rem, calc(100% - 2rem));
+  width: min(70rem, calc(100% - clamp(0.75rem, 3vw, 2rem)));
   grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 0.28rem;
+  gap: var(--hud-slot-gap);
   transform: translateX(-50%);
   transition:
     opacity 120ms ease,
@@ -2182,9 +2187,9 @@ select {
   bottom: 1.6rem;
   z-index: 9;
   display: grid;
-  width: min(70rem, calc(100% - 2rem));
+  width: min(70rem, calc(100% - clamp(0.75rem, 3vw, 2rem)));
   grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 0.28rem;
+  gap: var(--hud-slot-gap);
   opacity: 0;
   pointer-events: none;
   transform: translateX(-50%) translateY(0.6rem);
@@ -2199,7 +2204,7 @@ select {
 }
 
 .hud__chapter-eleven-hotbar-slot {
-  min-height: 4.45rem;
+  min-height: var(--hud-slot-filled-min-height);
 }
 
 .hud__touch-controls {
@@ -2900,7 +2905,7 @@ select {
   top: 50%;
   z-index: 12;
   width: min(34rem, calc(100% - 2rem));
-  padding: 1.35rem;
+  padding: var(--hud-menu-padding);
   opacity: 0;
   pointer-events: none;
   text-align: center;
@@ -2914,7 +2919,7 @@ select {
   top: 50%;
   z-index: 12;
   width: min(34rem, calc(100% - 2rem));
-  padding: 1.35rem;
+  padding: var(--hud-menu-padding);
   opacity: 0;
   pointer-events: none;
   text-align: center;
@@ -2926,7 +2931,7 @@ select {
   top: 50%;
   z-index: 12;
   width: min(34rem, calc(100% - 2rem));
-  padding: 1.35rem;
+  padding: var(--hud-menu-padding);
   opacity: 0;
   pointer-events: none;
   text-align: center;
@@ -2938,7 +2943,7 @@ select {
   top: 50%;
   z-index: 12;
   width: min(42rem, calc(100% - 2rem));
-  padding: 1.35rem;
+  padding: var(--hud-menu-padding);
   opacity: 0;
   pointer-events: none;
   text-align: center;
@@ -5272,8 +5277,8 @@ select {
 }
 
 .hud__slot {
-  min-height: 3.7rem;
-  padding: 0.36rem 0.38rem 0.42rem;
+  min-height: var(--hud-slot-min-height);
+  padding: 0.32rem var(--hud-slot-padding-x) 0.38rem;
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(255, 254, 248, 0.92), rgba(250, 245, 233, 0.88));
   box-shadow: 0 0.85rem 2rem rgba(88, 74, 52, 0.12);
@@ -5284,13 +5289,13 @@ select {
 }
 
 .hud__slot[data-filled="true"][data-item] {
-  min-height: 4.45rem;
-  padding-top: 2.1rem;
+  min-height: var(--hud-slot-filled-min-height);
+  padding-top: clamp(1.42rem, 4.5vw, 2.1rem);
 }
 
 .hud__slot[data-image="true"] {
-  min-height: 4.45rem;
-  padding-top: 2.22rem;
+  min-height: var(--hud-slot-filled-min-height);
+  padding-top: clamp(1.55rem, 4.8vw, 2.22rem);
 }
 
 .hud__slot[data-filled="true"] {
@@ -5331,9 +5336,9 @@ select {
 .hud__slot-image {
   position: absolute;
   left: 50%;
-  top: 0.44rem;
-  width: 2.05rem;
-  height: 1.42rem;
+  top: clamp(0.28rem, 1vw, 0.44rem);
+  width: clamp(1.4rem, 4.5vw, 2.05rem);
+  height: clamp(1rem, 3vw, 1.42rem);
   transform: translateX(-50%);
   border: 1px solid rgba(24, 18, 11, 0.34);
   border-radius: 0.18rem;
@@ -5350,20 +5355,21 @@ select {
 }
 
 .hud__slot-index {
-  font-size: 0.62rem;
+  font-size: clamp(0.48rem, 1.4vw, 0.62rem);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .hud__slot-value {
-  font-size: 0.72rem;
+  font-size: clamp(0.54rem, 1.8vw, 0.72rem);
   line-height: 1.2;
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .hud__slot-count {
-  font-size: 0.66rem;
+  font-size: clamp(0.5rem, 1.5vw, 0.66rem);
   line-height: 1;
   color: var(--muted);
 }
@@ -5480,6 +5486,14 @@ select {
 }
 
 @media (max-width: 720px) {
+  :root {
+    --hud-slot-min-height: clamp(2.25rem, 9vw, 3.05rem);
+    --hud-slot-filled-min-height: clamp(2.6rem, 10.5vw, 3.35rem);
+    --hud-slot-gap: 0.12rem;
+    --hud-slot-padding-x: 0.14rem;
+    --hud-menu-padding: 0.85rem;
+  }
+
   .hud__intro,
   .hud__panel--meters,
   .hud__panel--right,
@@ -5495,6 +5509,7 @@ select {
   .hud__chapter-eleven-equipment-shop,
   .hud__chapter-eleven-special-stall,
   .hud__chapter-eleven-sell-menu,
+  .hud__chapter-eleven-chest,
   .hud__chapter-seven-timer,
   .hud__tablet-cameras {
     left: 1rem;
@@ -5563,6 +5578,26 @@ select {
     left: 50%;
     right: auto;
     width: min(23rem, calc(100% - 2rem));
+  }
+
+  .hud__chapter-eleven-seed-shop,
+  .hud__chapter-eleven-equipment-shop,
+  .hud__chapter-eleven-special-stall,
+  .hud__chapter-eleven-sell-menu,
+  .hud__chapter-eleven-chest {
+    left: 50%;
+    right: auto;
+    width: min(24rem, calc(100% - 1.2rem));
+    max-height: calc(100% - 1.2rem);
+    overflow: hidden;
+  }
+
+  .hud__chapter-eleven-seed-shop .hud__chapter-seven-trading-options,
+  .hud__chapter-eleven-equipment-shop .hud__chapter-seven-trading-options,
+  .hud__chapter-eleven-special-stall .hud__chapter-seven-trading-options,
+  .hud__chapter-eleven-sell-menu .hud__chapter-seven-trading-options,
+  .hud__chapter-eleven-chest .hud__chapter-seven-trading-options {
+    max-height: min(20rem, 46vh);
   }
 
   .hud__chapter-seven-cookie-picker-options {
@@ -5722,19 +5757,45 @@ select {
     transform: translateX(-50%);
   }
 
-  .hud__hotbar {
-    left: 1rem;
-    right: 1rem;
-    bottom: 1rem;
+  .hud__hotbar,
+  .hud__chapter-eleven-hotbar {
+    left: 0.45rem;
+    right: 0.45rem;
+    bottom: 0.55rem;
     width: auto;
     transform: none;
     grid-template-columns: repeat(10, minmax(0, 1fr));
-    gap: 0.16rem;
+    gap: var(--hud-slot-gap);
+  }
+
+  .hud__chapter-eleven-hotbar {
+    transform: translateY(0.6rem);
+  }
+
+  .hud__chapter-eleven-hotbar[data-active="true"] {
+    transform: none;
+  }
+
+  .hud__label--hotbar {
+    display: none;
   }
 
   .hud__slot {
-    min-height: 3.1rem;
-    padding: 0.24rem 0.22rem 0.28rem;
+    min-height: var(--hud-slot-min-height);
+    padding: 0.2rem var(--hud-slot-padding-x) 0.24rem;
+  }
+
+  .hud__slot[data-filled="true"][data-item],
+  .hud__slot[data-image="true"] {
+    min-height: var(--hud-slot-filled-min-height);
+  }
+
+  .hud__slot-index {
+    letter-spacing: 0.04em;
+  }
+
+  .hud__slot-value {
+    line-height: 1.05;
   }
 
   .hud__jumpscare-face {

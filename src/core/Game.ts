@@ -1799,12 +1799,12 @@ const OFFICE_PRIZE_ITEM_LABELS: Record<OfficePrizeItemId, string> = {
   pickaxe: 'Pickaxe',
 };
 const OFFICE_PRIZE_HOTBAR_SLOTS: Array<{ slot: number; item: OfficePrizeItemId }> = [
-  { slot: 5, item: 'photo-camera' },
-  { slot: 6, item: 'glass' },
-  { slot: 7, item: 'tiny-bear' },
-  { slot: 8, item: 'lollipop' },
-  { slot: 9, item: 'stuffie' },
-  { slot: 10, item: 'pickaxe' },
+  { slot: 4, item: 'photo-camera' },
+  { slot: 5, item: 'glass' },
+  { slot: 6, item: 'tiny-bear' },
+  { slot: 7, item: 'lollipop' },
+  { slot: 8, item: 'stuffie' },
+  { slot: 9, item: 'pickaxe' },
 ];
 const OFFICE_GAME_MODE_OFFICE_CENTER = new Vector3(-240, GAME_CONFIG.player.height, 184);
 const OFFICE_GAME_MODE_OFFICE_SPAWN = new Vector3(-240, GAME_CONFIG.player.height, 186.2);
@@ -1957,7 +1957,6 @@ interface PaintbrushEditRecord {
 }
 
 const CHAPTER_EIGHT_HELD_ITEM_ORDER: ChapterEightHeldItem[] = [
-  'coordinate-tool',
   'military-knife',
   'torch',
   'empty',
@@ -2117,7 +2116,7 @@ export class Game {
   private chapterSixHeldItemModel: Group | null = null;
   private chapterSixHeldItemType: ChapterSixItemType | null = null;
   private chapterSixPossumPickupTimer = 0;
-  private chapterEightHeldItem: ChapterEightHeldItem = 'coordinate-tool';
+  private chapterEightHeldItem: ChapterEightHeldItem = 'empty';
   private chapterEightHeldItemModel: Group | null = null;
   private chapterEightHeldItemModelType: ChapterEightHeldItem | null = null;
   private chapterElevenHeldSeedModel: Group | null = null;
@@ -2260,7 +2259,7 @@ export class Game {
   private readonly chapterElevenSellSelectedCrops = new Set<ChapterElevenCropId>();
   private chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
   private readonly chapterElevenSeedInventory = new Map<ChapterElevenSeedId, number>();
-  private chapterElevenSeedHotbar: Array<ChapterElevenSeedId | null> = Array.from({ length: 9 }, () => null);
+  private chapterElevenSeedHotbar: Array<ChapterElevenSeedId | null> = Array.from({ length: 10 }, () => null);
   private readonly chapterElevenSeedShopStock = new Map<ChapterElevenSeedId, number>();
   private readonly chapterElevenEquipmentShopStock = new Map<ChapterElevenEquipmentId, number>();
   private chapterElevenSeedShopRestockTimer = CHAPTER_ELEVEN_RESTOCK_SECONDS;
@@ -4789,13 +4788,25 @@ export class Game {
       this.hud.toggleHelperPanels();
     }
 
-    const modeOrToolToggle = this.input.consumePlacementToolToggle();
-    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && modeOrToolToggle) {
-      if (this.officeChapterActive) {
-        this.setOfficeModeMenuOpen(!this.officeModeMenuOpen);
-      } else if (this.chapterEightActive && !this.chapterMenuOpen) {
-        this.selectChapterEightHeldItem(this.chapterEightHeldItem === 'coordinate-tool' ? 'empty' : 'coordinate-tool');
-      } else if (!this.chapterMenuOpen) {
+    const officeModeMenuToggle = this.input.consumeOfficeModeMenuToggle();
+    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && officeModeMenuToggle && this.officeChapterActive) {
+      this.setOfficeModeMenuOpen(!this.officeModeMenuOpen);
+    }
+
+    const coordinateToolToggle = this.input.consumePlacementToolToggle();
+    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && coordinateToolToggle && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen) {
+      if (this.chapterEightActive) {
+        this.selectChapterEightHeldItem(this.placementToolActive ? 'empty' : 'coordinate-tool');
+      } else if (this.chapterNineActive) {
+        if (this.placementToolActive) {
+          this.chapterNine.setHeldItem('camera');
+          this.setPlacementToolActive(false);
+          this.syncHud();
+        } else {
+          this.chapterNine.setHeldItem('coordinate-tool');
+          this.setPlacementToolActive(true);
+        }
+      } else {
         this.setPlacementToolActive(!this.placementToolActive);
       }
     }
@@ -4814,17 +4825,14 @@ export class Game {
         this.selectOfficeTabletCameraBySlot(hotbarSlot);
       } else if (this.chapterNineActive) {
         if (hotbarSlot === 1) {
-          this.chapterNine.setHeldItem('coordinate-tool');
-          this.setPlacementToolActive(true);
-        } else if (hotbarSlot === 2) {
           this.chapterNine.setHeldItem('camera');
           this.setPlacementToolActive(false);
           this.setMicrophoneSoundToolActive(false);
-        } else if (hotbarSlot === 3) {
+        } else if (hotbarSlot === 2) {
           this.chapterNine.setHeldItem('mic-sound');
           this.setPlacementToolActive(false);
           this.setMicrophoneSoundToolActive(true);
-        } else if (hotbarSlot === 4) {
+        } else if (hotbarSlot === 3) {
           this.chapterNine.setHeldItem('keycard');
           this.setPlacementToolActive(false);
           this.setMicrophoneSoundToolActive(false);
@@ -8580,21 +8588,16 @@ export class Game {
 
   private handleOfficeHotbarSlot(slot: number): void {
     if (slot === 1) {
-      this.setPlacementToolActive(true);
-      return;
-    }
-
-    if (slot === 2) {
       this.setPaintbrushActive(true);
       return;
     }
 
-    if (slot === 3) {
+    if (slot === 2) {
       this.setMicrophoneSoundToolActive(true);
       return;
     }
 
-    if (slot === 4) {
+    if (slot === 3) {
       this.setCameraToolActive(true);
       return;
     }
@@ -8607,19 +8610,19 @@ export class Game {
 
   private getCurrentOfficeHotbarSlot(): number {
     if (this.placementToolActive) {
-      return 1;
+      return 0;
     }
 
     if (this.microphoneSoundToolActive) {
-      return 3;
+      return 2;
     }
 
     if (this.cameraToolActive) {
-      return 4;
+      return 3;
     }
 
     if (this.paintbrushActive) {
-      return 2;
+      return 1;
     }
 
     const heldPrizeSlot = OFFICE_PRIZE_HOTBAR_SLOTS.find((entry) => entry.item === this.officeHeldPrizeItem);
@@ -8649,7 +8652,7 @@ export class Game {
     const prizeSlots = OFFICE_PRIZE_HOTBAR_SLOTS
       .filter((entry) => this.getOfficePrizeItemCount(entry.item) > 0)
       .map((entry) => entry.slot);
-    const slots = [0, 1, 2, 3, 4, ...prizeSlots];
+    const slots = [0, 1, 2, 3, ...prizeSlots];
     const currentSlot = this.getCurrentOfficeHotbarSlot();
     const currentIndex = Math.max(0, slots.indexOf(currentSlot));
     const nextIndex = (currentIndex + Math.sign(direction) + slots.length) % slots.length;
@@ -8675,31 +8678,26 @@ export class Game {
 
   private handleChapterFourHotbarSlot(slot: number): void {
     if (slot === 1) {
-      this.setPlacementToolActive(true);
-      return;
-    }
-
-    if (slot === 2) {
       this.setChapterFourBoxHeld(true);
       return;
     }
 
-    if (slot === 3) {
+    if (slot === 2) {
       this.setMicrophoneSoundToolActive(true);
     }
   }
 
   private getCurrentChapterFourHotbarSlot(): number {
     if (this.placementToolActive) {
-      return 1;
+      return 0;
     }
 
     if (this.chapterFourBoxHeld || this.chapterFourBoxActive) {
-      return 2;
+      return 1;
     }
 
     if (this.microphoneSoundToolActive) {
-      return 3;
+      return 2;
     }
 
     return 0;
@@ -8718,7 +8716,7 @@ export class Game {
   }
 
   private cycleChapterFourHotbarItem(direction: number): void {
-    const slots = [0, 1, 2, 3];
+    const slots = [0, 1, 2];
     const currentIndex = Math.max(0, slots.indexOf(this.getCurrentChapterFourHotbarSlot()));
     const nextIndex = (currentIndex + Math.sign(direction) + slots.length) % slots.length;
     const nextSlot = slots[nextIndex] ?? 0;
@@ -8731,15 +8729,7 @@ export class Game {
   }
 
   private selectChapterSevenHotbarSlot(slot: number): void {
-    if (slot === 1) {
-      this.chapterSevenHeldItem = null;
-      this.setPlacementToolActive(true);
-      this.pushStatus('Coordinate Tool equipped.', 1.4);
-      this.syncHud();
-      return;
-    }
-
-    if (slot === 2 && this.chapterSevenHasBirdCageKey) {
+    if (slot === 1 && this.chapterSevenHasBirdCageKey) {
       this.chapterSevenHeldItem = this.chapterSevenHeldItem === 'birdcage-key' ? null : 'birdcage-key';
       this.setPlacementToolActive(false);
       this.pushStatus(
@@ -8752,7 +8742,7 @@ export class Game {
       return;
     }
 
-    if (slot === 3 && this.chapterSevenLongerNightUses > 0) {
+    if (slot === 2 && this.chapterSevenLongerNightUses > 0) {
       this.chapterSevenHeldItem = this.chapterSevenHeldItem === 'night-watch' ? null : 'night-watch';
       this.setPlacementToolActive(false);
       this.pushStatus(
@@ -8772,15 +8762,15 @@ export class Game {
 
   private getCurrentChapterSevenHotbarSlot(): number {
     if (this.placementToolActive && this.chapterSevenHeldItem === null) {
-      return 1;
+      return 0;
     }
 
     if (this.chapterSevenHeldItem === 'birdcage-key') {
-      return 2;
+      return 1;
     }
 
     if (this.chapterSevenHeldItem === 'night-watch') {
-      return 3;
+      return 2;
     }
 
     return 0;
@@ -8789,9 +8779,8 @@ export class Game {
   private cycleChapterSevenHotbarItem(direction: number): void {
     const slots = [
       0,
-      1,
-      ...(this.chapterSevenHasBirdCageKey ? [2] : []),
-      ...(this.chapterSevenLongerNightUses > 0 ? [3] : []),
+      ...(this.chapterSevenHasBirdCageKey ? [1] : []),
+      ...(this.chapterSevenLongerNightUses > 0 ? [2] : []),
     ];
     const currentIndex = Math.max(0, slots.indexOf(this.getCurrentChapterSevenHotbarSlot()));
     const nextIndex = (currentIndex + Math.sign(direction) + slots.length) % slots.length;
@@ -8809,10 +8798,8 @@ export class Game {
 
   private selectChapterEightHotbarSlot(slot: number): void {
     const item: ChapterEightHeldItem = slot === 1
-      ? 'coordinate-tool'
-      : slot === 2
         ? 'military-knife'
-        : slot === 3
+        : slot === 2
           ? 'torch'
           : 'empty';
 
@@ -8876,19 +8863,7 @@ export class Game {
   }
 
   private selectChapterElevenHotbarSlot(slot: number): void {
-    if (slot === 1) {
-      this.chapterElevenSelectedSeedId = null;
-      this.chapterElevenSelectedCropId = null;
-      this.chapterElevenSelectedPetEggType = null;
-      this.chapterElevenSelectedEquipmentId = null;
-      this.setPlacementToolActive(true);
-      this.chapterElevenHeldSeedAnchor.visible = false;
-      this.pushStatus('Coordinate Tool equipped.', 1.4);
-      this.syncHud();
-      return;
-    }
-
-    const item = this.getChapterElevenHotbarItems()[slot - 2] ?? null;
+    const item = this.getChapterElevenHotbarItems()[slot - 1] ?? null;
     if (!item) {
       this.chapterElevenSelectedSeedId = null;
       this.chapterElevenSelectedCropId = null;
@@ -8914,7 +8889,7 @@ export class Game {
 
   private getCurrentChapterElevenHotbarSlot(): number {
     if (this.placementToolActive && this.chapterElevenSelectedSeedId === null && this.chapterElevenSelectedCropId === null && this.chapterElevenSelectedPetEggType === null && this.chapterElevenSelectedEquipmentId === null) {
-      return 1;
+      return 0;
     }
 
     const selectedIndex = this.getChapterElevenHotbarItems().findIndex((item) => (
@@ -8924,7 +8899,7 @@ export class Game {
       || (item.kind === 'equipment' && item.id === this.chapterElevenSelectedEquipmentId)
     ));
     if (selectedIndex >= 0) {
-      return selectedIndex + 2;
+      return selectedIndex + 1;
     }
 
     return 0;
@@ -8932,10 +8907,9 @@ export class Game {
 
   private cycleChapterElevenHotbarItem(direction: number): void {
     const slots = [
-      1,
-      ...this.getChapterElevenHotbarItems().map((_, index) => index + 2),
+      ...this.getChapterElevenHotbarItems().map((_, index) => index + 1),
     ];
-    if (slots.length <= 1) {
+    if (slots.length === 0) {
       this.selectChapterElevenHotbarSlot(1);
       return;
     }
@@ -8991,7 +8965,7 @@ export class Game {
         items.push({ kind: 'crop', id: cropId });
       }
     });
-    return items.slice(0, 9);
+    return items.slice(0, 10);
   }
 
   private getChapterElevenPetLabel(petType: ChapterElevenPetType): string {
@@ -14319,7 +14293,7 @@ export class Game {
       this.chapterElevenPetEggInventory.clear();
       this.chapterElevenEquipmentInventory.clear();
       this.chapterElevenPortalKeys.clear();
-      this.chapterElevenSeedHotbar = Array.from({ length: 9 }, () => null);
+      this.chapterElevenSeedHotbar = Array.from({ length: 10 }, () => null);
       this.restockChapterElevenSeedShop();
       this.chapterElevenSelectedSeedId = null;
       this.chapterElevenSelectedCropId = null;
@@ -21614,7 +21588,7 @@ export class Game {
       'Right click deletes a camera you are aiming at, otherwise it deletes your most recent marker in this area.',
       this.officeChapterActive
         ? 'Press M to open the Chapter 3 mode menu. Use the desk iPad for cameras.'
-        : 'Press M to put the Coordinate Tool away.',
+        : 'Press F2 to put the Coordinate Tool away.',
       lastMarkerText,
     ].join('\n');
   }
@@ -27517,7 +27491,7 @@ export class Game {
         '',
         'The left and right hallways now branch into different old rooms, including closer front rooms beside the first halls.',
         'Walk into the brown room doors to push them open.',
-        'Press 1 for the Coordinate Tool, C for the Cardboard Box, or 3 for the Mic Sound Tool.',
+        'Press F2 for the Coordinate Tool, C for the Cardboard Box, or 2 for the Mic Sound Tool.',
       ].join('\n');
     }
 
@@ -27640,7 +27614,7 @@ export class Game {
         '',
         'You are in a semi-realistic horror forest.',
         'A small cabin sits in the clearing with a front door, two front windows, and one big side window.',
-        'Starting gear: Coordinate Tool and Military Knife.',
+        'Starting gear: Military Knife. Press F2 for the Coordinate Tool.',
         'Inside the cabin are a stone fireplace with a chimney, a wall-side bed, and an iron stove with its own pipe.',
         'Use the Coordinate Tool if you want to mark more spots in the woods.',
       ].join('\n');
@@ -27796,7 +27770,7 @@ export class Game {
         .map(({ item }) => `${OFFICE_PRIZE_ITEM_LABELS[item]} x${this.getOfficePrizeItemCount(item)}`)
         .join(', ');
       return [
-        'Inventory: Coordinate Tool, Mic Sound Tool, Camera Tool, prize hotbar',
+        'Inventory: Mic Sound Tool, Camera Tool, prize hotbar',
         this.getCoordinateToolInventoryLine(),
         this.getOfficeTabletInventoryLine(),
         this.getMicrophoneSoundToolInventoryLine(),
@@ -27809,13 +27783,13 @@ export class Game {
         this.officeGameModeActive
           ? `${this.getOfficeModeLabel()}: ${this.getOfficeGameModeConfig().label} / Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS} / ${this.getOfficeGameModeClockLabel()} / Power ${this.getOfficeGameModePowerLabel()}`
           : 'Mode: Creator / Day',
-        'Press 1 for the Coordinate Tool. Use the desk iPad for cameras. Press 3 for the Mic Sound Tool. Press 4 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
+        'Press F2 for the Coordinate Tool. Use the desk iPad for cameras. Press 2 for the Mic Sound Tool. Press 3 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
       ].join('\n');
     }
 
     if (this.chapterFourActive) {
       return [
-        'Inventory: Coordinate Tool, Cardboard Box, Mic Sound Tool',
+        'Inventory: Cardboard Box, Mic Sound Tool',
         this.getCoordinateToolInventoryLine(),
         `Cardboard Box: ${this.chapterFourBoxActive ? 'inside / C gets out / B puts away' : this.chapterFourBoxHeld ? 'held / C crawls in / B puts away' : 'press C'}`,
         this.getMicrophoneSoundToolInventoryLine(),
@@ -27826,7 +27800,7 @@ export class Game {
 
     if (this.chapterFiveActive) {
       return [
-        'Inventory: Coordinate Tool',
+        'Inventory: empty',
         this.getCoordinateToolInventoryLine(),
         this.chapterFive.isInteriorMode()
           ? 'Ship Mode: interior / T returns outside'
@@ -27854,12 +27828,11 @@ export class Game {
 
     if (this.chapterSevenActive) {
       const chapterSevenItems = [
-        'Coordinate Tool',
         this.chapterSevenHasBirdCageKey ? 'Birdcage Key' : null,
         this.chapterSevenLongerNightUses > 0 ? `Longer Night Watch x${this.chapterSevenLongerNightUses}` : null,
       ].filter((item): item is string => Boolean(item));
       return [
-        `Inventory: ${chapterSevenItems.join(', ')}`,
+        `Inventory: ${chapterSevenItems.length > 0 ? chapterSevenItems.join(', ') : 'empty'}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 7: The House',
         this.chapterSevenHeldItem === 'birdcage-key'
@@ -27875,31 +27848,32 @@ export class Game {
 
     if (this.chapterEightActive) {
       return [
-        'Inventory: Coordinate Tool, Military Knife',
+        'Inventory: Military Knife',
         `Held: ${this.getChapterEightHeldItemLabel(this.chapterEightHeldItem)}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 8: The Woods',
-        'Starting Gear: Coordinate Tool, Military Knife',
-        'Spin the mouse wheel to switch Coordinate Tool, Military Knife, and empty hands. Left click slashes; right click stabs.',
+        'Starting Gear: Military Knife',
+        'Press F2 for the Coordinate Tool. Spin the mouse wheel to switch knife, torch, and empty hands. Left click slashes; right click stabs.',
         'Cabin props: front door, front windows, big side window, stone fireplace, bed, iron stove, and outdoor hand pump.',
       ].join('\n');
     }
 
     if (this.chapterNineActive) {
       return [
-        'Inventory: Coordinate Tool, Shoulder Camera, Mic Sound Tool',
+        'Inventory: Shoulder Camera, Mic Sound Tool',
+        this.getCoordinateToolInventoryLine(),
         `Phase: ${this.chapterNine.getPhaseLabel()} / ${Math.ceil(this.chapterNine.getPhaseRemaining())}s`,
         `Evidence filmed: ${this.chapterNine.getFootageCount()}/${this.chapterNine.getFootageTarget()}`,
         `Puzzles solved: ${this.chapterNine.getPuzzleCount()}/${this.chapterNine.getPuzzleTarget()}`,
         this.chapterNine.isEscapeUnlocked() ? 'Escape: unlocked. Reach the front doors.' : 'Escape: locked until enough footage and puzzle steps are complete.',
-        'Press 1 for Coordinate Tool, 2 for Shoulder Camera, 3 for Mic Sound Tool. Left click records nearby evidence when the camera is held.',
+        'Press F2 for the Coordinate Tool. Press 1 for Shoulder Camera, 2 for Mic Sound Tool. Left click records nearby evidence when the camera is held.',
       ].join('\n');
     }
 
     if (this.chapterTenActive) {
       const heldItemLabel = this.chapterTen.getHeldItemLabel();
       return [
-        `Inventory: Coordinate Tool${heldItemLabel ? `, ${heldItemLabel}` : ''}`,
+        `Inventory: ${heldItemLabel ?? 'empty'}`,
         this.getCoordinateToolInventoryLine(),
         'Chapter 10: House Shell',
         heldItemLabel
@@ -27930,7 +27904,7 @@ export class Game {
         .map(([petType, count]) => (count > 0 ? `${this.getChapterElevenPetLabel(petType)} Egg${count === 1 ? '' : `s x${count}`}` : null))
         .filter((item): item is string => Boolean(item));
       return [
-        `Inventory: Coordinate Tool${seedInventory.length > 0 ? `, ${seedInventory.join(', ')}` : ''}${cropInventory.length > 0 ? `, ${cropInventory.join(', ')}` : ''}${petEggInventory.length > 0 ? `, ${petEggInventory.join(', ')}` : ''}`,
+        `Inventory:${seedInventory.length > 0 ? ` ${seedInventory.join(', ')}` : ''}${cropInventory.length > 0 ? `${seedInventory.length > 0 ? ', ' : ' '}${cropInventory.join(', ')}` : ''}${petEggInventory.length > 0 ? `${seedInventory.length > 0 || cropInventory.length > 0 ? ', ' : ' '}${petEggInventory.join(', ')}` : seedInventory.length === 0 && cropInventory.length === 0 ? ' empty' : ''}`,
         this.getCoordinateToolInventoryLine(),
         this.chapterElevenTwoActive ? 'Seed Life' : 'Chapter 11: Grow a garden',
         `Money: $${this.chapterElevenMoney}`,
@@ -27978,8 +27952,8 @@ export class Game {
       .map((ingredientId) => `${this.toTitleCase(INGREDIENT_LABELS[ingredientId])} x${this.countItem(ingredientId)}`);
 
     const inventoryText = items.length === 0
-      ? 'Inventory: Coordinate Tool'
-      : `Inventory: Coordinate Tool, ${items.join(', ')}`;
+      ? 'Inventory: empty'
+      : `Inventory: ${items.join(', ')}`;
 
     const plateText = !this.holdingPlate
       ? this.platedRecipeId
@@ -27994,8 +27968,7 @@ export class Game {
 
   private getCoordinateToolInventoryLine(): string {
     const markerCount = this.placementMarkers.filter((marker) => marker.chapter === this.getCurrentHudChapterId()).length;
-    const keyHint = this.officeChapterActive || this.chapterFourActive || this.chapterEightActive ? 'press 1' : 'press M';
-    return `Coordinate Tool: ${this.placementToolActive ? 'equipped' : 'in inventory'} / ${keyHint} / markers here: ${markerCount}`;
+    return `Coordinate Tool: ${this.placementToolActive ? 'equipped' : 'put away'} / press F2 / markers here: ${markerCount}`;
   }
 
   private getOfficeTabletInventoryLine(): string {
@@ -28019,7 +27992,7 @@ export class Game {
         : this.microphoneSoundRecordings.length > 0
           ? `${this.microphoneSoundRecordings.length} sound effects`
           : 'no sound effect';
-    return `Mic Sound Tool: ${state} / press 3 / ${saved}`;
+    return `Mic Sound Tool: ${state} / select its hotbar slot / ${saved}`;
   }
 
   private getCameraToolInventoryLine(): string {
@@ -28034,7 +28007,7 @@ export class Game {
       : this.cameraToolPreviewKind
         ? `preview ${this.cameraToolPreviewKind}, not saved`
         : `${this.cameraToolCaptures.length} saved captures`;
-    return `Camera Tool: ${state} / press 4 / ${saved}`;
+    return `Camera Tool: ${state} / select its hotbar slot / ${saved}`;
   }
 
   private getOfficePosterCameraInventoryLine(): string {
@@ -28147,11 +28120,8 @@ export class Game {
   }
 
   private getHotbarSlots() {
-    const coordinateToolSlot = this.getCoordinateToolHotbarSlot();
-
     if (this.doomModeActive) {
       return [
-        coordinateToolSlot,
         {
           label: `Pistol ${this.doomWeapon === 'pistol' ? '[Active]' : ''}`.trim(),
           count: this.doomAmmo.pistol,
@@ -28192,12 +28162,11 @@ export class Game {
           count: this.hasAllDoomKeys() ? 1 : 0,
           filled: this.hasAllDoomKeys(),
         },
-      ].slice(0, 9);
+      ].slice(0, 10);
     }
 
     if (this.zombieModeActive) {
       return [
-        coordinateToolSlot,
         {
           label: `Pistol ${this.zombieWeapon === 'pistol' ? '[Active]' : ''}`.trim(),
           count: this.zombieAmmo.pistol,
@@ -28226,12 +28195,11 @@ export class Game {
             filled: (this.zombieDefenseLevels.get(id) ?? 0) > 0,
           };
         }),
-      ].slice(0, 9);
+      ].slice(0, 10);
     }
 
     if (this.chapterTwoActive) {
       return [
-        coordinateToolSlot,
         {
           label: 'Eggs',
           count: this.chapterTwoEggsHeld,
@@ -28247,15 +28215,14 @@ export class Game {
 
     if (this.chapterFourActive) {
       return [
-        coordinateToolSlot,
         this.getChapterFourBoxHotbarSlot(),
-        this.getMicrophoneSoundToolHotbarSlot(3),
-        ...Array.from({ length: 6 }, () => ({
+        this.getMicrophoneSoundToolHotbarSlot(2),
+        ...Array.from({ length: 8 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
         })),
-      ].slice(0, 9);
+      ].slice(0, 10);
     }
 
     if (this.officeChapterActive) {
@@ -28269,16 +28236,20 @@ export class Game {
         };
       });
       return [
-        coordinateToolSlot,
         {
-          label: `Paintbrush ${this.paintbrushActive ? '[Held]' : '[2]'}`,
+          label: `Paintbrush ${this.paintbrushActive ? '[Held]' : '[1]'}`,
           count: 1,
           filled: true,
           selected: this.paintbrushActive,
         },
-        this.getMicrophoneSoundToolHotbarSlot(3),
-        this.getCameraToolHotbarSlot(),
+        this.getMicrophoneSoundToolHotbarSlot(2),
+        this.getCameraToolHotbarSlot(3),
         ...officePrizeSlots,
+        {
+          label: 'Empty',
+          count: 0,
+          filled: false,
+        },
       ];
     }
 
@@ -28295,10 +28266,6 @@ export class Game {
     if (this.chapterSevenActive) {
       return [
         {
-          ...coordinateToolSlot,
-          selected: this.placementToolActive && this.chapterSevenHeldItem === null,
-        },
-        {
           label: `Birdcage Key ${this.chapterSevenHeldItem === 'birdcage-key' ? '[Held]' : ''}`.trim(),
           count: this.chapterSevenHasBirdCageKey ? 1 : 0,
           filled: this.chapterSevenHasBirdCageKey,
@@ -28312,7 +28279,7 @@ export class Game {
           type: 'night-watch',
           selected: this.chapterSevenHeldItem === 'night-watch',
         },
-        ...Array.from({ length: 6 }, () => ({
+        ...Array.from({ length: 8 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -28324,18 +28291,14 @@ export class Game {
       const emptySlotSelected = this.chapterEightHeldItem === 'empty';
       return [
         {
-          ...coordinateToolSlot,
-          selected: this.chapterEightHeldItem === 'coordinate-tool',
-        },
-        {
-          label: `Military Knife ${this.chapterEightHeldItem === 'military-knife' ? '[Held]' : '[2]'}`,
+          label: `Military Knife ${this.chapterEightHeldItem === 'military-knife' ? '[Held]' : '[1]'}`,
           count: 1,
           filled: true,
           selected: this.chapterEightHeldItem === 'military-knife',
         },
         {
           label: this.chapterEight.hasTorch()
-            ? `Torch ${this.chapterEightHeldItem === 'torch' ? '[Held]' : '[3]'}`
+            ? `Torch ${this.chapterEightHeldItem === 'torch' ? '[Held]' : '[2]'}`
             : 'Torch',
           count: this.chapterEight.hasTorch() ? 1 : 0,
           filled: this.chapterEight.hasTorch(),
@@ -28351,7 +28314,7 @@ export class Game {
           count: this.chapterEight.door.locked ? 1 : 0,
           filled: this.chapterEight.door.locked,
         },
-        ...Array.from({ length: 4 }, (_, index) => ({
+        ...Array.from({ length: 6 }, (_, index) => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -28365,29 +28328,24 @@ export class Game {
       const chapterNineHeldItem = this.chapterNine.getHeldItem();
       return [
         {
-          ...coordinateToolSlot,
-          label: `Coordinate Tool ${chapterNineHeldItem === 'coordinate-tool' ? '[Held]' : '[1]'}`,
-          selected: chapterNineHeldItem === 'coordinate-tool',
-        },
-        {
-          label: `Shoulder Camera ${chapterNineHeldItem === 'camera' ? '[Held]' : '[2]'}`,
+          label: `Shoulder Camera ${chapterNineHeldItem === 'camera' ? '[Held]' : '[1]'}`,
           count: 1,
           filled: true,
           selected: chapterNineHeldItem === 'camera',
         },
         {
-          label: `Mic Sound ${chapterNineHeldItem === 'mic-sound' ? '[Held]' : '[3]'}`,
+          label: `Mic Sound ${chapterNineHeldItem === 'mic-sound' ? '[Held]' : '[2]'}`,
           count: this.microphoneSoundRecordings.length + (this.microphoneSoundPreviewUrl && !this.microphoneSoundSaved ? 1 : 0),
           filled: true,
           selected: chapterNineHeldItem === 'mic-sound',
         },
         {
-          label: `Red/Blue Keycard ${chapterNineHeldItem === 'keycard' ? '[Held]' : '[4]'}`,
+          label: `Red/Blue Keycard ${chapterNineHeldItem === 'keycard' ? '[Held]' : '[3]'}`,
           count: this.chapterNine.hasKeycard() ? 1 : 0,
           filled: this.chapterNine.hasKeycard(),
           selected: chapterNineHeldItem === 'keycard',
         },
-        ...Array.from({ length: 5 }, () => ({
+        ...Array.from({ length: 7 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -28398,14 +28356,13 @@ export class Game {
     if (this.chapterTenActive) {
       const heldItemLabel = this.chapterTen.getHeldItemLabel();
       return [
-        coordinateToolSlot,
         {
           label: heldItemLabel ? `${heldItemLabel} [Held]` : 'Drawer Item',
           count: heldItemLabel ? 1 : 0,
           filled: Boolean(heldItemLabel),
           selected: Boolean(heldItemLabel),
         },
-        ...Array.from({ length: 7 }, () => ({
+        ...Array.from({ length: 9 }, () => ({
           label: 'Empty',
           count: 0,
           filled: false,
@@ -28426,13 +28383,12 @@ export class Game {
             || (item.kind === 'equipment' && item.id === this.chapterElevenSelectedEquipmentId),
         };
       });
-      const emptySlots = Array.from({ length: Math.max(0, 9 - gardenSlots.length) }, () => ({
+      const emptySlots = Array.from({ length: Math.max(0, 10 - gardenSlots.length) }, () => ({
         label: 'Empty',
         count: 0,
         filled: false,
       }));
       return [
-        coordinateToolSlot,
         ...gardenSlots,
         ...emptySlots,
       ].slice(0, 10);
@@ -28446,21 +28402,13 @@ export class Game {
         filled: true,
       }));
 
-    const emptySlots = Array.from({ length: Math.max(0, 8 - filledSlots.length) }, () => ({
+    const emptySlots = Array.from({ length: Math.max(0, 10 - filledSlots.length) }, () => ({
       label: 'Empty',
       count: 0,
       filled: false,
     }));
 
-    return [coordinateToolSlot, ...filledSlots, ...emptySlots].slice(0, 9);
-  }
-
-  private getCoordinateToolHotbarSlot() {
-    return {
-      label: `Coordinate Tool ${this.placementToolActive ? '[Held]' : this.officeChapterActive || this.chapterFourActive ? '[1]' : '[M]'}`,
-      count: this.placementMarkers.filter((marker) => marker.chapter === this.getCurrentHudChapterId()).length,
-      filled: true,
-    };
+    return [...filledSlots, ...emptySlots].slice(0, 10);
   }
 
   private getMicrophoneSoundToolHotbarSlot(slot: number) {
@@ -28477,14 +28425,14 @@ export class Game {
     };
   }
 
-  private getCameraToolHotbarSlot() {
+  private getCameraToolHotbarSlot(slot = 4) {
     this.loadCameraToolCaptures();
     const cameraIconCapture = this.getCameraToolCaptureById('picture', '004');
     const state = this.cameraToolRecording
       ? '[Rec]'
       : this.cameraToolActive
         ? '[Held]'
-        : '[4]';
+        : `[${slot}]`;
     return {
       label: `Camera Tool ${state}`,
       count: this.cameraToolCaptures.length + (this.cameraToolPreviewUrl && !this.cameraToolSaved ? 1 : 0),
@@ -28540,7 +28488,7 @@ export class Game {
 
     if (this.placementToolActive) {
       return locked
-        ? 'Coordinate Tool active. Left click drops a marker, right click deletes the latest marker, M puts the tool away.'
+        ? 'Coordinate Tool active. Left click drops a marker, right click deletes the latest marker, F2 puts the tool away.'
         : 'Click the play space to re-enter first person, then use the Coordinate Tool.';
     }
 
@@ -28651,7 +28599,7 @@ export class Game {
       }
 
       if (!locked) {
-        return 'WASD moves, Space jumps, Shift sprints, F toggles the flashlight, 1 equips the Coordinate Tool, C uses the Cardboard Box, and 3 equips the Mic Sound Tool.';
+        return 'WASD moves, Space jumps, Shift sprints, F toggles the flashlight, F2 equips the Coordinate Tool, C uses the Cardboard Box, and 2 equips the Mic Sound Tool.';
       }
 
       return 'Chapter 4: walk into doors to push them open. Press C for the Cardboard Box, 3 for the Mic Sound Tool, and B to put the box away while held.';
@@ -29171,7 +29119,7 @@ export class Game {
       if (!locked) {
       return this.officeGameModeActive
         ? `${this.getOfficeModeLabel()} ${this.getOfficeGameModeConfig().label}: Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS}, ${this.getOfficeGameModeClockLabel()}, power ${this.getOfficeGameModePowerLabel()}. M opens the mode menu, use the desk iPad for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, F toggles the flashlight.`
-        : 'WASD moves, Space jumps, Shift sprints, E uses objects, 1 equips the Coordinate Tool, use the desk iPad for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
+        : 'WASD moves, Space jumps, Shift sprints, E uses objects, F2 equips the Coordinate Tool, use the desk iPad for cameras, 2 equips the Mic Sound Tool, 3 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
       }
 
       return 'The office is quiet for now. Use the desk iPad to view the security cameras.';
@@ -33554,7 +33502,7 @@ export class Game {
 
     const door = this.getNearestChapterFourDoor();
     if (!door) {
-      this.pushStatus('Nothing here needs interaction yet. Use 1 for the Coordinate Tool or C for the Cardboard Box. B puts the box away.', 2.4);
+      this.pushStatus('Nothing here needs interaction yet. Use F2 for the Coordinate Tool or C for the Cardboard Box. B puts the box away.', 2.4);
       return;
     }
 
@@ -36471,15 +36419,15 @@ export class Game {
       enemy.applyDamage(9999);
       enemy.root.visible = false;
     });
-    this.chapterEightHeldItem = 'coordinate-tool';
+    this.chapterEightHeldItem = 'empty';
     this.chapterEightHeldItemAnchor.visible = false;
     this.chapterEightKnifeAttackMode = null;
     this.chapterEightKnifeAttackTimer = 0;
-    this.setPlacementToolActive(true);
+    this.setPlacementToolActive(false);
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);
     this.pushStatus(
-      'Chapter 8: The Woods loaded. You start with the Coordinate Tool and Military Knife. Left click slashes; right click stabs. The cabin fireplace is burning.',
+      'Chapter 8: The Woods loaded. You start with the Military Knife. Press F2 if you need the Coordinate Tool.',
       3.2,
     );
     this.resize();
@@ -36535,7 +36483,7 @@ export class Game {
     this.chapterTen.root.visible = false;
     this.chapterNine.reset();
     this.chapterTen.reset();
-    this.setPlacementToolActive(true);
+    this.setPlacementToolActive(false);
     this.chapterNine.root.visible = true;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
@@ -36765,7 +36713,7 @@ export class Game {
       enemy.applyDamage(9999);
       enemy.root.visible = false;
     });
-    this.setPlacementToolActive(true);
+    this.setPlacementToolActive(false);
     this.player.teleport(this.chapterTen.spawn);
     this.player.lookToward(this.chapterTen.lookTarget, 1);
     this.pushStatus(
@@ -36894,7 +36842,7 @@ export class Game {
     this.chapterElevenMoney = CHAPTER_ELEVEN_STARTING_MONEY;
     this.clearChapterElevenGardenState(true);
     this.grantChapterElevenStartingSeeds();
-    this.setPlacementToolActive(true);
+    this.setPlacementToolActive(false);
     this.player.teleport(this.chapterEleven.spawn);
     this.player.lookToward(this.chapterEleven.lookTarget, 1);
     this.pushStatus(
@@ -37026,7 +36974,7 @@ export class Game {
       enemy.applyDamage(9999);
       enemy.root.visible = false;
     });
-    this.setPlacementToolActive(true);
+    this.setPlacementToolActive(false);
     this.player.teleport(this.chapterTwelve.spawn);
     this.player.lookToward(this.chapterTwelve.lookTarget, 1);
     this.pushStatus('The Truck Game loaded. Press E near the Ford F250 Super Duty to drive through the mud field.', 3.2);
@@ -37153,7 +37101,7 @@ export class Game {
       enemy.applyDamage(9999);
       enemy.root.visible = false;
     });
-    this.setPlacementToolActive(true);
+    this.setPlacementToolActive(false);
     this.player.teleport(this.chapterThirteen.spawn);
     this.player.lookToward(this.chapterThirteen.lookTarget, 1);
     this.pushStatus("Maggie's World loaded. Walk through endless pink grass and cherry blossom trees.", 3.2);

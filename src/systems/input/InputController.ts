@@ -30,6 +30,7 @@ export class InputController {
   private chapterMenuToggleQueued = false;
   private updateToggleQueued = false;
   private officeJumpscareMenuToggleQueued = false;
+  private officeModeMenuToggleQueued = false;
   private hudHelpToggleQueued = false;
   private placementToolToggleQueued = false;
   private placementMarkerDeleteQueued = false;
@@ -148,6 +149,12 @@ export class InputController {
   consumeOfficeJumpscareMenuToggle(): boolean {
     const value = this.officeJumpscareMenuToggleQueued;
     this.officeJumpscareMenuToggleQueued = false;
+    return value;
+  }
+
+  consumeOfficeModeMenuToggle(): boolean {
+    const value = this.officeModeMenuToggleQueued;
+    this.officeModeMenuToggleQueued = false;
     return value;
   }
 
@@ -298,7 +305,12 @@ export class InputController {
     }
 
     if (event.code === 'KeyM' && !event.repeat) {
+      this.officeModeMenuToggleQueued = true;
+    }
+
+    if (event.code === 'F2' && !event.repeat) {
       this.placementToolToggleQueued = true;
+      event.preventDefault();
     }
 
     if (event.code === 'KeyY' && !event.repeat) {

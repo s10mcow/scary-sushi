@@ -4145,8 +4145,8 @@ export function createChapterNine(): ChapterNineData {
     },
     cycleHeldItem(step: number): void {
       const items: ChapterNineHeldItem[] = keycardCollected
-        ? ['coordinate-tool', 'camera', 'mic-sound', 'keycard']
-        : ['coordinate-tool', 'camera', 'mic-sound'];
+        ? ['camera', 'mic-sound', 'keycard']
+        : ['camera', 'mic-sound'];
       const currentIndex = items.indexOf(heldItem);
       const safeCurrentIndex = currentIndex >= 0 ? currentIndex : 0;
       heldItem = items[(safeCurrentIndex + (step > 0 ? 1 : -1) + items.length) % items.length];
