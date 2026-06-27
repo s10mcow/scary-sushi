@@ -505,18 +505,19 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
   dragon.userData.localX = localX;
   dragon.userData.localZ = localZ;
   dragon.userData.heading = hash2d(seed, seed, 51) * Math.PI * 2;
-  dragon.position.set(localX, 6.2 + hash2d(seed, seed, 52) * 2.2, localZ);
+  dragon.userData.placementToolIgnore = true;
+  dragon.position.set(localX, 4.8 + hash2d(seed, seed, 52) * 1.45, localZ);
   dragon.rotation.y = Number(dragon.userData.heading);
 
-  addSphere(dragon, 'Chinese dragon broad whiskered head', [0.55, 0.04, 0], [0.54, 0.38, 0.34], dragonScaleMaterial);
-  addSphere(dragon, 'Chinese dragon golden lower jaw', [0.72, -0.12, 0], [0.28, 0.14, 0.2], dragonBellyMaterial);
-  addSphere(dragon, 'Chinese dragon rounded golden muzzle', [0.98, 0, 0], [0.32, 0.2, 0.2], dragonBellyMaterial);
-  addSphere(dragon, 'Chinese dragon large left black eye', [0.92, 0.18, -0.19], [0.09, 0.09, 0.09], dragonEyeMaterial);
-  addSphere(dragon, 'Chinese dragon large right black eye', [0.92, 0.18, 0.19], [0.09, 0.09, 0.09], dragonEyeMaterial);
-  addPointedCone(dragon, 'Chinese dragon left horn', [0.32, 0.52, -0.15], 0.07, 0.44, dragonHornMaterial, [-0.34, 0, 0.22]);
-  addPointedCone(dragon, 'Chinese dragon right horn', [0.32, 0.52, 0.15], 0.07, 0.44, dragonHornMaterial, [0.34, 0, 0.22]);
-  addCylinderBetween(dragon, 'Chinese dragon left whisker', new Vector3(0.95, 0.03, -0.17), new Vector3(1.48, -0.12, -0.58), 0.015, dragonHornMaterial);
-  addCylinderBetween(dragon, 'Chinese dragon right whisker', new Vector3(0.95, 0.03, 0.17), new Vector3(1.48, -0.12, 0.58), 0.015, dragonHornMaterial);
+  addSphere(dragon, 'Chinese dragon broad whiskered head', [0.66, 0.06, 0], [0.68, 0.48, 0.44], dragonScaleMaterial);
+  addSphere(dragon, 'Chinese dragon golden lower jaw', [0.86, -0.15, 0], [0.36, 0.18, 0.25], dragonBellyMaterial);
+  addSphere(dragon, 'Chinese dragon rounded golden muzzle', [1.2, 0, 0], [0.42, 0.25, 0.25], dragonBellyMaterial);
+  addSphere(dragon, 'Chinese dragon large left black eye', [1.08, 0.23, -0.25], [0.11, 0.11, 0.11], dragonEyeMaterial);
+  addSphere(dragon, 'Chinese dragon large right black eye', [1.08, 0.23, 0.25], [0.11, 0.11, 0.11], dragonEyeMaterial);
+  addPointedCone(dragon, 'Chinese dragon left horn', [0.36, 0.66, -0.2], 0.085, 0.55, dragonHornMaterial, [-0.34, 0, 0.22]);
+  addPointedCone(dragon, 'Chinese dragon right horn', [0.36, 0.66, 0.2], 0.085, 0.55, dragonHornMaterial, [0.34, 0, 0.22]);
+  addCylinderBetween(dragon, 'Chinese dragon left whisker', new Vector3(1.12, 0.04, -0.22), new Vector3(1.76, -0.14, -0.72), 0.018, dragonHornMaterial);
+  addCylinderBetween(dragon, 'Chinese dragon right whisker', new Vector3(1.12, 0.04, 0.22), new Vector3(1.76, -0.14, 0.72), 0.018, dragonHornMaterial);
 
   for (let index = 0; index < 14; index += 1) {
     const x = -index * 0.46;
@@ -527,25 +528,25 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
     segment.position.set(x, Math.sin(index * 0.75) * 0.08, Math.sin(index * 0.55) * 0.12);
     segment.userData.baseY = segment.position.y;
     segment.userData.baseZ = segment.position.z;
-    segment.scale.set(0.48 - index * 0.008, 0.34 - index * 0.005, 0.34 - index * 0.005);
+    segment.scale.set(0.64 - index * 0.01, 0.46 - index * 0.006, 0.46 - index * 0.006);
     segment.castShadow = true;
     dragon.add(segment);
 
     if (index % 2 === 0) {
-      addPointedCone(dragon, 'Chinese dragon raised back scale', [x, 0.43, 0], 0.07, 0.22, dragonHornMaterial, [0, 0, 0]);
+      addPointedCone(dragon, 'Chinese dragon raised back scale', [x, 0.56, 0], 0.085, 0.28, dragonHornMaterial, [0, 0, 0]);
     }
 
     if (index > 1 && index < 11 && index % 3 === 0) {
       for (const z of [-0.18, 0.18]) {
-        const shoulder = new Vector3(x, -0.16, z * 1.18);
-        const elbow = new Vector3(x + 0.14, -0.48, z * 1.55);
-        const footPosition = new Vector3(x + 0.32, -0.72, z * 1.7);
+        const shoulder = new Vector3(x, -0.2, z * 1.45);
+        const elbow = new Vector3(x + 0.18, -0.6, z * 1.95);
+        const footPosition = new Vector3(x + 0.42, -0.88, z * 2.15);
         const leg = addCylinderBetween(
           dragon,
           'Chinese dragon visible bent flying leg',
           shoulder,
           elbow,
-          0.045,
+          0.06,
           scaleMaterial,
         );
         leg.userData.segmentIndex = index;
@@ -556,13 +557,13 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
           'Chinese dragon visible lower leg',
           elbow,
           footPosition,
-          0.035,
+          0.05,
           scaleMaterial,
         );
         lowerLeg.userData.segmentIndex = index;
         lowerLeg.userData.baseY = lowerLeg.position.y;
         lowerLeg.userData.baseZ = lowerLeg.position.z;
-        const foot = addSphere(dragon, 'Chinese dragon clawed foot', [footPosition.x, footPosition.y, footPosition.z], [0.11, 0.055, 0.085], dragonHornMaterial);
+        const foot = addSphere(dragon, 'Chinese dragon clawed foot', [footPosition.x, footPosition.y, footPosition.z], [0.15, 0.075, 0.11], dragonHornMaterial);
         foot.userData.segmentIndex = index;
         foot.userData.baseY = foot.position.y;
         foot.userData.baseZ = foot.position.z;
@@ -570,7 +571,7 @@ function createChineseDragon(localX: number, localZ: number, seed: number): Grou
     }
   }
 
-  addPointedCone(dragon, 'Chinese dragon tapering blue tail', [-6.7, -0.02, 0], 0.24, 0.68, dragonScaleMaterials[3], [0, 0, Math.PI / 2]);
+  addPointedCone(dragon, 'Chinese dragon tapering blue tail', [-6.7, -0.02, 0], 0.32, 0.85, dragonScaleMaterials[3], [0, 0, Math.PI / 2]);
   return dragon;
 }
 
@@ -581,7 +582,7 @@ function animateChineseDragons(root: Group, timeSeconds: number): void {
     }
     const seed = Number(object.userData.seed ?? 0);
     const moving = updateForwardWanderer(object, timeSeconds, 36, 1.15, 2.2);
-    object.position.y = 6.4 + Math.sin(timeSeconds * 0.55 + seed) * 1.05;
+    object.position.y = 5.0 + Math.sin(timeSeconds * 0.55 + seed) * 0.65;
     if (!moving) {
       object.userData.pauseTimer = 0;
     }
