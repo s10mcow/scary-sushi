@@ -263,14 +263,6 @@ const CHAPTER_ELEVEN_CASINO_SLOT_MACHINES = [
   { tier: 'good', label: 'Good gambling machine', x: CHAPTER_ELEVEN_CASINO_TARGET_X - 19, z: CHAPTER_ELEVEN_CASINO_TARGET_Z - 9, cost: 100, payout: 500, winChance: 0.1 },
   { tier: 'very-good', label: 'Very good gambling machine', x: CHAPTER_ELEVEN_CASINO_TARGET_X - 19, z: CHAPTER_ELEVEN_CASINO_TARGET_Z - 1, cost: 300, payout: 2200, winChance: 0.055 },
 ] as const;
-const CHAPTER_ELEVEN_STARTING_SEEDS: Array<{
-  seedId: ChapterElevenSeedId;
-  count: number;
-  copyOnly?: boolean;
-  normalOnly?: boolean;
-}> = [
-  { seedId: 'rainbow-fruit-seeds', count: 1, normalOnly: true },
-];
 const CHAPTER_ELEVEN_RESTOCK_SECONDS = 300;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_X = -3.82;
 const CHAPTER_ELEVEN_EQUIPMENT_STALL_Z = -50.47;
@@ -4453,27 +4445,23 @@ export class Game {
   }
 
   private grantChapterElevenStartingSeeds(): void {
-    CHAPTER_ELEVEN_STARTING_SEEDS.forEach(({ seedId, count, copyOnly, normalOnly }) => {
-      const item = this.getChapterElevenSeedItem(seedId);
-      if (!item
-        || (copyOnly && !this.chapterElevenTwoActive)
-        || (normalOnly && this.chapterElevenTwoActive)
-        || (item.copyOnly && !this.chapterElevenTwoActive)
-        || (item.normalOnly && this.chapterElevenTwoActive)) {
+    const grantedSeedIds = new Set<ChapterElevenSeedId>();
+    this.getChapterElevenSeedShopCatalog().forEach((item) => {
+      const seedId = item.id;
+      if (grantedSeedIds.has(seedId)) {
         return;
       }
+      grantedSeedIds.add(seedId);
 
       let hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === seedId);
       if (hotbarIndex < 0) {
         hotbarIndex = this.chapterElevenSeedHotbar.findIndex((seedSlot) => seedSlot === null);
       }
 
-      if (hotbarIndex < 0) {
-        return;
+      if (hotbarIndex >= 0) {
+        this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
       }
-
-      this.chapterElevenSeedHotbar[hotbarIndex] = seedId;
-      this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + count);
+      this.chapterElevenSeedInventory.set(seedId, (this.chapterElevenSeedInventory.get(seedId) ?? 0) + 1);
     });
 
     if (!this.chapterElevenTwoActive) {
