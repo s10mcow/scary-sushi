@@ -11511,7 +11511,17 @@ export class Game {
         stalk.name = 'Chapter 11 baby sunflower short stalk';
         stalk.position.y = 0.42;
         stalk.castShadow = true;
-        plant.root.add(stalk);
+        const bud = new Mesh(new SphereGeometry(0.12, 12, 8), new MeshStandardMaterial({ color: 0xf0c73a, roughness: 0.68 }));
+        bud.name = 'Chapter 11 baby sunflower small yellow flower bud';
+        bud.position.y = 0.8;
+        bud.scale.set(1, 0.82, 0.32);
+        bud.castShadow = true;
+        const budCenter = new Mesh(new SphereGeometry(0.055, 10, 8), new MeshStandardMaterial({ color: 0x5a341c, roughness: 0.78 }));
+        budCenter.name = 'Chapter 11 baby sunflower brown flower center';
+        budCenter.position.set(0, 0.8, 0.045);
+        budCenter.scale.set(1, 1, 0.28);
+        budCenter.castShadow = true;
+        plant.root.add(stalk, bud, budCenter);
         this.addChapterElevenLeafCluster(plant.root, 4, 0.15, 0.46);
         return;
       }
@@ -11666,37 +11676,53 @@ export class Game {
       const centerMaterial = plant.golden
         ? this.createChapterElevenDarkGoldMaterial()
         : new MeshStandardMaterial({ color: 0x4b2b17, roughness: 0.72 });
-      const stalk = new Mesh(new CylinderGeometry(0.055, 0.075, 1.72, 12), stalkMaterial);
+      const stalk = new Mesh(new CylinderGeometry(0.06, 0.085, 1.82, 14), stalkMaterial);
       stalk.name = 'Chapter 11 mature sunflower tall green stalk';
-      stalk.position.y = 0.9;
+      stalk.position.y = 0.94;
       stalk.castShadow = true;
       plant.root.add(stalk);
-      [-1, 1].forEach((side, index) => {
+      [-1, 1, -1, 1].forEach((side, index) => {
         const leaf = new Mesh(new SphereGeometry(0.18, 12, 8), leafMaterial);
         leaf.name = 'Chapter 11 mature sunflower broad leaf';
-        leaf.position.set(side * 0.18, 0.58 + index * 0.32, 0);
-        leaf.scale.set(1.6, 0.22, 0.72);
-        leaf.rotation.set(0.22, 0, side * 0.72);
+        leaf.position.set(side * (0.16 + (index % 2) * 0.08), 0.52 + index * 0.24, (index % 2 === 0 ? -0.04 : 0.05));
+        leaf.scale.set(1.72, 0.2, 0.72);
+        leaf.rotation.set(0.18, index * 0.5, side * (0.72 + index * 0.05));
         leaf.castShadow = true;
         plant.root.add(leaf);
       });
-      const headY = 1.8;
-      for (let index = 0; index < 18; index += 1) {
-        const angle = (index / 18) * Math.PI * 2;
-        const petal = new Mesh(new SphereGeometry(0.105, 12, 8), petalMaterial);
+      const neck = new Mesh(new CylinderGeometry(0.035, 0.05, 0.22, 10), stalkMaterial);
+      neck.name = 'Chapter 11 mature sunflower neck to flower head';
+      neck.position.set(0, 1.82, 0.02);
+      neck.rotation.x = Math.PI / 2;
+      neck.castShadow = true;
+      plant.root.add(neck);
+      const headY = 1.88;
+      for (let index = 0; index < 24; index += 1) {
+        const angle = (index / 24) * Math.PI * 2;
+        const petal = new Mesh(new SphereGeometry(0.12, 14, 8), petalMaterial);
         petal.name = 'Chapter 11 mature sunflower bright yellow petal';
-        petal.position.set(Math.cos(angle) * 0.26, headY + Math.sin(angle) * 0.26, 0.015);
-        petal.scale.set(0.62, 1.45, 0.18);
+        petal.position.set(Math.cos(angle) * 0.29, headY + Math.sin(angle) * 0.29, 0.03);
+        petal.scale.set(0.58, 1.5, 0.16);
         petal.rotation.z = -angle;
         petal.castShadow = true;
         plant.root.add(petal);
       }
-      const center = new Mesh(new SphereGeometry(0.19, 18, 12), centerMaterial);
+      const center = new Mesh(new CylinderGeometry(0.21, 0.21, 0.055, 28), centerMaterial);
       center.name = 'Chapter 11 mature sunflower dark seeded center';
-      center.position.set(0, headY, 0.04);
-      center.scale.set(1.05, 1.05, 0.22);
+      center.position.set(0, headY, 0.07);
+      center.rotation.x = Math.PI / 2;
       center.castShadow = true;
       plant.root.add(center);
+      const seedDotMaterial = new MeshStandardMaterial({ color: 0x2f1a0f, roughness: 0.9 });
+      for (let index = 0; index < 14; index += 1) {
+        const angle = (index / 14) * Math.PI * 2;
+        const radius = index % 2 === 0 ? 0.075 : 0.13;
+        const dot = new Mesh(new SphereGeometry(0.018, 6, 5), seedDotMaterial);
+        dot.name = 'Chapter 11 mature sunflower tiny brown seed dot';
+        dot.position.set(Math.cos(angle) * radius, headY + Math.sin(angle) * radius, 0.105);
+        dot.scale.set(1, 1, 0.35);
+        plant.root.add(dot);
+      }
       if (plant.charged) {
         this.addChapterElevenElectricityBeams(plant.root, new Vector3(0, headY, 0), plant.golden ? 0.78 : 0.56, plant.golden);
       }
