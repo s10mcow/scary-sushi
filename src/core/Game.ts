@@ -11483,12 +11483,12 @@ export class Game {
         const bud = new Mesh(new SphereGeometry(0.12, 12, 8), new MeshStandardMaterial({ color: 0xf0c73a, roughness: 0.68 }));
         bud.name = 'Chapter 11 baby sunflower small yellow flower bud';
         bud.position.y = 0.8;
-        bud.scale.set(1, 0.82, 0.32);
+        bud.scale.set(1, 0.18, 1);
         bud.castShadow = true;
         const budCenter = new Mesh(new SphereGeometry(0.055, 10, 8), new MeshStandardMaterial({ color: 0x5a341c, roughness: 0.78 }));
         budCenter.name = 'Chapter 11 baby sunflower brown flower center';
-        budCenter.position.set(0, 0.8, 0.045);
-        budCenter.scale.set(1, 1, 0.28);
+        budCenter.position.set(0, 0.835, 0);
+        budCenter.scale.set(1, 0.16, 1);
         budCenter.castShadow = true;
         plant.root.add(stalk, bud, budCenter);
         this.addChapterElevenLeafCluster(plant.root, 4, 0.15, 0.46);
@@ -11662,7 +11662,6 @@ export class Game {
       const neck = new Mesh(new CylinderGeometry(0.035, 0.05, 0.22, 10), stalkMaterial);
       neck.name = 'Chapter 11 mature sunflower neck to flower head';
       neck.position.set(0, 1.82, 0.02);
-      neck.rotation.x = Math.PI / 2;
       neck.castShadow = true;
       plant.root.add(neck);
       const headY = 1.88;
@@ -11670,16 +11669,15 @@ export class Game {
         const angle = (index / 24) * Math.PI * 2;
         const petal = new Mesh(new SphereGeometry(0.12, 14, 8), petalMaterial);
         petal.name = 'Chapter 11 mature sunflower bright yellow petal';
-        petal.position.set(Math.cos(angle) * 0.29, headY + Math.sin(angle) * 0.29, 0.03);
-        petal.scale.set(0.58, 1.5, 0.16);
-        petal.rotation.z = -angle;
+        petal.position.set(Math.cos(angle) * 0.29, headY, Math.sin(angle) * 0.29);
+        petal.scale.set(0.58, 0.16, 1.5);
+        petal.rotation.y = angle;
         petal.castShadow = true;
         plant.root.add(petal);
       }
       const center = new Mesh(new CylinderGeometry(0.21, 0.21, 0.055, 28), centerMaterial);
       center.name = 'Chapter 11 mature sunflower dark seeded center';
-      center.position.set(0, headY, 0.07);
-      center.rotation.x = Math.PI / 2;
+      center.position.set(0, headY + 0.018, 0);
       center.castShadow = true;
       plant.root.add(center);
       const seedDotMaterial = new MeshStandardMaterial({ color: 0x2f1a0f, roughness: 0.9 });
@@ -11688,8 +11686,8 @@ export class Game {
         const radius = index % 2 === 0 ? 0.075 : 0.13;
         const dot = new Mesh(new SphereGeometry(0.018, 6, 5), seedDotMaterial);
         dot.name = 'Chapter 11 mature sunflower tiny brown seed dot';
-        dot.position.set(Math.cos(angle) * radius, headY + Math.sin(angle) * radius, 0.105);
-        dot.scale.set(1, 1, 0.35);
+        dot.position.set(Math.cos(angle) * radius, headY + 0.055, Math.sin(angle) * radius);
+        dot.scale.set(1, 0.35, 1);
         plant.root.add(dot);
       }
       if (plant.charged) {
