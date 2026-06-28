@@ -2997,6 +2997,39 @@ select {
   padding-right: 0.25rem;
 }
 
+.hud__chapter-eleven-seed-shop[data-menu="seeds"] [data-seed-shop-menu="equipment"],
+.hud__chapter-eleven-seed-shop[data-menu="equipment"] [data-seed-shop-menu="seeds"] {
+  display: none;
+}
+
+.hud__chapter-eleven-seed-shop-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+}
+
+.hud__chapter-eleven-seed-shop-tabs[hidden] {
+  display: none;
+}
+
+.hud__chapter-eleven-seed-shop-tabs button {
+  min-height: 2.45rem;
+  border: 1px solid rgba(90, 58, 31, 0.22);
+  border-radius: 0.45rem;
+  background: rgba(255, 249, 231, 0.78);
+  color: rgba(65, 43, 24, 0.78);
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.hud__chapter-eleven-seed-shop-tabs button[data-selected="true"] {
+  border-color: rgba(66, 122, 79, 0.5);
+  background: rgba(223, 243, 214, 0.95);
+  color: rgba(35, 81, 45, 0.92);
+}
+
 .hud__seed-life-stall-visual {
   display: flex;
   align-items: center;

@@ -26,9 +26,11 @@ import {
   SphereGeometry,
   Texture,
   TorusGeometry,
+  TubeGeometry,
   Vector3,
   VideoTexture,
   WebGLRenderTarget,
+  CatmullRomCurve3,
 } from 'three';
 
 import type { AppShell } from './AppShell';
@@ -295,6 +297,7 @@ const CHAPTER_ELEVEN_EQUIPMENT_SHOP_ITEMS: Array<{
 ];
 const CHAPTER_ELEVEN_SPRINKLER_RADIUS = 30;
 const CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER = 1.65;
+const CHAPTER_ELEVEN_SEED_LIFE_TWO_SHOP_EQUIPMENT: ChapterElevenEquipmentId[] = ['vine-stick', 'sprinkler'];
 const CHAPTER_ELEVEN_AUTO_HARVESTER_SPEED = 12.6;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_X = -31.8;
 const CHAPTER_ELEVEN_AUTO_HARVESTER_PILE_Z = -18.2;
@@ -4382,6 +4385,26 @@ export class Game {
         restockSeconds: this.chapterElevenSeedShopRestockTimer,
       };
     }));
+
+    if (this.chapterElevenTwoPointOhActive && !this.chapterElevenTraderShopOpen) {
+      CHAPTER_ELEVEN_SEED_LIFE_TWO_SHOP_EQUIPMENT.forEach((equipmentId) => {
+        const equipment = this.getChapterElevenEquipmentItem(equipmentId);
+        if (!equipment) {
+          return;
+        }
+        const stock = this.getChapterElevenEquipmentStock(equipmentId);
+        items.push({
+          kind: 'equipment',
+          id: equipment.id,
+          label: equipment.label,
+          cost: equipment.cost,
+          section: 'tools',
+          enabled: this.chapterElevenMoney >= equipment.cost && stock > 0,
+          stock,
+          restockSeconds: this.chapterElevenSeedShopRestockTimer,
+        });
+      });
+    }
 
     return items;
   }
@@ -12842,8 +12865,15 @@ export class Game {
             return;
           }
 
+          const sprinklerCount = this.chapterElevenSprinklers.filter((sprinkler) => (
+            Math.hypot(sprinkler.x - plant.x, sprinkler.z - plant.z) <= CHAPTER_ELEVEN_SPRINKLER_RADIUS
+          )).length;
           const regrowDeltaBase = phaseGrowthDelta * this.getChapterElevenSeedGrowthMultiplier(plant.seedId);
-          const regrowDelta = (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') ? regrowDeltaBase * 2 : regrowDeltaBase;
+          const weatherRegrowDelta = (this.chapterElevenEvent === 'rain' || this.chapterElevenEvent === 'lightning') ? regrowDeltaBase * 2 : regrowDeltaBase;
+          const sprinklerRegrowDelta = sprinklerCount > 0
+            ? regrowDeltaBase * (CHAPTER_ELEVEN_SPRINKLER_GROWTH_MULTIPLIER + Math.min(2, sprinklerCount - 1) * 0.35)
+            : 0;
+          const regrowDelta = weatherRegrowDelta + sprinklerRegrowDelta;
           fruit.regrowTimer -= regrowDelta;
           if (fruit.regrowTimer <= 0) {
             fruit.visible = true;
@@ -14928,7 +14958,10 @@ export class Game {
   }
 
   private readonly handleChapterElevenEquipmentPurchase = (equipmentId: ChapterElevenEquipmentId): void => {
-    if (!this.chapterElevenActive || !this.chapterElevenEquipmentShopOpen) {
+    const embeddedSeedLifeTwoEquipmentShop = this.chapterElevenTwoPointOhActive
+      && this.chapterElevenSeedShopOpen
+      && CHAPTER_ELEVEN_SEED_LIFE_TWO_SHOP_EQUIPMENT.includes(equipmentId);
+    if (!this.chapterElevenActive || (!this.chapterElevenEquipmentShopOpen && !embeddedSeedLifeTwoEquipmentShop)) {
       return;
     }
 
@@ -15541,7 +15574,7 @@ export class Game {
     const root = new Group();
     root.name = 'Chapter 11 placed sprinkler';
     const metalMaterial = new MeshStandardMaterial({ color: 0x607178, roughness: 0.55, metalness: 0.34 });
-    const waterMaterial = new MeshStandardMaterial({ color: 0x79c8ff, roughness: 0.24, transparent: true, opacity: 0.55 });
+    const waterMaterial = new MeshStandardMaterial({ color: 0x79c8ff, roughness: 0.18, transparent: true, opacity: 0.58 });
     const base = new Mesh(new CylinderGeometry(0.18, 0.24, 0.12, 20), metalMaterial);
     base.name = 'Chapter 11 sprinkler round base';
     base.position.y = 0.14;
@@ -15551,14 +15584,26 @@ export class Game {
     const head = new Mesh(new BoxGeometry(0.48, 0.06, 0.1), metalMaterial);
     head.name = 'Chapter 11 sprinkler spinning head';
     head.position.y = 0.6;
-    const waterA = new Mesh(new CylinderGeometry(0.012, 0.026, 6.4, 8), waterMaterial);
-    waterA.name = 'Chapter 11 sprinkler water stream';
-    waterA.position.set(2.65, 0.5, 0);
-    waterA.rotation.z = Math.PI / 2.65;
-    const waterB = waterA.clone();
-    waterB.position.x = -2.65;
-    waterB.rotation.z = -Math.PI / 2.65;
-    root.add(base, stem, head, waterA, waterB);
+    root.add(base, stem, head);
+    [-1, 1].forEach((side) => {
+      const pipe = new Mesh(new CylinderGeometry(0.035, 0.035, 0.38, 10), metalMaterial);
+      pipe.name = side < 0 ? 'Chapter 11 sprinkler left water pipe' : 'Chapter 11 sprinkler right water pipe';
+      pipe.position.set(side * 0.34, 0.6, 0);
+      pipe.rotation.z = Math.PI / 2;
+      root.add(pipe);
+
+      [-0.46, -0.18, 0.12, 0.42].forEach((zOffset, index) => {
+        const endDistance = 5.7 + index * 1.28;
+        const arc = new CatmullRomCurve3([
+          new Vector3(side * 0.52, 0.6, zOffset * 0.32),
+          new Vector3(side * (2.2 + index * 0.45), 0.88 - index * 0.05, zOffset),
+          new Vector3(side * endDistance, 0.24 + index * 0.02, zOffset * 1.75),
+        ]);
+        const stream = new Mesh(new TubeGeometry(arc, 14, 0.018, 8, false), waterMaterial);
+        stream.name = 'Chapter 11 sprinkler curved falling water stream';
+        root.add(stream);
+      });
+    });
     return root;
   }
 

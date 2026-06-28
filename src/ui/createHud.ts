@@ -714,6 +714,7 @@ export function createHud(host: HTMLElement): HudController {
   let chapterElevenSeedPurchaseHandler: ((seedId: ChapterElevenSeedId) => void) | null = null;
   let chapterElevenTraderPetEggPurchaseHandler: ((eggId?: ChapterElevenPetEggShopId) => void) | null = null;
   let chapterElevenEquipmentPurchaseHandler: ((equipmentId: ChapterElevenEquipmentId) => void) | null = null;
+  let chapterElevenSeedShopMenuMode: 'seeds' | 'equipment' = 'seeds';
   let chapterElevenSpecialStallActionHandler: ((action: ChapterElevenSpecialStallAction) => void) | null = null;
   let chapterElevenSellActionHandler: ((action: ChapterElevenSellAction) => void) | null = null;
   let chapterElevenChestActionHandler: ((cropId: string) => void) | null = null;
@@ -1360,7 +1361,35 @@ export function createHud(host: HTMLElement): HudController {
   const chapterElevenSeedShopOptions = document.createElement('div');
   chapterElevenSeedShopOptions.className = 'hud__chapter-seven-trading-options';
 
-  chapterElevenSeedShop.append(chapterElevenSeedShopTitle, chapterElevenSeedShopMoney, chapterElevenSeedShopOptions);
+  const chapterElevenSeedShopTabs = document.createElement('div');
+  chapterElevenSeedShopTabs.className = 'hud__chapter-eleven-seed-shop-tabs';
+  const chapterElevenSeedShopSeedsTab = document.createElement('button');
+  chapterElevenSeedShopSeedsTab.type = 'button';
+  chapterElevenSeedShopSeedsTab.textContent = 'Seed Menu';
+  const chapterElevenSeedShopEquipmentTab = document.createElement('button');
+  chapterElevenSeedShopEquipmentTab.type = 'button';
+  chapterElevenSeedShopEquipmentTab.textContent = 'Equipment Menu';
+  chapterElevenSeedShopTabs.append(chapterElevenSeedShopSeedsTab, chapterElevenSeedShopEquipmentTab);
+
+  const setChapterElevenSeedShopMenuMode = (mode: 'seeds' | 'equipment'): void => {
+    chapterElevenSeedShopMenuMode = mode;
+    chapterElevenSeedShop.dataset.menu = mode;
+    chapterElevenSeedShopSeedsTab.dataset.selected = String(mode === 'seeds');
+    chapterElevenSeedShopEquipmentTab.dataset.selected = String(mode === 'equipment');
+  };
+  chapterElevenSeedShopSeedsTab.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setChapterElevenSeedShopMenuMode('seeds');
+  });
+  chapterElevenSeedShopEquipmentTab.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setChapterElevenSeedShopMenuMode('equipment');
+  });
+  setChapterElevenSeedShopMenuMode('seeds');
+
+  chapterElevenSeedShop.append(chapterElevenSeedShopTitle, chapterElevenSeedShopMoney, chapterElevenSeedShopOptions, chapterElevenSeedShopTabs);
 
   const chapterElevenEquipmentShop = document.createElement('section');
   chapterElevenEquipmentShop.className = 'hud__chapter-eleven-equipment-shop';
@@ -3196,6 +3225,13 @@ export function createHud(host: HTMLElement): HudController {
       const safeMoney = Math.max(0, Math.floor(money));
       chapterElevenSeedShopMoney.textContent = `Money: $${safeMoney}`;
       const rows: HTMLElement[] = [];
+      const hasEquipmentMenu = items.some((item) => item.kind === 'equipment');
+      chapterElevenSeedShopTabs.hidden = !hasEquipmentMenu;
+      if (!active || !hasEquipmentMenu) {
+        setChapterElevenSeedShopMenuMode('seeds');
+      } else {
+        setChapterElevenSeedShopMenuMode(chapterElevenSeedShopMenuMode);
+      }
       let currentSection: ChapterElevenSeedShopItemView['section'] | null = null;
       const sectionLabels: Record<ChapterElevenSeedShopItemView['section'], string> = {
         common: 'Common seeds',
@@ -3216,6 +3252,7 @@ export function createHud(host: HTMLElement): HudController {
           currentSection = item.section;
           const heading = document.createElement('p');
           heading.className = 'hud__chapter-eleven-seed-section';
+          heading.dataset.seedShopMenu = item.kind === 'equipment' ? 'equipment' : 'seeds';
           heading.textContent = sectionLabels[item.section];
           rows.push(heading);
         }
@@ -3224,6 +3261,7 @@ export function createHud(host: HTMLElement): HudController {
         button.className = 'hud__chapter-seven-trade';
         button.type = 'button';
         button.disabled = !item.enabled;
+        button.dataset.seedShopMenu = item.kind === 'equipment' ? 'equipment' : 'seeds';
         if (item.kind === 'egg') {
           button.dataset.petEgg = item.id;
         } else if (item.kind === 'equipment') {
