@@ -4191,7 +4191,12 @@ export class Game {
   }
 
   private isNearChapterElevenTrader(): boolean {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || !this.chapterElevenTraderVisible) {
+    if (
+      !this.chapterElevenActive
+      || !this.chapterElevenTwoActive
+      || this.chapterElevenTwoPointOhActive
+      || !this.chapterElevenTraderVisible
+    ) {
       return false;
     }
 
@@ -12583,6 +12588,10 @@ export class Game {
       return true;
     }
 
+    if (this.chapterElevenTwoPointOhActive) {
+      return false;
+    }
+
     const pathHalfWidth = 3.45;
     const portalPad = 5.6;
     for (const portal of this.chapterEleven.biomePortals) {
@@ -13271,13 +13280,17 @@ export class Game {
       this.chapterElevenDailyEventUsed = false;
       this.scheduleChapterElevenDailyEvent();
       this.pushStatus(`Day ${this.chapterElevenDayCount} started in ${this.chapterElevenTwoActive ? this.getChapterElevenModeTitle() : 'Grow a Garden'}.`, 2.4);
-      if (this.chapterElevenTwoActive) {
+      if (this.chapterElevenTwoActive && !this.chapterElevenTwoPointOhActive) {
         this.maybeTriggerChapterElevenRealmEvent();
       }
     }
   }
 
   private maybeTriggerChapterElevenRealmEvent(): void {
+    if (this.chapterElevenTwoPointOhActive) {
+      return;
+    }
+
     if (this.chapterElevenDayCount % 2 !== 0 || Math.random() > 0.48) {
       return;
     }
@@ -14285,7 +14298,7 @@ export class Game {
     this.chapterElevenSprinklers.length = 0;
     this.chapterElevenAutoHarvesters.length = 0;
     this.rebuildChapterElevenAutoHarvestChestModel();
-    this.chapterElevenAutoHarvestPileRoot.visible = this.chapterElevenTwoActive;
+    this.chapterElevenAutoHarvestPileRoot.visible = this.chapterElevenTwoActive && !this.chapterElevenTwoPointOhActive;
     this.chapterElevenAutoHarvestPileInventory.clear();
     this.chapterElevenPlacedPetEggs.length = 0;
     this.chapterElevenPets.length = 0;
@@ -14356,7 +14369,7 @@ export class Game {
   }
 
   private isNearChapterElevenPetEggStand(): boolean {
-    if (!this.chapterElevenActive) {
+    if (!this.chapterElevenActive || this.chapterElevenTwoPointOhActive) {
       return false;
     }
 
@@ -14368,7 +14381,7 @@ export class Game {
   }
 
   private getNearbyChapterElevenBiomePortal(): { portal: ChapterElevenBiomePortal; side: 'garden' | 'biome' } | null {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || this.chapterElevenTwoPointOhActive) {
       return null;
     }
 
@@ -14386,7 +14399,7 @@ export class Game {
   }
 
   private getNearbyChapterElevenCasinoInteractable(): ChapterElevenCasinoInteractable | null {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || this.chapterElevenTwoPointOhActive) {
       return null;
     }
 
@@ -14418,6 +14431,7 @@ export class Game {
     const playerPosition = this.player.getPosition();
     const onCasinoIsland = this.chapterElevenActive
       && this.chapterElevenTwoActive
+      && !this.chapterElevenTwoPointOhActive
       && Math.hypot(
         playerPosition.x - CHAPTER_ELEVEN_CASINO_TARGET_X,
         playerPosition.z - CHAPTER_ELEVEN_CASINO_TARGET_Z,
@@ -14521,7 +14535,7 @@ export class Game {
   }
 
   private getNearbyChapterElevenSpecialStall(): ChapterElevenSpecialStall | null {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || this.chapterElevenTwoPointOhActive) {
       return null;
     }
 
@@ -14861,7 +14875,7 @@ export class Game {
   }
 
   private isNearChapterElevenEquipmentStand(): boolean {
-    if (!this.chapterElevenActive) {
+    if (!this.chapterElevenActive || this.chapterElevenTwoPointOhActive) {
       return false;
     }
 
@@ -15656,7 +15670,7 @@ export class Game {
     label.rotation.y = Math.PI;
 
     this.chapterElevenAutoHarvestPileRoot.add(chestBase, chestLid, frontBand, latch, leftBand, rightBand, label);
-    this.chapterElevenAutoHarvestPileRoot.visible = this.chapterElevenTwoActive;
+    this.chapterElevenAutoHarvestPileRoot.visible = this.chapterElevenTwoActive && !this.chapterElevenTwoPointOhActive;
   }
 
   private buildChapterElevenEventAndTraderModels(): void {
@@ -15738,7 +15752,7 @@ export class Game {
   }
 
   private isNearChapterElevenAutoHarvestPile(): boolean {
-    if (!this.chapterElevenActive || !this.chapterElevenTwoActive) {
+    if (!this.chapterElevenActive || !this.chapterElevenTwoActive || this.chapterElevenTwoPointOhActive) {
       return false;
     }
 
@@ -23197,6 +23211,9 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
+      if (this.chapterElevenTwoPointOhActive) {
+        return this.chapterEleven.seedLifeMinimalColliders;
+      }
       return this.chapterElevenTwoActive
         ? [...this.chapterEleven.colliders, ...this.chapterEleven.copyOnlyColliders]
         : [...this.chapterEleven.colliders, ...this.chapterEleven.normalOnlyColliders];
@@ -36818,9 +36835,9 @@ export class Game {
     this.chapterNine.root.visible = false;
     this.chapterTen.root.visible = false;
     this.chapterEleven.reset();
-    this.chapterEleven.setSeedLifeLayout(copyMode);
+    this.chapterEleven.setSeedLifeLayout(copyMode, twoPointOhMode);
     this.syncChapterElevenEquipmentStandPlacement();
-    this.chapterEleven.equipmentStand.visible = true;
+    this.chapterEleven.equipmentStand.visible = !twoPointOhMode;
     this.chapterEleven.root.visible = true;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;

@@ -47,6 +47,7 @@ export interface ChapterElevenData {
   colliders: CollisionBox[];
   normalOnlyColliders: CollisionBox[];
   copyOnlyColliders: CollisionBox[];
+  seedLifeMinimalColliders: CollisionBox[];
   dirtPatches: ChapterElevenDirtPatch[];
   seedLifeDirtPatch: ChapterElevenDirtPatch;
   seedLifeDirtPatches: ChapterElevenDirtPatch[];
@@ -65,7 +66,7 @@ export interface ChapterElevenData {
   lookTarget: Vector3;
   getSupportedFloorY(position: Vector3): number | null;
   update(deltaSeconds: number, playerPosition: Vector3): void;
-  setSeedLifeLayout(enabled: boolean): void;
+  setSeedLifeLayout(enabled: boolean, minimal?: boolean): void;
   reset(): void;
 }
 
@@ -224,9 +225,12 @@ export function createChapterEleven(): ChapterElevenData {
   const colliders: CollisionBox[] = [];
   const normalOnlyColliders: CollisionBox[] = [];
   const copyOnlyColliders: CollisionBox[] = [];
+  const seedLifeMinimalColliders: CollisionBox[] = [];
   const dirtPatches: ChapterElevenDirtPatch[] = [];
   const dirtPatchGroups: Group[] = [];
   const seedLifeOnlyGroups: Object3D[] = [];
+  const seedLifeMinimalHiddenGroups: Object3D[] = [];
+  const seedLifeMinimalKeepGroups: Object3D[] = [];
   const normalOnlyGroups: Object3D[] = [];
   const seedLifeDirtPatches: ChapterElevenDirtPatch[] = [];
   const portalDiscs: Mesh[] = [];
@@ -463,7 +467,7 @@ export function createChapterEleven(): ChapterElevenData {
   person.rotation.y = 0;
   stand.add(person);
   root.add(stand);
-  addCollider(colliders, -53.46, 11.34, 1.55, 3.02);
+  seedLifeMinimalColliders.push(addCollider(colliders, -53.46, 11.34, 1.55, 3.02));
 
   const decorateGirlWorker = (worker: Group, prefix: string): void => {
     addGardeningSuitDetails(worker, girlGardenSuitMaterial, prefix);
@@ -498,7 +502,7 @@ export function createChapterEleven(): ChapterElevenData {
     decorateGirlWorker(girlWorker, 'Chapter 11 girl worker');
   }
   root.add(girlStand);
-  addCollider(colliders, -52.82, -2.42, 1.55, 3.02);
+  seedLifeMinimalColliders.push(addCollider(colliders, -52.82, -2.42, 1.55, 3.02));
 
   const addStandLabel = (targetStand: Group, label: string): void => {
     const sign = new Mesh(new PlaneGeometry(2.85, 1.08), createStandLabelMaterial(label));
@@ -614,6 +618,7 @@ export function createChapterEleven(): ChapterElevenData {
     }
     root.add(stall);
     seedLifeOnlyGroups.push(stall);
+    seedLifeMinimalHiddenGroups.push(stall);
     const sideways = Math.abs(Math.sin(rotationY)) > 0.65;
     copyOnlyColliders.push({
       centerX: x,
@@ -634,6 +639,7 @@ export function createChapterEleven(): ChapterElevenData {
   petEggsStand.position.set(-2.61, 0, 52.33);
   petEggsStand.rotation.y = Math.PI / 2;
   root.add(petEggsStand);
+  seedLifeMinimalHiddenGroups.push(petEggsStand);
   addCollider(colliders, -2.61, 52.33, 3.02, 1.55);
 
   const equipmentStand = stand.clone(true);
@@ -654,6 +660,7 @@ export function createChapterEleven(): ChapterElevenData {
   addBox(equipmentStand, 'Chapter 11 tools stand shovel handle', [0.72, 0.055, 0.055], [1.06, 1.2, 0.92], standDarkWoodMaterial).rotation.z = -0.3;
   addBox(equipmentStand, 'Chapter 11 tools stand shovel scoop', [0.18, 0.26, 0.08], [1.36, 1.1, 0.92], dirtFenceMaterial).rotation.z = -0.3;
   root.add(equipmentStand);
+  seedLifeMinimalHiddenGroups.push(equipmentStand);
   const equipmentStandCollider = addCollider(colliders, -3.82, -50.47, 3.02, 1.55);
 
   addStandLabel(stand, 'sell');
@@ -697,6 +704,7 @@ export function createChapterEleven(): ChapterElevenData {
       eggGroup.add(spot);
     });
     root.add(eggGroup);
+    seedLifeMinimalHiddenGroups.push(eggGroup);
   };
   addPetEggDisplay(-0.99, 1.03, 51.46);
 
@@ -907,6 +915,7 @@ export function createChapterEleven(): ChapterElevenData {
 
     root.add(pathGroup);
     seedLifeOnlyGroups.push(pathGroup);
+    seedLifeMinimalHiddenGroups.push(pathGroup);
   };
 
   const addPortalPair = (
@@ -952,6 +961,7 @@ export function createChapterEleven(): ChapterElevenData {
         portalRoot.add(sign);
         root.add(portalRoot);
         seedLifeOnlyGroups.push(portalRoot);
+        seedLifeMinimalHiddenGroups.push(portalRoot);
         return portalRoot;
       }
       addBox(portalRoot, `${label} portal left gold post`, [0.28, 3.2, 0.28], [-1.45, 1.6, 0], portalGoldMaterial);
@@ -996,6 +1006,7 @@ export function createChapterEleven(): ChapterElevenData {
       }
       root.add(portalRoot);
       seedLifeOnlyGroups.push(portalRoot);
+      seedLifeMinimalHiddenGroups.push(portalRoot);
       copyOnlyColliders.push({ centerX: x, centerZ: z, halfWidth: 1.75, halfDepth: 0.22 });
       return portalRoot;
     };
@@ -1010,6 +1021,7 @@ export function createChapterEleven(): ChapterElevenData {
     platform.receiveShadow = true;
     root.add(platform);
     seedLifeOnlyGroups.push(platform);
+    seedLifeMinimalHiddenGroups.push(platform);
     const realmFenceGroup = new Group();
     realmFenceGroup.name = `Seed Life ${label} separate biome realm boundary`;
     realmFenceGroup.position.set(targetX, 0, targetZ);
@@ -1039,6 +1051,7 @@ export function createChapterEleven(): ChapterElevenData {
     }
     root.add(realmFenceGroup);
     seedLifeOnlyGroups.push(realmFenceGroup);
+    seedLifeMinimalHiddenGroups.push(realmFenceGroup);
     copyOnlyColliders.push({ centerX: targetX, centerZ: targetZ - halfRealmSize, halfWidth: halfRealmSize + 0.1, halfDepth: 0.18 });
     copyOnlyColliders.push({ centerX: targetX, centerZ: targetZ + halfRealmSize, halfWidth: halfRealmSize + 0.1, halfDepth: 0.18 });
     copyOnlyColliders.push({ centerX: targetX - halfRealmSize, centerZ: targetZ, halfWidth: 0.18, halfDepth: halfRealmSize + 0.1 });
@@ -1051,6 +1064,7 @@ export function createChapterEleven(): ChapterElevenData {
       feature.receiveShadow = true;
       root.add(feature);
       seedLifeOnlyGroups.push(feature);
+      seedLifeMinimalHiddenGroups.push(feature);
     };
     for (let featureIndex = 0; featureIndex < 14; featureIndex += 1) {
       const angle = featureIndex * 1.71;
@@ -1138,6 +1152,7 @@ export function createChapterEleven(): ChapterElevenData {
       volcano.receiveShadow = true;
       root.add(volcano);
       seedLifeOnlyGroups.push(volcano);
+      seedLifeMinimalHiddenGroups.push(volcano);
       const crater = new Mesh(new CylinderGeometry(2.05, 2.4, 0.18, 28), new MeshStandardMaterial({
         color: 0xff7a18,
         emissive: 0xff2400,
@@ -1149,6 +1164,7 @@ export function createChapterEleven(): ChapterElevenData {
       crater.castShadow = true;
       root.add(crater);
       seedLifeOnlyGroups.push(crater);
+      seedLifeMinimalHiddenGroups.push(crater);
     } else if (id === 'casino') {
       const addCasinoSlotMachine = (
         tierLabel: string,
@@ -1188,6 +1204,7 @@ export function createChapterEleven(): ChapterElevenData {
         machine.add(leverBall);
         root.add(machine);
         seedLifeOnlyGroups.push(machine);
+        seedLifeMinimalHiddenGroups.push(machine);
         copyOnlyColliders.push({ centerX: targetX + localX, centerZ: targetZ + localZ, halfWidth: 1.1, halfDepth: 0.62 });
       };
 
@@ -1241,6 +1258,7 @@ export function createChapterEleven(): ChapterElevenData {
       }
       root.add(tableRoot);
       seedLifeOnlyGroups.push(tableRoot);
+      seedLifeMinimalHiddenGroups.push(tableRoot);
       copyOnlyColliders.push({ centerX: targetX + 4, centerZ: targetZ + 2, halfWidth: 6.4, halfDepth: 6.4 });
 
       const vault = new Group();
@@ -1261,6 +1279,7 @@ export function createChapterEleven(): ChapterElevenData {
       vault.add(vaultCash);
       root.add(vault);
       seedLifeOnlyGroups.push(vault);
+      seedLifeMinimalHiddenGroups.push(vault);
       copyOnlyColliders.push({ centerX: targetX + 27, centerZ: targetZ - 20.6, halfWidth: 4.7, halfDepth: 0.18 });
       copyOnlyColliders.push({ centerX: targetX + 22.4, centerZ: targetZ - 17, halfWidth: 0.18, halfDepth: 3.7 });
       copyOnlyColliders.push({ centerX: targetX + 31.6, centerZ: targetZ - 17, halfWidth: 0.18, halfDepth: 3.7 });
@@ -1273,6 +1292,7 @@ export function createChapterEleven(): ChapterElevenData {
       marker.castShadow = true;
       root.add(marker);
       seedLifeOnlyGroups.push(marker);
+      seedLifeMinimalHiddenGroups.push(marker);
     }
   };
 
@@ -1403,6 +1423,7 @@ export function createChapterEleven(): ChapterElevenData {
     }
     root.add(segment);
     seedLifeOnlyGroups.push(segment);
+    seedLifeMinimalHiddenGroups.push(segment);
     copyOnlyColliders.push({ centerX, centerZ, halfWidth: width / 2, halfDepth: depth / 2 });
   };
 
@@ -1453,6 +1474,51 @@ export function createChapterEleven(): ChapterElevenData {
   addSeedLifeVerticalBorder('west border', -halfWidth, seedLifeGateOpenings.filter((opening) => opening.side === 'west'));
   addSeedLifeVerticalBorder('east border', halfWidth, seedLifeGateOpenings.filter((opening) => opening.side === 'east'));
 
+  const addSeedLifeMinimalBorderSegment = (
+    name: string,
+    centerX: number,
+    centerZ: number,
+    width: number,
+    depth: number,
+  ): void => {
+    const segment = new Group();
+    segment.name = name;
+    segment.position.set(centerX, 0, centerZ);
+    const horizontal = width >= depth;
+    const railLength = horizontal ? width : depth;
+    [0.48, 0.98].forEach((railY, index) => {
+      const rail = new Mesh(new BoxGeometry(width, 0.18, depth), fenceMaterial);
+      rail.name = `${name} ${index === 0 ? 'lower' : 'upper'} rail`;
+      rail.position.y = railY;
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      segment.add(rail);
+    });
+    const postCount = Math.max(2, Math.ceil(railLength / 2.8) + 1);
+    for (let index = 0; index < postCount; index += 1) {
+      const t = postCount === 1 ? 0 : index / (postCount - 1);
+      const post = new Mesh(new BoxGeometry(0.3, 1.45, 0.3), fenceMaterial);
+      post.name = `${name} fence post`;
+      post.position.set(
+        horizontal ? -width / 2 + width * t : 0,
+        0.725,
+        horizontal ? 0 : -depth / 2 + depth * t,
+      );
+      post.castShadow = true;
+      post.receiveShadow = true;
+      segment.add(post);
+    }
+    segment.visible = false;
+    root.add(segment);
+    seedLifeMinimalKeepGroups.push(segment);
+    seedLifeMinimalColliders.push({ centerX, centerZ, halfWidth: width / 2, halfDepth: depth / 2 });
+  };
+
+  addSeedLifeMinimalBorderSegment('Seed Life 2.0 north closed fence', 0, -halfDepth, FIELD_WIDTH + fenceThickness, fenceThickness);
+  addSeedLifeMinimalBorderSegment('Seed Life 2.0 south closed fence', 0, halfDepth, FIELD_WIDTH + fenceThickness, fenceThickness);
+  addSeedLifeMinimalBorderSegment('Seed Life 2.0 west closed fence', -halfWidth, 0, fenceThickness, FIELD_DEPTH + fenceThickness);
+  addSeedLifeMinimalBorderSegment('Seed Life 2.0 east closed fence', halfWidth, 0, fenceThickness, FIELD_DEPTH + fenceThickness);
+
   addCollider(normalOnlyColliders, 0, -halfDepth, halfWidth + fenceThickness, fenceThickness);
   addCollider(normalOnlyColliders, 0, halfDepth, halfWidth + fenceThickness, fenceThickness);
   addCollider(normalOnlyColliders, -halfWidth, 0, fenceThickness, halfDepth + fenceThickness);
@@ -1466,6 +1532,7 @@ export function createChapterEleven(): ChapterElevenData {
     colliders,
     normalOnlyColliders,
     copyOnlyColliders,
+    seedLifeMinimalColliders,
     dirtPatches,
     seedLifeDirtPatch,
     seedLifeDirtPatches,
@@ -1501,7 +1568,7 @@ export function createChapterEleven(): ChapterElevenData {
         tablePart.rotation.y += _deltaSeconds * 0.42;
       });
     },
-    setSeedLifeLayout(enabled: boolean): void {
+    setSeedLifeLayout(enabled: boolean, minimal = false): void {
       dirtPatchGroups.forEach((group) => {
         group.visible = !enabled;
       });
@@ -1511,6 +1578,18 @@ export function createChapterEleven(): ChapterElevenData {
       seedLifeOnlyGroups.forEach((group) => {
         group.visible = enabled;
       });
+      seedLifeMinimalKeepGroups.forEach((group) => {
+        group.visible = enabled && minimal;
+      });
+      if (minimal) {
+        seedLifeMinimalHiddenGroups.forEach((group) => {
+          group.visible = false;
+        });
+      } else if (enabled) {
+        seedLifeMinimalHiddenGroups.forEach((group) => {
+          group.visible = true;
+        });
+      }
       normalOnlyGroups.forEach((group) => {
         group.visible = !enabled;
       });
