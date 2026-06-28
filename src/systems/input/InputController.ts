@@ -308,7 +308,7 @@ export class InputController {
       this.officeModeMenuToggleQueued = true;
     }
 
-    if (event.code === 'F2' && !event.repeat) {
+    if (event.code === 'KeyZ' && !event.repeat) {
       this.placementToolToggleQueued = true;
       event.preventDefault();
     }

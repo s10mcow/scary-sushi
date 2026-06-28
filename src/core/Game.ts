@@ -4805,7 +4805,7 @@ export class Game {
     }
 
     const coordinateToolToggle = this.input.consumePlacementToolToggle();
-    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && coordinateToolToggle && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen) {
+    if (!jumpscareLocked && !chapterTwoClimbing && !chapterTwoSliding && !chapterTwoDodoNightAttacking && !officeBallPitSliding && !officeScriptedMoving && !chapterFourLockerHiding && !this.chapterFourBoxActive && coordinateToolToggle && !this.chapterMenuOpen && !this.officeJumpscareMenuOpen && !this.officeModeMenuOpen) {
       if (this.chapterEightActive) {
         this.selectChapterEightHeldItem(this.placementToolActive ? 'empty' : 'coordinate-tool');
       } else if (this.chapterNineActive) {
@@ -21631,7 +21631,7 @@ export class Game {
       'Right click deletes a camera you are aiming at, otherwise it deletes your most recent marker in this area.',
       this.officeChapterActive
         ? 'Press M to open the Chapter 3 mode menu. Use the desk iPad for cameras.'
-        : 'Press F2 to put the Coordinate Tool away.',
+        : 'Press Z to put the Coordinate Tool away.',
       lastMarkerText,
     ].join('\n');
   }
@@ -27554,7 +27554,7 @@ export class Game {
         '',
         'The left and right hallways now branch into different old rooms, including closer front rooms beside the first halls.',
         'Walk into the brown room doors to push them open.',
-        'Press F2 for the Coordinate Tool, C for the Cardboard Box, or 2 for the Mic Sound Tool.',
+        'Press Z for the Coordinate Tool, C for the Cardboard Box, or 2 for the Mic Sound Tool.',
       ].join('\n');
     }
 
@@ -27677,7 +27677,7 @@ export class Game {
         '',
         'You are in a semi-realistic horror forest.',
         'A small cabin sits in the clearing with a front door, two front windows, and one big side window.',
-        'Starting gear: Military Knife. Press F2 for the Coordinate Tool.',
+        'Starting gear: Military Knife. Press Z for the Coordinate Tool.',
         'Inside the cabin are a stone fireplace with a chimney, a wall-side bed, and an iron stove with its own pipe.',
         'Use the Coordinate Tool if you want to mark more spots in the woods.',
       ].join('\n');
@@ -27846,7 +27846,7 @@ export class Game {
         this.officeGameModeActive
           ? `${this.getOfficeModeLabel()}: ${this.getOfficeGameModeConfig().label} / Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS} / ${this.getOfficeGameModeClockLabel()} / Power ${this.getOfficeGameModePowerLabel()}`
           : 'Mode: Creator / Day',
-        'Press F2 for the Coordinate Tool. Use the desk iPad for cameras. Press 2 for the Mic Sound Tool. Press 3 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
+        'Press Z for the Coordinate Tool. Use the desk iPad for cameras. Press 2 for the Mic Sound Tool. Press 3 for the Camera Tool. Press M for the mode menu. Press J for jumpscares.',
       ].join('\n');
     }
 
@@ -27916,7 +27916,7 @@ export class Game {
         this.getCoordinateToolInventoryLine(),
         'Chapter 8: The Woods',
         'Starting Gear: Military Knife',
-        'Press F2 for the Coordinate Tool. Spin the mouse wheel to switch knife, torch, and empty hands. Left click slashes; right click stabs.',
+        'Press Z for the Coordinate Tool. Spin the mouse wheel to switch knife, torch, and empty hands. Left click slashes; right click stabs.',
         'Cabin props: front door, front windows, big side window, stone fireplace, bed, iron stove, and outdoor hand pump.',
       ].join('\n');
     }
@@ -27929,7 +27929,7 @@ export class Game {
         `Evidence filmed: ${this.chapterNine.getFootageCount()}/${this.chapterNine.getFootageTarget()}`,
         `Puzzles solved: ${this.chapterNine.getPuzzleCount()}/${this.chapterNine.getPuzzleTarget()}`,
         this.chapterNine.isEscapeUnlocked() ? 'Escape: unlocked. Reach the front doors.' : 'Escape: locked until enough footage and puzzle steps are complete.',
-        'Press F2 for the Coordinate Tool. Press 1 for Shoulder Camera, 2 for Mic Sound Tool. Left click records nearby evidence when the camera is held.',
+        'Press Z for the Coordinate Tool. Press 1 for Shoulder Camera, 2 for Mic Sound Tool. Left click records nearby evidence when the camera is held.',
       ].join('\n');
     }
 
@@ -28031,7 +28031,7 @@ export class Game {
 
   private getCoordinateToolInventoryLine(): string {
     const markerCount = this.placementMarkers.filter((marker) => marker.chapter === this.getCurrentHudChapterId()).length;
-    return `Coordinate Tool: ${this.placementToolActive ? 'equipped' : 'put away'} / press F2 / markers here: ${markerCount}`;
+    return `Coordinate Tool: ${this.placementToolActive ? 'equipped' : 'put away'} / press Z / markers here: ${markerCount}`;
   }
 
   private getOfficeTabletInventoryLine(): string {
@@ -28551,7 +28551,7 @@ export class Game {
 
     if (this.placementToolActive) {
       return locked
-        ? 'Coordinate Tool active. Left click drops a marker, right click deletes the latest marker, F2 puts the tool away.'
+        ? 'Coordinate Tool active. Left click drops a marker, right click deletes the latest marker, Z puts the tool away.'
         : 'Click the play space to re-enter first person, then use the Coordinate Tool.';
     }
 
@@ -28662,7 +28662,7 @@ export class Game {
       }
 
       if (!locked) {
-        return 'WASD moves, Space jumps, Shift sprints, F toggles the flashlight, F2 equips the Coordinate Tool, C uses the Cardboard Box, and 2 equips the Mic Sound Tool.';
+        return 'WASD moves, Space jumps, Shift sprints, F toggles the flashlight, Z equips the Coordinate Tool, C uses the Cardboard Box, and 2 equips the Mic Sound Tool.';
       }
 
       return 'Chapter 4: walk into doors to push them open. Press C for the Cardboard Box, 3 for the Mic Sound Tool, and B to put the box away while held.';
@@ -29182,7 +29182,7 @@ export class Game {
       if (!locked) {
       return this.officeGameModeActive
         ? `${this.getOfficeModeLabel()} ${this.getOfficeGameModeConfig().label}: Night ${this.officeGameModeNight}/${OFFICE_GAME_MODE_TOTAL_NIGHTS}, ${this.getOfficeGameModeClockLabel()}, power ${this.getOfficeGameModePowerLabel()}. M opens the mode menu, use the desk iPad for cameras, 3 equips the Mic Sound Tool, 4 equips the Camera Tool, F toggles the flashlight.`
-        : 'WASD moves, Space jumps, Shift sprints, E uses objects, F2 equips the Coordinate Tool, use the desk iPad for cameras, 2 equips the Mic Sound Tool, 3 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
+        : 'WASD moves, Space jumps, Shift sprints, E uses objects, Z equips the Coordinate Tool, use the desk iPad for cameras, 2 equips the Mic Sound Tool, 3 equips the Camera Tool, M opens the mode menu, and F toggles the flashlight.';
       }
 
       return 'The office is quiet for now. Use the desk iPad to view the security cameras.';
@@ -33565,7 +33565,7 @@ export class Game {
 
     const door = this.getNearestChapterFourDoor();
     if (!door) {
-      this.pushStatus('Nothing here needs interaction yet. Use F2 for the Coordinate Tool or C for the Cardboard Box. B puts the box away.', 2.4);
+      this.pushStatus('Nothing here needs interaction yet. Use Z for the Coordinate Tool or C for the Cardboard Box. B puts the box away.', 2.4);
       return;
     }
 
@@ -36490,7 +36490,7 @@ export class Game {
     this.player.teleport(this.chapterEight.spawn);
     this.player.lookToward(this.chapterEight.lookTarget, 1);
     this.pushStatus(
-      'Chapter 8: The Woods loaded. You start with the Military Knife. Press F2 if you need the Coordinate Tool.',
+      'Chapter 8: The Woods loaded. You start with the Military Knife. Press Z if you need the Coordinate Tool.',
       3.2,
     );
     this.resize();
