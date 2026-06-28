@@ -327,6 +327,42 @@ export function createChapterEleven(): ChapterElevenData {
   addDirtPatch(42.75, -40.45, 34, 38.7);
   addDirtPatch(42.75, 40.45, 34, 38.7);
   const seedLifeDirtPatch = addDirtPatch(0, 0, 42, 42, true);
+  const seedLifeMinimalFarmPath = new Group();
+  seedLifeMinimalFarmPath.name = 'Seed Life 2.0 plus shaped stone pathway across farm plot';
+  const addSeedLifeFarmPathStrip = (name: string, width: number, depth: number): void => {
+    const base = new Mesh(new BoxGeometry(width, 0.026, depth), pathDirtBaseMaterial);
+    base.name = `${name} tan packed dirt under stones`;
+    base.position.y = 0.052;
+    base.receiveShadow = true;
+    seedLifeMinimalFarmPath.add(base);
+  };
+  addSeedLifeFarmPathStrip('Seed Life 2.0 east west farm path', 39.4, 3.1);
+  addSeedLifeFarmPathStrip('Seed Life 2.0 north south farm path', 3.1, 39.4);
+  for (let index = -9; index <= 9; index += 1) {
+    if (index !== 0) {
+      const horizontalStone = new Mesh(new BoxGeometry(1.82, 0.035, 2.42), index % 2 === 0 ? pathStoneMaterial : pathStoneLightMaterial);
+      horizontalStone.name = 'Seed Life 2.0 flat stone on east west farm path';
+      horizontalStone.position.set(index * 2.05, 0.076, index % 2 === 0 ? -0.22 : 0.24);
+      horizontalStone.rotation.y = index % 2 === 0 ? 0.05 : -0.04;
+      horizontalStone.receiveShadow = true;
+      seedLifeMinimalFarmPath.add(horizontalStone);
+
+      const verticalStone = new Mesh(new BoxGeometry(2.42, 0.035, 1.82), index % 2 === 0 ? pathStoneLightMaterial : pathStoneMaterial);
+      verticalStone.name = 'Seed Life 2.0 flat stone on north south farm path';
+      verticalStone.position.set(index % 2 === 0 ? 0.22 : -0.24, 0.078, index * 2.05);
+      verticalStone.rotation.y = index % 2 === 0 ? -0.05 : 0.04;
+      verticalStone.receiveShadow = true;
+      seedLifeMinimalFarmPath.add(verticalStone);
+    }
+  }
+  const centerStone = new Mesh(new BoxGeometry(3.2, 0.04, 3.2), pathStoneLightMaterial);
+  centerStone.name = 'Seed Life 2.0 center square stone where farm paths cross';
+  centerStone.position.y = 0.082;
+  centerStone.receiveShadow = true;
+  seedLifeMinimalFarmPath.add(centerStone);
+  seedLifeMinimalFarmPath.visible = false;
+  root.add(seedLifeMinimalFarmPath);
+  seedLifeMinimalKeepGroups.push(seedLifeMinimalFarmPath);
 
   const stand = new Group();
   stand.name = 'Chapter 11 old fashioned garden stand with worker';
