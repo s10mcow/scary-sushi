@@ -4213,6 +4213,10 @@ export class Game {
       return 0;
     }
 
+    if (this.chapterElevenTwoPointOhActive && (item.seedLifeShop || item.copyOnly)) {
+      return 1;
+    }
+
     if (this.chapterElevenTwoActive && item.seedLifeShop) {
       if (item.section === 'common') {
         return MathUtils.randInt(Math.max(1, Math.floor(safeMaxStock * 0.58)), safeMaxStock);
@@ -4319,7 +4323,7 @@ export class Game {
     this.getChapterElevenSeedShopCatalog().forEach((item) => {
       this.chapterElevenSeedShopStock.set(item.id, this.getChapterElevenRandomSeedShopStock(item));
     });
-    if (this.chapterElevenTwoActive) {
+    if (this.chapterElevenTwoActive && !this.chapterElevenTwoPointOhActive) {
       this.ensureChapterElevenSeedLifeSectionStock('uncommon', 3);
       this.ensureChapterElevenSeedLifeSectionStock('rare', MathUtils.randInt(1, 2), 2);
       this.limitChapterElevenSeedLifeLegendaryStock();
