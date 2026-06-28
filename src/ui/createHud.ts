@@ -14,6 +14,7 @@ export type HudChapterId =
   | 'chapter-10'
   | 'chapter-11'
   | 'chapter-11-two'
+  | 'chapter-11-two-point-oh'
   | 'chapter-12'
   | 'chapter-13'
   | 'zombie-fps'
@@ -1879,6 +1880,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-11-two' as const,
       label: 'Seed Life',
       body: 'A separate garden mode for buying seeds, planting crops, and growing a farm.',
+    },
+    {
+      id: 'chapter-11-two-point-oh' as const,
+      label: 'Seed Life 2.0',
+      body: 'A copied Seed Life garden mode ready for new changes without replacing the first Seed Life.',
     },
     {
       id: 'chapter-12' as const,

@@ -246,6 +246,7 @@ const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
   'chapter-10',
   'chapter-11',
   'chapter-11-two',
+  'chapter-11-two-point-oh',
   'chapter-12',
   'chapter-13',
   'doom-fps',
@@ -2140,6 +2141,7 @@ export class Game {
   private chapterTenActive = false;
   private chapterElevenActive = false;
   private chapterElevenTwoActive = false;
+  private chapterElevenTwoPointOhActive = false;
   private chapterTwelveActive = false;
   private chapterThirteenActive = false;
   private zombieModeActive = false;
@@ -3105,6 +3107,7 @@ export class Game {
   private readonly handleChapterSelection = (chapterId: HudChapterId): void => {
     this.chapterElevenActive = false;
     this.chapterElevenTwoActive = false;
+    this.chapterElevenTwoPointOhActive = false;
     this.chapterEleven.root.visible = false;
     this.chapterTwelveActive = false;
     this.chapterTwelve.root.visible = false;
@@ -3156,6 +3159,9 @@ export class Game {
         return;
       case 'chapter-11-two':
         this.beginChapterEleven(true);
+        return;
+      case 'chapter-11-two-point-oh':
+        this.beginChapterEleven(true, true);
         return;
       case 'chapter-12':
         this.beginChapterTwelve();
@@ -7722,6 +7728,10 @@ export class Game {
       return 'chapter-10-house-shell';
     }
     if (this.chapterElevenActive) {
+      if (this.chapterElevenTwoPointOhActive) {
+        return 'chapter-11-two-point-oh-seed-life';
+      }
+
       return this.chapterElevenTwoActive ? 'chapter-11-two-grow-a-garden' : 'chapter-11-grow-a-garden';
     }
     if (this.chapterNineActive) {
@@ -13236,7 +13246,7 @@ export class Game {
         this.chapterElevenTraderShopOpen = false;
         this.setChapterElevenSeedShopOpen(false);
       }
-      this.pushStatus(this.chapterElevenTwoActive ? 'Night started in Seed Life.' : 'Night started in Grow a Garden.', 2.4);
+      this.pushStatus(this.chapterElevenTwoActive ? `Night started in ${this.getChapterElevenModeTitle()}.` : 'Night started in Grow a Garden.', 2.4);
     } else {
       this.chapterElevenPhase = 'day';
       this.chapterElevenPhaseTimer = this.getChapterElevenDaySeconds();
@@ -13244,7 +13254,7 @@ export class Game {
       this.expireChapterElevenTemporaryBuffs();
       this.chapterElevenDailyEventUsed = false;
       this.scheduleChapterElevenDailyEvent();
-      this.pushStatus(`Day ${this.chapterElevenDayCount} started in ${this.chapterElevenTwoActive ? 'Seed Life' : 'Grow a Garden'}.`, 2.4);
+      this.pushStatus(`Day ${this.chapterElevenDayCount} started in ${this.chapterElevenTwoActive ? this.getChapterElevenModeTitle() : 'Grow a Garden'}.`, 2.4);
       if (this.chapterElevenTwoActive) {
         this.maybeTriggerChapterElevenRealmEvent();
       }
@@ -22491,6 +22501,8 @@ export class Game {
         return 'Chapter 11: Grow a garden';
       case 'chapter-11-two':
         return 'Seed Life';
+      case 'chapter-11-two-point-oh':
+        return 'Seed Life 2.0';
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
@@ -22498,6 +22510,14 @@ export class Game {
       default:
         return 'Unknown Chapter';
     }
+  }
+
+  private getChapterElevenModeTitle(): string {
+    if (this.chapterElevenTwoPointOhActive) {
+      return 'Seed Life 2.0';
+    }
+
+    return this.chapterElevenTwoActive ? 'Seed Life' : 'Chapter 11: Grow a garden';
   }
 
   private updateMonster(deltaSeconds: number): void {
@@ -23352,6 +23372,10 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
+      if (this.chapterElevenTwoPointOhActive) {
+        return 'chapter-11-two-point-oh';
+      }
+
       return this.chapterElevenTwoActive ? 'chapter-11-two' : 'chapter-11';
     }
 
@@ -23409,11 +23433,14 @@ export class Game {
     }
 
     if (this.chapterElevenActive) {
+      const title = this.getChapterElevenModeTitle();
       return {
-        eyebrow: this.chapterElevenTwoActive ? 'Seed Life' : 'Chapter Eleven',
-        title: this.chapterElevenTwoActive ? 'Seed Life' : 'Grow a garden',
-        summary: this.chapterElevenTwoActive
-          ? 'Buy seeds, plant crops, grow your farm, and sprint fast across the field.'
+        eyebrow: this.chapterElevenTwoActive ? title : 'Chapter Eleven',
+        title: this.chapterElevenTwoActive ? title : 'Grow a garden',
+        summary: this.chapterElevenTwoPointOhActive
+          ? 'A copied Seed Life garden mode ready for new changes. Buy seeds, plant crops, grow your farm, and sprint fast across the field.'
+          : this.chapterElevenTwoActive
+            ? 'Buy seeds, plant crops, grow your farm, and sprint fast across the field.'
           : 'Walk, plant your seeds in your garden.',
         buttonText: 'Enter the garden',
       };
@@ -27580,7 +27607,7 @@ export class Game {
 
     if (this.chapterElevenActive) {
       return [
-        this.chapterElevenTwoActive ? 'Seed Life' : 'Chapter 11: Grow a garden',
+        this.getChapterElevenModeTitle(),
         '',
         'A big open grass field.',
         'No trees, logs, tall grass, props, or garden objects have been added yet.',
@@ -27906,7 +27933,7 @@ export class Game {
       return [
         `Inventory:${seedInventory.length > 0 ? ` ${seedInventory.join(', ')}` : ''}${cropInventory.length > 0 ? `${seedInventory.length > 0 ? ', ' : ' '}${cropInventory.join(', ')}` : ''}${petEggInventory.length > 0 ? `${seedInventory.length > 0 || cropInventory.length > 0 ? ', ' : ' '}${petEggInventory.join(', ')}` : seedInventory.length === 0 && cropInventory.length === 0 ? ' empty' : ''}`,
         this.getCoordinateToolInventoryLine(),
-        this.chapterElevenTwoActive ? 'Seed Life' : 'Chapter 11: Grow a garden',
+        this.getChapterElevenModeTitle(),
         `Money: $${this.chapterElevenMoney}`,
         'Buy seeds at the Buy Seeds stand. Hold a seed, aim at a dirt patch, and press E to plant. Press E on mature crops to harvest, then sell crops or refund seeds at the Sell stand.',
       ].join('\n');
@@ -29828,7 +29855,7 @@ export class Game {
 
       const growGardenPhasePrompt = `Day ${this.chapterElevenDayCount} - ${this.chapterElevenPhase} (${Math.max(0, Math.ceil(this.chapterElevenPhaseTimer))}s left). `;
       return this.chapterElevenTwoActive
-        ? `${growGardenPhasePrompt}Seed Life loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.`
+        ? `${growGardenPhasePrompt}${this.getChapterElevenModeTitle()} loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.`
         : `${growGardenPhasePrompt}Chapter 11: Grow a garden loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.`;
     }
 
@@ -36723,8 +36750,8 @@ export class Game {
     this.resize();
   }
 
-  private beginChapterEleven(copyMode = false): void {
-    this.saveCurrentChapter(copyMode ? 'chapter-11-two' : 'chapter-11');
+  private beginChapterEleven(copyMode = false, twoPointOhMode = false): void {
+    this.saveCurrentChapter(twoPointOhMode ? 'chapter-11-two-point-oh' : copyMode ? 'chapter-11-two' : 'chapter-11');
     this.stopOfficeGameMode();
     this.chapterTwoActive = false;
     this.officeChapterActive = false;
@@ -36737,15 +36764,19 @@ export class Game {
     this.chapterTenActive = false;
     this.chapterElevenActive = true;
     this.chapterElevenTwoActive = copyMode;
+    this.chapterElevenTwoPointOhActive = twoPointOhMode;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
     this.officeJumpscareMenuOpen = false;
     this.officeModeMenuOpen = false;
     this.chapterTwoCardTime = 3.6;
-    this.chapterCardTitle = copyMode ? 'Seed Life' : 'Chapter 11: Grow a garden';
-    this.chapterCardBody = copyMode
-      ? 'Buy seeds, plant crops, grow your farm, and sprint fast across the field.'
+    const chapterElevenTitle = this.getChapterElevenModeTitle();
+    this.chapterCardTitle = chapterElevenTitle;
+    this.chapterCardBody = twoPointOhMode
+      ? 'Seed Life 2.0 is copied from Seed Life. Buy seeds, plant crops, grow your farm, and sprint fast across the field.'
+      : copyMode
+        ? 'Buy seeds, plant crops, grow your farm, and sprint fast across the field.'
       : 'Walk, plant your seeds in your garden.';
     this.activeJumpscare = null;
     this.chapterNineJumpscare = null;
@@ -36847,7 +36878,7 @@ export class Game {
     this.player.lookToward(this.chapterEleven.lookTarget, 1);
     this.pushStatus(
       copyMode
-        ? 'Seed Life loaded. Day 1 starts now. Day and night each last three minutes.'
+        ? `${chapterElevenTitle} loaded. Day 1 starts now. Day and night each last three minutes.`
         : 'Chapter 11 loaded. Buy seeds, plant them in dirt patches, harvest crops, and sell them.',
       3.2,
     );
@@ -36868,6 +36899,7 @@ export class Game {
     this.chapterTenActive = false;
     this.chapterElevenActive = false;
     this.chapterElevenTwoActive = false;
+    this.chapterElevenTwoPointOhActive = false;
     this.chapterTwelveActive = true;
     this.chapterThirteenActive = false;
     this.zombieModeActive = false;
@@ -36995,6 +37027,7 @@ export class Game {
     this.chapterTenActive = false;
     this.chapterElevenActive = false;
     this.chapterElevenTwoActive = false;
+    this.chapterElevenTwoPointOhActive = false;
     this.chapterTwelveActive = false;
     this.chapterThirteenActive = true;
     this.zombieModeActive = false;
