@@ -1183,7 +1183,7 @@ const CHAPTER_ELEVEN_PET_EGG_SHOP_ITEMS: Array<{
   { id: 'mythical-egg', label: 'Mythical Egg', cost: 55000, pets: ['dragon', 'phoenix', 'unicorn'] },
   { id: 'space-egg', label: 'Space Egg', cost: 95000, pets: ['alien', 'slime', 'astro-cat', 'cosmic-bunny'] },
 ];
-const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = true;
+const CHAPTER_TWO_STARTS_WITH_RED_KEYCARD = false;
 const CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS = true;
 const CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS = true;
 const CHAPTER_SEVEN_TRADE_INVENTORY_STORAGE_KEY = 'scary-sushi:chapter-seven-trade-inventory';
@@ -2413,7 +2413,7 @@ export class Game {
   private chapterExitMessageElapsed = 0;
   private chapterCardTitle = 'Chapter Two';
   private chapterCardBody =
-    'The daycare lobby is still set up for families. Red access is live, but the blue wing stays locked until you gather the hidden eggs in the first red section and feed them to the strange dodo.';
+    'The daycare lobby is still set up for families. Search the opening rooms for the hidden red puzzle pieces and rebuild the first key card.';
   private zombieDay = 1;
   private zombieNightActive = false;
   private zombiePhaseRemaining = ZOMBIE_DAY_DURATION;
@@ -35474,11 +35474,13 @@ export class Game {
     this.chapterTwoCardTime = 3.6;
     this.chapterCardTitle = 'Chapter Two: daycare horror';
     this.chapterCardBody =
-      CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS && CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS
-        ? 'The daycare lobby is still set up for families. Red access is live, every dodo egg is already in your hands, and every missing blue teddy bear is already with you too.'
-        : CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS
-          ? 'The daycare lobby is still set up for families. Red access is live, and every dodo egg is already in your hands. Find the strange dodo and feed it every egg to reveal the blue key card.'
-        : 'The daycare lobby is still set up for families. Red access is live now, but the egg hunt does not begin until you visit the strange dodo.';
+      CHAPTER_TWO_STARTS_WITH_RED_KEYCARD
+        ? CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS && CHAPTER_TWO_STARTS_WITH_ALL_BLUE_BEARS
+          ? 'The daycare lobby is still set up for families. Red access is live, every dodo egg is already in your hands, and every missing blue teddy bear is already with you too.'
+          : CHAPTER_TWO_STARTS_WITH_ALL_DODO_EGGS
+            ? 'The daycare lobby is still set up for families. Red access is live, and every dodo egg is already in your hands. Find the strange dodo and feed it every egg to reveal the blue key card.'
+            : 'The daycare lobby is still set up for families. Red access is live now, but the egg hunt does not begin until you visit the strange dodo.'
+        : 'The daycare lobby is still set up for families. You start with no key cards. Search the opening rooms for the hidden red puzzle pieces and rebuild the first key card.';
     this.activeJumpscare = null;
     this.resetChapterFourPurpleJumpscare();
     this.clearMicrophoneSoundToolState();
