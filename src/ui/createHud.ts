@@ -17,6 +17,7 @@ export type HudChapterId =
   | 'chapter-11-two-point-oh'
   | 'chapter-12'
   | 'chapter-13'
+  | 'chapter-14'
   | 'zombie-fps'
   | 'doom-fps';
 export type HudJumpScareVariant = MonsterVariant | 'bear' | 'quacky' | 'fluffle' | 'bori' | 'foxy' | 'purple' | 'blue' | 'green';
@@ -1924,6 +1925,11 @@ export function createHud(host: HTMLElement): HudController {
       id: 'chapter-13' as const,
       label: "Chapter 13: Maggie's World",
       body: 'An endless pink-grass plain dotted with cherry blossom trees.',
+    },
+    {
+      id: 'chapter-14' as const,
+      label: 'Chapter 14: Bird Sky Islands',
+      body: 'Eight huge islands floating in open sky above the clouds.',
     },
     {
       id: 'doom-fps' as const,
