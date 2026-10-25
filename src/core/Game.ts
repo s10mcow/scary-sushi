@@ -76,6 +76,7 @@ import {
 } from '../scene/createChapterEleven';
 import { createChapterTwelve, type ChapterTwelveData, type ChapterTwelveEventCue } from '../scene/createChapterTwelve';
 import { createChapterThirteen, type ChapterThirteenData } from '../scene/createChapterThirteen';
+import { createChapterFourteen, type ChapterFourteenData } from '../scene/createChapterFourteen';
 import {
   createZombieMode,
   type ZombieDefenseId,
@@ -232,6 +233,7 @@ const START_IN_CHAPTER_TEN = false;
 const START_IN_CHAPTER_ELEVEN = true;
 const START_IN_CHAPTER_TWELVE = false;
 const START_IN_CHAPTER_THIRTEEN = false;
+const START_IN_CHAPTER_FOURTEEN = false;
 const CURRENT_CHAPTER_STORAGE_KEY = 'scary-sushi:current-chapter';
 const UPDATE_SEQUENCE_DURATION_SECONDS = 2.4;
 const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
@@ -251,6 +253,7 @@ const SAVABLE_CHAPTER_IDS: readonly HudChapterId[] = [
   'chapter-11-two-point-oh',
   'chapter-12',
   'chapter-13',
+  'chapter-14',
   'doom-fps',
 ];
 const CHAPTER_ELEVEN_SEED_SHOP_X = -52.82;
@@ -1986,6 +1989,7 @@ export class Game {
   private readonly chapterEleven: ChapterElevenData;
   private readonly chapterTwelve: ChapterTwelveData;
   private readonly chapterThirteen: ChapterThirteenData;
+  private readonly chapterFourteen: ChapterFourteenData;
   private readonly chapterNineCameraRenderTarget = new WebGLRenderTarget(256, 144);
   private readonly zombieMode: ZombieModeData;
   private readonly doomMode: DoomModeData;
@@ -2147,6 +2151,7 @@ export class Game {
   private chapterElevenTwoPointOhActive = false;
   private chapterTwelveActive = false;
   private chapterThirteenActive = false;
+  private chapterFourteenActive = false;
   private zombieModeActive = false;
   private doomModeActive = false;
   private chapterMenuOpen = false;
@@ -2511,6 +2516,8 @@ export class Game {
     this.chapterTwelve.root.visible = false;
     this.chapterThirteen = createChapterThirteen();
     this.chapterThirteen.root.visible = false;
+    this.chapterFourteen = createChapterFourteen();
+    this.chapterFourteen.root.visible = false;
     this.zombieMode = createZombieMode();
     this.zombieMode.root.visible = false;
     this.doomMode = createDoomMode();
@@ -2535,6 +2542,7 @@ export class Game {
         ...this.chapterEleven.colliders,
         ...this.chapterTwelve.colliders,
         ...this.chapterThirteen.colliders,
+        ...this.chapterFourteen.colliders,
         ...this.zombieMode.colliders,
         ...this.doomMode.colliders,
       ],
@@ -2583,6 +2591,7 @@ export class Game {
     this.scene.add(this.chapterEleven.root);
     this.scene.add(this.chapterTwelve.root);
     this.scene.add(this.chapterThirteen.root);
+    this.scene.add(this.chapterFourteen.root);
     this.scene.add(this.zombieMode.root);
     this.scene.add(this.doomMode.root);
     this.scene.add(this.camera);
@@ -2739,6 +2748,8 @@ export class Game {
     const savedChapter = this.loadSavedChapter();
     if (savedChapter) {
       this.beginChapterById(savedChapter);
+    } else if (START_IN_CHAPTER_FOURTEEN) {
+      this.beginChapterById('chapter-14');
     } else if (START_IN_CHAPTER_THIRTEEN) {
       this.beginChapterById('chapter-13');
     } else if (START_IN_CHAPTER_TWELVE) {
@@ -2823,7 +2834,7 @@ export class Game {
               ? 0.9
               : this.chapterSevenActive
                 ? 0.9
-                : this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive
+                : this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive || this.chapterFourteenActive
                   ? 0.9
                 : 1;
     const renderWidth = Math.max(1, Math.round(width * renderScale));
@@ -2838,7 +2849,7 @@ export class Game {
     this.renderer.toneMapping = this.doomModeActive ? NoToneMapping : ACESFilmicToneMapping;
     this.renderer.setPixelRatio(
       this.doomModeActive || this.officeChapterActive || this.chapterFourActive
-        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive
+        || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive || this.chapterFourteenActive
         ? PERFORMANCE_RENDER_PIXEL_RATIO
         : Math.min(window.devicePixelRatio, DEFAULT_RENDER_PIXEL_RATIO),
     );
@@ -3116,6 +3127,8 @@ export class Game {
     this.chapterTwelve.root.visible = false;
     this.chapterThirteenActive = false;
     this.chapterThirteen.root.visible = false;
+    this.chapterFourteenActive = false;
+    this.chapterFourteen.root.visible = false;
     this.beginChapterById(chapterId);
 
     this.setChapterMenuOpen(false);
@@ -3171,6 +3184,9 @@ export class Game {
         return;
       case 'chapter-13':
         this.beginChapterThirteen();
+        return;
+      case 'chapter-14':
+        this.beginChapterFourteen();
         return;
       case 'doom-fps':
         this.beginDoomMode();
@@ -5389,7 +5405,7 @@ export class Game {
       this.updateZombieMode(deltaSeconds);
     } else if (this.doomModeActive) {
       this.updateDoomMode(deltaSeconds);
-    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive) {
+    } else if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive || this.chapterFourteenActive) {
       this.monsterState = this.unlockedMonsterState;
       this.touchingMonster = null;
     } else {
@@ -5400,7 +5416,7 @@ export class Game {
     this.updateChapterSevenDayNightCycle(deltaSeconds);
     this.updateChapterSevenAmbientAudio(deltaSeconds);
     this.updateAtmosphere();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.chapterFourteenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateVenueLights();
     }
     this.updateOfficeGlassThrows(deltaSeconds);
@@ -5408,7 +5424,7 @@ export class Game {
     this.updateOfficeVentBoyJumpscare(deltaSeconds);
     this.updateOfficeJumpscare(deltaSeconds);
     this.updateJumpScareLens(deltaSeconds);
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.chapterFourteenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateMachineJobs(deltaSeconds);
     }
 
@@ -5539,7 +5555,9 @@ export class Game {
       this.chapterTwelve.update(deltaSeconds);
     } else if (this.chapterThirteenActive) {
       this.chapterThirteen.update(this.player.getPosition());
-    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive) {
+    } else if (this.chapterFourteenActive) {
+      this.chapterFourteen.update(deltaSeconds);
+    } else if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.chapterFourteenActive) {
       this.level.stationAnimator.update(deltaSeconds);
     } else if (this.chapterTwoActive) {
       this.chapterTwo.update(deltaSeconds, this.player.getPosition());
@@ -5619,7 +5637,7 @@ export class Game {
     this.updateChapterFourGreenJumpscareModel();
     this.updateOfficeGlassDisplay();
     this.updateOfficePrizeItemDisplay();
-    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.zombieModeActive && !this.doomModeActive) {
+    if (!this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.chapterFourteenActive && !this.zombieModeActive && !this.doomModeActive) {
       this.updateStoveLight();
     }
     if (this.shouldSyncHudThisFrame(deltaSeconds, jumpscareLocked)) {
@@ -21847,6 +21865,10 @@ export class Game {
       return [this.chapterEleven.root];
     }
 
+    if (this.chapterFourteenActive) {
+      return [this.chapterFourteen.root];
+    }
+
     if (this.chapterTwoActive) {
       return [this.chapterTwo.root];
     }
@@ -22585,6 +22607,8 @@ export class Game {
         return 'Seed Life';
       case 'chapter-11-two-point-oh':
         return 'Seed Life 2.0';
+      case 'chapter-14':
+        return 'Chapter 14: Bird Sky Islands';
       case 'zombie-fps':
         return 'Zombie FPS';
       case 'doom-fps':
@@ -22861,7 +22885,7 @@ export class Game {
   private updateAtmosphere(): void {
     this.lighting.flashlight.angle = GAME_CONFIG.flashlight.angle;
     this.lighting.flashlight.penumbra = GAME_CONFIG.flashlight.penumbra;
-    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive ? 980 : GAME_CONFIG.camera.far;
+    const targetCameraFar = this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterElevenActive || this.chapterTwelveActive || this.chapterThirteenActive || this.chapterFourteenActive ? 980 : GAME_CONFIG.camera.far;
     if (Math.abs(this.camera.far - targetCameraFar) > 0.01) {
       this.camera.far = targetCameraFar;
       this.camera.updateProjectionMatrix();
@@ -23193,6 +23217,25 @@ export class Game {
       return;
     }
 
+    if (this.chapterFourteenActive) {
+      this.lighting.ambient.intensity = 0.96;
+      this.lighting.hemisphere.intensity = 1.12;
+      this.lighting.flashlight.intensity = 0;
+      this.lighting.flashlight.distance = 0;
+
+      if (this.scene.background instanceof Color) {
+        this.scene.background.setHex(0x79c7f2);
+      }
+
+      if (this.scene.fog instanceof Fog) {
+        this.scene.fog.color.setHex(0xb9ddf8);
+        this.scene.fog.near = 140;
+        this.scene.fog.far = 720;
+      }
+
+      return;
+    }
+
     const playerZ = this.player.getPosition().z;
     const threshold = this.level.pantryEntrancePosition.z + 10;
     const mazeBlend = MathUtils.clamp((threshold - playerZ) / 18, 0, 1);
@@ -23274,6 +23317,10 @@ export class Game {
 
     if (this.chapterThirteenActive) {
       return this.chapterThirteen.colliders;
+    }
+
+    if (this.chapterFourteenActive) {
+      return this.chapterFourteen.colliders;
     }
 
     if (this.zombieModeActive) {
@@ -23472,6 +23519,10 @@ export class Game {
       return 'chapter-13';
     }
 
+    if (this.chapterFourteenActive) {
+      return 'chapter-14';
+    }
+
     return this.chapterTwoActive ? 'chapter-2' : 'chapter-1';
   }
 
@@ -23508,6 +23559,15 @@ export class Game {
   }
 
   private getIntroHudState(): { eyebrow: string; title: string; summary: string; buttonText: string } {
+    if (this.chapterFourteenActive) {
+      return {
+        eyebrow: 'Chapter Fourteen',
+        title: 'Bird Sky Islands',
+        summary: 'Eight huge islands float in open sky above the clouds. The land is empty for now.',
+        buttonText: 'Step Onto The Island',
+      };
+    }
+
     if (this.chapterThirteenActive) {
       return {
         eyebrow: 'Chapter Thirteen',
@@ -23631,6 +23691,8 @@ export class Game {
                         ? "Chapter: Freddy's Pizza Complex"
                         : this.chapterTenActive
                           ? 'Chapter: House Shell'
+                          : this.chapterFourteenActive
+                            ? 'Chapter: Bird Sky Islands'
                       : this.chapterTwoActive
                     ? 'Chapter: daycare horror'
                     : 'Chapter: scary-sushi',
@@ -24305,6 +24367,10 @@ export class Game {
 
     if (this.chapterTwoActive) {
       this.handleChapterTwoInteract();
+      return;
+    }
+
+    if (this.chapterFourteenActive) {
       return;
     }
 
@@ -27720,6 +27786,16 @@ export class Game {
       ].join('\n');
     }
 
+    if (this.chapterFourteenActive) {
+      return [
+        'Chapter 14: Bird Sky Islands',
+        '',
+        'Eight huge islands float in open sky above the clouds.',
+        'You are standing on solid ground. The islands are empty for now.',
+        'Walk the grass and look across the gaps. Nothing else has been built here yet.',
+      ].join('\n');
+    }
+
     if (this.chapterEightActive) {
       return [
         'Chapter 8: The Woods',
@@ -28226,7 +28302,7 @@ export class Game {
 
     return {
       text: this.getChapterExitNoticeText(),
-      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.zombieModeActive && !this.doomModeActive,
+      active: this.chapterExitUnlocked && !this.chapterTwoActive && !this.officeChapterActive && !this.chapterFourActive && !this.chapterFiveActive && !this.chapterSixActive && !this.chapterSevenActive && !this.chapterEightActive && !this.chapterNineActive && !this.chapterTenActive && !this.chapterElevenActive && !this.chapterTwelveActive && !this.chapterThirteenActive && !this.chapterFourteenActive && !this.zombieModeActive && !this.doomModeActive,
       label: 'Chapter Shift',
     };
   }
@@ -29412,6 +29488,12 @@ export class Game {
         : 'Click the play space to keep exploring the locked daycare wing in first person.';
     }
 
+    if (this.chapterFourteenActive) {
+      return locked
+        ? 'Walk the floating island. The other seven islands are out in the open sky.'
+        : 'Click the play space to look around the sky islands.';
+    }
+
     if (!locked) {
       return 'WASD moves, Space jumps, Shift sprints, E grabs ingredients and works the machines, D drops a carried dish on the judges belt, F toggles the flashlight, and clicking the play space drops you straight back into first person.';
     }
@@ -29956,6 +30038,10 @@ export class Game {
 
     if (this.chapterThirteenActive) {
       return "Chapter 13: Maggie's World loaded. Walk through endless pink grass and cherry blossom trees.";
+    }
+
+    if (this.chapterFourteenActive) {
+      return 'Chapter 14: Bird Sky Islands loaded. You are standing on one of eight huge islands above the clouds.';
     }
 
     if (this.chapterEightActive) {
@@ -30761,6 +30847,10 @@ export class Game {
 
     if (this.chapterThirteenActive) {
       return this.chapterThirteen.getSupportedFloorY(this.player.getPosition());
+    }
+
+    if (this.chapterFourteenActive) {
+      return this.chapterFourteen.getSupportedFloorY(this.player.getPosition());
     }
 
     return null;
@@ -35371,7 +35461,7 @@ export class Game {
   private updateChapterExit(deltaSeconds: number): void {
     this.level.chapterExitDoor.visible = this.chapterExitUnlocked || this.chapterTwoActive;
 
-    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.zombieModeActive || this.doomModeActive) {
+    if (this.chapterTwoActive || this.officeChapterActive || this.chapterFourActive || this.chapterFiveActive || this.chapterSixActive || this.chapterSevenActive || this.chapterEightActive || this.chapterNineActive || this.chapterTenActive || this.chapterFourteenActive || this.zombieModeActive || this.doomModeActive) {
       return;
     }
 
@@ -36989,6 +37079,7 @@ export class Game {
     this.chapterElevenTwoPointOhActive = false;
     this.chapterTwelveActive = true;
     this.chapterThirteenActive = false;
+    this.chapterFourteenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -37023,6 +37114,8 @@ export class Game {
     this.chapterTwelve.root.visible = true;
     this.chapterThirteen.reset();
     this.chapterThirteen.root.visible = false;
+    this.chapterFourteen.reset();
+    this.chapterFourteen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -37117,6 +37210,7 @@ export class Game {
     this.chapterElevenTwoPointOhActive = false;
     this.chapterTwelveActive = false;
     this.chapterThirteenActive = true;
+    this.chapterFourteenActive = false;
     this.zombieModeActive = false;
     this.doomModeActive = false;
     this.chapterMenuOpen = false;
@@ -37150,6 +37244,8 @@ export class Game {
     this.chapterTwelve.root.visible = false;
     this.chapterThirteen.reset();
     this.chapterThirteen.root.visible = true;
+    this.chapterFourteen.reset();
+    this.chapterFourteen.root.visible = false;
     this.zombieMode.root.visible = false;
     this.doomMode.root.visible = false;
     this.chapterTwo.reset();
@@ -37225,6 +37321,137 @@ export class Game {
     this.player.teleport(this.chapterThirteen.spawn);
     this.player.lookToward(this.chapterThirteen.lookTarget, 1);
     this.pushStatus("Maggie's World loaded. Walk through endless pink grass and cherry blossom trees.", 3.2);
+    this.resize();
+  }
+
+  private beginChapterFourteen(): void {
+    this.saveCurrentChapter('chapter-14');
+    this.stopOfficeGameMode();
+    this.chapterTwoActive = false;
+    this.officeChapterActive = false;
+    this.chapterFourActive = false;
+    this.chapterFiveActive = false;
+    this.chapterSixActive = false;
+    this.chapterSevenActive = false;
+    this.chapterEightActive = false;
+    this.chapterNineActive = false;
+    this.chapterTenActive = false;
+    this.chapterElevenActive = false;
+    this.chapterElevenTwoActive = false;
+    this.chapterElevenTwoPointOhActive = false;
+    this.chapterTwelveActive = false;
+    this.chapterThirteenActive = false;
+    this.chapterFourteenActive = true;
+    this.zombieModeActive = false;
+    this.doomModeActive = false;
+    this.chapterMenuOpen = false;
+    this.officeJumpscareMenuOpen = false;
+    this.officeModeMenuOpen = false;
+    this.chapterTwoCardTime = 3.6;
+    this.chapterCardTitle = 'Chapter 14: Bird Sky Islands';
+    this.chapterCardBody = 'Eight huge islands hang in open sky above the clouds.';
+    this.activeJumpscare = null;
+    this.chapterNineJumpscare = null;
+    this.resetChapterFourPurpleJumpscare();
+    this.clearMicrophoneSoundToolState();
+    this.clearCameraToolState();
+    this.clearPaintbrushState();
+    this.touchingMonster = null;
+    this.monsterState = this.unlockedMonsterState;
+    this.transientStatusTime = 0;
+    this.level.root.visible = false;
+    this.chapterTwo.root.visible = false;
+    this.officeChapter.root.visible = false;
+    this.officeSandboxChapter.root.visible = false;
+    this.chapterFour.root.visible = false;
+    this.chapterFive.root.visible = false;
+    this.chapterFive.screenShip.visible = false;
+    this.chapterSix.root.visible = false;
+    this.chapterSeven.root.visible = false;
+    this.chapterEight.root.visible = false;
+    this.chapterNine.root.visible = false;
+    this.chapterTen.root.visible = false;
+    this.chapterEleven.root.visible = false;
+    this.chapterTwelve.root.visible = false;
+    this.chapterThirteen.reset();
+    this.chapterThirteen.root.visible = false;
+    this.chapterFourteen.reset();
+    this.chapterFourteen.root.visible = true;
+    this.zombieMode.root.visible = false;
+    this.doomMode.root.visible = false;
+    this.chapterTwo.reset();
+    this.officeChapter.reset();
+    this.chapterFour.reset();
+    this.chapterFive.reset();
+    this.chapterSix.reset();
+    this.chapterSeven.reset();
+    this.chapterEight.reset();
+    this.chapterNine.reset();
+    this.chapterTen.reset();
+    this.chapterEleven.reset();
+    this.chapterTwelve.reset();
+    this.zombieMode.reset();
+    this.doomMode.reset();
+    this.resetOfficeTabletState();
+    this.clearChapterElevenGardenState(true);
+    this.chapterElevenSeedShopOpen = false;
+    this.chapterElevenEquipmentShopOpen = false;
+    this.chapterElevenSellMenuOpen = false;
+    this.chapterElevenSellChoosing = false;
+    this.chapterElevenSellSelectedCrops.clear();
+    this.chapterTwoSeatId = null;
+    this.chapterTwoClimb = null;
+    this.chapterTwoSlide = null;
+    this.chapterTwo.setOccupiedSeat(null);
+    this.officeChapterSeated = false;
+    this.chapterFourBoxHeld = false;
+    this.chapterFourBoxActive = false;
+    this.chapterFourBoxViewMode = 'normal';
+    this.chapterFourLockerId = null;
+    this.chapterFourCrouching = false;
+    this.chapterSevenCrawling = false;
+    this.chapterSevenForcedCrawl = false;
+    this.chapterSevenBoxHidden = false;
+    this.chapterSevenOvenHidden = false;
+    this.chapterSevenSwingSeated = false;
+    this.chapterSeven.setSwingOccupied(false);
+    this.chapterFourBoxHeldAnchor.visible = false;
+    this.chapterFourBoxHideAnchor.visible = false;
+    this.chapterFourBoxWideAnchor.visible = false;
+    this.chapterFourBoxWorldAnchor.visible = false;
+    this.chapterSevenBoxHideAnchor.visible = false;
+    this.chapterSevenOvenHideAnchor.visible = false;
+    this.chapterSevenOvenDoorOverlay.visible = false;
+    this.chapterEightHeldItemAnchor.visible = false;
+    this.chapterNine.shoulderCamera.visible = false;
+    this.chapterElevenHeldSeedAnchor.visible = false;
+    this.zombieWeaponAnchor.visible = false;
+    this.clearZombieBulletTracers();
+    this.inventory.clear();
+    this.resetKitchenStations();
+    this.holdingPlate = false;
+    this.plateRecipeId = null;
+    this.platedRecipeId = null;
+    this.plateIngredients.length = 0;
+    this.health = GAME_CONFIG.player.healthMax;
+    this.stamina = GAME_CONFIG.player.staminaMax;
+    this.flashlight.setEnabled(false);
+    this.zombieWeaponKick = 0;
+    this.monsters.forEach((monster) => {
+      monster.root.visible = false;
+    });
+    this.zombieControllers.forEach((zombie) => {
+      zombie.applyDamage(9999);
+      zombie.root.visible = false;
+    });
+    this.doomEnemies.forEach((enemy) => {
+      enemy.applyDamage(9999);
+      enemy.root.visible = false;
+    });
+    this.setPlacementToolActive(false);
+    this.player.teleport(this.chapterFourteen.spawn);
+    this.player.lookToward(this.chapterFourteen.lookTarget, 1);
+    this.pushStatus('Bird Sky Islands loaded. You are standing on one of eight huge islands above the clouds.', 3.2);
     this.resize();
   }
 
